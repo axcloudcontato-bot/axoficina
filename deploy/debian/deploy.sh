@@ -15,8 +15,8 @@ for command in docker openssl; do
   command -v "$command" >/dev/null || { echo "Comando obrigatório ausente: $command"; exit 1; }
 done
 
-if grep -Eq '=(gere_|oficina\.seudominio|contato@seudominio)' "$ENV_FILE"; then
-  echo "Substitua todos os valores de exemplo em $ENV_FILE antes de implantar."
+if grep -Eq '=(gere_|COLE_)' "$ENV_FILE"; then
+  echo "Substitua os segredos de exemplo em $ENV_FILE antes de implantar."
   exit 1
 fi
 

@@ -1,29 +1,19 @@
-# Implantação em Debian
+# Instalação no Debian (portas 3005 e 3006)
 
-## Objetivo
+Este guia instala a Oficina Mecânica com Docker Compose:
 
-Executar o sistema em um servidor Debian com Docker Compose, HTTPS automático,
-banco e Redis isolados da internet, dados persistentes, migrações idempotentes
-e procedimentos claros de atualização, backup e restauração.
+- frontend Next.js em `http://IP_DO_SERVIDOR:3005`;
+- backend NestJS em `http://IP_DO_SERVIDOR:3006`;
+- PostgreSQL e Redis acessíveis somente pela rede interna do Docker;
+- migrações Prisma e seed executados automaticamente;
+- dados do banco e fotos armazenados em volumes persistentes.
 
-## Arquitetura
+## 1. Requisitos
 
-- Caddy publica apenas as portas 80 e 443 e emite o certificado TLS.
-- Frontend e backend ficam acessíveis somente pela rede interna do Compose.
-- PostgreSQL e Redis não publicam portas no host.
-- Um serviço efêmero aplica migrações e o seed idempotente antes do backend.
-- Volumes persistem banco, fotos das ordens e certificados.
-- O frontend usa `/api` na mesma origem pública, evitando URLs `localhost`.
+Use Debian 12 ou mais recente, com no mínimo 2 GB de RAM e 20 GB livres.
+Entre no servidor por SSH com um usuário que tenha `sudo`.
 
-## Requisitos
-
-- Debian 12 ou superior, arquitetura amd64/arm64.
-- Um domínio com registro A/AAAA apontando para o servidor.
-- Portas TCP 80 e 443 liberadas.
-- Docker Engine com o plugin Docker Compose.
-- Ao menos 2 GB de RAM e 20 GB livres para uma instalação pequena.
-
-## Instalação
+## 2. Instalar Git e Docker
 
 ```bash
 sudo apt update
@@ -31,76 +21,164 @@ sudo apt install -y ca-certificates curl git openssl
 curl -fsSL https://get.docker.com | sudo sh
 sudo usermod -aG docker "$USER"
 newgrp docker
-
-git clone https://github.com/sergiooliveiracabonnet/gestao-mecanica.git
-cd gestao-mecanica
-cp deploy/debian/.env.production.example deploy/debian/.env.production
-nano deploy/debian/.env.production
-chmod 600 deploy/debian/.env.production
-./deploy/debian/deploy.sh
+docker --version
+docker compose version
 ```
 
-Preencha obrigatoriamente `DOMAIN`, `POSTGRES_PASSWORD`, `JWT_SECRET` e
-`SETTINGS_ENCRYPTION_KEY`. Gere segredos com:
+## 3. Baixar o sistema
+
+```bash
+sudo mkdir -p /opt/oficina-mecanica
+sudo chown "$USER":"$USER" /opt/oficina-mecanica
+git clone https://github.com/sergiooliveiracabonnet/gestao-mecanica.git \
+  /opt/oficina-mecanica
+cd /opt/oficina-mecanica
+```
+
+Se o código for transferido por outro meio, copie-o para
+`/opt/oficina-mecanica` e execute os próximos comandos nesse diretório.
+
+## 4. Criar a configuração de produção
+
+Copie o modelo e proteja o arquivo:
+
+```bash
+cp deploy/debian/.env.production.example deploy/debian/.env.production
+chmod 600 deploy/debian/.env.production
+hostname -I
+nano deploy/debian/.env.production
+```
+
+Substitua `192.168.0.250` pelo IP ou nome DNS do servidor. Use esta base:
+
+```dotenv
+SERVER_HOST=192.168.0.250
+FRONTEND_HOST_PORT=3005
+BACKEND_HOST_PORT=3006
+PUBLIC_FRONTEND_URL=http://192.168.0.250:3005
+PUBLIC_BACKEND_URL=http://192.168.0.250:3006
+
+POSTGRES_USER=axcloud
+POSTGRES_PASSWORD=COLE_A_SENHA_INFORMADA
+POSTGRES_DB=axcloudmecanica
+DATABASE_URL=postgresql://axcloud:SENHA_CODIFICADA@postgres:5432/axcloudmecanica?schema=public
+
+JWT_SECRET=COLE_UM_SEGREDO_AQUI
+SETTINGS_ENCRYPTION_KEY=COLE_OUTRO_SEGREDO_AQUI
+JWT_ACCESS_TOKEN_TTL_SECONDS=900
+REFRESH_TOKEN_TTL_SECONDS=604800
+INVITE_TOKEN_TTL_SECONDS=604800
+THROTTLE_TTL=60000
+THROTTLE_LIMIT=100
+```
+
+Gere os dois segredos, um por vez, e cole os resultados no arquivo:
 
 ```bash
 openssl rand -base64 48
+openssl rand -base64 32
 ```
 
-## Operação
+Em `POSTGRES_PASSWORD`, use a senha informada sem alterações. Na
+`DATABASE_URL`, codifique os caracteres reservados da senha. Para a senha
+informada, `@` vira `%40` e `#` vira `%23`. A credencial real deve permanecer
+somente em `.env.production`, que é ignorado pelo Git.
 
-Atualizar:
+## 5. Liberar as portas no firewall
+
+Confirme primeiro qual porta o SSH utiliza. Depois:
 
 ```bash
-git pull --ff-only
+sudo apt install -y ufw
+sudo ufw allow OpenSSH
+sudo ufw allow 3005/tcp
+sudo ufw allow 3006/tcp
+sudo ufw enable
+sudo ufw status
+```
+
+Não libere `5432` nem `6379`: PostgreSQL e Redis não devem ficar expostos.
+
+## 6. Construir e iniciar
+
+```bash
+chmod +x deploy/debian/deploy.sh deploy/debian/backup.sh
 ./deploy/debian/deploy.sh
 ```
 
-Estado e logs:
+O primeiro build pode levar alguns minutos. O serviço `migrate` aplica todas
+as migrações e executa o seed antes de iniciar a API.
+
+## 7. Verificar
 
 ```bash
 docker compose --env-file deploy/debian/.env.production \
   -f deploy/debian/compose.production.yml ps
+
+curl -fsS http://localhost:3006/health
+curl -I http://localhost:3005/login
+```
+
+Acesse de outro computador:
+
+- sistema: `http://IP_DO_SERVIDOR:3005`;
+- saúde da API: `http://IP_DO_SERVIDOR:3006/health`.
+
+Se a tela abrir mas não acessar a API, confirme que
+`PUBLIC_BACKEND_URL` contém o IP do Debian, não `localhost`, e refaça o build.
+Essa variável é incorporada ao frontend durante a compilação.
+
+## 8. Logs e diagnóstico
+
+```bash
 docker compose --env-file deploy/debian/.env.production \
   -f deploy/debian/compose.production.yml logs -f --tail=200
 ```
 
-Backup:
+Para um serviço específico, acrescente `backend`, `frontend`, `postgres` ou
+`migrate` ao final do comando.
+
+## 9. Atualizar
 
 ```bash
-./deploy/debian/backup.sh
+cd /opt/oficina-mecanica
+git pull --ff-only
+./deploy/debian/deploy.sh
 ```
 
-Os arquivos são gravados em `backups/` e incluem o PostgreSQL e as fotos.
-Copie-os periodicamente para outro equipamento ou armazenamento externo.
+## 10. Backup
 
-Restauração do banco:
+```bash
+cd /opt/oficina-mecanica
+./deploy/debian/backup.sh
+ls -lh backups/
+```
+
+Copie regularmente a pasta `backups/` para outro equipamento.
+
+Para restaurar um backup do banco:
 
 ```bash
 gunzip -c backups/postgres-AAAAmmdd-HHMMSS.sql.gz |
   docker compose --env-file deploy/debian/.env.production \
     -f deploy/debian/compose.production.yml exec -T postgres \
-    psql -U oficina -d oficina_saas
+    psql -U axcloud -d axcloudmecanica
 ```
 
-## DNS e túnel
+## HTTPS opcional
 
-Em VPS público, aponte o domínio diretamente para o IP do Debian. Em servidor
-local atrás de CGNAT, o túnel precisa encaminhar HTTP/HTTPS ao Caddy. Caso o
-túnel já encerre o TLS, adapte a publicação do Caddy antes da implantação.
-
-## Segurança mínima do host
-
-Mantenha somente SSH, HTTP e HTTPS liberados no firewall. Antes de ativar o
-firewall, confirme que a porta SSH usada pelo servidor está permitida:
+As portas 3005/3006 servem por HTTP. Para exposição na internet, prefira um
+domínio com HTTPS. Preencha `DOMAIN` e `ACME_EMAIL`, libere 80/443 e inicie o
+perfil Caddy:
 
 ```bash
-sudo apt install -y ufw
-sudo ufw allow OpenSSH
 sudo ufw allow 80/tcp
 sudo ufw allow 443/tcp
-sudo ufw enable
+docker compose --profile https \
+  --env-file deploy/debian/.env.production \
+  -f deploy/debian/compose.production.yml up -d
 ```
 
-Não publique as portas 5432 e 6379. A stack de produção já mantém PostgreSQL e
-Redis exclusivamente na rede interna do Docker.
+Antes disso, ajuste `PUBLIC_FRONTEND_URL=https://seu-dominio` e
+`PUBLIC_BACKEND_URL=https://seu-dominio`, depois execute novamente
+`./deploy/debian/deploy.sh` para recompilar o frontend.

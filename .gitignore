@@ -7,6 +7,7 @@ dist/
 build/
 .next/
 .next-stale-*/
+.next-corrupt-*/
 .turbo/
 coverage/
 uploads/
