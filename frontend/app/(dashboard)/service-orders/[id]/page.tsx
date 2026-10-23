@@ -18,7 +18,7 @@ import { StatusTransitionButtons } from '@/features/service-orders/components/St
 import { VehicleServiceHistoryDialog } from '@/features/service-orders/components/VehicleServiceHistoryDialog';
 import { ServiceOrderPaymentSection } from '@/features/service-orders/components/ServiceOrderPaymentSection';
 import { ServiceOrderQuoteActions } from '@/features/service-orders/components/ServiceOrderQuoteActions';
-import { ServiceOrderPhotoGallery } from '@/features/service-orders/components/ServiceOrderPhotoGallery';
+import { ItemPhotosSection, VehiclePhotoSection } from '@/features/service-orders/components/ServiceOrderPhotoGallery';
 import { parseChecklist, serializeChecklist, type InspectionItem } from '@/features/service-orders/checklist';
 import { useServiceOrder, useUpdateServiceOrder } from '@/features/service-orders/hooks/use-service-orders';
 import { useUsersList } from '@/features/users/hooks/use-users';
@@ -45,7 +45,7 @@ export default function ServiceOrderDetailPage() {
   const [checklistItems, setChecklistItems] = useState<InspectionItem[]>([]);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [vehicleHistoryOpen, setVehicleHistoryOpen] = useState(false);
-  const [activeStep, setActiveStep] = useState<1 | 2 | 3 | 4>(1);
+  const [activeStep, setActiveStep] = useState<1 | 2 | 3 | 4 | 5 | 6>(1);
 
   useEffect(() => {
     if (!data) return;
@@ -63,6 +63,7 @@ export default function ServiceOrderDetailPage() {
   if (isError || !data) return <div className="rounded-card border border-danger/30 bg-danger-subtle p-8 text-center text-sm font-semibold text-danger-strong">Não foi possível carregar esta ordem de serviço.</div>;
 
   const { serviceOrder } = data;
+  const canManagePhotos = hasPermission(currentUser, 'service_orders.manage');
 
   function handleSave() {
     update.mutate(
@@ -114,16 +115,19 @@ export default function ServiceOrderDetailPage() {
 
       <ServiceOrderStepper activeStep={activeStep} onStepChange={setActiveStep} />
 
-      {activeStep === 1 && <section className="rounded-card border border-border bg-card p-4 shadow-sm sm:p-5">
-        <SectionTitle number="1" title="Entrada do veículo" description="Registre com clareza o que o cliente solicitou e as condições combinadas." />
-        <div className="mt-5 grid gap-4 lg:grid-cols-2">
-          <Field label="Solicitação ou queixa do cliente"><Textarea value={customerComplaint} onChange={(event) => setCustomerComplaint(event.target.value)} placeholder="Ex.: ruído ao frear e revisão preventiva" /></Field>
-          <Field label="Observações da recepção"><Textarea value={receptionNotes} onChange={(event) => setReceptionNotes(event.target.value)} placeholder="Condições de entrada, avarias visíveis ou acordos com o cliente" /></Field>
-          <Field label="Quilometragem de entrada"><Input type="number" min={0} value={entryMileage} onChange={(event) => setEntryMileage(event.target.value)} placeholder="Ex.: 82450" /></Field>
-          <Field label="Previsão de entrega"><Input type="datetime-local" value={expectedDeliveryAt} onChange={(event) => setExpectedDeliveryAt(event.target.value)} /></Field>
-        </div>
+      {activeStep === 1 && <div className="space-y-5">
+        <section className="rounded-card border border-border bg-card p-4 shadow-sm sm:p-5">
+          <SectionTitle number="1" title="Entrada do veículo" description="Registre com clareza o que o cliente solicitou e as condições combinadas." />
+          <div className="mt-5 grid gap-4 lg:grid-cols-2">
+            <Field label="Solicitação ou queixa do cliente"><Textarea value={customerComplaint} onChange={(event) => setCustomerComplaint(event.target.value)} placeholder="Ex.: ruído ao frear e revisão preventiva" /></Field>
+            <Field label="Observações da recepção"><Textarea value={receptionNotes} onChange={(event) => setReceptionNotes(event.target.value)} placeholder="Condições de entrada, avarias visíveis ou acordos com o cliente" /></Field>
+            <Field label="Quilometragem de entrada"><Input type="number" min={0} value={entryMileage} onChange={(event) => setEntryMileage(event.target.value)} placeholder="Ex.: 82450" /></Field>
+            <Field label="Previsão de entrega"><Input type="datetime-local" value={expectedDeliveryAt} onChange={(event) => setExpectedDeliveryAt(event.target.value)} /></Field>
+          </div>
+        </section>
+        <VehiclePhotoSection serviceOrderId={serviceOrder.id} category="ENTRY" canManage={canManagePhotos} />
         <StepActions onNext={() => setActiveStep(2)} />
-      </section>}
+      </div>}
 
       {activeStep === 2 && <div><div className="mb-3"><SectionTitle number="2" title="Inspeção do veículo" description="Verifique os pontos de entrada antes de definir o serviço." /></div><InspectionChecklist items={checklistItems} onChange={setChecklistItems} disabled={update.isPending} /><StepActions onBack={() => setActiveStep(1)} onNext={() => setActiveStep(3)} /></div>}
 
@@ -139,11 +143,19 @@ export default function ServiceOrderDetailPage() {
 
       {activeStep === 4 && <div className="space-y-5">
         <ServiceOrderItemsSection serviceOrder={serviceOrder} />
-        {(hasPermission(currentUser, 'receipts.manage') || (currentUser?.role === 'ADMIN' && (!currentUser.profileName || currentUser.profileName === 'ADMIN'))) && <ServiceOrderPaymentSection serviceOrder={serviceOrder} />}
-        <StepActions onBack={() => setActiveStep(3)} />
+        <ItemPhotosSection serviceOrderId={serviceOrder.id} items={serviceOrder.items ?? []} canManage={canManagePhotos} />
+        <StepActions onBack={() => setActiveStep(3)} onNext={() => setActiveStep(5)} />
       </div>}
 
-      <ServiceOrderPhotoGallery serviceOrderId={serviceOrder.id} canManage={hasPermission(currentUser, 'service_orders.manage')} items={serviceOrder.items ?? []} />
+      {activeStep === 5 && <div className="space-y-5">
+        <VehiclePhotoSection serviceOrderId={serviceOrder.id} category="EXIT" canManage={canManagePhotos} />
+        <StepActions onBack={() => setActiveStep(4)} onNext={() => setActiveStep(6)} />
+      </div>}
+
+      {activeStep === 6 && <div className="space-y-5">
+        {(hasPermission(currentUser, 'receipts.manage') || (currentUser?.role === 'ADMIN' && (!currentUser.profileName || currentUser.profileName === 'ADMIN'))) && <ServiceOrderPaymentSection serviceOrder={serviceOrder} />}
+        <StepActions onBack={() => setActiveStep(5)} />
+      </div>}
 
       <details className="rounded-card border border-border bg-card p-4 shadow-sm sm:p-5"><summary className="cursor-pointer text-lg font-bold tracking-tight text-text">Histórico da OS</summary><div className="mt-4"><StatusHistoryTimeline history={serviceOrder.statusHistory ?? []} /></div></details>
 
@@ -167,12 +179,14 @@ const STEPS = [
   { number: 1 as const, label: 'Entrada do veículo', shortLabel: 'Entrada' },
   { number: 2 as const, label: 'Inspeção do veículo', shortLabel: 'Inspeção' },
   { number: 3 as const, label: 'Diagnóstico técnico', shortLabel: 'Diagnóstico' },
-  { number: 4 as const, label: 'Pagamento', shortLabel: 'Pagamento' },
+  { number: 4 as const, label: 'Serviços executados', shortLabel: 'Serviços' },
+  { number: 5 as const, label: 'Saída do veículo', shortLabel: 'Saída' },
+  { number: 6 as const, label: 'Pagamento', shortLabel: 'Pagamento' },
 ];
 
-function ServiceOrderStepper({ activeStep, onStepChange }: { activeStep: 1 | 2 | 3 | 4; onStepChange: (step: 1 | 2 | 3 | 4) => void }) {
+function ServiceOrderStepper({ activeStep, onStepChange }: { activeStep: 1 | 2 | 3 | 4 | 5 | 6; onStepChange: (step: 1 | 2 | 3 | 4 | 5 | 6) => void }) {
   return <nav aria-label="Etapas da ordem de serviço" className="rounded-card border border-border bg-card px-3 py-4 shadow-sm sm:px-6">
-    <ol className="grid grid-cols-4">
+    <ol className="grid grid-cols-6">
       {STEPS.map((step, index) => {
         const active = step.number === activeStep;
         const completed = step.number < activeStep;

@@ -20,27 +20,56 @@ const ANGLE_LABELS: Record<ServiceOrderPhotoAngle, string> = {
   DASHBOARD: 'Painel (km)',
 };
 
-const VEHICLE_SECTIONS: Array<{ category: 'ENTRY' | 'EXIT'; title: string; description: string }> = [
-  { category: 'ENTRY', title: 'Entrada do veículo', description: 'Registre os mesmos 6 ângulos padrão de como o veículo chegou.' },
-  { category: 'EXIT', title: 'Saída do veículo', description: 'Repita os mesmos ângulos para comparar lado a lado com a entrada.' },
-];
+const VEHICLE_SECTION_COPY: Record<'ENTRY' | 'EXIT', { title: string; description: string }> = {
+  ENTRY: { title: 'Fotos de entrada do veículo', description: 'Registre os 6 ângulos padrão de como o veículo chegou.' },
+  EXIT: { title: 'Fotos de saída do veículo', description: 'Repita os mesmos ângulos para comparar com a entrada antes da entrega.' },
+};
 
 type Payload = { category: ServiceOrderPhotoCategory; angle?: ServiceOrderPhotoAngle; serviceOrderItemId?: string };
 
-export function ServiceOrderPhotoGallery({ serviceOrderId, canManage, items = [] }: { serviceOrderId: string; canManage: boolean; items?: ServiceOrderItemResponse[] }) {
+// Seção autocontida (busca as fotos, mantém seu próprio visualizador) pra
+// poder ser usada isolada em passos diferentes do fluxo da OS — entrada na
+// abertura, saída no fechamento — em vez de uma galeria única misturando
+// os dois momentos.
+export function VehiclePhotoSection({ serviceOrderId, category, canManage }: { serviceOrderId: string; category: 'ENTRY' | 'EXIT'; canManage: boolean }) {
   const query = useServiceOrderPhotos(serviceOrderId);
   const [selected, setSelected] = useState<ServiceOrderPhotoResponse | null>(null);
   const photos = query.data?.photos ?? [];
+  const copy = VEHICLE_SECTION_COPY[category];
 
   const byAngle = useMemo(() => {
-    const map = new Map<string, ServiceOrderPhotoResponse[]>();
+    const map = new Map<ServiceOrderPhotoAngle, ServiceOrderPhotoResponse[]>();
     for (const photo of photos) {
-      if (!photo.angle) continue;
-      const key = `${photo.category}:${photo.angle}`;
-      map.set(key, [...(map.get(key) ?? []), photo]);
+      if (photo.category !== category || !photo.angle) continue;
+      map.set(photo.angle, [...(map.get(photo.angle) ?? []), photo]);
     }
     return map;
-  }, [photos]);
+  }, [photos, category]);
+
+  const coveredCount = SERVICE_ORDER_PHOTO_ANGLES.filter((angle) => (byAngle.get(angle) ?? []).length > 0).length;
+
+  return <section aria-labelledby={`vehicle-photos-${category}`} className="rounded-card border border-border bg-card p-4 shadow-sm sm:p-5">
+    <header className="flex items-start gap-3 border-b border-border pb-4">
+      <span className="flex size-10 shrink-0 items-center justify-center rounded-button bg-primary-subtle text-primary"><Camera className="size-5" /></span>
+      <div>
+        <p className="text-xs font-bold uppercase tracking-[0.12em] text-primary">Evidências da OS</p>
+        <h3 id={`vehicle-photos-${category}`} className="mt-1 text-lg font-bold">{copy.title} <span className="ml-1 text-sm font-semibold text-text-muted">{coveredCount}/6</span></h3>
+        <p className="mt-1 text-sm text-text-muted">{copy.description}</p>
+      </div>
+    </header>
+    {query.isLoading && <div className="flex h-40 items-center justify-center text-text-muted"><CircleNotch className="size-6 animate-spin" /></div>}
+    {query.isError && <p className="py-8 text-center text-sm font-semibold text-danger">Não foi possível carregar as fotos.</p>}
+    {!query.isLoading && !query.isError && <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
+      {SERVICE_ORDER_PHOTO_ANGLES.map((angle) => <PhotoSlot key={angle} serviceOrderId={serviceOrderId} payload={{ category, angle }} label={ANGLE_LABELS[angle]} photos={byAngle.get(angle) ?? []} canManage={canManage} onSelect={setSelected} />)}
+    </div>}
+    <PhotoViewer photo={selected} onClose={() => setSelected(null)} canManage={canManage} serviceOrderId={serviceOrderId} />
+  </section>;
+}
+
+export function ItemPhotosSection({ serviceOrderId, items, canManage }: { serviceOrderId: string; items: ServiceOrderItemResponse[]; canManage: boolean }) {
+  const query = useServiceOrderPhotos(serviceOrderId);
+  const [selected, setSelected] = useState<ServiceOrderPhotoResponse | null>(null);
+  const photos = query.data?.photos ?? [];
 
   const byItem = useMemo(() => {
     const map = new Map<string, ServiceOrderPhotoResponse[]>();
@@ -52,47 +81,31 @@ export function ServiceOrderPhotoGallery({ serviceOrderId, canManage, items = []
     return map;
   }, [photos]);
 
-  return <section aria-labelledby="vehicle-photos-title" className="rounded-card border border-border bg-card p-4 shadow-sm sm:p-5">
-    <header className="flex items-start gap-3 border-b border-border pb-4"><span className="flex size-10 shrink-0 items-center justify-center rounded-button bg-primary-subtle text-primary"><Camera className="size-5" /></span><div><p className="text-xs font-bold uppercase tracking-[0.12em] text-primary">Evidências da OS</p><h3 id="vehicle-photos-title" className="mt-1 text-lg font-bold">Registro fotográfico do veículo</h3><p className="mt-1 text-sm text-text-muted">Os mesmos ângulos na entrada e na saída, e um antes/depois para cada item.</p></div></header>
+  return <section aria-labelledby="item-photos-title" className="rounded-card border border-border bg-card p-4 shadow-sm sm:p-5">
+    <header className="flex items-start gap-3 border-b border-border pb-4">
+      <span className="flex size-10 shrink-0 items-center justify-center rounded-button bg-primary-subtle text-primary"><Wrench className="size-5" /></span>
+      <div>
+        <p className="text-xs font-bold uppercase tracking-[0.12em] text-primary">Evidências da OS</p>
+        <h3 id="item-photos-title" className="mt-1 text-lg font-bold">Antes e depois por item</h3>
+        <p className="mt-1 text-sm text-text-muted">Para cada peça ou serviço lançado na OS, registre uma foto do problema e uma da solução.</p>
+      </div>
+    </header>
     {query.isLoading && <div className="flex h-40 items-center justify-center text-text-muted"><CircleNotch className="size-6 animate-spin" /></div>}
     {query.isError && <p className="py-8 text-center text-sm font-semibold text-danger">Não foi possível carregar as fotos.</p>}
-    {!query.isLoading && !query.isError && <div>
-      {VEHICLE_SECTIONS.map((section, index) => <div key={section.category} className={index > 0 ? 'mt-8 border-t border-border pt-8' : 'pt-5'}>
-        <AngleSection serviceOrderId={serviceOrderId} section={section} byAngle={byAngle} canManage={canManage} onSelect={setSelected} />
-      </div>)}
-      <div className="mt-8 border-t-2 border-border pt-8">
-        <ItemPhotosSection serviceOrderId={serviceOrderId} items={items} byItem={byItem} canManage={canManage} onSelect={setSelected} />
-      </div>
-    </div>}
+    {!query.isLoading && !query.isError && (
+      items.length === 0
+        ? <div className="mt-4 flex min-h-20 items-center justify-center rounded-button border border-dashed border-border bg-muted/30 px-4 text-center text-xs text-text-muted">Nenhum item lançado nesta OS ainda.</div>
+        : <div className="mt-4 space-y-3">
+          {items.map((item) => <div key={item.id} className="rounded-button border border-border bg-card p-3">
+            <p className="mb-2 text-sm font-semibold text-text">{item.description}</p>
+            <div className="grid grid-cols-2 gap-3">
+              <PhotoSlot serviceOrderId={serviceOrderId} payload={{ category: 'ISSUE', serviceOrderItemId: item.id }} label="Antes (problema)" photos={byItem.get(`${item.id}:ISSUE`) ?? []} canManage={canManage} onSelect={setSelected} />
+              <PhotoSlot serviceOrderId={serviceOrderId} payload={{ category: 'RESOLVED', serviceOrderItemId: item.id }} label="Depois (solução)" photos={byItem.get(`${item.id}:RESOLVED`) ?? []} canManage={canManage} onSelect={setSelected} />
+            </div>
+          </div>)}
+        </div>
+    )}
     <PhotoViewer photo={selected} onClose={() => setSelected(null)} canManage={canManage} serviceOrderId={serviceOrderId} />
-  </section>;
-}
-
-function AngleSection({ serviceOrderId, section, byAngle, canManage, onSelect }: { serviceOrderId: string; section: (typeof VEHICLE_SECTIONS)[number]; byAngle: Map<string, ServiceOrderPhotoResponse[]>; canManage: boolean; onSelect: (photo: ServiceOrderPhotoResponse) => void }) {
-  const coveredCount = SERVICE_ORDER_PHOTO_ANGLES.filter((angle) => (byAngle.get(`${section.category}:${angle}`) ?? []).length > 0).length;
-
-  return <section aria-labelledby={`photo-section-${section.category}`}>
-    <div><h4 id={`photo-section-${section.category}`} className="font-bold text-text">{section.title} <span className="ml-1 text-xs font-semibold text-text-muted">{coveredCount}/6</span></h4><p className="mt-1 text-xs text-text-muted">{section.description}</p></div>
-    <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
-      {SERVICE_ORDER_PHOTO_ANGLES.map((angle) => <PhotoSlot key={angle} serviceOrderId={serviceOrderId} payload={{ category: section.category, angle }} label={ANGLE_LABELS[angle]} photos={byAngle.get(`${section.category}:${angle}`) ?? []} canManage={canManage} onSelect={onSelect} />)}
-    </div>
-  </section>;
-}
-
-function ItemPhotosSection({ serviceOrderId, items, byItem, canManage, onSelect }: { serviceOrderId: string; items: ServiceOrderItemResponse[]; byItem: Map<string, ServiceOrderPhotoResponse[]>; canManage: boolean; onSelect: (photo: ServiceOrderPhotoResponse) => void }) {
-  return <section aria-labelledby="photo-section-items">
-    <div className="flex items-start gap-2"><Wrench className="mt-0.5 size-4 text-text-muted" /><div><h4 id="photo-section-items" className="font-bold text-text">Antes e depois por item</h4><p className="mt-1 text-xs text-text-muted">Para cada peça ou serviço lançado na OS, registre uma foto do problema e uma da solução.</p></div></div>
-    {items.length === 0
-      ? <div className="mt-4 flex min-h-20 items-center justify-center rounded-button border border-dashed border-border bg-muted/30 px-4 text-center text-xs text-text-muted">Nenhum item lançado nesta OS ainda.</div>
-      : <div className="mt-4 space-y-3">
-        {items.map((item) => <div key={item.id} className="rounded-button border border-border bg-card p-3">
-          <p className="mb-2 text-sm font-semibold text-text">{item.description}</p>
-          <div className="grid grid-cols-2 gap-3">
-            <PhotoSlot serviceOrderId={serviceOrderId} payload={{ category: 'ISSUE', serviceOrderItemId: item.id }} label="Antes (problema)" photos={byItem.get(`${item.id}:ISSUE`) ?? []} canManage={canManage} onSelect={onSelect} />
-            <PhotoSlot serviceOrderId={serviceOrderId} payload={{ category: 'RESOLVED', serviceOrderItemId: item.id }} label="Depois (solução)" photos={byItem.get(`${item.id}:RESOLVED`) ?? []} canManage={canManage} onSelect={onSelect} />
-          </div>
-        </div>)}
-      </div>}
   </section>;
 }
 
