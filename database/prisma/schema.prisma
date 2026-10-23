@@ -354,6 +354,14 @@ model ServiceOrderPhoto {
   tenantId       String    @map("tenant_id") @db.Uuid
   serviceOrderId String    @map("service_order_id") @db.Uuid
   category       String
+  // Só preenchido pra category ENTRY/EXIT: um dos 6 ângulos padrão
+  // (FRONT/REAR/LEFT_SIDE/RIGHT_SIDE/SPARE_TIRE/DASHBOARD) — mesmo conjunto
+  // nas duas pontas pra permitir comparação direta antes/depois.
+  angle              String?
+  // Só preenchido pra category ISSUE/RESOLVED: a peça/serviço (ServiceOrderItem)
+  // que esta foto documenta. Sem @relation (padrão do schema — ver
+  // ServiceOrderItem, sem tenantId próprio, validado na camada de app).
+  serviceOrderItemId String?   @map("service_order_item_id") @db.Uuid
   caption        String?
   storageKey     String    @map("storage_key")
   originalName   String    @map("original_name")
@@ -364,6 +372,7 @@ model ServiceOrderPhoto {
   deletedAt      DateTime? @map("deleted_at") @db.Timestamptz
 
   @@index([tenantId, serviceOrderId, category])
+  @@index([serviceOrderItemId])
   @@map("service_order_photos")
 }
 

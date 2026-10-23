@@ -72,6 +72,30 @@ describe('Maintenance Alerts (e2e)', () => {
     return response.body.customer.id as string;
   }
 
+  // PNG 1x1 válido — satisfaz a exigência de evidência fotográfica (ENTRY/EXIT,
+  // por ângulo) antes das transições que agora a exigem (ver service-order-state-machine.ts).
+  const TINY_PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=', 'base64');
+  const ALL_ANGLES = ['FRONT', 'REAR', 'LEFT_SIDE', 'RIGHT_SIDE', 'SPARE_TIRE', 'DASHBOARD'] as const;
+
+  async function uploadPhoto(token: string, serviceOrderId: string, category: 'ENTRY' | 'EXIT', angle: (typeof ALL_ANGLES)[number]): Promise<void> {
+    const response = await request(app.getHttpServer())
+      .post('/api/v1/service-orders/photos')
+      .set('Authorization', `Bearer ${token}`)
+      .field('serviceOrderId', serviceOrderId)
+      .field('category', category)
+      .field('angle', angle)
+      .attach('file', TINY_PNG, { filename: 'evidence.png', contentType: 'image/png' });
+    if (response.status !== 201) {
+      throw new Error(`uploadPhoto(${category}, ${angle}) failed with ${response.status}: ${JSON.stringify(response.body)}`);
+    }
+  }
+
+  async function uploadAllAngles(token: string, serviceOrderId: string, category: 'ENTRY' | 'EXIT'): Promise<void> {
+    for (const angle of ALL_ANGLES) {
+      await uploadPhoto(token, serviceOrderId, category, angle);
+    }
+  }
+
   async function createVehicle(adminToken: string, customerId: string, suffix: string): Promise<string> {
     const response = await request(app.getHttpServer())
       .post('/api/v1/vehicles')
@@ -214,6 +238,8 @@ describe('Maintenance Alerts (e2e)', () => {
       .set('Authorization', `Bearer ${admin.access_token}`)
       .send({ vehicle_id: vehicleId });
     const serviceOrderId = created.body.service_order.id as string;
+    await uploadAllAngles(admin.access_token, serviceOrderId, 'ENTRY');
+    await uploadAllAngles(admin.access_token, serviceOrderId, 'EXIT');
 
     for (const toStatus of ['IN_PROGRESS', 'COMPLETED', 'DELIVERED']) {
       const transitionResponse = await request(app.getHttpServer())

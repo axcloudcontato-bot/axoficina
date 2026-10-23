@@ -1,22 +1,24 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
-import type {
-  CreateServiceOrderItemRequest,
-  ConfigureServiceOrderPaymentRequest,
-  ConfirmServiceOrderInstallmentRequest,
-  ConfirmServiceOrderReceiptRequest,
-  DeleteServiceOrderReceiptRequest,
-  CreateServiceOrderRequest,
-  DashboardBusinessSummaryResponse,
-  PaginationData,
-  ServiceOrderItemResponse,
-  ServiceOrderInstallmentResponse,
-  ServiceOrderReceiptResponse,
-  ServiceOrderListRequest,
-  ServiceOrderResponse,
-  ServiceOrderStatusHistoryItemResponse,
-  TransitionServiceOrderRequest,
-  UpdateServiceOrderItemRequest,
-  UpdateServiceOrderRequest,
+import {
+  SERVICE_ORDER_PHOTO_ANGLES,
+  type CreateServiceOrderItemRequest,
+  type ConfigureServiceOrderPaymentRequest,
+  type ConfirmServiceOrderInstallmentRequest,
+  type ConfirmServiceOrderReceiptRequest,
+  type DeleteServiceOrderReceiptRequest,
+  type CreateServiceOrderRequest,
+  type DashboardBusinessSummaryResponse,
+  type PaginationData,
+  type ServiceOrderItemResponse,
+  type ServiceOrderInstallmentResponse,
+  type ServiceOrderPhotoAngle,
+  type ServiceOrderReceiptResponse,
+  type ServiceOrderListRequest,
+  type ServiceOrderResponse,
+  type ServiceOrderStatusHistoryItemResponse,
+  type TransitionServiceOrderRequest,
+  type UpdateServiceOrderItemRequest,
+  type UpdateServiceOrderRequest,
 } from '@oficina/contracts';
 import type {
   Customer as CustomerEntity,
@@ -40,6 +42,7 @@ import { ServiceOrderRepository } from '../repositories/service-order.repository
 import { ServiceOrderStatusHistoryRepository } from '../repositories/service-order-status-history.repository';
 import { ServiceOrderItemRepository } from '../repositories/service-order-item.repository';
 import { ServiceOrderReceiptRepository } from '../repositories/service-order-receipt.repository';
+import { ServiceOrderPhotoRepository } from '../repositories/service-order-photo.repository';
 import { SERVICE_ORDER_CLOSING_STATUSES, SERVICE_ORDER_TRANSITIONS } from './service-order-state-machine';
 // MaintenanceAlertRepository vem de MaintenanceAlertsModule, que
 // ServiceOrdersModule importa via `forwardRef()` (o import é recíproco —
@@ -47,6 +50,15 @@ import { SERVICE_ORDER_CLOSING_STATUSES, SERVICE_ORDER_TRANSITIONS } from './ser
 // `forwardRef()` — ver comentário em service-orders.module.ts e Gotchas do
 // plano motor-manutencao-preventiva.md).
 import { MaintenanceAlertRepository } from '../../maintenance-alerts/repositories/maintenance-alert.repository';
+
+const PHOTO_ANGLE_LABELS: Record<ServiceOrderPhotoAngle, string> = {
+  FRONT: 'frente',
+  REAR: 'traseira',
+  LEFT_SIDE: 'lateral esquerda',
+  RIGHT_SIDE: 'lateral direita',
+  SPARE_TIRE: 'estepe/porta-malas',
+  DASHBOARD: 'painel (km)',
+};
 
 @Injectable()
 export class ServiceOrderManager {
@@ -61,6 +73,7 @@ export class ServiceOrderManager {
     private readonly prisma: PrismaService,
     private readonly auditLog: AuditLogService,
     private readonly maintenanceAlertRepository: MaintenanceAlertRepository,
+    private readonly photoRepository: ServiceOrderPhotoRepository,
   ) {}
 
   async create(actingUser: AuthenticatedUser, request: CreateServiceOrderRequest): Promise<{ serviceOrder: ServiceOrderResponse }> {
@@ -203,6 +216,42 @@ export class ServiceOrderManager {
       );
     }
 
+    // Evidência fotográfica obrigatória (spec fotos-os.md): os mesmos 6
+    // ângulos padrão na ENTRY (ao sair de OPEN — primeiro registro de como o
+    // veículo chegou) e na EXIT (ao concluir — como ele saiu, antes da
+    // entrega), mais 1 foto de antes (ISSUE) e depois (RESOLVED) por peça/
+    // serviço lançado na OS. CANCELLED fica isento de tudo isso — é um
+    // caminho de aborto, não de entrega.
+    if (fromStatus === 'OPEN' && (request.toStatus === 'IN_PROGRESS' || request.toStatus === 'AWAITING_APPROVAL')) {
+      const missing = await this.missingAngles(request.id, 'ENTRY');
+      if (missing.length > 0) {
+        throw new AppException(
+          AppErrorCode.SERVICE_ORDER_MISSING_ENTRY_PHOTO,
+          `Faltam fotos de entrada do veículo: ${missing.join(', ')}.`,
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+    }
+    if (request.toStatus === 'COMPLETED') {
+      const missingAngles = await this.missingAngles(request.id, 'EXIT');
+      if (missingAngles.length > 0) {
+        throw new AppException(
+          AppErrorCode.SERVICE_ORDER_MISSING_EXIT_PHOTO,
+          `Faltam fotos de saída do veículo: ${missingAngles.join(', ')}.`,
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      const incompleteItems = await this.incompleteItemPhotos(request.id);
+      if (incompleteItems.length > 0) {
+        throw new AppException(
+          AppErrorCode.SERVICE_ORDER_MISSING_ITEM_PHOTOS,
+          `Faltam fotos de antes/depois para: ${incompleteItems.join(', ')}.`,
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+    }
+
     const changedAt = new Date();
     const closedAt = SERVICE_ORDER_CLOSING_STATUSES.includes(request.toStatus) ? changedAt : undefined;
 
@@ -260,6 +309,28 @@ export class ServiceOrderManager {
     });
 
     return { serviceOrder: this.toResponse(updated, vehicle, customer, technician, { totalAmountCentsOverride: totalAmountCents }) };
+  }
+
+  private async missingAngles(serviceOrderId: string, category: 'ENTRY' | 'EXIT'): Promise<string[]> {
+    const covered = new Set(await this.photoRepository.distinctAngles(serviceOrderId, category));
+    return SERVICE_ORDER_PHOTO_ANGLES.filter((angle) => !covered.has(angle)).map((angle) => PHOTO_ANGLE_LABELS[angle]);
+  }
+
+  // Cada peça/serviço ativo da OS precisa de 1 foto ISSUE (o problema, antes)
+  // e 1 RESOLVED (a solução, depois) vinculadas a ele — ver
+  // ServiceOrderPhotoManager.upload, que já garante que toda foto ISSUE/
+  // RESOLVED referencia um item real desta mesma OS.
+  private async incompleteItemPhotos(serviceOrderId: string): Promise<string[]> {
+    const [items, coverage] = await Promise.all([
+      this.itemRepository.byServiceOrderId(serviceOrderId),
+      this.photoRepository.itemCategoryCoverage(serviceOrderId),
+    ]);
+    if (items.length === 0) {
+      return [];
+    }
+    const hasIssue = new Set(coverage.filter((row) => row.category === 'ISSUE').map((row) => row.serviceOrderItemId));
+    const hasResolved = new Set(coverage.filter((row) => row.category === 'RESOLVED').map((row) => row.serviceOrderItemId));
+    return items.filter((item) => !hasIssue.has(item.id) || !hasResolved.has(item.id)).map((item) => item.description);
   }
 
   async delete(actingUser: AuthenticatedUser, id: string): Promise<{ serviceOrder: ServiceOrderResponse }> {

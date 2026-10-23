@@ -16,6 +16,7 @@ import type {
   DueServiceOrderInstallmentsResponse,
   ServiceOrderInstallmentResponse,
   ServiceOrderPhotoCategory,
+  ServiceOrderPhotoAngle,
   ServiceOrderPhotoResponse,
 } from '@oficina/contracts';
 
@@ -65,12 +66,19 @@ export const serviceOrdersApi = {
     return (await apiClient.post('/api/v1/service-orders/installments/due', { limit })).data;
   },
   async listPhotos(serviceOrderId: string): Promise<{ photos: ServiceOrderPhotoResponse[] }> {
-    return (await apiClient.get('/api/v1/service-orders/photos', { params: { service_order_id: serviceOrderId } })).data;
+    // `params` do axios não passa pelo interceptor de conversão pra
+    // snake_case (só converte `data`, o body) — igual brand_id em
+    // fipe-api.ts, mas aqui o DTO (ListServiceOrderPhotosDto) valida
+    // `serviceOrderId` puro, sem @Expose({name}), então tem que ir
+    // literal camelCase.
+    return (await apiClient.get('/api/v1/service-orders/photos', { params: { serviceOrderId } })).data;
   },
-  async uploadPhoto(input: { serviceOrderId: string; category: ServiceOrderPhotoCategory; caption?: string; file: File }): Promise<{ photo: ServiceOrderPhotoResponse }> {
+  async uploadPhoto(input: { serviceOrderId: string; category: ServiceOrderPhotoCategory; angle?: ServiceOrderPhotoAngle; serviceOrderItemId?: string; caption?: string; file: File }): Promise<{ photo: ServiceOrderPhotoResponse }> {
     const form = new FormData();
     form.append('serviceOrderId', input.serviceOrderId);
     form.append('category', input.category);
+    if (input.angle) form.append('angle', input.angle);
+    if (input.serviceOrderItemId) form.append('serviceOrderItemId', input.serviceOrderItemId);
     if (input.caption) form.append('caption', input.caption);
     form.append('file', input.file);
     return (await apiClient.post('/api/v1/service-orders/photos', form)).data;

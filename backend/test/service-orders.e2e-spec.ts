@@ -104,6 +104,36 @@ describe('Service Orders (e2e)', () => {
     return response.body.vehicle.id as string;
   }
 
+  // PNG 1x1 válido (assinatura real verificada pelo manager) — só pra
+  // satisfazer a exigência de evidência fotográfica (ENTRY/EXIT, por ângulo,
+  // e ISSUE/RESOLVED por item) antes das transições que agora a exigem, ver
+  // service-order-state-machine.ts.
+  const TINY_PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=', 'base64');
+  const ALL_ANGLES = ['FRONT', 'REAR', 'LEFT_SIDE', 'RIGHT_SIDE', 'SPARE_TIRE', 'DASHBOARD'] as const;
+
+  async function uploadPhoto(
+    token: string,
+    serviceOrderId: string,
+    fields: { category: 'ENTRY' | 'EXIT'; angle: (typeof ALL_ANGLES)[number] } | { category: 'ISSUE' | 'RESOLVED'; serviceOrderItemId: string },
+  ): Promise<void> {
+    let req = request(app.getHttpServer())
+      .post('/api/v1/service-orders/photos')
+      .set('Authorization', `Bearer ${token}`)
+      .field('serviceOrderId', serviceOrderId)
+      .field('category', fields.category);
+    req = 'angle' in fields ? req.field('angle', fields.angle) : req.field('serviceOrderItemId', fields.serviceOrderItemId);
+    const response = await req.attach('file', TINY_PNG, { filename: 'evidence.png', contentType: 'image/png' });
+    if (response.status !== 201) {
+      throw new Error(`uploadPhoto(${JSON.stringify(fields)}) failed with ${response.status}: ${JSON.stringify(response.body)}`);
+    }
+  }
+
+  async function uploadAllAngles(token: string, serviceOrderId: string, category: 'ENTRY' | 'EXIT'): Promise<void> {
+    for (const angle of ALL_ANGLES) {
+      await uploadPhoto(token, serviceOrderId, { category, angle });
+    }
+  }
+
   it('creates a service order deriving customer_id from the vehicle, no customer_id accepted in the body', async () => {
     const admin = await signupAdmin(`create-${Date.now()}`);
     const customerId = await createCustomer(admin.access_token, 'create');
@@ -228,6 +258,9 @@ describe('Service Orders (e2e)', () => {
     expect(afterUpdate.body.service_order.diagnosis).toBe('Troca de pastilha de freio');
     expect(afterUpdate.body.service_order.technician_name).toBe('Técnico E2E');
 
+    await uploadAllAngles(admin.access_token, id, 'ENTRY');
+    await uploadAllAngles(admin.access_token, id, 'EXIT');
+
     const sequence: Array<[string, number]> = [
       ['IN_PROGRESS', 200],
       ['WAITING_PARTS', 200],
@@ -308,6 +341,7 @@ describe('Service Orders (e2e)', () => {
       .set('Authorization', `Bearer ${admin.access_token}`)
       .send({ vehicle_id: vehicleId });
     const id = created.body.service_order.id as string;
+    await uploadAllAngles(admin.access_token, id, 'ENTRY');
 
     const [first, second] = await Promise.all([
       request(app.getHttpServer())
@@ -320,8 +354,15 @@ describe('Service Orders (e2e)', () => {
         .send({ id, to_status: 'CANCELLED' }),
     ]);
 
-    const statuses = [first.status, second.status].sort();
-    expect(statuses).toEqual([200, 409]);
+    // Exatamente um dos dois vence: a invariante é "nunca os dois sucedem",
+    // não qual código o perdedor recebe. O perdedor normalmente perde no
+    // lock otimista (409), mas se o outro já comitou antes mesmo da leitura
+    // inicial deste, ele enxerga o novo status (CANCELLED, terminal) e cai
+    // no 400 de transição inválida primeiro — os dois são "perdeu a corrida".
+    const statuses = [first.status, second.status].sort((a, b) => a - b);
+    expect(statuses[0]).toBe(200);
+    expect(statuses[1]).toBeGreaterThanOrEqual(400);
+    expect(statuses[1]).toBeLessThan(500);
 
     const afterRace = await request(app.getHttpServer())
       .get(`/api/v1/service-order?id=${id}`)
@@ -399,6 +440,8 @@ describe('Service Orders (e2e)', () => {
         .set('Authorization', `Bearer ${token}`)
         .send({ id, diagnosis: 'Ok' });
       expect(updateResponse.status).toBe(200);
+
+      await uploadAllAngles(token, id, 'ENTRY');
 
       const transitionResponse = await request(app.getHttpServer())
         .post('/api/v1/service-orders/transition')

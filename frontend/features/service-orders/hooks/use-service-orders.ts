@@ -12,6 +12,7 @@ import type {
   ConfigureServiceOrderPaymentRequest,
   ConfirmServiceOrderInstallmentRequest,
   ServiceOrderPhotoCategory,
+  ServiceOrderPhotoAngle,
 } from '@oficina/contracts';
 import { serviceOrdersApi } from '../api/service-orders-api';
 
@@ -151,7 +152,7 @@ export function useServiceOrderPhotoBlob(id: string) {
 export function useUploadServiceOrderPhoto() {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: (input: { serviceOrderId: string; category: ServiceOrderPhotoCategory; caption?: string; file: File }) => serviceOrdersApi.uploadPhoto(input),
+    mutationFn: (input: { serviceOrderId: string; category: ServiceOrderPhotoCategory; angle?: ServiceOrderPhotoAngle; serviceOrderItemId?: string; caption?: string; file: File }) => serviceOrdersApi.uploadPhoto(input),
     onSuccess: (_, input) => client.invalidateQueries({ queryKey: [SERVICE_ORDER_PHOTOS_KEY, input.serviceOrderId] }),
   });
 }

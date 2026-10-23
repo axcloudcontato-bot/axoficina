@@ -60,6 +60,14 @@ function buildManager() {
   };
   const auditLog = { record: jest.fn() };
   const maintenanceAlertRepository = { resolveOpenByVehicleId: jest.fn() };
+  // Default: todos os 6 ângulos cobertos e nenhuma pendência de item, pra
+  // não quebrar os testes de transição que não são sobre evidência
+  // fotográfica. Os testes dedicados abaixo sobrescrevem pra exercitar o
+  // bloqueio.
+  const photoRepository = {
+    distinctAngles: jest.fn().mockResolvedValue(['FRONT', 'REAR', 'LEFT_SIDE', 'RIGHT_SIDE', 'SPARE_TIRE', 'DASHBOARD']),
+    itemCategoryCoverage: jest.fn().mockResolvedValue([]),
+  };
 
   const manager = new ServiceOrderManager(
     serviceOrderRepository as never,
@@ -72,6 +80,7 @@ function buildManager() {
     prisma as never,
     auditLog as never,
     maintenanceAlertRepository as never,
+    photoRepository as never,
   );
 
   return {
@@ -86,6 +95,7 @@ function buildManager() {
     prisma,
     auditLog,
     maintenanceAlertRepository,
+    photoRepository,
   };
 }
 
@@ -399,6 +409,99 @@ describe('ServiceOrderManager', () => {
         code: 'SERVICE_ORDER_INVALID_STATUS_TRANSITION',
       });
       expect(deps.statusHistoryRepository.insert).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      ['IN_PROGRESS'],
+      ['AWAITING_APPROVAL'],
+    ])('rejects OPEN -> %s with 400 when ENTRY angles are missing, naming which ones', async (toStatus) => {
+      const deps = buildManager();
+      deps.serviceOrderRepository.byId.mockResolvedValue({ ...baseServiceOrder, status: 'OPEN' });
+      deps.photoRepository.distinctAngles.mockResolvedValue(['FRONT', 'REAR']);
+
+      await expect(deps.manager.transition(actingUser, { id: 'so-1', toStatus: toStatus as never })).rejects.toMatchObject({
+        status: HttpStatus.BAD_REQUEST,
+        code: 'SERVICE_ORDER_MISSING_ENTRY_PHOTO',
+        message: expect.stringContaining('lateral esquerda'),
+      });
+      expect(deps.photoRepository.distinctAngles).toHaveBeenCalledWith('so-1', 'ENTRY');
+      expect(deps.serviceOrderRepository.transition).not.toHaveBeenCalled();
+    });
+
+    it('allows OPEN -> IN_PROGRESS when all 6 ENTRY angles exist', async () => {
+      const deps = buildManager();
+      const existing = { ...baseServiceOrder, status: 'OPEN' };
+      deps.serviceOrderRepository.byId.mockResolvedValueOnce(existing).mockResolvedValueOnce({ ...existing, status: 'IN_PROGRESS' });
+      deps.serviceOrderRepository.transition.mockResolvedValue({ count: 1 });
+      deps.vehicleRepository.byId.mockResolvedValue(baseVehicle);
+      deps.customerRepository.byId.mockResolvedValue(baseCustomer);
+
+      const result = await deps.manager.transition(actingUser, { id: 'so-1', toStatus: 'IN_PROGRESS' as never });
+
+      expect(result.serviceOrder.status).toBe('IN_PROGRESS');
+    });
+
+    it('rejects IN_PROGRESS -> COMPLETED with 400 when EXIT angles are missing', async () => {
+      const deps = buildManager();
+      deps.serviceOrderRepository.byId.mockResolvedValue({ ...baseServiceOrder, status: 'IN_PROGRESS' });
+      deps.photoRepository.distinctAngles.mockResolvedValue([]);
+
+      await expect(deps.manager.transition(actingUser, { id: 'so-1', toStatus: 'COMPLETED' as never })).rejects.toMatchObject({
+        status: HttpStatus.BAD_REQUEST,
+        code: 'SERVICE_ORDER_MISSING_EXIT_PHOTO',
+      });
+      expect(deps.photoRepository.distinctAngles).toHaveBeenCalledWith('so-1', 'EXIT');
+      expect(deps.serviceOrderRepository.transition).not.toHaveBeenCalled();
+    });
+
+    it('rejects IN_PROGRESS -> COMPLETED with 400 when an item has no before/after photo pair, naming it', async () => {
+      const deps = buildManager();
+      deps.serviceOrderRepository.byId.mockResolvedValue({ ...baseServiceOrder, status: 'IN_PROGRESS' });
+      deps.itemRepository.byServiceOrderId.mockResolvedValue([
+        buildItem({ id: 'item-1', description: 'Troca de pastilha de freio' }),
+        buildItem({ id: 'item-2', description: 'Óleo do motor' }),
+      ]);
+      // item-1 só tem ISSUE (falta RESOLVED); item-2 não tem nenhuma.
+      deps.photoRepository.itemCategoryCoverage.mockResolvedValue([{ serviceOrderItemId: 'item-1', category: 'ISSUE' }]);
+
+      await expect(deps.manager.transition(actingUser, { id: 'so-1', toStatus: 'COMPLETED' as never })).rejects.toMatchObject({
+        status: HttpStatus.BAD_REQUEST,
+        code: 'SERVICE_ORDER_MISSING_ITEM_PHOTOS',
+        message: expect.stringContaining('Troca de pastilha de freio'),
+      });
+      expect(deps.serviceOrderRepository.transition).not.toHaveBeenCalled();
+    });
+
+    it('allows IN_PROGRESS -> COMPLETED when every item has both ISSUE and RESOLVED photos', async () => {
+      const deps = buildManager();
+      const existing = { ...baseServiceOrder, status: 'IN_PROGRESS' };
+      deps.serviceOrderRepository.byId.mockResolvedValueOnce(existing).mockResolvedValueOnce({ ...existing, status: 'COMPLETED' });
+      deps.serviceOrderRepository.transition.mockResolvedValue({ count: 1 });
+      deps.vehicleRepository.byId.mockResolvedValue(baseVehicle);
+      deps.customerRepository.byId.mockResolvedValue(baseCustomer);
+      deps.itemRepository.byServiceOrderId.mockResolvedValue([buildItem({ id: 'item-1', description: 'Troca de pastilha de freio' })]);
+      deps.photoRepository.itemCategoryCoverage.mockResolvedValue([
+        { serviceOrderItemId: 'item-1', category: 'ISSUE' },
+        { serviceOrderItemId: 'item-1', category: 'RESOLVED' },
+      ]);
+
+      const result = await deps.manager.transition(actingUser, { id: 'so-1', toStatus: 'COMPLETED' as never });
+
+      expect(result.serviceOrder.status).toBe('COMPLETED');
+    });
+
+    it('does not require photos when cancelling from OPEN', async () => {
+      const deps = buildManager();
+      const existing = { ...baseServiceOrder, status: 'OPEN' };
+      deps.serviceOrderRepository.byId.mockResolvedValueOnce(existing).mockResolvedValueOnce({ ...existing, status: 'CANCELLED' });
+      deps.serviceOrderRepository.transition.mockResolvedValue({ count: 1 });
+      deps.vehicleRepository.byId.mockResolvedValue(baseVehicle);
+      deps.customerRepository.byId.mockResolvedValue(baseCustomer);
+
+      const result = await deps.manager.transition(actingUser, { id: 'so-1', toStatus: 'CANCELLED' as never });
+
+      expect(result.serviceOrder.status).toBe('CANCELLED');
+      expect(deps.photoRepository.distinctAngles).not.toHaveBeenCalled();
     });
   });
 
