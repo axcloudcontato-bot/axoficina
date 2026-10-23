@@ -3,7 +3,7 @@
 import type { CompanySettingsResponse } from '@oficina/contracts';
 import Image from 'next/image';
 import { ChangeEvent, useEffect, useState } from 'react';
-import { Building2, ImagePlus, Save, Trash2 } from 'lucide-react';
+import { Buildings, Image as ImageIcon, FloppyDisk, Trash } from '@phosphor-icons/react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -43,16 +43,16 @@ export function CompanySettingsForm() {
     <Section title="Identidade da oficina" description="Esta marca aparecerá no sistema e nos documentos impressos.">
       <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
         <div className="flex size-28 shrink-0 items-center justify-center overflow-hidden rounded-card border border-slate-700 bg-slate-900">
-          {form.logoDataUrl ? <Image src={form.logoDataUrl} alt="Prévia da logo" width={112} height={112} unoptimized className="size-full object-contain p-2" /> : <Building2 className="size-10 text-text-muted" />}
+          {form.logoDataUrl ? <Image src={form.logoDataUrl} alt="Prévia da logo" width={112} height={112} unoptimized className="size-full object-contain p-2" /> : <Buildings className="size-10 text-text-muted" />}
         </div>
-        <div className="space-y-2"><div className="flex flex-wrap gap-2"><Button variant="outline" asChild><label className="cursor-pointer"><ImagePlus className="size-4" />Selecionar logo<input className="sr-only" type="file" accept="image/png,image/jpeg,image/webp" onChange={selectLogo} /></label></Button>{form.logoDataUrl && <Button variant="ghost" className="text-danger" onClick={() => set('logoDataUrl', undefined)}><Trash2 className="size-4" />Remover</Button>}</div><p className="text-xs text-text-muted">PNG, JPEG ou WebP · até 500 KiB · preferência por fundo transparente.</p></div>
+        <div className="space-y-2"><div className="flex flex-wrap gap-2"><Button variant="outline" asChild><label className="cursor-pointer"><ImageIcon className="size-4" />Selecionar logo<input className="sr-only" type="file" accept="image/png,image/jpeg,image/webp" onChange={selectLogo} /></label></Button>{form.logoDataUrl && <Button variant="ghost" className="text-danger" onClick={() => set('logoDataUrl', undefined)}><Trash className="size-4" />Remover</Button>}</div><p className="text-xs text-text-muted">PNG, JPEG ou WebP · até 500 KiB · preferência por fundo transparente.</p></div>
       </div>
     </Section>
     <Section title="Dados cadastrais" description="Informações usadas nos relatórios e comunicações."><div className="grid gap-4 sm:grid-cols-2"><Field label="Nome fantasia" required><Input value={form.name} onChange={(e) => set('name', e.target.value)} /></Field><Field label="Razão social"><Input value={form.legalName ?? ''} onChange={(e) => set('legalName', e.target.value)} /></Field><Field label="CPF/CNPJ" required><Input value={form.document} onChange={(e) => set('document', e.target.value)} /></Field><Field label="Inscrição estadual"><Input value={form.stateRegistration ?? ''} onChange={(e) => set('stateRegistration', e.target.value)} /></Field></div></Section>
     <Section title="Contato"><div className="grid gap-4 sm:grid-cols-2"><Field label="Telefone"><Input value={form.phone ?? ''} onChange={(e) => set('phone', e.target.value)} /></Field><Field label="WhatsApp"><Input value={form.whatsapp ?? ''} onChange={(e) => set('whatsapp', e.target.value)} /></Field><Field label="E-mail"><Input type="email" value={form.email ?? ''} onChange={(e) => set('email', e.target.value)} /></Field><Field label="Site"><Input value={form.website ?? ''} onChange={(e) => set('website', e.target.value)} /></Field></div></Section>
     <Section title="Endereço"><div className="grid gap-4 sm:grid-cols-6"><div className="sm:col-span-4"><Field label="Logradouro"><Input value={form.addressStreet ?? ''} onChange={(e) => set('addressStreet', e.target.value)} /></Field></div><div className="sm:col-span-2"><Field label="Número"><Input value={form.addressNumber ?? ''} onChange={(e) => set('addressNumber', e.target.value)} /></Field></div><div className="sm:col-span-3"><Field label="Complemento"><Input value={form.addressComplement ?? ''} onChange={(e) => set('addressComplement', e.target.value)} /></Field></div><div className="sm:col-span-3"><Field label="Bairro"><Input value={form.addressDistrict ?? ''} onChange={(e) => set('addressDistrict', e.target.value)} /></Field></div><div className="sm:col-span-3"><Field label="Cidade"><Input value={form.addressCity ?? ''} onChange={(e) => set('addressCity', e.target.value)} /></Field></div><Field label="UF"><Input maxLength={2} value={form.addressState ?? ''} onChange={(e) => set('addressState', e.target.value.toUpperCase())} /></Field><div className="sm:col-span-2"><Field label="CEP"><Input value={form.addressPostalCode ?? ''} onChange={(e) => set('addressPostalCode', e.target.value)} /></Field></div></div></Section>
     <Section title="Documentos"><Field label="Texto do rodapé"><Textarea maxLength={500} value={form.documentFooter ?? ''} onChange={(e) => set('documentFooter', e.target.value)} placeholder="Ex.: Obrigado pela preferência. Garantia conforme condições da ordem de serviço." /></Field></Section>
-    <div className="flex justify-end"><Button onClick={save} disabled={update.isPending}><Save className="size-4" />{update.isPending ? 'Salvando...' : 'Salvar alterações'}</Button></div>
+    <div className="flex justify-end"><Button onClick={save} disabled={update.isPending}><FloppyDisk className="size-4" />{update.isPending ? 'Salvando...' : 'Salvar alterações'}</Button></div>
   </section>;
 }
 

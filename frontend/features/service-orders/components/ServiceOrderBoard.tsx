@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useState, type DragEvent } from 'react';
-import { AlertTriangle, ArrowRight, CalendarClock, ChevronRight, Clock3, GripVertical, Hash, UserRound, Wrench } from 'lucide-react';
+import { Warning, ArrowRight, CalendarDot, CaretRight, Clock, DotsSixVertical, Hash, User, Wrench, ClipboardText } from '@phosphor-icons/react';
 import { toast } from 'sonner';
 import type { ServiceOrderListItemResponse, ServiceOrderStatus } from '@oficina/contracts';
 import { Badge } from '@/components/ui/badge';
@@ -117,7 +117,7 @@ export function ServiceOrderBoard({ items, isLoading, isError, onRetry, canManag
     </div>
     <Dialog open={Boolean(pendingMove)} onOpenChange={(open) => !open && setPendingMove(undefined)}>
       <DialogContent>
-        <DialogHeader><DialogTitle>Confirmar mudança de etapa</DialogTitle><DialogDescription>{pendingMove ? `Mover a OS #${pendingMove.item.orderNumber}, placa ${pendingMove.item.vehiclePlate}, de ${SERVICE_ORDER_STATUS_LABELS[pendingMove.item.status]} para ${SERVICE_ORDER_STATUS_LABELS[pendingMove.toStatus]}?` : ''}</DialogDescription></DialogHeader>
+        <DialogHeader><DialogTitle className="flex items-center gap-2.5"><span data-reveal className="flex size-8 shrink-0 items-center justify-center rounded-button bg-muted text-text-muted"><ClipboardText className="size-[18px]" aria-hidden="true" /></span>Confirmar mudança de etapa</DialogTitle><DialogDescription>{pendingMove ? `Mover a OS #${pendingMove.item.orderNumber}, placa ${pendingMove.item.vehiclePlate}, de ${SERVICE_ORDER_STATUS_LABELS[pendingMove.item.status]} para ${SERVICE_ORDER_STATUS_LABELS[pendingMove.toStatus]}?` : ''}</DialogDescription></DialogHeader>
         <DialogFooter><Button variant="outline" onClick={() => setPendingMove(undefined)}>Voltar</Button><Button onClick={confirmDrop} disabled={transition.isPending}>{transition.isPending ? 'Movendo...' : 'Confirmar mudança'}</Button></DialogFooter>
       </DialogContent>
     </Dialog>
@@ -170,27 +170,27 @@ function BoardCard({ item, canManage, canViewPrices, onDragStart, onDragEnd }: {
     <article draggable={canManage} onDragStart={onDragStart} onDragEnd={onDragEnd} className={`rounded-button border bg-card p-3 shadow-sm transition-[border-color,box-shadow,transform] duration-fast hover:-translate-y-0.5 hover:shadow-md motion-reduce:transform-none ${canManage ? 'cursor-grab active:cursor-grabbing' : ''} ${overdue ? 'border-danger/40' : 'border-border hover:border-primary/30'}`}>
       <Link href={`/service-orders/${item.id}`} className="group block rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
         <div className="flex items-start justify-between gap-2">
-          <div className="min-w-0"><p className="flex items-center gap-1 text-[11px] font-bold text-primary">{canManage && <GripVertical className="size-3.5 text-text-muted" aria-hidden="true" />}<Hash className="size-3" aria-hidden="true" />OS {item.orderNumber}</p><p className="mt-1 truncate text-sm font-bold text-text">{item.vehicleBrand} {item.vehicleModel}</p><p className="mt-0.5 font-mono text-[11px] font-semibold tracking-wide text-text-muted">{item.vehiclePlate}</p></div>
+          <div className="min-w-0"><p className="flex items-center gap-1 text-[11px] font-bold text-primary">{canManage && <DotsSixVertical className="size-3.5 text-text-muted" aria-hidden="true" />}<Hash className="size-3" aria-hidden="true" />OS {item.orderNumber}</p><p className="mt-1 truncate text-sm font-bold text-text">{item.vehicleBrand} {item.vehicleModel}</p><p className="mt-0.5 font-mono text-[11px] font-semibold tracking-wide text-text-muted">{item.vehiclePlate}</p></div>
           <StatusBadge status={item.status} />
         </div>
-        {overdue && <div className="mt-2 flex items-center gap-1.5 rounded-sm bg-danger-subtle px-2 py-1.5 text-[11px] font-bold text-danger"><AlertTriangle className="size-3.5" aria-hidden="true" />Entrega atrasada</div>}
+        {overdue && <div className="mt-2 flex items-center gap-1.5 rounded-sm bg-danger-subtle px-2 py-1.5 text-[11px] font-bold text-danger"><Warning className="size-3.5" aria-hidden="true" />Entrega atrasada</div>}
         <div className="mt-3 space-y-1.5 border-t border-border pt-2.5">
-          <InfoLine icon={UserRound}>{item.customerName}</InfoLine>
+          <InfoLine icon={User}>{item.customerName}</InfoLine>
           <InfoLine icon={Wrench}>{item.technicianName ?? 'Sem técnico atribuído'}</InfoLine>
-          <InfoLine icon={CalendarClock}>{item.expectedDeliveryAt ? `Entrega: ${new Date(item.expectedDeliveryAt).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}` : 'Entrega sem previsão'}</InfoLine>
+          <InfoLine icon={CalendarDot}>{item.expectedDeliveryAt ? `Entrega: ${new Date(item.expectedDeliveryAt).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}` : 'Entrega sem previsão'}</InfoLine>
         </div>
         <div className="mt-3 flex items-center justify-between gap-2 text-[11px] font-semibold text-text-muted">
-          <span className="flex items-center gap-1"><Clock3 className="size-3.5" aria-hidden="true" />{elapsedSince(item.openedAt)}</span>
+          <span className="flex items-center gap-1"><Clock className="size-3.5" aria-hidden="true" />{elapsedSince(item.openedAt)}</span>
           <ArrowRight className="size-3.5 shrink-0 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
         </div>
         {canViewPrices && <div className="mt-2 flex items-center justify-between border-t border-border pt-2 text-[11px]"><span className={item.paymentStatus === 'PAID' ? 'font-bold text-success' : 'font-semibold text-warning'}>{PAYMENT_LABELS[item.paymentStatus]}</span><span className="font-bold tabular-nums text-text">{formatCurrencyBRL(item.totalAmountCents)}</span></div>}
       </Link>
-      {canManage && nextStatus && <button type="button" onClick={() => setConfirming(true)} className="mt-3 flex h-9 w-full items-center justify-center gap-1 rounded-button border border-primary/20 bg-primary-subtle px-2 text-xs font-bold text-primary-strong transition-colors hover:bg-primary/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">{`Avançar para ${SERVICE_ORDER_STATUS_LABELS[nextStatus]}`}<ChevronRight className="size-3.5" aria-hidden="true" /></button>}
+      {canManage && nextStatus && <button type="button" onClick={() => setConfirming(true)} className="mt-3 flex h-9 w-full items-center justify-center gap-1 rounded-button border border-primary/20 bg-primary-subtle px-2 text-xs font-bold text-primary-strong transition-colors hover:bg-primary/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">{`Avançar para ${SERVICE_ORDER_STATUS_LABELS[nextStatus]}`}<CaretRight className="size-3.5" aria-hidden="true" /></button>}
     </article>
 
     <Dialog open={confirming} onOpenChange={setConfirming}>
       <DialogContent>
-        <DialogHeader><DialogTitle>Confirmar mudança de etapa</DialogTitle><DialogDescription>Você está alterando a OS #{item.orderNumber}, do veículo {item.vehiclePlate}, de {SERVICE_ORDER_STATUS_LABELS[item.status]} para {nextStatus ? SERVICE_ORDER_STATUS_LABELS[nextStatus] : ''}.</DialogDescription></DialogHeader>
+        <DialogHeader><DialogTitle className="flex items-center gap-2.5"><span data-reveal className="flex size-8 shrink-0 items-center justify-center rounded-button bg-muted text-text-muted"><ClipboardText className="size-[18px]" aria-hidden="true" /></span>Confirmar mudança de etapa</DialogTitle><DialogDescription>Você está alterando a OS #{item.orderNumber}, do veículo {item.vehiclePlate}, de {SERVICE_ORDER_STATUS_LABELS[item.status]} para {nextStatus ? SERVICE_ORDER_STATUS_LABELS[nextStatus] : ''}.</DialogDescription></DialogHeader>
         {nextStatus === 'DELIVERED' && item.outstandingAmountCents > 0 && <div className="rounded-button border border-warning/30 bg-warning-subtle p-3 text-sm font-semibold text-warning-strong">Atenção: esta OS ainda possui {formatCurrencyBRL(item.outstandingAmountCents)} pendente de recebimento.</div>}
         <DialogFooter><Button variant="outline" onClick={() => setConfirming(false)}>Voltar</Button><Button onClick={advance} disabled={transition.isPending}>{transition.isPending ? 'Atualizando...' : 'Confirmar mudança'}</Button></DialogFooter>
       </DialogContent>

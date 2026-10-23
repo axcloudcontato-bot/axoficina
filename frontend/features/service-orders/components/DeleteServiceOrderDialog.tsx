@@ -1,6 +1,7 @@
 'use client';
 
 import { toast } from 'sonner';
+import { Trash } from '@phosphor-icons/react';
 import type { ServiceOrderListItemResponse } from '@oficina/contracts';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -38,7 +39,12 @@ export function DeleteServiceOrderDialog({ open, onOpenChange, serviceOrder, onD
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Excluir ordem de serviço</DialogTitle>
+          <DialogTitle className="flex items-center gap-2.5">
+            <span data-reveal className="flex size-8 shrink-0 items-center justify-center rounded-button bg-danger-subtle text-danger">
+              <Trash className="size-[18px]" aria-hidden="true" />
+            </span>
+            Excluir ordem de serviço
+          </DialogTitle>
           <DialogDescription>
             Tem certeza que quer excluir a OS do veículo <strong>{serviceOrder?.vehiclePlate}</strong>? Esta ação não pode
             ser desfeita.

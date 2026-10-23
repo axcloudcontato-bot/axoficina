@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { ChevronLeft, ChevronRight, Plus } from 'lucide-react';
+import { CaretLeft, CaretRight, Plus } from '@phosphor-icons/react';
 import type { AppointmentResponse, AppointmentStatus } from '@oficina/contracts';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -40,7 +40,7 @@ export default function AppointmentsPage() {
       <Button onClick={() => createAt()}><Plus className="size-4" aria-hidden="true" /> Novo agendamento</Button>
     </section>
     <section className="flex flex-col gap-3 rounded-card border border-border bg-surface p-3 lg:flex-row lg:items-center lg:justify-between">
-      <div className="flex items-center gap-2"><Button variant="outline" size="icon" aria-label="Período anterior" onClick={() => move(-1)}><ChevronLeft className="size-4" /></Button><Button variant="outline" onClick={() => setDate(new Date())}>Hoje</Button><Button variant="outline" size="icon" aria-label="Próximo período" onClick={() => move(1)}><ChevronRight className="size-4" /></Button><h2 className="ml-2 capitalize text-sm font-bold text-text">{title}</h2></div>
+      <div className="flex items-center gap-2"><Button variant="outline" size="icon" aria-label="Período anterior" onClick={() => move(-1)}><CaretLeft className="size-4" /></Button><Button variant="outline" onClick={() => setDate(new Date())}>Hoje</Button><Button variant="outline" size="icon" aria-label="Próximo período" onClick={() => move(1)}><CaretRight className="size-4" /></Button><h2 className="ml-2 capitalize text-sm font-bold text-text">{title}</h2></div>
       <div className="flex flex-col gap-2 sm:flex-row"><Select value={status} onValueChange={(value) => setStatus(value as AppointmentStatus | 'ALL')}><SelectTrigger className="w-full sm:w-48"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="ALL">Todos os status</SelectItem>{Object.entries(STATUS_LABELS).map(([value, label]) => <SelectItem key={value} value={value}>{label}</SelectItem>)}</SelectContent></Select><div className="flex rounded-button border border-border bg-background p-1">{(['DAY', 'WEEK', 'MONTH'] as const).map((value) => <button key={value} type="button" onClick={() => setView(value)} className={`rounded-sm px-3 py-1.5 text-xs font-semibold ${view === value ? 'bg-selection text-primary' : 'text-text-muted'}`}>{value === 'DAY' ? 'Dia' : value === 'WEEK' ? 'Semana' : 'Mês'}</button>)}</div></div>
     </section>
     {query.isError ? <div className="rounded-card border border-danger/30 bg-danger-subtle p-6 text-center"><p className="font-semibold text-danger-strong">Não foi possível carregar a agenda.</p><Button className="mt-3" variant="outline" onClick={() => query.refetch()}>Tentar novamente</Button></div> : <AppointmentCalendar date={date} view={view} items={query.data?.items ?? []} loading={query.isLoading} onCreate={createAt} onSelect={(item) => { setSelected(item); setDetailsOpen(true); }} />}

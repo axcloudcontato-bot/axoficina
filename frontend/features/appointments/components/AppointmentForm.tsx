@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import type { AppointmentResponse } from '@oficina/contracts';
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { CalendarBlank } from '@phosphor-icons/react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -75,7 +76,7 @@ export function AppointmentForm({ open, onOpenChange, initialDate, appointment }
   }
 
   return <Dialog open={open} onOpenChange={onOpenChange}><DialogContent className="max-h-[92vh] overflow-y-auto sm:max-w-2xl">
-    <DialogHeader><DialogTitle>{appointment ? 'Editar agendamento' : 'Novo agendamento'}</DialogTitle><DialogDescription>Organize a chegada do veículo e a disponibilidade da equipe.</DialogDescription></DialogHeader>
+    <DialogHeader><DialogTitle className="flex items-center gap-2.5"><span data-reveal className="flex size-8 shrink-0 items-center justify-center rounded-button bg-muted text-text-muted"><CalendarBlank className="size-[18px]" aria-hidden="true" /></span>{appointment ? 'Editar agendamento' : 'Novo agendamento'}</DialogTitle><DialogDescription>Organize a chegada do veículo e a disponibilidade da equipe.</DialogDescription></DialogHeader>
     <div className="grid gap-4 sm:grid-cols-2">
       <Field label="Cliente"><Select value={customerId} onValueChange={(value) => { setCustomerId(value); setVehicleId(''); }}><SelectTrigger><SelectValue placeholder="Selecione o cliente" /></SelectTrigger><SelectContent>{customers.data?.items.map((item) => <SelectItem key={item.id} value={item.id}>{item.name}</SelectItem>)}</SelectContent></Select></Field>
       <Field label="Veículo"><Select value={vehicleId} onValueChange={setVehicleId} disabled={!customerId}><SelectTrigger><SelectValue placeholder="Selecione o veículo" /></SelectTrigger><SelectContent>{vehicles.data?.items.map((item) => <SelectItem key={item.id} value={item.id}>{item.brand} {item.model} · {item.plate}</SelectItem>)}</SelectContent></Select></Field>

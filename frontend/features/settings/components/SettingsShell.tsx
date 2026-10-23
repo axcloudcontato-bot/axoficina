@@ -1,6 +1,6 @@
 'use client';
 
-import { Building2, Mail, UsersRound } from 'lucide-react';
+import { Buildings, Envelope, UsersThree } from '@phosphor-icons/react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
@@ -8,9 +8,9 @@ import { hasPermission } from '@/features/auth/permissions';
 import { useAuthStore } from '@/stores/auth-store';
 
 const items = [
-  { href: '/settings/company', label: 'Empresa e marca', description: 'Identidade e documentos', icon: Building2, permission: 'settings.view' as const },
-  { href: '/settings/email', label: 'E-mail', description: 'Servidor e remetente', icon: Mail, permission: 'settings.view' as const },
-  { href: '/settings/team', label: 'Equipe e acesso', description: 'Usuários e permissões', icon: UsersRound, permission: 'team.view' as const },
+  { href: '/settings/company', label: 'Empresa e marca', description: 'Identidade e documentos', icon: Buildings, permission: 'settings.view' as const },
+  { href: '/settings/email', label: 'E-mail', description: 'Servidor e remetente', icon: Envelope, permission: 'settings.view' as const },
+  { href: '/settings/team', label: 'Equipe e acesso', description: 'Usuários e permissões', icon: UsersThree, permission: 'team.view' as const },
 ];
 
 export function SettingsShell({ children }: { children: React.ReactNode }) {

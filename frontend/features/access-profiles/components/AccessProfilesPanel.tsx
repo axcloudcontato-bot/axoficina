@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import type { AccessProfileResponse, PermissionKey } from '@oficina/contracts';
-import { Plus, ShieldCheck } from 'lucide-react';
+import { Plus, ShieldCheck } from '@phosphor-icons/react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -59,7 +59,7 @@ export function AccessProfilesPanel() {
     </div>
     <Dialog open={editing !== undefined} onOpenChange={(value) => !value && setEditing(undefined)}>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
-        <DialogHeader><DialogTitle>{editing ? 'Editar perfil' : 'Novo perfil'}</DialogTitle><DialogDescription>Marque apenas os acessos necessários para esta função.</DialogDescription></DialogHeader>
+        <DialogHeader><DialogTitle className="flex items-center gap-2.5"><span data-reveal className="flex size-8 shrink-0 items-center justify-center rounded-button bg-muted text-text-muted"><ShieldCheck className="size-[18px]" aria-hidden="true" /></span>{editing ? 'Editar perfil' : 'Novo perfil'}</DialogTitle><DialogDescription>Marque apenas os acessos necessários para esta função.</DialogDescription></DialogHeader>
         <div className="space-y-4"><div className="grid gap-3 sm:grid-cols-2"><Input aria-label="Nome do perfil" placeholder="Ex.: Consultor técnico" value={name} disabled={Boolean(editing?.isSystem)} onChange={(e) => setName(e.target.value)} /><Textarea aria-label="Descrição do perfil" className="min-h-10" placeholder="Responsabilidades deste perfil" value={description} onChange={(e) => setDescription(e.target.value)} /></div>
           <div className="grid gap-3 sm:grid-cols-2">{MODULES.map((module) => <fieldset key={module.name} className="rounded-button border border-border p-3"><legend className="px-1 text-sm font-bold text-text">{module.name}</legend><div className="mt-1 space-y-2">{module.permissions.map((permission) => <label key={permission.key} className="flex cursor-pointer items-center gap-2 text-sm text-text-muted"><input type="checkbox" checked={permissions.includes(permission.key)} onChange={() => toggle(permission.key)} className="size-4 accent-primary" />{permission.label}</label>)}</div></fieldset>)}</div>
         </div>

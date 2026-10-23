@@ -2,16 +2,16 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { ArrowDownToLine, ArrowUpFromLine, BarChart3, BookOpen, Factory, FolderTree, LayoutDashboard, ReceiptText } from 'lucide-react';
+import { ArrowLineDown, ArrowLineUp, ChartBar, BookOpen, Factory, TreeStructure, SquaresFour, Receipt } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
 
 const ITEMS = [
-  { href: '/financial', label: 'Visão geral', icon: LayoutDashboard },
-  { href: '/financial/payables', label: 'Contas a pagar', icon: ArrowUpFromLine },
-  { href: '/financial/receivables', label: 'Contas a receber', icon: ArrowDownToLine },
-  { href: '/financial/cash-flow', label: 'Fluxo de caixa', icon: BarChart3 },
-  { href: '/financial/transactions', label: 'Movimentações', icon: ReceiptText },
-  { href: '/financial/categories', label: 'Categorias', icon: FolderTree },
+  { href: '/financial', label: 'Visão geral', icon: SquaresFour },
+  { href: '/financial/payables', label: 'Contas a pagar', icon: ArrowLineUp },
+  { href: '/financial/receivables', label: 'Contas a receber', icon: ArrowLineDown },
+  { href: '/financial/cash-flow', label: 'Fluxo de caixa', icon: ChartBar },
+  { href: '/financial/transactions', label: 'Movimentações', icon: Receipt },
+  { href: '/financial/categories', label: 'Categorias', icon: TreeStructure },
   { href: '/financial/suppliers', label: 'Fornecedores', icon: Factory },
   { href: '/financial/reports', label: 'Relatórios', icon: BookOpen },
 ];

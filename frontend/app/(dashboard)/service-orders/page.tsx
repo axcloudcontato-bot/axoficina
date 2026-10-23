@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, CheckCircle2, ClipboardList, LayoutGrid, List, PackageOpen, Search, SlidersHorizontal, X } from 'lucide-react';
+import { Warning, CheckCircle, ClipboardText, GridFour, List, Package, MagnifyingGlass, SlidersHorizontal, X } from '@phosphor-icons/react';
 import type { ServiceOrderStatus } from '@oficina/contracts';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -68,16 +68,16 @@ export default function ServiceOrdersPage() {
       </header>
 
       <section aria-label="Resumo das ordens de serviço" className="grid grid-cols-2 gap-3 xl:grid-cols-4">
-        <MetricButton label="OS ativas" value={metrics.active} detail="em fluxo operacional" icon={ClipboardList} active={attention === 'ALL' && status === 'ALL'} onClick={clearFilters} />
-        <MetricButton label="Atrasadas" value={metrics.overdue} detail="prazo de entrega vencido" icon={AlertTriangle} tone="danger" active={attention === 'OVERDUE'} onClick={() => { setStatus('ALL'); setAttention('OVERDUE'); }} />
-        <MetricButton label="Aguardando peças" value={metrics.waitingParts} detail="veículos bloqueados" icon={PackageOpen} tone="warning" active={status === 'WAITING_PARTS'} onClick={() => { setStatus('WAITING_PARTS'); setAttention('ALL'); }} />
-        <MetricButton label="Prontas" value={metrics.ready} detail="aguardando entrega" icon={CheckCircle2} tone="success" active={status === 'COMPLETED'} onClick={() => { setStatus('COMPLETED'); setAttention('ALL'); }} />
+        <MetricButton label="OS ativas" value={metrics.active} detail="em fluxo operacional" icon={ClipboardText} active={attention === 'ALL' && status === 'ALL'} onClick={clearFilters} />
+        <MetricButton label="Atrasadas" value={metrics.overdue} detail="prazo de entrega vencido" icon={Warning} tone="danger" active={attention === 'OVERDUE'} onClick={() => { setStatus('ALL'); setAttention('OVERDUE'); }} />
+        <MetricButton label="Aguardando peças" value={metrics.waitingParts} detail="veículos bloqueados" icon={Package} tone="warning" active={status === 'WAITING_PARTS'} onClick={() => { setStatus('WAITING_PARTS'); setAttention('ALL'); }} />
+        <MetricButton label="Prontas" value={metrics.ready} detail="aguardando entrega" icon={CheckCircle} tone="success" active={status === 'COMPLETED'} onClick={() => { setStatus('COMPLETED'); setAttention('ALL'); }} />
       </section>
 
       <section aria-label="Filtros das ordens de serviço" className="rounded-card border border-border bg-surface p-3">
         <div className="grid gap-3 lg:grid-cols-[minmax(260px,1fr)_220px_220px_auto] lg:items-center">
           <div className="relative min-w-0">
-            <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-text-muted" aria-hidden="true" />
+            <MagnifyingGlass className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-text-muted" aria-hidden="true" />
             <Input aria-label="Buscar ordens de serviço" placeholder="Buscar OS, placa ou cliente" value={search} onChange={(event) => setSearch(event.target.value)} className="h-10 pl-9 pr-10" />
             {search && <button type="button" aria-label="Limpar busca" onClick={() => setSearch('')} className="absolute right-2 top-1/2 flex size-7 -translate-y-1/2 items-center justify-center rounded-button text-text-muted hover:bg-muted hover:text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><X className="size-4" aria-hidden="true" /></button>}
           </div>
@@ -95,7 +95,7 @@ export default function ServiceOrdersPage() {
             </SelectContent>
           </Select>
           <div className="flex h-10 items-center gap-1 rounded-button border border-border bg-background p-1" role="group" aria-label="Modo de visualização">
-            <ViewButton label="Visualizar quadro" active={effectiveView === 'board'} onClick={() => changeView('board')}><LayoutGrid className="size-4" /></ViewButton>
+            <ViewButton label="Visualizar quadro" active={effectiveView === 'board'} onClick={() => changeView('board')}><GridFour className="size-4" /></ViewButton>
             <ViewButton label="Visualizar lista" active={effectiveView === 'list'} onClick={() => changeView('list')}><List className="size-4" /></ViewButton>
           </div>
         </div>

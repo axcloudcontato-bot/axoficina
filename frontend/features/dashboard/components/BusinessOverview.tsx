@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { ArrowDownRight, ArrowRight, ArrowUpRight, Banknote, Boxes, BriefcaseBusiness, CircleDollarSign, ClockAlert, Gauge, RefreshCw, Wrench } from 'lucide-react';
+import { ArrowDownRight, ArrowRight, ArrowUpRight, Money, Package, Briefcase, CurrencyCircleDollar, ClockCountdown, Gauge, ArrowClockwise, Wrench } from '@phosphor-icons/react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatCurrencyBRL } from '@/lib/format-currency';
@@ -23,24 +23,24 @@ export function BusinessOverview() {
   return <div className="space-y-5">
     <header className="flex flex-col gap-4 border-b border-border pb-5 sm:flex-row sm:items-end sm:justify-between">
       <div><p className="text-xs font-bold uppercase tracking-[0.14em] text-primary">Desempenho financeiro</p><h2 className="mt-1 text-2xl font-bold tracking-tight text-text">Resultado e carteira</h2><p className="mt-1 text-sm text-text-muted">Valores realizados, composição da receita e dinheiro parado na operação.</p></div>
-      <Button variant="outline" size="sm" onClick={() => summary.refetch()} disabled={summary.isFetching}><RefreshCw className={`size-4 ${summary.isFetching ? 'animate-spin' : ''}`} />Atualizar</Button>
+      <Button variant="outline" size="sm" onClick={() => summary.refetch()} disabled={summary.isFetching}><ArrowClockwise className={`size-4 ${summary.isFetching ? 'animate-spin' : ''}`} />Atualizar</Button>
     </header>
 
     <section className="grid gap-3 lg:grid-cols-[1.5fr_repeat(2,1fr)]">
       <Card className="overflow-hidden border-primary/30 bg-primary text-primary-foreground">
-        <CardContent className="p-5 sm:p-6"><div className="flex items-start justify-between"><div><p className="text-xs font-bold uppercase tracking-wider opacity-75">Faturamento realizado no mês</p><p className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">{formatCurrencyBRL(data.monthRevenueCents)}</p></div><CircleDollarSign className="size-7 opacity-70" /></div>
+        <CardContent className="p-5 sm:p-6"><div className="flex items-start justify-between"><div><p className="text-xs font-bold uppercase tracking-wider opacity-75">Faturamento realizado no mês</p><p className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">{formatCurrencyBRL(data.monthRevenueCents)}</p></div><CurrencyCircleDollar className="size-7 opacity-70" /></div>
           <div className="mt-5 flex flex-wrap items-center gap-3 text-sm"><span>{data.receiptsThisMonth} recebimentos confirmados</span>{change !== null && <span className={`inline-flex items-center gap-1 rounded-full px-2 py-1 font-semibold ${change >= 0 ? 'bg-white/15' : 'bg-black/15'}`}>{change >= 0 ? <ArrowUpRight className="size-4" /> : <ArrowDownRight className="size-4" />}{Math.abs(change)}% vs. mês anterior</span>}</div>
         </CardContent>
       </Card>
       <Metric label="Ticket médio" value={formatCurrencyBRL(data.averageTicketCents)} detail="por OS entregue no mês" icon={Gauge} />
-      <Metric label="Contas a receber" value={formatCurrencyBRL(data.accountsReceivableCents)} detail="saldo ainda não confirmado no caixa" icon={BriefcaseBusiness} />
+      <Metric label="Contas a receber" value={formatCurrencyBRL(data.accountsReceivableCents)} detail="saldo ainda não confirmado no caixa" icon={Briefcase} />
     </section>
 
     <section className="grid grid-cols-2 gap-3 xl:grid-cols-4">
       <Metric label="Em execução" value={formatCurrencyBRL(data.inProgressCents)} detail="valor sendo produzido agora" icon={Wrench} compact />
-      <Metric label="Pronto a faturar" value={formatCurrencyBRL(data.completedAwaitingDeliveryCents)} detail="OS concluídas aguardando entrega" icon={Banknote} compact />
-      <Metric label="Entregas atrasadas" value={String(data.overdueDeliveries)} detail="previsão de entrega vencida" icon={ClockAlert} compact critical={data.overdueDeliveries > 0} />
-      <Metric label="Mês anterior" value={formatCurrencyBRL(data.previousMonthRevenueCents)} detail="base de comparação" icon={CircleDollarSign} compact />
+      <Metric label="Pronto a faturar" value={formatCurrencyBRL(data.completedAwaitingDeliveryCents)} detail="OS concluídas aguardando entrega" icon={Money} compact />
+      <Metric label="Entregas atrasadas" value={String(data.overdueDeliveries)} detail="previsão de entrega vencida" icon={ClockCountdown} compact critical={data.overdueDeliveries > 0} />
+      <Metric label="Mês anterior" value={formatCurrencyBRL(data.previousMonthRevenueCents)} detail="base de comparação" icon={CurrencyCircleDollar} compact />
     </section>
 
     <section className="grid gap-5 xl:grid-cols-[minmax(0,1.25fr)_minmax(320px,0.75fr)]">
@@ -57,7 +57,7 @@ export function BusinessOverview() {
         <CardHeader><CardTitle>Composição das vendas entregues</CardTitle><p className="mt-1 text-sm text-text-muted">Peças e mão de obra das OS entregues; não representa recebimento.</p></CardHeader>
         <CardContent>
           <div className="overflow-hidden rounded-full bg-muted"><div className="flex h-3"><div className="bg-primary" style={{ width: `${partsShare}%` }} /><div className="bg-warning" style={{ width: `${100 - partsShare}%` }} /></div></div>
-          <div className="mt-6 space-y-4"><Composition icon={Boxes} label="Peças" value={data.partsRevenueCents} share={partsShare} color="bg-primary" /><Composition icon={Wrench} label="Mão de obra" value={data.laborRevenueCents} share={compositionTotal ? 100 - partsShare : 0} color="bg-warning" /></div>
+          <div className="mt-6 space-y-4"><Composition icon={Package} label="Peças" value={data.partsRevenueCents} share={partsShare} color="bg-primary" /><Composition icon={Wrench} label="Mão de obra" value={data.laborRevenueCents} share={compositionTotal ? 100 - partsShare : 0} color="bg-warning" /></div>
           <div className="mt-6 rounded-button border border-dashed border-border p-3 text-xs leading-5 text-text-muted">Margem e lucro ainda não são calculados porque o sistema não registra custo de aquisição das peças e despesas da oficina.</div>
         </CardContent>
       </Card>

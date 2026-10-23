@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { CarFront, Plus, Search, UserRound } from 'lucide-react';
+import { CarProfile, Plus, MagnifyingGlass, User } from '@phosphor-icons/react';
 import type { CustomerListItemResponse, VehicleListItemResponse } from '@oficina/contracts';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -82,32 +82,37 @@ export function NewServiceOrderQuickStart({ className, size = 'default', label =
     <Dialog open={open && stage === 'search'} onOpenChange={(value) => !value && resetAndClose()}>
       <DialogContent className="h-[min(34rem,calc(100dvh-1rem))] grid-rows-[auto_minmax(0,1fr)] sm:max-w-xl">
         <DialogHeader>
-          <DialogTitle>Novo atendimento</DialogTitle>
+          <DialogTitle className="flex items-center gap-2.5">
+            <span data-reveal className="flex size-8 shrink-0 items-center justify-center rounded-button bg-muted text-text-muted">
+              <MagnifyingGlass className="size-[18px]" aria-hidden="true" />
+            </span>
+            Novo atendimento
+          </DialogTitle>
           <DialogDescription>Pesquise pelo nome, CPF/CNPJ do cliente ou pela placa do veículo.</DialogDescription>
         </DialogHeader>
 
         <div className="flex min-h-0 flex-col gap-4">
         {!customer ? <>
           <div className="relative">
-            <Search className="pointer-events-none absolute left-3 top-1/2 size-5 -translate-y-1/2 text-text-muted" aria-hidden="true" />
+            <MagnifyingGlass className="pointer-events-none absolute left-3 top-1/2 size-5 -translate-y-1/2 text-text-muted" aria-hidden="true" />
             <Input autoFocus aria-label="Pesquisar cliente ou veículo" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Digite nome, CPF ou placa" className="h-12 pl-10 text-base" />
           </div>
           <div className="min-h-0 flex-1 overflow-y-auto rounded-button border border-border" aria-live="polite">
             {query.trim().length < 2 && <Hint />}
             {searching && <div role="status" className="px-4 py-8 text-center text-sm text-text-muted">Pesquisando cadastros...</div>}
             {hasSearched && !searching && (vehicles.data?.items.length ?? 0) > 0 && <ResultGroup title="Veículos">
-              {vehicles.data?.items.map((item) => <ResultButton key={item.id} icon={CarFront} title={`${item.brand} ${item.model} · ${item.plate}`} detail={item.customerName} onClick={() => selectVehicle(item)} />)}
+              {vehicles.data?.items.map((item) => <ResultButton key={item.id} icon={CarProfile} title={`${item.brand} ${item.model} · ${item.plate}`} detail={item.customerName} onClick={() => selectVehicle(item)} />)}
             </ResultGroup>}
             {hasSearched && !searching && (customers.data?.items.length ?? 0) > 0 && <ResultGroup title="Clientes">
-              {customers.data?.items.map((item) => <ResultButton key={item.id} icon={UserRound} title={item.name} detail={`${item.document} · ${item.phone}`} onClick={() => setCustomer(item)} />)}
+              {customers.data?.items.map((item) => <ResultButton key={item.id} icon={User} title={item.name} detail={`${item.document} · ${item.phone}`} onClick={() => setCustomer(item)} />)}
             </ResultGroup>}
-            {noResults && <div className="flex flex-col items-center px-5 py-8 text-center"><span className="flex size-10 items-center justify-center rounded-full bg-muted text-text-muted"><Search className="size-5" /></span><p className="mt-3 text-sm font-semibold text-text">Nenhum cadastro encontrado</p><p className="mt-1 text-xs text-text-muted">Confira os dados informados ou cadastre um novo cliente.</p><Button className="mt-4" onClick={() => setStage('customer')}><Plus className="size-4" />Adicionar novo</Button></div>}
+            {noResults && <div className="flex flex-col items-center px-5 py-8 text-center"><span className="flex size-10 items-center justify-center rounded-full bg-muted text-text-muted"><MagnifyingGlass className="size-5" /></span><p className="mt-3 text-sm font-semibold text-text">Nenhum cadastro encontrado</p><p className="mt-1 text-xs text-text-muted">Confira os dados informados ou cadastre um novo cliente.</p><Button className="mt-4" onClick={() => setStage('customer')}><Plus className="size-4" />Adicionar novo</Button></div>}
           </div>
         </> : <>
           <div className="rounded-button border border-primary/20 bg-primary-subtle p-3"><p className="text-xs font-semibold uppercase tracking-wide text-primary">Cliente selecionado</p><p className="mt-1 font-bold text-text">{customer.name}</p><button type="button" className="mt-1 text-xs font-semibold text-primary underline-offset-2 hover:underline" onClick={() => { setCustomer(undefined); setQuery(''); }}>Trocar cliente</button></div>
           <div className="min-h-0 flex-1 overflow-y-auto rounded-button border border-border">
             {customerVehicles.isFetching && <div role="status" className="px-4 py-8 text-center text-sm text-text-muted">Buscando veículos...</div>}
-            {!customerVehicles.isFetching && customerVehicles.data?.items.map((item) => <ResultButton key={item.id} icon={CarFront} title={`${item.brand} ${item.model} · ${item.plate}`} detail="Abrir atendimento para este veículo" onClick={() => selectVehicle(item)} />)}
+            {!customerVehicles.isFetching && customerVehicles.data?.items.map((item) => <ResultButton key={item.id} icon={CarProfile} title={`${item.brand} ${item.model} · ${item.plate}`} detail="Abrir atendimento para este veículo" onClick={() => selectVehicle(item)} />)}
             {!customerVehicles.isFetching && !(customerVehicles.data?.items.length) && <div className="px-5 py-8 text-center"><p className="text-sm font-semibold text-text">Este cliente ainda não possui veículo</p><p className="mt-1 text-xs text-text-muted">Cadastre o veículo para continuar o atendimento.</p></div>}
           </div>
           <Button onClick={() => setStage('vehicle')}><Plus className="size-4" />Adicionar veículo</Button>

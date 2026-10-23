@@ -1,7 +1,7 @@
 import * as React from "react"
 import { Slot } from "@radix-ui/react-slot"
 import { cva, type VariantProps } from "class-variance-authority"
-import { LoaderCircle } from "lucide-react"
+import { CircleNotch } from "@phosphor-icons/react"
 
 import { cn } from "@/lib/utils"
 
@@ -60,7 +60,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
 
     return (
       <Comp {...sharedProps} disabled={disabled || loading}>
-        {loading && <LoaderCircle aria-hidden="true" className="animate-spin" />}
+        {loading && <CircleNotch aria-hidden="true" className="animate-spin" />}
         {children}
       </Comp>
     )

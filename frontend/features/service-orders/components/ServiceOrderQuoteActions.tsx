@@ -1,6 +1,6 @@
 'use client';
 
-import { FileDown, Mail, MessageCircle } from 'lucide-react';
+import { FileArrowDown, Envelope, ChatCircle } from '@phosphor-icons/react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import type { ServiceOrderResponse } from '@oficina/contracts';
@@ -64,9 +64,9 @@ export function ServiceOrderQuoteActions({ serviceOrder }: { serviceOrder: Servi
         <p className="mt-1 text-sm text-text-muted">{hasItems ? `${serviceOrder.items?.length} itens · Peças ${formatCurrencyBRL(partsTotal)} · Mão de obra ${formatCurrencyBRL(laborTotal)}` : 'Adicione peças e mão de obra para preparar o orçamento.'}</p>
       </div>
       <div className="flex flex-wrap gap-2">
-        <Button variant="outline" size="sm" onClick={downloadPdf}><FileDown className="size-4" />Gerar PDF</Button>
-        <Button variant="outline" size="sm" onClick={sendEmail} disabled={customer.isLoading || sendingEmail}><Mail className="size-4" />{sendingEmail ? 'Enviando...' : 'Enviar por e-mail'}</Button>
-        <Button size="sm" onClick={sendWhatsApp}><MessageCircle className="size-4" />WhatsApp</Button>
+        <Button variant="outline" size="sm" onClick={downloadPdf}><FileArrowDown className="size-4" />Gerar PDF</Button>
+        <Button variant="outline" size="sm" onClick={sendEmail} disabled={customer.isLoading || sendingEmail}><Envelope className="size-4" />{sendingEmail ? 'Enviando...' : 'Enviar por e-mail'}</Button>
+        <Button size="sm" onClick={sendWhatsApp}><ChatCircle className="size-4" />WhatsApp</Button>
       </div>
     </div>
     <div className="mt-4 flex items-center justify-between rounded-button bg-muted/50 px-3 py-2"><span className="text-sm font-semibold text-text-muted">Total para aprovação</span><span className="text-lg font-bold tabular-nums text-text">{formatCurrencyBRL(serviceOrder.totalAmountCents)}</span></div>

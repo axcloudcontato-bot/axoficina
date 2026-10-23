@@ -1,6 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
+import { CalendarBlank } from '@phosphor-icons/react';
 import type { AppointmentResponse, AppointmentStatus } from '@oficina/contracts';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -43,7 +44,7 @@ export function AppointmentDetails({ appointment, open, onOpenChange, onEdit }: 
 
   const time = new Intl.DateTimeFormat('pt-BR', { dateStyle: 'long', timeStyle: 'short' });
   return <Dialog open={open} onOpenChange={onOpenChange}><DialogContent className="sm:max-w-lg">
-    <DialogHeader><DialogTitle>{appointment.serviceDescription}</DialogTitle><DialogDescription>{time.format(new Date(appointment.startsAt))}</DialogDescription></DialogHeader>
+    <DialogHeader><DialogTitle className="flex items-center gap-2.5"><span data-reveal className="flex size-8 shrink-0 items-center justify-center rounded-button bg-muted text-text-muted"><CalendarBlank className="size-[18px]" aria-hidden="true" /></span>{appointment.serviceDescription}</DialogTitle><DialogDescription>{time.format(new Date(appointment.startsAt))}</DialogDescription></DialogHeader>
     <dl className="grid gap-3 rounded-card border border-border bg-surface p-4 text-sm">
       <Row label="Cliente" value={appointment.customerName} />
       <Row label="Veículo" value={`${appointment.vehicleBrand} ${appointment.vehicleModel} · ${appointment.vehiclePlate}`} />

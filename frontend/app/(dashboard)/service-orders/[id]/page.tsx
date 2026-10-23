@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { Check, ChevronLeft, ChevronRight, History, Printer } from 'lucide-react';
+import { Check, CaretLeft, CaretRight, ClockCounterClockwise, Printer } from '@phosphor-icons/react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -134,7 +134,7 @@ export default function ServiceOrderDetailPage() {
           <Field label="Serviço recomendado"><Textarea value={recommendedService} onChange={(event) => setRecommendedService(event.target.value)} placeholder="Serviços necessários para corrigir o problema" /></Field>
           <Field label="Técnico responsável"><Select value={technicianId} onValueChange={setTechnicianId}><SelectTrigger><SelectValue placeholder="Nenhum técnico atribuído" /></SelectTrigger><SelectContent>{usersData?.items.map((technician) => <SelectItem key={technician.id} value={technician.id}>{technician.name}</SelectItem>)}</SelectContent></Select></Field>
         </div>
-        <div className="mt-5 flex items-center justify-between gap-3"><Button variant="outline" onClick={() => setActiveStep(2)}><ChevronLeft className="size-4" />Anterior</Button><Button onClick={handleSave} loading={update.isPending}>{update.isPending ? 'Salvando...' : 'Salvar e continuar'}</Button></div>
+        <div className="mt-5 flex items-center justify-between gap-3"><Button variant="outline" onClick={() => setActiveStep(2)}><CaretLeft className="size-4" />Anterior</Button><Button onClick={handleSave} loading={update.isPending}>{update.isPending ? 'Salvando...' : 'Salvar e continuar'}</Button></div>
       </section>}
 
       {activeStep === 4 && <div className="space-y-5">
@@ -143,11 +143,11 @@ export default function ServiceOrderDetailPage() {
         <StepActions onBack={() => setActiveStep(3)} />
       </div>}
 
-      <ServiceOrderPhotoGallery serviceOrderId={serviceOrder.id} canManage={hasPermission(currentUser, 'service_orders.manage')} />
+      <ServiceOrderPhotoGallery serviceOrderId={serviceOrder.id} canManage={hasPermission(currentUser, 'service_orders.manage')} items={serviceOrder.items ?? []} />
 
       <details className="rounded-card border border-border bg-card p-4 shadow-sm sm:p-5"><summary className="cursor-pointer text-lg font-bold tracking-tight text-text">Histórico da OS</summary><div className="mt-4"><StatusHistoryTimeline history={serviceOrder.statusHistory ?? []} /></div></details>
 
-      <div className="flex justify-between border-t border-border pt-4"><Button variant="outline" size="sm" onClick={() => setVehicleHistoryOpen(true)}><History className="mr-2 size-4" />Ver histórico do veículo</Button><Button variant="ghost" size="sm" className="text-danger hover:text-danger" onClick={() => setDeleteDialogOpen(true)}>Excluir OS</Button></div>
+      <div className="flex justify-between border-t border-border pt-4"><Button variant="outline" size="sm" onClick={() => setVehicleHistoryOpen(true)}><ClockCounterClockwise className="mr-2 size-4" />Ver histórico do veículo</Button><Button variant="ghost" size="sm" className="text-danger hover:text-danger" onClick={() => setDeleteDialogOpen(true)}>Excluir OS</Button></div>
 
       <DeleteServiceOrderDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen} serviceOrder={serviceOrder} onDeleted={() => router.push('/service-orders')} />
       <VehicleServiceHistoryDialog open={vehicleHistoryOpen} onOpenChange={setVehicleHistoryOpen} vehicleId={serviceOrder.vehicleId} vehicleLabel={`${serviceOrder.vehicleBrand} ${serviceOrder.vehicleModel}`} plate={serviceOrder.vehiclePlate} />
@@ -189,7 +189,7 @@ function ServiceOrderStepper({ activeStep, onStepChange }: { activeStep: 1 | 2 |
 }
 
 function StepActions({ onBack, onNext }: { onBack?: () => void; onNext?: () => void }) {
-  return <div className={`mt-5 flex gap-3 border-t border-border pt-4 ${onBack ? 'justify-between' : 'justify-end'}`}>{onBack && <Button variant="outline" onClick={onBack}><ChevronLeft className="size-4" />Anterior</Button>}{onNext && <Button onClick={onNext}>Próxima etapa<ChevronRight className="size-4" /></Button>}</div>;
+  return <div className={`mt-5 flex gap-3 border-t border-border pt-4 ${onBack ? 'justify-between' : 'justify-end'}`}>{onBack && <Button variant="outline" onClick={onBack}><CaretLeft className="size-4" />Anterior</Button>}{onNext && <Button onClick={onNext}>Próxima etapa<CaretRight className="size-4" /></Button>}</div>;
 }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {

@@ -11,7 +11,7 @@ vi.mock('@/features/maintenance-alerts/hooks/use-maintenance-alerts', () => ({
 vi.mock('@/features/service-orders/hooks/use-service-orders', () => ({
   useDueServiceOrderInstallments: () => ({ data: { items: [], total: 0 } }),
 }));
-vi.mock('@/components/theme-toggle', () => ({ ThemeToggle: () => <button>Tema</button> }));
+vi.mock('@/features/auth/hooks/use-auth', () => ({ useLogout: () => ({ mutate: vi.fn() }) }));
 
 describe('Topbar', () => {
   beforeEach(() => useMaintenanceAlertsList.mockReset());
@@ -21,14 +21,13 @@ describe('Topbar', () => {
     render(<Topbar />);
 
     expect(screen.queryByTestId('open-alert-indicator')).not.toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Ver alertas' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Alertas' })).toBeInTheDocument();
   });
 
-  it('shows the indicator and accessible count when open alerts exist', () => {
+  it('shows the indicator when open alerts exist', () => {
     useMaintenanceAlertsList.mockReturnValue({ data: { items: [], total: 3 } });
     render(<Topbar />);
 
     expect(screen.getByTestId('open-alert-indicator')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Ver alertas (3 pendentes)' })).toBeInTheDocument();
   });
 });

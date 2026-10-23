@@ -6,6 +6,7 @@ import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 import { z } from 'zod';
 import type { VehicleListItemResponse } from '@oficina/contracts';
+import { Car } from '@phosphor-icons/react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -140,7 +141,12 @@ export function VehicleFormModal({ open, onOpenChange, vehicle, initialCustomer,
     <Dialog open={open} modal={presentation !== 'page'} onOpenChange={onOpenChange}>
       <DialogContent data-page={presentation === 'page' ? true : undefined} className={`max-h-[92vh] overflow-y-auto ${presentation === 'page' ? '' : 'sm:max-w-3xl lg:max-w-4xl'}`}>
         <DialogHeader>
-          <DialogTitle>{isEditing ? 'Editar veículo' : 'Novo veículo'}</DialogTitle>
+          <DialogTitle className="flex items-center gap-2.5">
+            <span data-reveal className="flex size-8 shrink-0 items-center justify-center rounded-button bg-muted text-text-muted">
+              <Car className="size-[18px]" aria-hidden="true" />
+            </span>
+            {isEditing ? 'Editar veículo' : 'Novo veículo'}
+          </DialogTitle>
           <DialogDescription>
             {isEditing ? 'O cliente dono do veículo não pode ser alterado.' : 'Cadastre um veículo vinculado a um cliente da sua oficina.'}
           </DialogDescription>

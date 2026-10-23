@@ -5,6 +5,7 @@ import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 import { z } from 'zod';
+import { ClipboardText } from '@phosphor-icons/react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -100,7 +101,12 @@ export function ServiceOrderFormModal({ open, onOpenChange, initialVehicleId, in
     <Dialog open={open} modal={presentation !== 'page'} onOpenChange={onOpenChange}>
       <DialogContent data-page={presentation === 'page' ? true : undefined} className={`max-h-[92vh] overflow-y-auto ${presentation === 'page' ? '' : 'sm:max-w-2xl lg:max-w-3xl'}`}>
         <DialogHeader>
-          <DialogTitle>Nova ordem de serviço</DialogTitle>
+          <DialogTitle className="flex items-center gap-2.5">
+            <span data-reveal className="flex size-8 shrink-0 items-center justify-center rounded-button bg-muted text-text-muted">
+              <ClipboardText className="size-[18px]" aria-hidden="true" />
+            </span>
+            Nova ordem de serviço
+          </DialogTitle>
           <DialogDescription>Pesquise o cliente, selecione o veículo e registre o atendimento em uma única OS.</DialogDescription>
         </DialogHeader>
         <Form {...form}>

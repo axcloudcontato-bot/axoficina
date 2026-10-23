@@ -1,6 +1,6 @@
 'use client';
 
-import { ArrowLeft, Printer } from 'lucide-react';
+import { ArrowLeft, Printer } from '@phosphor-icons/react';
 import { useParams, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { AuthGuard } from '@/features/auth/components/AuthGuard';

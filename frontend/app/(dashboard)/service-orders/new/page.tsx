@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useRef, useState } from 'react';
-import { ArrowLeft, ArrowRight, Check, ClipboardList, UserRound, CarFront } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, ClipboardText, User, CarProfile } from '@phosphor-icons/react';
 import type { CustomerListItemResponse, ServiceOrderListItemResponse } from '@oficina/contracts';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -12,10 +12,10 @@ import { VehicleFormModal } from '@/features/vehicles/components/VehicleFormModa
 
 type Step = 'customer' | 'vehicle' | 'order' | 'done';
 
-const STEPS: Array<{ id: Exclude<Step, 'done'>; label: string; description: string; icon: typeof UserRound }> = [
-  { id: 'customer', label: 'Cliente', description: 'Quem trouxe o veículo', icon: UserRound },
-  { id: 'vehicle', label: 'Veículo', description: 'Carro que será atendido', icon: CarFront },
-  { id: 'order', label: 'Ordem de serviço', description: 'Serviço e responsável', icon: ClipboardList },
+const STEPS: Array<{ id: Exclude<Step, 'done'>; label: string; description: string; icon: typeof User }> = [
+  { id: 'customer', label: 'Cliente', description: 'Quem trouxe o veículo', icon: User },
+  { id: 'vehicle', label: 'Veículo', description: 'Carro que será atendido', icon: CarProfile },
+  { id: 'order', label: 'Ordem de serviço', description: 'Serviço e responsável', icon: ClipboardText },
 ];
 
 export default function NewServiceOrderPage() {

@@ -1,6 +1,6 @@
 'use client';
 
-import { Check, Minus, TriangleAlert } from 'lucide-react';
+import { Check, Minus, Warning } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 import type { InspectionItem, InspectionStatus } from '../checklist';
@@ -13,8 +13,8 @@ interface InspectionChecklistProps {
 
 const STATUS_OPTIONS: Array<{ value: InspectionStatus; label: string; icon: React.ComponentType<{ className?: string }>; className: string; selectedClassName: string }> = [
   { value: 'ok', label: 'Está bom', icon: Check, className: 'text-success hover:bg-success-subtle', selectedClassName: 'border-success/60 bg-success-subtle text-success-strong shadow-sm ring-2 ring-success/20 ring-offset-1' },
-  { value: 'attention', label: 'Atenção', icon: TriangleAlert, className: 'text-warning hover:bg-warning-subtle', selectedClassName: 'border-warning/60 bg-warning-subtle text-warning-strong shadow-sm ring-2 ring-warning/20 ring-offset-1' },
-  { value: 'critical', label: 'Crítico', icon: TriangleAlert, className: 'text-danger hover:bg-danger-subtle', selectedClassName: 'border-danger/60 bg-danger-subtle text-danger-strong shadow-sm ring-2 ring-danger/20 ring-offset-1' },
+  { value: 'attention', label: 'Atenção', icon: Warning, className: 'text-warning hover:bg-warning-subtle', selectedClassName: 'border-warning/60 bg-warning-subtle text-warning-strong shadow-sm ring-2 ring-warning/20 ring-offset-1' },
+  { value: 'critical', label: 'Crítico', icon: Warning, className: 'text-danger hover:bg-danger-subtle', selectedClassName: 'border-danger/60 bg-danger-subtle text-danger-strong shadow-sm ring-2 ring-danger/20 ring-offset-1' },
   { value: 'na', label: 'Não se aplica', icon: Minus, className: 'text-text-muted hover:bg-muted', selectedClassName: 'border-border-strong bg-muted text-text shadow-sm ring-2 ring-border/50 ring-offset-1' },
 ];
 

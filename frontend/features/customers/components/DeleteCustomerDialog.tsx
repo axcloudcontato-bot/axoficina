@@ -2,6 +2,7 @@
 
 import { toast } from 'sonner';
 import type { CustomerListItemResponse } from '@oficina/contracts';
+import { Trash } from '@phosphor-icons/react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { extractErrorMessage } from '@/lib/api/client';
@@ -36,7 +37,12 @@ export function DeleteCustomerDialog({ open, onOpenChange, customer }: DeleteCus
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Excluir cliente</DialogTitle>
+          <DialogTitle className="flex items-center gap-2.5">
+            <span data-reveal className="flex size-8 shrink-0 items-center justify-center rounded-button bg-danger-subtle text-danger">
+              <Trash className="size-[18px]" aria-hidden="true" />
+            </span>
+            Excluir cliente
+          </DialogTitle>
           <DialogDescription>
             Tem certeza que quer excluir <strong>{customer?.name}</strong>? Este cliente pode ter veículos ou ordens de
             serviço vinculados — o histórico deles não é afetado, mas o cliente deixa de aparecer na lista.
