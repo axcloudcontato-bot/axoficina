@@ -8,6 +8,18 @@ export const apiClient = axios.create({
 });
 
 apiClient.interceptors.request.use((config) => {
+  // Lido do store a cada request (em vez de empurrado para
+  // `apiClient.defaults.headers` via callback no auth-store) para não criar
+  // import circular entre este arquivo e `stores/auth-store.ts` — ver
+  // histórico: esse ciclo deixava `onRehydrateStorage` lançar
+  // `ReferenceError: Cannot access 'apiClient' before initialization` no
+  // primeiro load, o que travava a Promise interna do zustand/persist e
+  // nunca marcava `hasHydrated`, prendendo o AuthGuard em "Carregando..."
+  // para sempre.
+  const { accessToken } = useAuthStore.getState();
+  if (accessToken) {
+    config.headers.set('Authorization', `Bearer ${accessToken}`);
+  }
   if (config.data && typeof config.data === 'object' && !(config.data instanceof FormData)) {
     config.data = keysToSnake(config.data);
   }
@@ -49,7 +61,13 @@ async function refreshAccessToken(): Promise<string> {
 
 apiClient.interceptors.response.use(
   (response) => {
-    if (response.data && typeof response.data === 'object') {
+    // `responseType: 'blob'`/`'arraybuffer'` faz `response.data` ser um
+    // Blob/ArrayBuffer, não um JSON — `typeof` acusa "object" nos dois
+    // casos, e rodar keysToCamel nele corrompe o binário (deixa de ser um
+    // Blob de verdade, URL.createObjectURL falha com "Overload resolution
+    // failed"). Só a resposta JSON (default 'json') passa pela conversão.
+    const responseType = response.config.responseType;
+    if (response.data && typeof response.data === 'object' && (!responseType || responseType === 'json')) {
       response.data = keysToCamel(response.data);
     }
     return response;
@@ -77,14 +95,6 @@ apiClient.interceptors.response.use(
     }
   },
 );
-
-export function setAuthToken(token: string | null): void {
-  if (token) {
-    apiClient.defaults.headers.common.Authorization = `Bearer ${token}`;
-  } else {
-    delete apiClient.defaults.headers.common.Authorization;
-  }
-}
 
 interface BackendErrorBody {
   error?: {

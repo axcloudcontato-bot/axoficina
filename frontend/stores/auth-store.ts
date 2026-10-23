@@ -1,7 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { UserResponse } from '@oficina/contracts';
-import { setAuthToken } from '@/lib/api/client';
 
 interface Session {
   accessToken: string;
@@ -19,33 +18,22 @@ interface AuthState {
 }
 
 // Tokens ficam em localStorage (via persist) — consistente com o contrato
-// da API (tokens voltam no corpo JSON, não como cookie httpOnly).
+// da API (tokens voltam no corpo JSON, não como cookie httpOnly). O header
+// Authorization é lido direto deste store pelo interceptor de request do
+// apiClient (ver lib/api/client.ts) — este arquivo não importa de lá para
+// não criar um ciclo de import com ele.
 export const useAuthStore = create<AuthState>()(
   persist(
     (set) => ({
       accessToken: null,
       refreshToken: null,
       user: null,
-      setSession: ({ accessToken, refreshToken, user }) => {
-        setAuthToken(accessToken);
-        set({ accessToken, refreshToken, user });
-      },
-      updateTokens: ({ accessToken, refreshToken }) => {
-        setAuthToken(accessToken);
-        set({ accessToken, refreshToken });
-      },
-      logout: () => {
-        setAuthToken(null);
-        set({ accessToken: null, refreshToken: null, user: null });
-      },
+      setSession: ({ accessToken, refreshToken, user }) => set({ accessToken, refreshToken, user }),
+      updateTokens: ({ accessToken, refreshToken }) => set({ accessToken, refreshToken }),
+      logout: () => set({ accessToken: null, refreshToken: null, user: null }),
     }),
     {
       name: 'oficina-auth',
-      onRehydrateStorage: () => (state) => {
-        if (state?.accessToken) {
-          setAuthToken(state.accessToken);
-        }
-      },
     },
   ),
 );
