@@ -1,10 +1,12 @@
 import type { Metadata } from 'next';
-import { Plus_Jakarta_Sans } from 'next/font/google';
+// Auto-hospedada (bundlada no build) em vez de next/font/google: esse loader
+// busca o CSS da fonte no Google ao vivo durante `next build`, e esse fetch
+// falhou de forma intermitente em CI (`next/font` loader.js: "Cannot read
+// properties of null (reading '1')" quando a resposta vem vazia/bloqueada).
+import '@fontsource-variable/plus-jakarta-sans';
 import { ThemeProvider } from '@/components/theme-provider';
 import { Providers } from '@/components/providers';
 import './globals.css';
-
-const plusJakartaSans = Plus_Jakarta_Sans({ subsets: ['latin'], weight: ['400', '500', '600', '700', '800'], variable: '--font-sans' });
 
 export const metadata: Metadata = {
   title: 'Oficina',
@@ -14,7 +16,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="pt-BR" suppressHydrationWarning>
-      <body className={plusJakartaSans.variable}>
+      <body>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
           <Providers>{children}</Providers>
         </ThemeProvider>

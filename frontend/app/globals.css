@@ -5,6 +5,7 @@
 @layer base {
 :root {
   --sidebar-width: 16rem;
+    --font-sans: 'Plus Jakarta Sans Variable';
     /* Primitivos: únicos tokens que contêm valores de cor brutos. */
     --orange-50: #fff7ed;
     --orange-100: #ffedd5;
