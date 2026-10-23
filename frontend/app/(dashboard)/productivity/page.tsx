@@ -96,7 +96,7 @@ export default function ProductivityPage() {
         </Table>
       )}
 
-      <p className="flex items-center gap-2 text-xs text-text-muted"><ChartBar className="size-3.5" />Tempo médio é calculado entre a abertura e a entrega da OS. "Em andamento agora" não depende do período selecionado — é sempre a carga atual.</p>
+      <p className="flex items-center gap-2 text-xs text-text-muted"><ChartBar className="size-3.5" />Tempo médio é calculado entre a abertura e a entrega da OS. &ldquo;Em andamento agora&rdquo; não depende do período selecionado — é sempre a carga atual.</p>
     </div>
   );
 }
