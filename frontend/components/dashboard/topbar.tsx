@@ -2,7 +2,7 @@
 
 import { usePathname } from 'next/navigation';
 import type { Icon as PhosphorIcon } from '@phosphor-icons/react';
-import { Bell, Car, CalendarBlank, ChartLine, ClipboardText, SquaresFour, Users, UsersThree } from '@phosphor-icons/react';
+import { Bell, Car, CalendarBlank, ChartBar, ChartLine, ClipboardText, SquaresFour, Users, UsersThree } from '@phosphor-icons/react';
 import { HeaderDock } from '@/components/dashboard/header-dock';
 
 interface PageMeta { title: string; description: string; icon: PhosphorIcon }
@@ -14,6 +14,7 @@ const PAGE_META: Record<string, PageMeta> = {
   '/customers': { title: 'Clientes', description: 'Gerencie os clientes da sua oficina.', icon: Users },
   '/vehicles': { title: 'Veículos', description: 'Gerencie os veículos cadastrados da sua oficina.', icon: Car },
   '/service-orders': { title: 'Ordens de Serviço', description: 'Acompanhe o atendimento dos veículos da sua oficina.', icon: ClipboardText },
+  '/productivity': { title: 'Produtividade', description: 'OS entregues, mão de obra gerada e carga por técnico.', icon: ChartBar },
   '/maintenance-alerts': { title: 'Alertas de manutenção', description: 'Acompanhe os contatos preventivos pendentes.', icon: Bell },
   '/users': { title: 'Equipe e acesso', description: 'Gerencie usuários, perfis e permissões.', icon: UsersThree },
 };

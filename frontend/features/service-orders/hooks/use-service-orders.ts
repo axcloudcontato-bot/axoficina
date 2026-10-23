@@ -13,6 +13,7 @@ import type {
   ConfirmServiceOrderInstallmentRequest,
   ServiceOrderPhotoCategory,
   ServiceOrderPhotoAngle,
+  TechnicianProductivityRequest,
 } from '@oficina/contracts';
 import { serviceOrdersApi } from '../api/service-orders-api';
 
@@ -136,6 +137,13 @@ export function useDueServiceOrderInstallments(limit = 20) {
     queryKey: ['due-service-order-installments', limit],
     queryFn: () => serviceOrdersApi.dueInstallments(limit),
     enabled: limit > 0,
+  });
+}
+
+export function useTechnicianProductivity(request: TechnicianProductivityRequest) {
+  return useQuery({
+    queryKey: ['technician-productivity', request],
+    queryFn: () => serviceOrdersApi.technicianProductivity(request),
   });
 }
 

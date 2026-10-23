@@ -13,6 +13,7 @@ function buildManager() {
     softDelete: jest.fn(),
     listByTenant: jest.fn(),
     listForBusinessSummary: jest.fn(),
+    listForProductivity: jest.fn().mockResolvedValue([]),
   };
   const statusHistoryRepository = {
     insert: jest.fn(),
@@ -46,6 +47,7 @@ function buildManager() {
   const userRepository = {
     byId: jest.fn(),
     byIds: jest.fn(),
+    listByTenant: jest.fn().mockResolvedValue({ items: [], total: 0 }),
   };
   const prisma = {
     transaction: jest.fn((fn: (tx: unknown) => Promise<unknown>) => fn(FAKE_TX)),
@@ -632,6 +634,28 @@ describe('ServiceOrderManager', () => {
       expect(result.accountsReceivableCents).toBe(5000);
       expect(result.overdueDeliveries).toBe(1);
       expect(result.technicianWorkload[0]).toMatchObject({ technicianName: 'Carlos Mecânico', activeOrders: 1 });
+    });
+  });
+
+  describe('technicianProductivity', () => {
+    it('aggregates completed count, labor revenue and average time per technician, including technicians with no activity in the period', async () => {
+      const deps = buildManager();
+      const technicianTwo = { ...baseTechnician, id: 'technician-2', name: 'Ana Mecânica' };
+      deps.userRepository.listByTenant.mockResolvedValue({ items: [baseTechnician, technicianTwo], total: 2 });
+      deps.serviceOrderRepository.listForProductivity.mockResolvedValue([
+        { ...baseServiceOrder, id: 'delivered-1', status: 'DELIVERED', technicianId: 'technician-1', openedAt: new Date('2026-07-10T10:00:00Z'), closedAt: new Date('2026-07-10T15:00:00Z') },
+        { ...baseServiceOrder, id: 'active-1', status: 'IN_PROGRESS', technicianId: 'technician-1' },
+      ]);
+      deps.itemRepository.financialItemsByServiceOrderIds.mockResolvedValue([
+        { serviceOrderId: 'delivered-1', type: 'LABOR', description: 'Troca de óleo', lineTotalCents: 4000 },
+        { serviceOrderId: 'delivered-1', type: 'PART', description: 'Óleo', lineTotalCents: 6000 },
+      ]);
+
+      const result = await deps.manager.technicianProductivity({ startAt: '2026-07-01T00:00:00Z', endAt: '2026-07-31T23:59:59Z' });
+
+      expect(result.items).toHaveLength(2);
+      expect(result.items[0]).toMatchObject({ technicianId: 'technician-1', technicianName: 'Carlos Mecânico', completedCount: 1, laborRevenueCents: 4000, avgCompletionHours: 5, activeOrders: 1 });
+      expect(result.items[1]).toMatchObject({ technicianId: 'technician-2', technicianName: 'Ana Mecânica', completedCount: 0, laborRevenueCents: 0, avgCompletionHours: null, activeOrders: 0 });
     });
   });
 

@@ -2,7 +2,7 @@
 
 import type { PermissionKey } from '@oficina/contracts';
 import type { Icon as PhosphorIcon } from '@phosphor-icons/react';
-import { Bell, Buildings, CalendarBlank, Car, ChartLine, ClipboardText, Envelope, Gear, SidebarSimple, SignOut, SquaresFour, Users, UsersThree, Wrench } from '@phosphor-icons/react';
+import { Bell, Buildings, CalendarBlank, Car, ChartBar, ChartLine, ClipboardText, Envelope, Gear, SidebarSimple, SignOut, SquaresFour, Users, UsersThree, Wrench } from '@phosphor-icons/react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -30,6 +30,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: '/vehicles', label: 'Veículos', shortLabel: 'Veículos', icon: Car, permission: 'vehicles.view', group: 'Relacionamento' },
   { href: '/maintenance-alerts', label: 'Alertas de manutenção', shortLabel: 'Alertas', icon: Bell, permission: 'alerts.view', group: 'Relacionamento' },
   { href: '/financial', label: 'Financeiro', shortLabel: 'Financeiro', icon: ChartLine, permission: 'finance.view', group: 'Gestão' },
+  { href: '/productivity', label: 'Produtividade', shortLabel: 'Produtiv.', icon: ChartBar, permission: 'service_orders.prices', group: 'Gestão' },
   { href: '/settings', label: 'Configurações', shortLabel: 'Config.', icon: Gear, permission: 'team.view', group: 'Gestão', children: [
     { href: '/settings/company', label: 'Empresa e marca', icon: Buildings, permission: 'settings.view' },
     { href: '/settings/email', label: 'E-mail', icon: Envelope, permission: 'settings.view' },

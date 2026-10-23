@@ -4,6 +4,7 @@ import type {
   CreateServiceOrderRequest,
   DeleteServiceOrderRequest,
   ServiceOrderListRequest,
+  TechnicianProductivityRequest,
   TransitionServiceOrderRequest,
   UpdateServiceOrderRequest,
 } from '@oficina/contracts';
@@ -108,4 +109,9 @@ export class ServiceOrderListDto implements ServiceOrderListRequest {
   @Min(1)
   @Max(MAX_LIST_LIMIT)
   limit: number = DEFAULT_LIST_LIMIT;
+}
+
+export class TechnicianProductivityDto implements TechnicianProductivityRequest {
+  @IsISO8601() startAt!: string;
+  @IsISO8601() endAt!: string;
 }

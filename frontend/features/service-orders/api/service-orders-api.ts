@@ -18,6 +18,8 @@ import type {
   ServiceOrderPhotoCategory,
   ServiceOrderPhotoAngle,
   ServiceOrderPhotoResponse,
+  TechnicianProductivityRequest,
+  TechnicianProductivityResponse,
 } from '@oficina/contracts';
 
 export const serviceOrdersApi = {
@@ -88,5 +90,8 @@ export const serviceOrdersApi = {
   },
   async photoBlob(id: string): Promise<Blob> {
     return (await apiClient.get('/api/v1/service-orders/photos/content', { params: { id }, responseType: 'blob' })).data;
+  },
+  async technicianProductivity(request: TechnicianProductivityRequest): Promise<TechnicianProductivityResponse> {
+    return (await apiClient.post('/api/v1/service-orders/technician-productivity', request)).data;
   },
 };

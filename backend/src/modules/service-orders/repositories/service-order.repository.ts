@@ -160,4 +160,20 @@ export class ServiceOrderRepository {
       orderBy: { createdAt: 'desc' },
     });
   }
+
+  // Mesmo formato do listForBusinessSummary, mas com o período de entrega
+  // (closedAt) arbitrário em vez de fixo em "últimos 6 meses" — usado pelo
+  // controle de produtividade por técnico. OS ativas (não entregues) sempre
+  // entram, independente do período, porque "carga atual" é sempre "agora".
+  async listForProductivity(startAt: Date, endAt: Date) {
+    return this.prisma.client.serviceOrder.findMany({
+      where: {
+        deletedAt: null,
+        OR: [
+          { status: { in: ['OPEN', 'AWAITING_APPROVAL', 'IN_PROGRESS', 'WAITING_PARTS', 'COMPLETED'] } },
+          { status: 'DELIVERED', closedAt: { gte: startAt, lte: endAt } },
+        ],
+      },
+    });
+  }
 }

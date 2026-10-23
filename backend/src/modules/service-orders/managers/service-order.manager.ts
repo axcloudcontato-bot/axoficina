@@ -16,6 +16,8 @@ import {
   type ServiceOrderListRequest,
   type ServiceOrderResponse,
   type ServiceOrderStatusHistoryItemResponse,
+  type TechnicianProductivityRequest,
+  type TechnicianProductivityResponse,
   type TransitionServiceOrderRequest,
   type UpdateServiceOrderItemRequest,
   type UpdateServiceOrderRequest,
@@ -513,6 +515,57 @@ export class ServiceOrderManager {
         .sort((left, right) => right.revenueCents - left.revenueCents)
         .slice(0, 5),
     };
+  }
+
+  async technicianProductivity(request: TechnicianProductivityRequest): Promise<TechnicianProductivityResponse> {
+    const startAt = new Date(request.startAt);
+    const endAt = new Date(request.endAt);
+    const [orders, activeUsers] = await Promise.all([
+      this.serviceOrderRepository.listForProductivity(startAt, endAt),
+      // Base da lista: todo técnico ativo aparece, mesmo com 0 OS no
+      // período — é justamente isso que torna o relatório útil pra achar
+      // quem está sem produção, não só ranquear quem já apareceu.
+      this.userRepository.listByTenant(0, 500, { status: 'active' }),
+    ]);
+    const financialItems = await this.itemRepository.financialItemsByServiceOrderIds(orders.map((order) => order.id));
+    const laborByOrderId = new Map<string, number>();
+    financialItems.filter((item) => item.type === 'LABOR').forEach((item) => {
+      laborByOrderId.set(item.serviceOrderId, (laborByOrderId.get(item.serviceOrderId) ?? 0) + item.lineTotalCents);
+    });
+
+    const delivered = orders.filter((order) => order.status === 'DELIVERED' && order.closedAt);
+    const active = orders.filter((order) => order.status !== 'DELIVERED');
+
+    const buckets = new Map<string, { completedCount: number; laborRevenueCents: number; totalHours: number; activeOrders: number }>();
+    const bucketFor = (technicianId: string) => {
+      if (!buckets.has(technicianId)) buckets.set(technicianId, { completedCount: 0, laborRevenueCents: 0, totalHours: 0, activeOrders: 0 });
+      return buckets.get(technicianId)!;
+    };
+    delivered.forEach((order) => {
+      if (!order.technicianId) return;
+      const bucket = bucketFor(order.technicianId);
+      bucket.completedCount += 1;
+      bucket.laborRevenueCents += laborByOrderId.get(order.id) ?? 0;
+      bucket.totalHours += (order.closedAt!.getTime() - order.openedAt.getTime()) / 3_600_000;
+    });
+    active.forEach((order) => {
+      if (!order.technicianId) return;
+      bucketFor(order.technicianId).activeOrders += 1;
+    });
+
+    const items = activeUsers.items.map((technician) => {
+      const bucket = buckets.get(technician.id) ?? { completedCount: 0, laborRevenueCents: 0, totalHours: 0, activeOrders: 0 };
+      return {
+        technicianId: technician.id,
+        technicianName: technician.name,
+        completedCount: bucket.completedCount,
+        laborRevenueCents: bucket.laborRevenueCents,
+        avgCompletionHours: bucket.completedCount > 0 ? Math.round((bucket.totalHours / bucket.completedCount) * 10) / 10 : null,
+        activeOrders: bucket.activeOrders,
+      };
+    }).sort((left, right) => right.laborRevenueCents - left.laborRevenueCents || right.completedCount - left.completedCount);
+
+    return { startAt: request.startAt, endAt: request.endAt, items };
   }
 
   async addItem(request: CreateServiceOrderItemRequest): Promise<{ item: ServiceOrderItemResponse }> {

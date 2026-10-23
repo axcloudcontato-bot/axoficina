@@ -1,7 +1,7 @@
 import { Body, Controller, Get, HttpCode, HttpStatus, Post, Query, Res, StreamableFile, UploadedFile, UseInterceptors } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import type { Response } from 'express';
-import type { DashboardBusinessSummaryResponse, DueServiceOrderInstallmentsResponse, PaginationData, ServiceOrderInstallmentResponse, ServiceOrderItemResponse, ServiceOrderListItemResponse, ServiceOrderReceiptResponse, ServiceOrderResponse } from '@oficina/contracts';
+import type { DashboardBusinessSummaryResponse, DueServiceOrderInstallmentsResponse, PaginationData, ServiceOrderInstallmentResponse, ServiceOrderItemResponse, ServiceOrderListItemResponse, ServiceOrderReceiptResponse, ServiceOrderResponse, TechnicianProductivityResponse } from '@oficina/contracts';
 import { Roles } from '../../../shared/decorators/roles.decorator';
 import { CurrentUser } from '../../../shared/decorators/current-user.decorator';
 import { Permissions } from '../../../shared/decorators/permissions.decorator';
@@ -12,6 +12,7 @@ import {
   DeleteServiceOrderDto,
   GetServiceOrderDto,
   ServiceOrderListDto,
+  TechnicianProductivityDto,
   TransitionServiceOrderDto,
   UpdateServiceOrderDto,
 } from '../dto/service-order.dto';
@@ -89,6 +90,14 @@ export class ServiceOrdersController {
   @Get('dashboard/business-summary')
   async businessSummary(): Promise<DashboardBusinessSummaryResponse> {
     return this.serviceOrderManager.businessSummary();
+  }
+
+  @Roles(...ITEM_ROLES)
+  @Permissions('service_orders.prices')
+  @HttpCode(HttpStatus.OK)
+  @Post('service-orders/technician-productivity')
+  async technicianProductivity(@Body() body: TechnicianProductivityDto): Promise<TechnicianProductivityResponse> {
+    return this.serviceOrderManager.technicianProductivity(body);
   }
 
   @Roles(...ITEM_ROLES)
