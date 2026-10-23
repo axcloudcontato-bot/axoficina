@@ -1,5 +1,11 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
-import nodemailer from 'nodemailer';
+// `import nodemailer from 'nodemailer'` compila (tsconfig sem
+// esModuleInterop) para `require('nodemailer').default` — nodemailer é CJS
+// puro, sem `.default`, então isso virava `undefined` em runtime e
+// `nodemailer.createTransport(...)` quebrava com "Cannot read properties of
+// undefined (reading 'createTransport')" toda vez que alguém tentava enviar
+// e-mail. Import como namespace evita depender do interop.
+import * as nodemailer from 'nodemailer';
 import { TenantRepository } from '../../iam/repositories/tenant.repository';
 import { SecretEncryptionService } from './secret-encryption.service';
 
