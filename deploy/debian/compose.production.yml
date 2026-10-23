@@ -107,24 +107,21 @@ services:
       start_period: 20s
     networks: [internal]
 
+  # Ponto único de entrada atrás do Cloudflare Tunnel (cloudflared). O
+  # Cloudflare termina o HTTPS público na borda; daqui pra dentro é HTTP
+  # simples, por isso só publica em 127.0.0.1 — nada além do cloudflared
+  # rodando no próprio host deve conseguir falar com esta porta.
   caddy:
     image: caddy:2-alpine
     restart: unless-stopped
     depends_on:
       frontend:
         condition: service_healthy
-    environment:
-      DOMAIN: ${DOMAIN:-localhost}
-      ACME_EMAIL: ${ACME_EMAIL:-admin@localhost}
-    profiles: [https]
+    profiles: [tunnel]
     ports:
-      - "80:80"
-      - "443:443"
-      - "443:443/udp"
+      - "127.0.0.1:3010:80"
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
-      - caddy_data:/data
-      - caddy_config:/config
     networks: [internal]
 
 networks:
@@ -134,5 +131,3 @@ volumes:
   postgres_data:
   redis_data:
   service_order_uploads:
-  caddy_data:
-  caddy_config:

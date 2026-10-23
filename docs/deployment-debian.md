@@ -165,20 +165,34 @@ gunzip -c backups/postgres-AAAAmmdd-HHMMSS.sql.gz |
     psql -U axcloud -d axcloudmecanica
 ```
 
-## HTTPS opcional
+## Domínio público via Cloudflare Tunnel
 
-As portas 3005/3006 servem por HTTP. Para exposição na internet, prefira um
-domínio com HTTPS. Preencha `DOMAIN` e `ACME_EMAIL`, libere 80/443 e inicie o
-perfil Caddy:
+As portas 3005/3006 servem por HTTP e não deveriam ficar abertas para a
+internet. Para expor o sistema em um domínio com HTTPS sem abrir porta
+nenhuma no firewall, use um [Cloudflare
+Tunnel](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/)
+(`cloudflared`) apontando para um único ponto de entrada local: o perfil
+`tunnel` do Caddy, que escuta em `127.0.0.1:3010` e roteia `/api/*` para o
+backend e o resto para o frontend. O Cloudflare termina o HTTPS público na
+borda — este Caddy não emite certificado, só reparte o tráfego já em HTTP
+puro dentro da rede do Docker.
 
-```bash
-sudo ufw allow 80/tcp
-sudo ufw allow 443/tcp
-docker compose --profile https \
-  --env-file deploy/debian/.env.production \
-  -f deploy/debian/compose.production.yml up -d
-```
+1. Ajuste `deploy/debian/.env.production`:
 
-Antes disso, ajuste `PUBLIC_FRONTEND_URL=https://seu-dominio` e
-`PUBLIC_BACKEND_URL=https://seu-dominio`, depois execute novamente
-`./deploy/debian/deploy.sh` para recompilar o frontend.
+   ```dotenv
+   PUBLIC_FRONTEND_URL=https://seu-dominio
+   PUBLIC_BACKEND_URL=https://seu-dominio
+   COMPOSE_PROFILES=tunnel
+   ```
+
+2. Rode `./deploy/debian/deploy.sh` novamente (recompila o frontend com a
+   nova `NEXT_PUBLIC_API_URL` e já sobe o Caddy do perfil `tunnel` junto,
+   porque `COMPOSE_PROFILES` fica salvo no `.env.production`).
+
+3. No painel do Cloudflare Zero Trust (ou via `cloudflared tunnel route
+   dns`/`config.yml`, se preferir gerenciar por arquivo), configure o túnel
+   para encaminhar o hostname `seu-dominio` para `http://localhost:3010`.
+
+Não é preciso abrir `80`, `443`, `3005` nem `3006` no `ufw` — o
+`cloudflared` só faz conexão de saída até a borda da Cloudflare; o único
+tráfego de entrada no servidor continua sendo o SSH.

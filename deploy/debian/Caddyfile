@@ -1,8 +1,6 @@
-{
-	email {$ACME_EMAIL}
-}
-
-{$DOMAIN} {
+# HTTP puro: o Cloudflare Tunnel termina o HTTPS público na borda e entrega
+# aqui já descriptografado — não há certificado pra emitir neste Caddy.
+:80 {
 	encode zstd gzip
 
 	@api path /api/*
