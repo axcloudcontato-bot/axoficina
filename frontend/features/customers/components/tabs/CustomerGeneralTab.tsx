@@ -4,6 +4,7 @@ import type { UseFormReturn } from 'react-hook-form';
 import { Input } from '@/components/ui/input';
 import { FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { formatCEP, formatCNPJ, formatCPF, formatPhone, formatRG } from '@/lib/format-br-document';
 import type { CustomerFormValues } from '../CustomerFormModal';
 
 const TYPE_OPTIONS: Array<{ value: CustomerFormValues['type']; label: string }> = [
@@ -58,7 +59,12 @@ export function CustomerGeneralTab({ form, isEditing, showAddress = true, addres
               <FormItem>
                 <FormLabel>CPF ou CNPJ</FormLabel>
                 <FormControl>
-                  <Input placeholder="00.000.000/0000-00" {...field} />
+                  <Input
+                    placeholder={type === 'PJ' ? '00.000.000/0000-00' : '000.000.000-00'}
+                    inputMode="numeric"
+                    {...field}
+                    onChange={(event) => field.onChange((type === 'PJ' ? formatCNPJ : formatCPF)(event.target.value))}
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -86,7 +92,12 @@ export function CustomerGeneralTab({ form, isEditing, showAddress = true, addres
           <FormItem>
             <FormLabel>Telefone</FormLabel>
             <FormControl>
-              <Input placeholder="(11) 99999-9999" {...field} />
+              <Input
+                placeholder="(11) 99999-9999"
+                inputMode="numeric"
+                {...field}
+                onChange={(event) => field.onChange(formatPhone(event.target.value))}
+              />
             </FormControl>
             <FormMessage />
           </FormItem>
@@ -117,7 +128,12 @@ export function CustomerGeneralTab({ form, isEditing, showAddress = true, addres
             <FormItem>
               <FormLabel>RG (opcional)</FormLabel>
               <FormControl>
-                <Input placeholder="00.000.000-0" {...field} />
+                <Input
+                  placeholder="00.000.000-0"
+                  inputMode="numeric"
+                  {...field}
+                  onChange={(event) => field.onChange(formatRG(event.target.value))}
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -236,7 +252,12 @@ export function CustomerGeneralTab({ form, isEditing, showAddress = true, addres
             <FormItem>
               <FormLabel>CEP</FormLabel>
               <FormControl>
-                <Input placeholder="00000-000" {...field} />
+                <Input
+                  placeholder="00000-000"
+                  inputMode="numeric"
+                  {...field}
+                  onChange={(event) => field.onChange(formatCEP(event.target.value))}
+                />
               </FormControl>
               <FormMessage />
             </FormItem>

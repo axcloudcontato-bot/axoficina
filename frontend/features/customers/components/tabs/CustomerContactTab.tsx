@@ -3,6 +3,7 @@
 import type { UseFormReturn } from 'react-hook-form';
 import { Input } from '@/components/ui/input';
 import { FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { formatPhone } from '@/lib/format-br-document';
 import type { CustomerFormValues } from '../CustomerFormModal';
 
 interface CustomerContactTabProps {
@@ -35,7 +36,12 @@ export function CustomerContactTab({ form }: CustomerContactTabProps) {
           <FormItem>
             <FormLabel>Telefone (opcional)</FormLabel>
             <FormControl>
-              <Input placeholder="(11) 99999-9999" {...field} />
+              <Input
+                placeholder="(11) 99999-9999"
+                inputMode="numeric"
+                {...field}
+                onChange={(event) => field.onChange(formatPhone(event.target.value))}
+              />
             </FormControl>
             <FormMessage />
           </FormItem>
