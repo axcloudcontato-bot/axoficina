@@ -44,3 +44,9 @@ frontend/frontend/
 
 # visual brainstorming companion mockups (superpowers:brainstorming skill)
 .superpowers/
+
+# local Claude Code / tooling state — not part of the app
+.claude/
+chrome-devtools-mcp/
+.impeccable/
+**/.impeccable/
