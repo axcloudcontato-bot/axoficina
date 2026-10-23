@@ -109,6 +109,11 @@
     --duration-fast: 120ms;
     --duration-normal: 220ms;
     --shadow-inner-subtle: inset 0 1px 2px rgb(15 23 42 / 0.04);
+    /* Elevação calma: nunca um halo colorido, sempre offset + blur reais. */
+    --shadow-card: 0 1px 2px rgb(15 23 42 / 0.04), 0 1px 1px rgb(15 23 42 / 0.03);
+    --shadow-card-hover: 0 4px 10px rgb(15 23 42 / 0.06), 0 1px 2px rgb(15 23 42 / 0.04);
+    --shadow-popover: 0 12px 24px rgb(15 23 42 / 0.10), 0 2px 6px rgb(15 23 42 / 0.06);
+    --ease-settle: cubic-bezier(0.16, 1, 0.3, 1);
   }
 
   .dark {
@@ -151,6 +156,10 @@
     --info: var(--blue-400);
     --info-subtle: rgb(30 64 175 / 0.24);
     --info-strong: var(--blue-400);
+
+    --shadow-card: 0 1px 2px rgb(0 0 0 / 0.32), 0 1px 1px rgb(0 0 0 / 0.24);
+    --shadow-card-hover: 0 6px 16px rgb(0 0 0 / 0.36), 0 1px 2px rgb(0 0 0 / 0.3);
+    --shadow-popover: 0 16px 32px rgb(0 0 0 / 0.5), 0 2px 8px rgb(0 0 0 / 0.4);
   }
 
   * {
@@ -204,6 +213,26 @@
       animation-iteration-count: 1 !important;
       transition-duration: 0.01ms !important;
     }
+  }
+
+  /* Revelação de entrada: um único momento autoral ao montar uma tela,
+     nunca um efeito repetido por seção. Aplicar via [data-reveal] +
+     --reveal-order (ver utilitário em tailwind.config não é necessário:
+     a variável de atraso é inline por item). */
+  @keyframes reveal-rise {
+    from {
+      opacity: 0;
+      transform: translateY(6px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  [data-reveal] {
+    animation: reveal-rise 420ms var(--ease-settle, ease-out) both;
+    animation-delay: calc(var(--reveal-order, 0) * 45ms);
   }
 }
 

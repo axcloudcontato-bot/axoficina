@@ -8,7 +8,6 @@ import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { hasPermission } from '@/features/auth/permissions';
 import { useLogout } from '@/features/auth/hooks/use-auth';
-import { NewServiceOrderQuickStart } from '@/features/service-orders/components/NewServiceOrderQuickStart';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/stores/auth-store';
 import { useBranding } from '@/features/settings/hooks/use-settings';
@@ -74,7 +73,6 @@ export function Sidebar() {
         {!collapsed && <div className="min-w-0 flex-1 leading-tight"><p className="truncate font-bold tracking-tight text-text">{branding.data?.company.name || 'Oficina'}</p><p className="text-xs text-text-muted">Gestão operacional</p></div>}
         {!collapsed && <button type="button" onClick={toggleSidebar} aria-label="Recolher menu lateral" className="flex size-8 items-center justify-center rounded-button text-text-muted hover:bg-muted"><PanelLeftClose className="size-4" /></button>}
       </div>
-      {hasPermission(user, 'service_orders.manage') && <div className={cn('pb-3', collapsed ? 'px-3' : 'px-4')}><NewServiceOrderQuickStart size={collapsed ? 'icon' : 'default'} iconOnly={collapsed} className="h-10 w-full" /></div>}
       <nav aria-label="Navegação principal" className="flex-1 space-y-1 overflow-y-auto px-3 py-2">
         {groups.map((group) => {
           const items = visibleItems.filter((item) => item.group === group);

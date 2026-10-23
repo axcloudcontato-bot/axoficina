@@ -6,7 +6,7 @@ import { financialApi } from '../api/financial-api';
 
 const KEY = 'financial-core';
 export function useFinancialCategories() { return useQuery({ queryKey: [KEY, 'categories'], queryFn: financialApi.categories }); }
-export function useCashFlow(request: ListFinancialEntriesRequest) { return useQuery({ queryKey: [KEY, 'cash-flow', request], queryFn: () => financialApi.cashFlow(request) }); }
+export function useCashFlow(request: ListFinancialEntriesRequest, options?: { enabled?: boolean }) { return useQuery({ queryKey: [KEY, 'cash-flow', request], queryFn: () => financialApi.cashFlow(request), enabled: options?.enabled }); }
 export function useCreateFinancialCategory() {
   const client = useQueryClient();
   return useMutation({ mutationFn: (request: CreateFinancialCategoryRequest) => financialApi.createCategory(request), onSuccess: () => client.invalidateQueries({ queryKey: [KEY] }) });

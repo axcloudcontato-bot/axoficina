@@ -90,6 +90,12 @@ const config: Config = {
       },
       boxShadow: {
         'inner-subtle': 'var(--shadow-inner-subtle)',
+        card: 'var(--shadow-card)',
+        'card-hover': 'var(--shadow-card-hover)',
+        popover: 'var(--shadow-popover)',
+      },
+      transitionTimingFunction: {
+        settle: 'var(--ease-settle)',
       },
       fontFamily: {
         sans: ['var(--font-sans)', 'sans-serif'],

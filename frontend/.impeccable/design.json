@@ -1,0 +1,103 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-22T00:00:00.000Z",
+  "title": "Design System: Ax Oficina",
+  "extensions": {
+    "colorMeta": {
+      "operational-orange": { "role": "primary", "displayName": "Operational Orange", "canonical": "#c2410c", "tonalRamp": ["#431407", "#7c2d12", "#9a3412", "#c2410c", "#ea580c", "#f97316", "#fb923c", "#fed7aa"] },
+      "oficina-ink": { "role": "neutral", "displayName": "Oficina Ink", "canonical": "#0f172a", "tonalRamp": ["#0b0f17", "#0f172a", "#1e293b", "#334155", "#475569", "#64748b", "#94a3b8", "#cbd5e1"] },
+      "oficina-paper": { "role": "neutral", "displayName": "Oficina Paper", "canonical": "#ffffff", "tonalRamp": ["#0b0f17", "#111827", "#1e293b", "#334155", "#64748b", "#cbd5e1", "#f1f5f9", "#ffffff"] },
+      "oficina-surface": { "role": "neutral", "displayName": "Oficina Surface", "canonical": "#f8fafc" },
+      "oficina-border": { "role": "neutral", "displayName": "Oficina Border", "canonical": "#e2e8f0" },
+      "oficina-muted": { "role": "neutral", "displayName": "Oficina Muted", "canonical": "#64748b" },
+      "state-success": { "role": "success", "displayName": "State Success", "canonical": "#16a34a", "tonalRamp": ["#052e13", "#166534", "#16a34a", "#4ade80", "#86efac", "#bbf7d0", "#dcfce7", "#f0fdf4"] },
+      "state-warning": { "role": "warning", "displayName": "State Warning", "canonical": "#d97706", "tonalRamp": ["#431407", "#92400e", "#d97706", "#f59e0b", "#fbbf24", "#fcd34d", "#fde68a", "#fffbeb"] },
+      "state-danger": { "role": "danger", "displayName": "State Danger", "canonical": "#dc2626", "tonalRamp": ["#450a0a", "#991b1b", "#dc2626", "#f87171", "#fca5a5", "#fecaca", "#fee2e2", "#fef2f2"] },
+      "state-info": { "role": "info", "displayName": "State Info", "canonical": "#2563eb", "tonalRamp": ["#0c1a3d", "#1e40af", "#2563eb", "#60a5fa", "#93c5fd", "#bfdbfe", "#dbeafe", "#eff6ff"] }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Display", "purpose": "Hero KPI numerals only; drops to 1.875rem for long/currency values." },
+      "headline": { "displayName": "Headline", "purpose": "The page's own H2." },
+      "title": { "displayName": "Title", "purpose": "CardTitle — every card and panel heading." },
+      "body": { "displayName": "Body", "purpose": "Row content, descriptions, button labels." },
+      "label": { "displayName": "Label", "purpose": "Captions, badge text, uppercase nav group headers." }
+    },
+    "shadows": [
+      { "name": "card", "value": "0 1px 2px rgb(15 23 42 / 0.04), 0 1px 1px rgb(15 23 42 / 0.03)", "purpose": "Resting elevation for every Card (light theme)." },
+      { "name": "card-dark", "value": "0 1px 2px rgb(0 0 0 / 0.32), 0 1px 1px rgb(0 0 0 / 0.24)", "purpose": "Resting elevation for every Card (dark theme)." },
+      { "name": "card-hover", "value": "0 4px 10px rgb(15 23 42 / 0.06), 0 1px 2px rgb(15 23 42 / 0.04)", "purpose": "Hover lift for card-shaped links/buttons (light theme)." },
+      { "name": "card-hover-dark", "value": "0 6px 16px rgb(0 0 0 / 0.36), 0 1px 2px rgb(0 0 0 / 0.3)", "purpose": "Hover lift for card-shaped links/buttons (dark theme)." },
+      { "name": "popover", "value": "0 12px 24px rgb(15 23 42 / 0.10), 0 2px 6px rgb(15 23 42 / 0.06)", "purpose": "Floating surfaces: menus, popovers, dialogs (light theme)." },
+      { "name": "popover-dark", "value": "0 16px 32px rgb(0 0 0 / 0.5), 0 2px 8px rgb(0 0 0 / 0.4)", "purpose": "Floating surfaces: menus, popovers, dialogs (dark theme)." },
+      { "name": "inner-subtle", "value": "inset 0 1px 2px rgb(15 23 42 / 0.04)", "purpose": "Recessed detail, same in both themes." }
+    ],
+    "motion": [
+      { "name": "ease-settle", "value": "cubic-bezier(0.16, 1, 0.3, 1)", "purpose": "The one easing curve for the authored entrance reveal." },
+      { "name": "duration-fast", "value": "120ms", "purpose": "Micro-interaction transitions (hover color/background changes)." },
+      { "name": "duration-normal", "value": "220ms", "purpose": "Layout and elevation transitions (shadow, border-color, sidebar width)." },
+      { "name": "reveal-rise", "value": "420ms cubic-bezier(0.16, 1, 0.3, 1), ~45ms stagger per element via --reveal-order", "purpose": "Single authored entrance motion on screen mount; never a repeated scroll effect." }
+    ],
+    "breakpoints": [
+      { "name": "sm", "value": "640px" },
+      { "name": "md", "value": "768px" },
+      { "name": "lg", "value": "1024px" },
+      { "name": "xl", "value": "1280px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The one call-to-action per view; solid accent fill, anchored top-right of the page header.",
+      "html": "<button class=\"ds-btn-primary\">Novo atendimento</button>",
+      "css": ".ds-btn-primary { background: #c2410c; color: #ffffff; padding: 0 16px; height: 40px; border-radius: 8px; border: none; font-size: 0.875rem; font-weight: 600; font-family: 'Plus Jakarta Sans', sans-serif; display: inline-flex; align-items: center; gap: 8px; transition: background-color 120ms; } .ds-btn-primary:hover { background: #9a3412; } .ds-btn-primary:active { background: #7c2d12; } .ds-btn-primary:focus-visible { outline: none; box-shadow: 0 0 0 2px #ffffff, 0 0 0 4px #c2410c; }"
+    },
+    {
+      "name": "KPI Tile",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "Hero metric card: neutral icon chip, large tabular numeral, label, caption. Chip color only when it represents a real state.",
+      "html": "<a href=\"#\" class=\"ds-kpi-tile\"><div class=\"ds-kpi-icon\">$</div><p class=\"ds-kpi-value\">0</p><p class=\"ds-kpi-label\">Faturamento do dia</p><p class=\"ds-kpi-caption\">recebido hoje</p></a>",
+      "css": ".ds-kpi-tile { display: block; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; box-shadow: 0 1px 2px rgb(15 23 42 / 0.04), 0 1px 1px rgb(15 23 42 / 0.03); padding: 20px; font-family: 'Plus Jakarta Sans', sans-serif; transition: box-shadow 220ms, border-color 220ms; } .ds-kpi-tile:hover { border-color: rgb(194 65 12 / 0.3); box-shadow: 0 4px 10px rgb(15 23 42 / 0.06), 0 1px 2px rgb(15 23 42 / 0.04); } .ds-kpi-icon { width: 36px; height: 36px; border-radius: 8px; background: #f1f5f9; color: #64748b; display: flex; align-items: center; justify-content: center; font-weight: 700; } .ds-kpi-value { margin-top: 20px; font-size: 2.25rem; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1.1; letter-spacing: -0.01em; color: #0f172a; } .ds-kpi-label { margin-top: 10px; font-size: 0.875rem; font-weight: 600; color: #0f172a; } .ds-kpi-caption { margin-top: 4px; font-size: 0.75rem; color: #64748b; }"
+    },
+    {
+      "name": "State Badge",
+      "kind": "chip",
+      "refersTo": "badge",
+      "description": "Pill badge used only for a real success/warning/danger/info state — never decoration.",
+      "html": "<span class=\"ds-badge ds-badge-critical\">Atrasada</span>",
+      "css": ".ds-badge { display: inline-flex; align-items: center; gap: 6px; border-radius: 999px; padding: 2px 10px; font-size: 0.75rem; font-weight: 600; font-family: 'Plus Jakarta Sans', sans-serif; border: 1px solid transparent; } .ds-badge-critical { background: #fef2f2; color: #991b1b; border-color: rgb(220 38 38 / 0.2); } .ds-badge-success { background: #f0fdf4; color: #166534; border-color: rgb(22 163 74 / 0.2); } .ds-badge-attention { background: #fffbeb; color: #92400e; border-color: rgb(217 119 6 / 0.2); }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Calm Shop Floor",
+    "overview": "Ax Oficina rejects two ruts at once: the generic Tailwind-starter-kit look the product shipped with, and any theatrical \"mechanic shop\" costume (wrenches, caution-stripe yellow-and-black). What replaces both is the restraint of the best operational SaaS panels — a near-white/near-black neutral scale, a single confident accent reserved for action and real state, and typography carrying the entire hierarchy. The finish bar is explicitly Linear: full fidelity to that level of polish and calm, no ironic or \"customized\" flourish layered on top.\n\nThe system was built code-led (no comp), refined and finish-reviewed in this session: a calm hairline-and-soft-shadow elevation model, one authored entrance motion, tabular-numeral KPI typography, and — as of this review — color that communicates only real state, never decoration or position.",
+    "keyCharacteristics": [
+      "Near-white/near-black neutral scale (slate ramp) carries almost everything; color is the exception, not the texture.",
+      "One accent (orange) is reserved for the primary action and genuinely active/open state — it does not decorate.",
+      "Hairline 1px borders do the primary separating; soft real shadows (never a colored halo) add elevation only where it means something.",
+      "Every KPI and table figure uses tabular numerals.",
+      "One authored entrance motion plays once per screen mount; nothing else moves on its own."
+    ],
+    "rules": [
+      { "name": "The State-Only Color Rule", "body": "Color communicates a real, present state — success, warning, danger, info, or the one reserved active/primary accent — and nothing else. An icon chip, an empty-state illustration, or a KPI tile never takes a saturated color because it looks good or fills a grid; it earns color only when it is actually reporting that state.", "section": "colors" },
+      { "name": "The One Accent Rule", "body": "Operational Orange is spent on at most one primary action and one \"active work\" metric per view. When a hero row needs more than one saturated tile at once, the extra tiles must each be answering a real success/warning/danger question — never simultaneous decoration.", "section": "colors" },
+      { "name": "The Tabular Numeral Rule", "body": "Every KPI value, table figure, and currency amount is set with tabular-nums. A number that moves (refresh, live update) never reflows its neighbors.", "section": "typography" },
+      { "name": "The Real Shadow Rule", "body": "A shadow is always a genuine offset-plus-blur pair sampled from the neutral ink color, never a flat colored glow or a border-radius trick standing in for depth.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do reserve Operational Orange for the primary action and genuinely active/open state — nothing else earns it.",
+      "Do set every KPI, table figure, and currency amount in tabular numerals.",
+      "Do pair every shadow with a real offset + blur sampled from ink; define dark-mode shadows independently rather than scaling the light values.",
+      "Do keep icon chips to one small Lucide glyph on a flat tint — never an illustration or gradient.",
+      "Do place exactly one primary call-to-action per view, anchored top-right of the page header."
+    ],
+    "donts": [
+      "Don't color an empty or neutral state success-green by default — reserve success for a genuinely positive outcome.",
+      "Don't assign a warning/danger/primary tone to a metric that isn't actually reporting that state.",
+      "Don't duplicate a primary call-to-action between the page header and the navigation chrome.",
+      "Don't ship two card panels presenting the same underlying list from different angles when one prioritized list says it clearly."
+    ]
+  }
+}
