@@ -30,7 +30,7 @@ docker compose version
 ```bash
 sudo mkdir -p /opt/oficina-mecanica
 sudo chown "$USER":"$USER" /opt/oficina-mecanica
-git clone https://github.com/sergiooliveiracabonnet/gestao-mecanica.git \
+git clone https://github.com/axcloudcontato-bot/axoficina.git \
   /opt/oficina-mecanica
 cd /opt/oficina-mecanica
 ```
