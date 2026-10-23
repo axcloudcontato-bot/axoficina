@@ -109,7 +109,7 @@ describe('CustomerFormModal', () => {
 
     await waitFor(() =>
       expect(customersApi.create).toHaveBeenCalledWith(
-        expect.objectContaining({ type: 'PF', document: '11144477735', name: 'Maria Souza', phone: '11988887777' }),
+        expect.objectContaining({ type: 'PF', document: '111.444.777-35', name: 'Maria Souza', phone: '(11) 98888-7777' }),
       ),
     );
     await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
@@ -138,8 +138,11 @@ describe('CustomerFormModal', () => {
     await user.type(screen.getByLabelText(/cpf ou cnpj/i), '11144477735');
     await user.type(screen.getByLabelText(/^nome$/i), 'Maria Souza');
     await user.type(screen.getByLabelText(/telefone/i), '11988887777');
+
+    await user.click(screen.getByRole('tab', { name: /endereço/i }));
     await user.type(screen.getByLabelText(/^rua$/i), 'Rua das Flores');
     await user.type(screen.getByLabelText(/^cidade$/i), 'São Paulo');
+
     await user.click(screen.getByRole('button', { name: /cadastrar cliente/i }));
 
     await waitFor(() =>
@@ -162,7 +165,7 @@ describe('CustomerFormModal', () => {
 
     await waitFor(() =>
       expect(customersApi.update).toHaveBeenCalledWith(
-        expect.objectContaining({ id: 'c1', name: 'João da Silva', phone: '11777776666' }),
+        expect.objectContaining({ id: 'c1', name: 'João da Silva', phone: '(11) 77777-6666' }),
       ),
     );
     expect(customersApi.update).not.toHaveBeenCalledWith(expect.objectContaining({ type: expect.anything() }));

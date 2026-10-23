@@ -10,10 +10,11 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Form } from '@/components/ui/form';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import { AlertCircle, Check, ChevronLeft, ChevronRight } from 'lucide-react';
+import { WarningCircle, Check, CaretLeft, CaretRight, User } from '@phosphor-icons/react';
 import { extractErrorMessage, extractFieldErrors } from '@/lib/api/client';
 import { useCreateCustomer, useUpdateCustomer } from '../hooks/use-customers';
 import { CustomerGeneralTab } from './tabs/CustomerGeneralTab';
+import { CustomerAddressTab } from './tabs/CustomerAddressTab';
 import { CustomerContactTab } from './tabs/CustomerContactTab';
 import { CustomerPreferencesTab } from './tabs/CustomerPreferencesTab';
 import { CustomerNotesTab } from './tabs/CustomerNotesTab';
@@ -213,16 +214,25 @@ export function CustomerFormModal({ open, onOpenChange, customer, onCreated, pre
     if (currentIndex > 0) setActiveTab(GUIDED_STEPS[currentIndex - 1].id);
   }
 
-  const hasGeneralErrors = ['type', 'document', 'name', 'phone', 'email', 'rg', 'stateRegistration', 'address'].some((field) => Boolean(form.formState.errors[field as keyof CustomerFormValues]));
+  const hasGeneralErrors = ['type', 'document', 'name', 'phone', 'email', 'rg', 'stateRegistration'].some((field) => Boolean(form.formState.errors[field as keyof CustomerFormValues]));
+  const hasAddressErrors = Boolean(form.formState.errors.address);
   const hasContactErrors = ['secondaryContactName', 'secondaryContactPhone', 'secondaryContactRelation'].some((field) => Boolean(form.formState.errors[field as keyof CustomerFormValues]));
   const hasPreferenceErrors = ['preferredContactChannel', 'preferredContactTime'].some((field) => Boolean(form.formState.errors[field as keyof CustomerFormValues]));
   const hasNotesErrors = Boolean(form.formState.errors.notes);
 
   return (
     <Dialog open={open} modal={presentation !== 'page'} onOpenChange={onOpenChange}>
-      <DialogContent data-page={presentation === 'page' ? true : undefined} className={`max-h-[92vh] overflow-y-auto ${presentation === 'page' ? '' : 'sm:max-w-4xl lg:max-w-5xl'}`}>
+      <DialogContent
+        data-page={presentation === 'page' ? true : undefined}
+        className={presentation === 'page' ? 'max-h-[92vh]' : 'max-h-[92vh] sm:max-w-5xl lg:max-w-6xl'}
+      >
         <DialogHeader>
-          <DialogTitle>{isEditing ? 'Editar cliente' : 'Novo cliente'}</DialogTitle>
+          <DialogTitle className="flex items-center gap-2.5">
+            <span data-reveal className="flex size-8 shrink-0 items-center justify-center rounded-button bg-muted text-text-muted">
+              <User className="size-[18px]" aria-hidden="true" />
+            </span>
+            {isEditing ? 'Editar cliente' : 'Novo cliente'}
+          </DialogTitle>
           <DialogDescription>
             {isEditing
               ? 'Documento e tipo não podem ser alterados depois do cadastro.'
@@ -241,42 +251,53 @@ export function CustomerFormModal({ open, onOpenChange, customer, onCreated, pre
                     return <li key={item.id} className={`flex items-center gap-2 rounded-button border px-3 py-2 text-xs font-semibold ${active ? 'border-primary/40 bg-primary-subtle text-primary-strong' : complete ? 'border-success/30 bg-success-subtle text-success-strong' : 'border-border bg-surface text-text-muted'}`} aria-current={active ? 'step' : undefined}><span className={`flex size-6 shrink-0 items-center justify-center rounded-full ${active ? 'bg-primary text-primary-foreground' : complete ? 'bg-success text-white' : 'bg-muted text-text-muted'}`}>{complete ? <Check className="size-3.5" aria-hidden="true" /> : index + 1}</span>{item.label}</li>;
                   })}
                 </ol>
-                {activeTab === 'general' && <CustomerGeneralTab form={form} isEditing={false} showAddress={false} />}
-                {activeTab === 'address' && <CustomerGeneralTab form={form} isEditing={false} addressOnly />}
+                {activeTab === 'general' && <CustomerGeneralTab form={form} isEditing={false} />}
+                {activeTab === 'address' && <CustomerAddressTab form={form} />}
                 {activeTab === 'contact' && <CustomerContactTab form={form} />}
                 {activeTab === 'preferences' && <CustomerPreferencesTab form={form} />}
                 {activeTab === 'notes' && <CustomerNotesTab form={form} />}
               </div>
             ) : <Tabs value={activeTab} onValueChange={setActiveTab}>
               <TabsList className="flex w-full justify-start gap-1 overflow-x-auto p-1">
-                <TabsTrigger className="shrink-0" value="general">Dados Gerais{hasGeneralErrors && <AlertCircle className="ml-1.5 size-3.5 text-danger" aria-label="com erros" />}</TabsTrigger>
-                <TabsTrigger className="shrink-0" value="contact">Contato{hasContactErrors && <AlertCircle className="ml-1.5 size-3.5 text-danger" aria-label="com erros" />}</TabsTrigger>
-                <TabsTrigger className="shrink-0" value="preferences">Preferências{hasPreferenceErrors && <AlertCircle className="ml-1.5 size-3.5 text-danger" aria-label="com erros" />}</TabsTrigger>
-                <TabsTrigger className="shrink-0" value="notes">Observações{hasNotesErrors && <AlertCircle className="ml-1.5 size-3.5 text-danger" aria-label="com erros" />}</TabsTrigger>
+                <TabsTrigger className="shrink-0" value="general">Dados Gerais{hasGeneralErrors && <WarningCircle className="ml-1.5 size-3.5 text-danger" aria-label="com erros" />}</TabsTrigger>
+                <TabsTrigger className="shrink-0" value="address">Endereço{hasAddressErrors && <WarningCircle className="ml-1.5 size-3.5 text-danger" aria-label="com erros" />}</TabsTrigger>
+                <TabsTrigger className="shrink-0" value="contact">Contato{hasContactErrors && <WarningCircle className="ml-1.5 size-3.5 text-danger" aria-label="com erros" />}</TabsTrigger>
+                <TabsTrigger className="shrink-0" value="preferences">Preferências{hasPreferenceErrors && <WarningCircle className="ml-1.5 size-3.5 text-danger" aria-label="com erros" />}</TabsTrigger>
+                <TabsTrigger className="shrink-0" value="notes">Observações{hasNotesErrors && <WarningCircle className="ml-1.5 size-3.5 text-danger" aria-label="com erros" />}</TabsTrigger>
                 <TabsTrigger className="shrink-0" value="history">Histórico</TabsTrigger>
               </TabsList>
-              <TabsContent value="general">
-                <CustomerGeneralTab form={form} isEditing={isEditing} />
-              </TabsContent>
-              <TabsContent value="contact">
-                <CustomerContactTab form={form} />
-              </TabsContent>
-              <TabsContent value="preferences">
-                <CustomerPreferencesTab form={form} />
-              </TabsContent>
-              <TabsContent value="notes">
-                <CustomerNotesTab form={form} />
-              </TabsContent>
-              <TabsContent value="history">
-                <CustomerHistoryTab customer={customer} />
-              </TabsContent>
+              {/* Altura fixa (do tamanho da maior aba — Endereço): o conteúdo de
+                  cada aba tem um tamanho diferente. Sem isso, a altura do modal
+                  mudava a cada troca de aba e, como ele é centralizado na tela,
+                  parecia "pular" de posição. Fixar só esta área (em vez do
+                  modal inteiro) evita sobrar espaço vazio nas abas curtas. */}
+              <div className="h-[380px] overflow-y-auto pr-1 pt-1">
+                <TabsContent value="general">
+                  <CustomerGeneralTab form={form} isEditing={isEditing} />
+                </TabsContent>
+                <TabsContent value="address">
+                  <CustomerAddressTab form={form} />
+                </TabsContent>
+                <TabsContent value="contact">
+                  <CustomerContactTab form={form} />
+                </TabsContent>
+                <TabsContent value="preferences">
+                  <CustomerPreferencesTab form={form} />
+                </TabsContent>
+                <TabsContent value="notes">
+                  <CustomerNotesTab form={form} />
+                </TabsContent>
+                <TabsContent value="history">
+                  <CustomerHistoryTab customer={customer} />
+                </TabsContent>
+              </div>
             </Tabs>}
             <DialogFooter className="gap-2 border-t border-border pt-4 sm:gap-2">
               <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={isPending}>
                 Cancelar
               </Button>
-              {isGuidedCreate && activeTab !== 'general' && <Button type="button" variant="outline" onClick={goToPreviousGuidedStep} disabled={isPending}><ChevronLeft className="size-4" aria-hidden="true" /> Voltar</Button>}
-              {isGuidedCreate && activeTab !== 'notes' ? <Button type="button" onClick={goToNextGuidedStep} disabled={isPending} className="sm:min-w-32">Próximo <ChevronRight className="size-4" aria-hidden="true" /></Button> : <Button type="submit" disabled={isPending} className="sm:min-w-40">
+              {isGuidedCreate && activeTab !== 'general' && <Button type="button" variant="outline" onClick={goToPreviousGuidedStep} disabled={isPending}><CaretLeft className="size-4" aria-hidden="true" /> Voltar</Button>}
+              {isGuidedCreate && activeTab !== 'notes' ? <Button type="button" onClick={goToNextGuidedStep} disabled={isPending} className="sm:min-w-32">Próximo <CaretRight className="size-4" aria-hidden="true" /></Button> : <Button type="submit" disabled={isPending} className="sm:min-w-40">
                 {isPending ? 'Salvando...' : isEditing ? 'Salvar alterações' : 'Cadastrar cliente'}
               </Button>}
             </DialogFooter>

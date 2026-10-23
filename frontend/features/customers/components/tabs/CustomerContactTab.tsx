@@ -16,37 +16,39 @@ export function CustomerContactTab({ form }: CustomerContactTabProps) {
       <p className="text-sm text-text-muted">
         Contato alternativo (cônjuge, sócio, motorista) pra quando quem atende o telefone principal não é o cliente.
       </p>
-      <FormField
-        control={form.control}
-        name="secondaryContactName"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>Nome (opcional)</FormLabel>
-            <FormControl>
-              <Input placeholder="Nome do contato" {...field} />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
-      <FormField
-        control={form.control}
-        name="secondaryContactPhone"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>Telefone (opcional)</FormLabel>
-            <FormControl>
-              <Input
-                placeholder="(11) 99999-9999"
-                inputMode="numeric"
-                {...field}
-                onChange={(event) => field.onChange(formatPhone(event.target.value))}
-              />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <FormField
+          control={form.control}
+          name="secondaryContactName"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Nome (opcional)</FormLabel>
+              <FormControl>
+                <Input placeholder="Nome do contato" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="secondaryContactPhone"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Telefone (opcional)</FormLabel>
+              <FormControl>
+                <Input
+                  placeholder="(11) 99999-9999"
+                  inputMode="numeric"
+                  {...field}
+                  onChange={(event) => field.onChange(formatPhone(event.target.value))}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+      </div>
       <FormField
         control={form.control}
         name="secondaryContactRelation"
