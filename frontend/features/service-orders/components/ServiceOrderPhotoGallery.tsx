@@ -9,6 +9,7 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { extractErrorMessage } from '@/lib/api/client';
+import { compressImageFile } from '@/lib/compress-image';
 import { useDeleteServiceOrderPhoto, useServiceOrderPhotoBlob, useServiceOrderPhotos, useUploadServiceOrderPhoto } from '../hooks/use-service-orders';
 
 const ANGLE_LABELS: Record<ServiceOrderPhotoAngle, string> = {
@@ -119,7 +120,8 @@ function PhotoSlot({ serviceOrderId, payload, label, photos, canManage, onSelect
     const file = event.target.files?.[0];
     if (!file) return;
     try {
-      await upload.mutateAsync({ serviceOrderId, ...payload, file });
+      const compressed = await compressImageFile(file);
+      await upload.mutateAsync({ serviceOrderId, ...payload, file: compressed });
     } catch (error) {
       toast.error(extractErrorMessage(error, 'Não foi possível enviar a foto.'));
     } finally {
