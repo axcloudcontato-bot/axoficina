@@ -31,6 +31,16 @@ O histórico distingue envio aceito pelo WA-AKG de compartilhamento manual prepa
 
 Se a integração estiver desativada, o WhatsApp mantém o compartilhamento manual com link para a página de botões. Mensagens sem a opção de botões continuam no compartilhamento manual. E-mails mantêm os botões HTML com confirmação na página pública. As escolhas registradas não alteram automaticamente a OS ou a agenda.
 
+## Notificações no painel
+
+O sino do cabeçalho também mostra **Respostas dos clientes**. Cada resposta registrada, por WhatsApp ou e-mail, aparece com cliente, OS, pergunta, opção escolhida e data. Ao abrir a OS pela notificação, ela é marcada como lida; também é possível usar **Marcar como lida** sem abrir a ordem. A entrada continua no histórico do sino e há paginação para respostas anteriores.
+
+Com o painel aberto, a consulta é atualizada a cada 10 segundos e novas respostas exibem um aviso com **Ver notificações**. Ao entrar novamente, o usuário recebe um resumo das respostas ainda não lidas. O contador do sino soma respostas não lidas e os alertas de manutenção e financeiros existentes. Não há notificação do sistema operacional com o navegador fechado.
+
+A leitura é persistida por usuário em `customer_reply_reads` (migração `29_customer_reply_notifications`): a leitura de um atendente não apaga o aviso dos demais. A fonte da notificação é a resposta já gravada em `customer_messages`, evitando duplicação e a necessidade de uma segunda escrita no webhook. Respostas anteriores à migração também aparecem, inclusive após a expiração do link. Clientes e OS excluídos não são incluídos no painel. O acesso exige `service_orders.view` e `service_orders.prices`, como o histórico de perguntas da OS.
+
+Rotas autenticadas: `GET /api/v1/customer-reply-notifications` (cursor opcional) e `POST /api/v1/customer-reply-notifications/:id/read`. Ambas usam a oficina e o usuário da sessão; uma resposta de outra oficina não pode ser consultada nem marcada como lida.
+
 ## Referências e validação
 
 - [WA-AKG v1.7.0](https://github.com/mrifqidaffaaditya/WA-AKG/releases/tag/v1.7.0).

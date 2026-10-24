@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 
 export function CustomerMessageHistory({ serviceOrderId }: { serviceOrderId: string }) {
   const history = useQuery({ queryKey: ['customer-messages', serviceOrderId], queryFn: () => customerMessagesApi.list(serviceOrderId), refetchInterval: 30_000 });
-  return <div className="mt-4 border-t border-border pt-4">
+  return <div id="customer-message-history" className="mt-4 scroll-mt-24 border-t border-border pt-4">
     <div className="flex items-center justify-between gap-2"><h4 className="text-sm font-semibold">Respostas do cliente</h4><Button variant="ghost" size="sm" onClick={() => history.refetch()} disabled={history.isFetching}>Atualizar</Button></div>
     {history.isPending ? <p className="text-sm text-text-muted">Carregando respostas...</p> : history.isError ? <p role="alert" className="text-sm text-destructive">Não foi possível carregar as respostas. Tente atualizar.</p> : !history.data.messages.length ? <p className="text-sm text-text-muted">As perguntas enviadas com botões e suas respostas aparecerão aqui.</p> : <ul className="mt-2 space-y-3">
       {history.data.messages.map((message) => <li key={message.id} className="rounded-button bg-muted/40 p-3 text-sm">

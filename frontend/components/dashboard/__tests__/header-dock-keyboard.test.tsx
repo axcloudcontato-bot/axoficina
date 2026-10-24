@@ -9,6 +9,7 @@ const { setTheme } = vi.hoisted(() => ({ setTheme: vi.fn() }));
 vi.mock('next/navigation', () => ({ usePathname: () => '/customers' }));
 vi.mock('next-themes', () => ({ useTheme: () => ({ theme: 'light', resolvedTheme: 'light', setTheme }) }));
 vi.mock('@/features/auth/hooks/use-auth', () => ({ useLogout: () => ({ mutate: vi.fn() }) }));
+vi.mock('@/features/notifications/hooks/use-customer-reply-notifications', () => ({ useCustomerReplyNotifications: () => ({ enabled: false, unreadCount: 0 }) }));
 vi.mock('@/features/maintenance-alerts/hooks/use-maintenance-alerts', () => ({ useMaintenanceAlertsList: () => ({ data: { total: 0 } }) }));
 vi.mock('@/features/service-orders/hooks/use-service-orders', () => ({ useDueServiceOrderInstallments: () => ({ data: { total: 0, items: [] } }), useServiceOrdersList: () => ({ data: { items: [] }, isFetching: false }) }));
 

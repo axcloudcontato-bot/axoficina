@@ -13,6 +13,7 @@ vi.mock('@/features/service-orders/hooks/use-service-orders', () => ({
   useServiceOrdersList: () => ({ data: undefined, isFetching: false }),
 }));
 vi.mock('@/features/auth/hooks/use-auth', () => ({ useLogout: () => ({ mutate: vi.fn() }) }));
+vi.mock('@/features/notifications/hooks/use-customer-reply-notifications', () => ({ useCustomerReplyNotifications: () => ({ enabled: false, unreadCount: 0 }) }));
 
 describe('Topbar', () => {
   beforeEach(() => useMaintenanceAlertsList.mockReset());

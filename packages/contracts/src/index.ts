@@ -2,6 +2,7 @@
 export * from './constants';
 export * from './legal';
 export * from './customer-message';
+export * from './customer-reply-notification';
 export * from './whatsapp-settings';
 export * from './request/auth.request';
 export * from './request/user.request';

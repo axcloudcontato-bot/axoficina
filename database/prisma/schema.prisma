@@ -528,7 +528,20 @@ model CustomerMessage {
 
   @@index([tenantId, serviceOrderId, createdAt])
   @@index([tenantId, customerId])
+  @@index([tenantId, answeredAt, id])
   @@map("customer_messages")
+}
+
+// A resposta é a própria notificação; esta tabela guarda apenas a leitura
+// por usuário. Repetições do callback não criam notificações duplicadas.
+model CustomerReplyRead {
+  tenantId          String   @map("tenant_id") @db.Uuid
+  userId            String   @map("user_id") @db.Uuid
+  customerMessageId String   @map("customer_message_id") @db.Uuid
+  readAt            DateTime @default(now()) @map("read_at") @db.Timestamptz
+
+  @@id([tenantId, userId, customerMessageId])
+  @@map("customer_reply_reads")
 }
 
 model Appointment {

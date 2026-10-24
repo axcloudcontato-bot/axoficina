@@ -17,6 +17,8 @@ import { CustomerMessagesController } from './controllers/customer-messages.cont
 import { CustomerMessageManager } from './managers/customer-message.manager';
 import { CustomerMessageRepository } from './repositories/customer-message.repository';
 import { WaAkgWebhookController } from './controllers/wa-akg-webhook.controller';
+import { CustomerReplyNotificationsController } from './controllers/customer-reply-notifications.controller';
+import { CustomerReplyNotificationRepository } from './repositories/customer-reply-notification.repository';
 
 // Importa VehiclesModule/CustomersModule/IamModule pra ter acesso aos
 // repositórios que exportam — ServiceOrderManager valida vehicleId (e lê
@@ -29,8 +31,8 @@ import { WaAkgWebhookController } from './controllers/wa-akg-webhook.controller'
 // ver comentário em maintenance-alerts.module.ts.
 @Module({
   imports: [VehiclesModule, CustomersModule, IamModule, SettingsModule, forwardRef(() => MaintenanceAlertsModule)],
-  controllers: [ServiceOrdersController, CustomerMessagesController, WaAkgWebhookController],
-  providers: [CustomerMessageManager, CustomerMessageRepository, ServiceOrderManager, ServiceOrderPhotoManager, ServiceOrderPhotoStorageService, ServiceOrderRepository, ServiceOrderStatusHistoryRepository, ServiceOrderItemRepository, ServiceOrderReceiptRepository, ServiceOrderPhotoRepository],
+  controllers: [ServiceOrdersController, CustomerMessagesController, WaAkgWebhookController, CustomerReplyNotificationsController],
+  providers: [CustomerReplyNotificationRepository, CustomerMessageManager, CustomerMessageRepository, ServiceOrderManager, ServiceOrderPhotoManager, ServiceOrderPhotoStorageService, ServiceOrderRepository, ServiceOrderStatusHistoryRepository, ServiceOrderItemRepository, ServiceOrderReceiptRepository, ServiceOrderPhotoRepository],
   // MaintenanceAlertsModule (Feature Motor de Manutenção Preventiva) importa
   // este módulo pra usar ServiceOrderRepository.lastDeliveredClosedAtUnscoped
   // no job diário de scan.

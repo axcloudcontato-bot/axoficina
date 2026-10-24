@@ -54,6 +54,7 @@ describe('Customer message buttons (HTTP + PostgreSQL)', () => {
   afterAll(async () => {
     if (prisma && tenantIds.length) {
       const where = { tenantId: { in: tenantIds } };
+      await prisma.unscoped.customerReplyRead.deleteMany({ where });
       await prisma.unscoped.customerMessage.deleteMany({ where });
       await prisma.unscoped.serviceOrder.deleteMany({ where });
       await prisma.unscoped.vehicle.deleteMany({ where });
@@ -105,6 +106,32 @@ describe('Customer message buttons (HTTP + PostgreSQL)', () => {
     await request(app.getHttpServer()).post('/api/v1/public/customer-message/answer').send({ token: publicToken, selected_option: winningOption }).expect(200);
     const history = await request(app.getHttpServer()).get('/api/v1/service-orders/customer-messages').query({ serviceOrderId: orderId }).set('Authorization', `Bearer ${owner.token}`).expect(200);
     expect(history.body.messages[0]).toMatchObject({ selected_option: winningOption, answered_at: expect.any(String) });
+  });
+
+  it('keeps a persistent response notification per user and isolates tenants and permissions', async () => {
+    const path = '/api/v1/customer-reply-notifications';
+    await request(app.getHttpServer()).get(path).expect(401);
+    const initial = await request(app.getHttpServer()).get(path).set('Authorization', `Bearer ${owner.token}`).expect(200);
+    expect(initial.headers['cache-control']).toBe('no-store');
+    expect(initial.body).toMatchObject({ unread_count: 1, items: [{ id: messageId, service_order_id: orderId, customer_name: 'Cliente de teste', selected_option: payload().options[winningOption], channel: 'WHATSAPP' }] });
+    expect(JSON.stringify(initial.body)).not.toMatch(/token_hash|whatsapp_recipient|provider_message_id/);
+    expect((await request(app.getHttpServer()).get(path).set('Authorization', `Bearer ${outsider.token}`).expect(200)).body).toMatchObject({ items: [], unread_count: 0 });
+    await request(app.getHttpServer()).post(`${path}/${messageId}/read`).set('Authorization', `Bearer ${outsider.token}`).expect(404);
+    await request(app.getHttpServer()).get(path).query({ cursor: 'invalid' }).set('Authorization', `Bearer ${owner.token}`).expect(400);
+    await Promise.all([0, 1].map(() => request(app.getHttpServer()).post(`${path}/${messageId}/read`).set('Authorization', `Bearer ${owner.token}`).expect(200)));
+    const read = await request(app.getHttpServer()).get(path).set('Authorization', `Bearer ${owner.token}`).expect(200);
+    expect(read.body).toMatchObject({ unread_count: 0, items: [{ id: messageId, read_at: expect.any(String) }] });
+    expect(await prisma.unscoped.customerReplyRead.count({ where: { tenantId: owner.tenantId, customerMessageId: messageId } })).toBe(1);
+    const admin = await prisma.unscoped.user.findFirstOrThrow({ where: { tenantId: owner.tenantId } });
+    const mechanicRole = await prisma.unscoped.role.findFirstOrThrow({ where: { name: 'MECHANIC', tenantId: null } });
+    for (const [index, roleId] of [admin.roleId, mechanicRole.id].entries()) {
+      const colleague = await prisma.unscoped.user.create({ data: { tenantId: owner.tenantId, roleId, status: 'active', name: `Colega ${index}`, email: `reply-colleague-${index}-${Date.now()}@example.invalid`, passwordHash: admin.passwordHash } });
+      const login = await request(app.getHttpServer()).post('/api/v1/auth/login').send({ email: colleague.email, password: 'supersecret1' }).expect(200);
+      const token = login.body.access_token;
+      const feed = await request(app.getHttpServer()).get(path).set('Authorization', `Bearer ${token}`).expect(index === 0 ? 200 : 403);
+      if (index === 0) expect(feed.body).toMatchObject({ unread_count: 1, items: [{ id: messageId }] });
+      else await request(app.getHttpServer()).post(`${path}/${messageId}/read`).set('Authorization', `Bearer ${token}`).expect(403);
+    }
   });
 
   it('renders email buttons through the configured mailer', async () => {
@@ -163,8 +190,35 @@ describe('Customer message buttons (HTTP + PostgreSQL)', () => {
     confirmationFetch.mockRestore();
     const history = await request(app.getHttpServer()).get('/api/v1/service-orders/customer-messages').query({ serviceOrderId: orderId }).set('Authorization', `Bearer ${owner.token}`).expect(200);
     expect(history.body.messages.find((message: { delivery_mode: string }) => message.delivery_mode === 'WA_AKG')).toMatchObject({ selected_option: 0, sent_at: expect.any(String), answered_at: expect.any(String) });
+    const notifications = await request(app.getHttpServer()).get('/api/v1/customer-reply-notifications').set('Authorization', `Bearer ${owner.token}`).expect(200);
+    expect(notifications.body.items.filter((item: { selected_option: string; read_at?: string }) => item.selected_option === 'Confirmar' && !item.read_at)).toHaveLength(1);
+    expect(notifications.body.unread_count).toBe(1);
     // Restore manual sharing for the original link-expiry scenario below.
     await prisma.unscoped.tenant.update({ where: { id: owner.tenantId }, data: { waAkgEnabled: false } });
+  });
+
+  it('includes email replies and paginates history without losing unread counts', async () => {
+    const email = await request(app.getHttpServer()).post('/api/v1/service-orders/customer-messages').set('Authorization', `Bearer ${owner.token}`).send({ ...payload(), channel: 'EMAIL' }).expect(201);
+    const token = new URL(email.body.response_url).pathname.split('/').pop()!;
+    await request(app.getHttpServer()).post('/api/v1/public/customer-message/answer').send({ token, selected_option: 1 }).expect(200);
+    const feed = await request(app.getHttpServer()).get('/api/v1/customer-reply-notifications').set('Authorization', `Bearer ${owner.token}`).expect(200);
+    expect(feed.body.items[0]).toMatchObject({ channel: 'EMAIL', selected_option: 'Outro horário' });
+    const original = await prisma.unscoped.customerMessage.findFirstOrThrow({ where: { id: messageId } });
+    const ids: string[] = [];
+    try {
+      for (let index = 0; index < 22; index++) {
+        const record = await prisma.unscoped.customerMessage.create({ data: { ...original, id: undefined, tokenHash: `notification-${owner.tenantId}-${index}` } });
+        ids.push(record.id);
+      }
+      const first = await request(app.getHttpServer()).get('/api/v1/customer-reply-notifications').set('Authorization', `Bearer ${owner.token}`).expect(200);
+      expect(first.body.items).toHaveLength(20);
+      expect(first.body.unread_count).toBe(24);
+      const second = await request(app.getHttpServer()).get('/api/v1/customer-reply-notifications').query({ cursor: first.body.next_cursor }).set('Authorization', `Bearer ${owner.token}`).expect(200);
+      expect(second.body.unread_count).toBe(24);
+      expect(second.body).not.toHaveProperty('next_cursor');
+      const all = [...first.body.items, ...second.body.items];
+      expect(new Set(all.map((item: { id: string }) => item.id)).size).toBe(25);
+    } finally { await prisma.unscoped.customerMessage.deleteMany({ where: { id: { in: ids }, tenantId: owner.tenantId } }); }
   });
 
   it('blocks expired and cancelled-order links', async () => {
@@ -175,5 +229,9 @@ describe('Customer message buttons (HTTP + PostgreSQL)', () => {
     const freshToken = new URL(result.body.response_url).pathname.split('/').pop()!;
     await prisma.unscoped.serviceOrder.update({ where: { id: orderId }, data: { status: 'CANCELLED' } });
     await request(app.getHttpServer()).get('/api/v1/public/customer-message').query({ token: freshToken }).expect(404);
+    const history = await request(app.getHttpServer()).get('/api/v1/customer-reply-notifications').set('Authorization', `Bearer ${owner.token}`).expect(200);
+    expect(history.body.items.some((item: { id: string }) => item.id === messageId)).toBe(true);
+    await prisma.unscoped.serviceOrder.update({ where: { id: orderId }, data: { deletedAt: new Date() } });
+    expect((await request(app.getHttpServer()).get('/api/v1/customer-reply-notifications').set('Authorization', `Bearer ${owner.token}`).expect(200)).body).toMatchObject({ items: [], unread_count: 0 });
   });
 });
