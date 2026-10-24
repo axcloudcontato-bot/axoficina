@@ -56,6 +56,39 @@ describe('WA-AKG connection', () => {
     await expect(service.verifyWebhook('tenant-a', undefined, body)).rejects.toThrow('não autorizado');
   });
 
+  it('sends a confirmation through the text endpoint', async () => {
+    const fetchMock = jest.spyOn(global, 'fetch').mockResolvedValue(new Response(JSON.stringify({ status: true }), { status: 200 }));
+    const { service } = setup();
+    const connection = (await service.getConnection('tenant-a'))!;
+    await service.sendConfirmation(connection, '5511999998888@s.whatsapp.net', 'Aprova?', 'Aprovar orçamento');
+    expect(fetchMock.mock.calls[0][0]).toBe('https://chat.axcloud.com.br/api/messages/oficina/5511999998888%40s.whatsapp.net/send');
+    expect(JSON.parse(fetchMock.mock.calls[0][1]!.body as string)).toMatchObject({ message: { text: expect.stringContaining('Sua resposta foi registrada: Aprovar orçamento') } });
+  });
+
+  it('validates the public callback using a signed test without sending a client message', async () => {
+    const fetchMock = jest.spyOn(global, 'fetch').mockResolvedValue(new Response(JSON.stringify({ received: true, recorded: false }), { status: 200, headers: { 'content-type': 'application/json' } }));
+    const { service } = setup();
+    await expect(service.testWebhook('tenant-a')).resolves.toMatchObject({ reachable: true });
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toBe('https://api.oficina.example/api/v1/webhooks/wa-akg/tenant-a');
+    const body = init!.body as string;
+    expect(JSON.parse(body).event).toBe('test');
+    expect(init!.headers).toMatchObject({ 'X-Webhook-Signature': `sha256=${createHmac('sha256', secret).update(body).digest('hex')}` });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('rejects HTTP 200 HTML instead of reporting a successful webhook', async () => {
+    jest.spyOn(global, 'fetch').mockResolvedValue(new Response('<!DOCTYPE html><html>WA-AKG</html>', { status: 200, headers: { 'content-type': 'text/html' } }));
+    const { service } = setup();
+    await expect(service.testWebhook('tenant-a')).rejects.toThrow('retornou HTML');
+  });
+
+  it('rejects a generic JSON page that does not acknowledge the callback', async () => {
+    jest.spyOn(global, 'fetch').mockResolvedValue(new Response(JSON.stringify({ ok: true }), { status: 200, headers: { 'content-type': 'application/json' } }));
+    const { service } = setup();
+    await expect(service.testWebhook('tenant-a')).rejects.toThrow('não confirmou o teste');
+  });
+
   it.each(['http://chat.axcloud.com.br', 'https://127.0.0.1', 'https://localhost', 'https://user:password@chat.axcloud.com.br', 'https://untrusted.example', 'https://chat.axcloud.com.br:444', 'https://chat.axcloud.com.br?key=secret'])('rejects an unapproved or unsafe gateway URL: %s', async (baseUrl) => {
     const { service } = setup();
     await expect(service.update({ tenantId: 'tenant-a', userId: 'user-a', role: 'ADMIN' }, { baseUrl, sessionId: 'oficina', enabled: true })).rejects.toThrow();

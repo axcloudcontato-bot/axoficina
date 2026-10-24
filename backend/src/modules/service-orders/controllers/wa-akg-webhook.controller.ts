@@ -22,10 +22,13 @@ export class WaAkgWebhookController {
     const payload: unknown = JSON.parse(req.rawBody.toString('utf8'));
     if (!isRecord(payload)) throw new BadRequestException('Payload inválido.');
     if (payload.event === 'test') return { received: true, recorded: false };
-    if (payload.event !== 'message.received' || payload.sessionId !== connection.sessionId || !isRecord(payload.data)) return { received: true, recorded: false };
+    if (payload.event !== 'message.received') return { received: true, recorded: false, reason: 'UNSUPPORTED_EVENT' };
+    if (payload.sessionId !== connection.sessionId) return { received: true, recorded: false, reason: 'SESSION_MISMATCH' };
+    if (!isRecord(payload.data)) return { received: true, recorded: false, reason: 'INVALID_PAYLOAD' };
     const data = payload.data;
-    if (data.isGroup === true || (isRecord(data.key) && data.key.fromMe === true) || !['INTERACTIVE_RESPONSE', 'BUTTON_RESPONSE'].includes(String(data.type))) return { received: true, recorded: false };
-    if (typeof data.from !== 'string' || typeof data.content !== 'string' || !/^\d{10,15}@s\.whatsapp\.net$/.test(data.from)) return { received: true, recorded: false };
+    if (data.isGroup === true || (isRecord(data.key) && data.key.fromMe === true)) return { received: true, recorded: false, reason: 'GROUP_OR_OWN_MESSAGE' };
+    if (!['INTERACTIVE_RESPONSE', 'BUTTON_RESPONSE'].includes(String(data.type))) return { received: true, recorded: false, reason: 'NOT_A_BUTTON_RESPONSE' };
+    if (typeof data.from !== 'string' || typeof data.content !== 'string' || !/^\d{10,15}@s\.whatsapp\.net$/.test(data.from)) return { received: true, recorded: false, reason: 'UNRESOLVED_SENDER_OR_INVALID_CONTENT' };
     return this.messages.answerFromWhatsApp(params.tenantId, String(payload.sessionId), data.from, data.content);
   }
 }

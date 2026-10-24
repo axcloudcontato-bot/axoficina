@@ -2,7 +2,7 @@ import { BadGatewayException, BadRequestException, Injectable, NotFoundException
 import { ConfigService } from '@nestjs/config';
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import { isIP } from 'node:net';
-import type { UpdateWhatsAppSettingsRequest, WhatsAppConnectionResponse, WhatsAppSettingsResponse } from '@oficina/contracts';
+import type { UpdateWhatsAppSettingsRequest, WhatsAppConnectionResponse, WhatsAppSettingsResponse, WhatsAppWebhookTestResponse } from '@oficina/contracts';
 import { TenantRepository } from '../../iam/repositories/tenant.repository';
 import { SecretEncryptionService } from './secret-encryption.service';
 import type { AuthenticatedUser } from '../../../shared/guards/jwt-auth.guard';
@@ -83,6 +83,34 @@ export class WaAkgService {
     return { providerMessageId: key && typeof key.id === 'string' ? key.id : undefined };
   }
 
+  async sendConfirmation(connection: WaAkgConnection, recipient: string, question: string, option: string) {
+    const result = await this.request(connection, `/messages/${encodeURIComponent(connection.sessionId)}/${encodeURIComponent(recipient)}/send`, {
+      method: 'POST', body: JSON.stringify({ message: { text: `Sua resposta foi registrada: ${option}.\n\nPergunta: ${question}\n\nA equipe da oficina recebeu sua escolha.` } }),
+    }, 5_000);
+    if (!isRecord(result) || result.status !== true) throw new BadGatewayException('O WA-AKG não confirmou o envio da confirmação.');
+  }
+
+  async testWebhook(tenantId: string): Promise<WhatsAppWebhookTestResponse> {
+    const tenant = await this.requireTenant(tenantId);
+    if (!tenant.waAkgEnabled || !tenant.waAkgWebhookSecret) throw new BadRequestException('Salve o segredo e ative a integração antes de testar o recebimento.');
+    const { webhookUrl } = await this.getSettings(tenantId);
+    const body = JSON.stringify({ event: 'test', sessionId: tenant.waAkgSessionId, timestamp: new Date().toISOString(), data: {} });
+    const signature = `sha256=${createHmac('sha256', this.secrets.decrypt(tenant.waAkgWebhookSecret)).update(body).digest('hex')}`;
+    let response: Response;
+    try {
+      response = await fetch(webhookUrl, { method: 'POST', body, headers: { 'Content-Type': 'application/json', 'X-Webhook-Signature': signature }, redirect: 'error', signal: AbortSignal.timeout(15_000) });
+    } catch {
+      throw new BadGatewayException('Não foi possível acessar a URL pública do webhook. Confira o domínio da API e o proxy ou túnel.');
+    }
+    if (!response.headers.get('content-type')?.includes('application/json')) throw new BadRequestException('A URL do webhook retornou HTML ou outro conteúdo inesperado. Ela deve apontar para a API do AX Oficina. Confira PUBLIC_BACKEND_URL e o roteamento de /api/* no proxy ou túnel.');
+    if (response.status === 401) throw new BadRequestException('O webhook recusou a assinatura. Confira se a URL aponta para esta oficina e se a integração está ativa no backend de destino.');
+    if (response.status !== 200) throw new BadRequestException(`O webhook retornou HTTP ${response.status}. Confira a URL pública e se o backend está atualizado.`);
+    let result: unknown;
+    try { result = await response.json(); } catch { throw new BadRequestException('A URL pública não retornou JSON válido do AX Oficina.'); }
+    if (!isRecord(result) || result.received !== true || result.recorded !== false) throw new BadRequestException('A URL respondeu, mas não confirmou o teste do webhook do AX Oficina. Confira o domínio e o caminho completos.');
+    return { reachable: true, webhookUrl };
+  }
+
   async verifyWebhook(tenantId: string, signature: string | undefined, rawBody: Buffer) {
     const tenant = await this.tenants.byId(tenantId);
     if (!tenant?.waAkgEnabled || !tenant.waAkgWebhookSecret || !signature || !/^sha256=[a-f0-9]{64}$/i.test(signature)) throw new UnauthorizedException('Webhook não autorizado.');
@@ -107,12 +135,12 @@ export class WaAkgService {
     return url.toString().replace(/\/$/, '');
   }
 
-  private async request(connection: WaAkgConnection, path: string, init: RequestInit = {}): Promise<unknown> {
+  private async request(connection: WaAkgConnection, path: string, init: RequestInit = {}, timeoutMs = 15_000): Promise<unknown> {
     let response: Response;
     try {
       response = await fetch(`${connection.baseUrl}${path}`, {
         ...init, headers: { 'X-API-Key': connection.apiKey, 'Content-Type': 'application/json' },
-        redirect: 'error', signal: AbortSignal.timeout(15_000),
+        redirect: 'error', signal: AbortSignal.timeout(timeoutMs),
       });
     } catch {
       throw new BadGatewayException('Não foi possível confirmar a operação no WA-AKG. Confira a conexão e o histórico antes de tentar novamente.');

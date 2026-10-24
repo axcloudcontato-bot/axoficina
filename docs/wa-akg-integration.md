@@ -12,6 +12,7 @@ A integração envia os botões diretamente para a conversa pelo endpoint intera
 5. Gerar um segredo, copiá-lo antes de salvar e usar o mesmo valor no webhook do WA-AKG. Chave e segredo são criptografados na base e não são retornados pela API de configuração. Campos vazios preservam os segredos existentes.
 6. Salvar e usar **Testar conexão**. O teste consulta as sessões sem enviar mensagem. A sessão deve estar conectada ao WhatsApp.
 7. No WA-AKG, criar um webhook para essa sessão, com o evento `message.received`, o segredo salvo e a URL exibida no AX Oficina: `https://SUA-API/api/v1/webhooks/wa-akg/ID-DA-OFICINA`. O teste de webhook do WA-AKG é aceito após validar a assinatura.
+   No AX Oficina, use **Testar recebimento** com a integração ativa. Esse teste envia um evento assinado à URL pública e exige o JSON `{"received":true,"recorded":false}`. Uma página HTML, mesmo com status 200, indica que o destino não confirmou o webhook. Depois, confirme que a mesma URL, segredo e evento estão cadastrados no WA-AKG; o teste do AX não consulta o cadastro externo do gateway.
 8. Ativar o envio pelo WA-AKG. Na OS, manter **Solicitar resposta por botões** ativado e clicar em WhatsApp. Com a integração ativa, o envio ocorre pelo backend, sem abrir o WhatsApp Web.
 
 O domínio de saída permitido é `chat.axcloud.com.br`. Outras instalações precisam ser autorizadas no backend com `WA_AKG_ALLOWED_HOSTS`, uma lista de domínios separados por vírgula. Não há redirecionamento de requisições contendo a chave. O endpoint fica em `/api`; o campo de endereço aceita o domínio com ou sem esse sufixo.
@@ -21,6 +22,10 @@ O domínio de saída permitido é `chat.axcloud.com.br`. Outras instalações pr
 Cada botão contém um identificador aleatório da pergunta e o índice da opção. O callback valida o HMAC SHA-256 (`X-Webhook-Signature`) sobre os bytes originais, a oficina, a sessão, o destinatário e o tipo da resposta. Texto livre, grupos, mensagens da própria sessão e escolhas de outras perguntas não são registrados como resposta.
 
 Os eventos `INTERACTIVE_RESPONSE` e `BUTTON_RESPONSE` são reconhecidos conforme o payload normalizado do WA-AKG 1.7.0. A primeira escolha é mantida; repetições idênticas são idempotentes e escolhas posteriores diferentes são ignoradas. As opções expiram após 7 dias. Respostas de WhatsApp integrado não podem ser gravadas pela página pública de links.
+
+Após gravar uma nova escolha, o AX tenta enviar uma confirmação em texto ao mesmo cliente e pela mesma sessão. Eventos duplicados não enviam outra confirmação. A mensagem confirma o registro da opção; não altera automaticamente o status da OS. Se o gateway falhar, a escolha permanece gravada e o callback retorna `recorded: true` com `confirmation: "failed"`; a confirmação não é reenviada automaticamente. Um aceite do gateway é retornado como `confirmation: "sent"` e uma repetição como `confirmation: "already_recorded"`.
+
+Callbacks ignorados retornam `recorded: false` com `reason`, sem expor conteúdo ou credenciais: `SESSION_MISMATCH`, `NOT_A_BUTTON_RESPONSE`, `UNRESOLVED_SENDER_OR_INVALID_CONTENT`, `UNRECOGNIZED_BUTTON`, `MESSAGE_OR_SENDER_MISMATCH`, `EXPIRED` ou `ALREADY_ANSWERED_DIFFERENTLY`, entre outros. Consulte esse JSON nos logs do WA-AKG. Uma resposta HTML não foi gerada por esse endpoint do AX Oficina.
 
 O histórico distingue envio aceito pelo WA-AKG de compartilhamento manual preparado. Se houver falha ou timeout, o registro permanece como **envio não confirmado**: confira a conversa antes de reenviar, pois o gateway pode ter aceitado a mensagem antes da conexão cair. Não há reenvio automático nem conversão silenciosa para outro canal. O aceite do gateway não certifica entrega ou leitura pelo cliente.
 

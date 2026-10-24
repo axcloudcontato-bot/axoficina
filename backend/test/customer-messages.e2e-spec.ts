@@ -9,6 +9,7 @@ import { AuditLogService } from '../src/shared/audit-log/audit-log.service';
 import { TenantMailerService } from '../src/modules/settings/services/tenant-mailer.service';
 import { generateValidCpf } from './utils/generate-cpf';
 import { createHmac } from 'node:crypto';
+import { ConfigService } from '@nestjs/config';
 
 describe('Customer message buttons (HTTP + PostgreSQL)', () => {
   let app: INestApplication;
@@ -64,6 +65,7 @@ describe('Customer message buttons (HTTP + PostgreSQL)', () => {
   });
 
   const payload = () => ({ service_order_id: orderId, channel: 'WHATSAPP', question: 'Confirma a retirada?', options: ['Confirmar', 'Outro horário'], include_quote: false });
+  afterEach(() => jest.restoreAllMocks());
 
   it('requires authentication and rejects empty or duplicate button options', async () => {
     await request(app.getHttpServer()).post('/api/v1/service-orders/customer-messages').send(payload()).expect(401);
@@ -120,6 +122,13 @@ describe('Customer message buttons (HTTP + PostgreSQL)', () => {
     expect(JSON.stringify(settings.body)).not.toContain(webhookSecret);
     const stored = await prisma.unscoped.tenant.findFirstOrThrow({ where: { id: owner.tenantId } });
     expect(stored.waAkgApiKey).not.toBe(apiKey);
+    const config = app.get(ConfigService);
+    const oldApiUrl = config.get<string>('PUBLIC_API_URL');
+    config.set('PUBLIC_API_URL', await app.getUrl());
+    try {
+      const callbackTest = await request(app.getHttpServer()).post('/api/v1/settings/whatsapp/webhook/test').set('Authorization', `Bearer ${owner.token}`).expect(200);
+      expect(callbackTest.body.reachable).toBe(true);
+    } finally { config.set('PUBLIC_API_URL', oldApiUrl); }
     const fetchMock = jest.spyOn(global, 'fetch').mockResolvedValue(new Response(JSON.stringify({ status: true, data: { key: { id: 'native-message-1' } } }), { status: 200 }));
     let sent: request.Response;
     try {
@@ -134,6 +143,7 @@ describe('Customer message buttons (HTTP + PostgreSQL)', () => {
     const webhookPath = `/api/v1/webhooks/wa-akg/${owner.tenantId}`;
     const event = { event: 'message.received', sessionId: 'oficina', timestamp: new Date().toISOString(), data: { from: '5511999998888@s.whatsapp.net', isGroup: false, type: 'INTERACTIVE_RESPONSE', content: `axm:${token}:0`, key: { id: 'reply-1', fromMe: false }, display_text: 'Confirmar' } };
     const sign = (value: unknown) => `sha256=${createHmac('sha256', webhookSecret).update(JSON.stringify(value)).digest('hex')}`;
+    const confirmationFetch = jest.spyOn(global, 'fetch').mockResolvedValue(new Response(JSON.stringify({ status: true }), { status: 200 }));
     await request(app.getHttpServer()).post(webhookPath).send(event).expect(401);
     const wrongSender = { ...event, data: { ...event.data, from: '5511888887777@s.whatsapp.net' } };
     const wrongResult = await request(app.getHttpServer()).post(webhookPath).set('X-Webhook-Signature', sign(wrongSender)).send(wrongSender).expect(200);
@@ -141,10 +151,16 @@ describe('Customer message buttons (HTTP + PostgreSQL)', () => {
     const freeText = { ...event, data: { ...event.data, type: 'TEXT' } };
     expect((await request(app.getHttpServer()).post(webhookPath).set('X-Webhook-Signature', sign(freeText)).send(freeText).expect(200)).body.recorded).toBe(false);
     await request(app.getHttpServer()).post(webhookPath).set('X-Webhook-Signature', sign(event)).send(wrongSender).expect(401);
-    expect((await request(app.getHttpServer()).post(webhookPath).set('X-Webhook-Signature', sign(event)).send(event).expect(200)).body.recorded).toBe(true);
-    expect((await request(app.getHttpServer()).post(webhookPath).set('X-Webhook-Signature', sign(event)).send(event).expect(200)).body.recorded).toBe(true);
+    const replies = await Promise.all([0, 1].map(() => request(app.getHttpServer()).post(webhookPath).set('X-Webhook-Signature', sign(event)).send(event).expect(200)));
+    expect(replies.map((reply) => reply.body.confirmation).sort()).toEqual(['already_recorded', 'sent']);
+    expect(replies.every((reply) => reply.body.recorded === true)).toBe(true);
+    expect(confirmationFetch).toHaveBeenCalledTimes(1);
+    expect(String(confirmationFetch.mock.calls[0][0])).toContain('/5511999998888%40s.whatsapp.net/send');
+    expect(JSON.parse(confirmationFetch.mock.calls[0][1]!.body as string)).toMatchObject({ message: { text: expect.stringContaining('Sua resposta foi registrada: Confirmar') } });
     const changedChoice = { ...event, data: { ...event.data, content: `axm:${token}:1` } };
     expect((await request(app.getHttpServer()).post(webhookPath).set('X-Webhook-Signature', sign(changedChoice)).send(changedChoice).expect(200)).body.recorded).toBe(false);
+    expect(confirmationFetch).toHaveBeenCalledTimes(1);
+    confirmationFetch.mockRestore();
     const history = await request(app.getHttpServer()).get('/api/v1/service-orders/customer-messages').query({ serviceOrderId: orderId }).set('Authorization', `Bearer ${owner.token}`).expect(200);
     expect(history.body.messages.find((message: { delivery_mode: string }) => message.delivery_mode === 'WA_AKG')).toMatchObject({ selected_option: 0, sent_at: expect.any(String), answered_at: expect.any(String) });
     // Restore manual sharing for the original link-expiry scenario below.

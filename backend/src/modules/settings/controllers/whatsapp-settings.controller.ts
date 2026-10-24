@@ -19,4 +19,7 @@ export class WhatsAppSettingsController {
 
   @Post('test') @HttpCode(HttpStatus.OK) @Permissions('settings.manage')
   test(@CurrentUser() user: AuthenticatedUser) { return this.wa.testConnection(user.tenantId); }
+
+  @Post('webhook/test') @HttpCode(HttpStatus.OK) @Permissions('settings.manage')
+  testWebhook(@CurrentUser() user: AuthenticatedUser) { return this.wa.testWebhook(user.tenantId); }
 }

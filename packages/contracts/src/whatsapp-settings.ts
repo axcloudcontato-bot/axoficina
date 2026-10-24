@@ -19,3 +19,8 @@ export interface WhatsAppConnectionResponse {
   connected: boolean;
   status: string;
 }
+
+export interface WhatsAppWebhookTestResponse {
+  reachable: boolean;
+  webhookUrl: string;
+}

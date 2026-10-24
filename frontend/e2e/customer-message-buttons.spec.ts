@@ -73,16 +73,22 @@ test('workshop configures WA-AKG without exposing saved secrets and verifies the
   const settings = { base_url: 'https://chat.axcloud.com.br/api', session_id: 'oficina', api_key_configured: false, webhook_secret_configured: false, enabled: false, webhook_url: 'https://api.oficina.example/api/v1/webhooks/wa-akg/tenant-id' };
   let saved: Record<string, unknown> | undefined;
   let checked = false;
+  let callbackAvailable = false;
   await page.route('**/api/v1/**', async (route) => {
     const url = new URL(route.request().url());
     let json: unknown = {};
+    let status = 200;
     if (url.pathname.endsWith('/settings/branding')) json = { company: { name: 'AX Oficina' } };
     if (url.pathname.endsWith('/settings/whatsapp')) {
       if (route.request().method() === 'POST') { saved = route.request().postDataJSON(); Object.assign(settings, { api_key_configured: true, webhook_secret_configured: true, enabled: true }); }
       json = settings;
     }
     if (url.pathname.endsWith('/settings/whatsapp/test')) { checked = true; json = { connected: true, status: 'Connected' }; }
-    await route.fulfill({ json, headers: { 'access-control-allow-origin': '*', 'access-control-allow-headers': '*', 'access-control-allow-methods': 'GET,POST,OPTIONS' } });
+    if (url.pathname.endsWith('/settings/whatsapp/webhook/test')) {
+      status = callbackAvailable ? 200 : 400;
+      json = callbackAvailable ? { reachable: true, webhook_url: settings.webhook_url } : { error: { message: 'A URL do webhook retornou HTML ou outro conteúdo inesperado.' } };
+    }
+    await route.fulfill({ status, json, headers: { 'access-control-allow-origin': '*', 'access-control-allow-headers': '*', 'access-control-allow-methods': 'GET,POST,OPTIONS' } });
   });
   await page.goto('/settings/whatsapp');
   await page.getByLabel('Chave de API', { exact: true }).fill('private-test-key');
@@ -97,5 +103,11 @@ test('workshop configures WA-AKG without exposing saved secrets and verifies the
   await page.getByRole('button', { name: 'Testar conexão', exact: true }).click();
   await expect(page.getByRole('status')).toContainText('Conexão validada');
   expect(checked).toBe(true);
+  await page.getByRole('button', { name: 'Testar recebimento', exact: true }).click();
+  await expect(page.getByText('A URL do webhook retornou HTML ou outro conteúdo inesperado.', { exact: true })).toBeVisible();
+  await expect(page.getByText(/Recebimento validado:/)).toHaveCount(0);
+  callbackAvailable = true;
+  await page.getByRole('button', { name: 'Testar recebimento', exact: true }).click();
+  await expect(page.getByText(/Recebimento validado:/)).toBeVisible();
   await page.screenshot({ path: 'artifacts/wa-akg-settings.png', fullPage: true });
 });

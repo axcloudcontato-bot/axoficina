@@ -1,6 +1,6 @@
 import type { CompanySettingsResponse, EmailSettingsResponse, SendEmailRequest, TestEmailSettingsRequest, TenantSettingsResponse, UpdateCompanySettingsRequest, UpdateEmailSettingsRequest } from '@oficina/contracts';
 import { apiClient } from '@/lib/api/client';
-import type { UpdateWhatsAppSettingsRequest, WhatsAppConnectionResponse, WhatsAppSettingsResponse } from '@oficina/contracts';
+import type { UpdateWhatsAppSettingsRequest, WhatsAppConnectionResponse, WhatsAppSettingsResponse, WhatsAppWebhookTestResponse } from '@oficina/contracts';
 
 export const settingsApi = {
   async get(): Promise<TenantSettingsResponse> {
@@ -12,6 +12,7 @@ export const settingsApi = {
   async whatsapp(): Promise<WhatsAppSettingsResponse> { return (await apiClient.get('/api/v1/settings/whatsapp')).data; },
   async updateWhatsApp(input: UpdateWhatsAppSettingsRequest): Promise<WhatsAppSettingsResponse> { return (await apiClient.post('/api/v1/settings/whatsapp', input)).data; },
   async testWhatsApp(): Promise<WhatsAppConnectionResponse> { return (await apiClient.post('/api/v1/settings/whatsapp/test')).data; },
+  async testWhatsAppWebhook(): Promise<WhatsAppWebhookTestResponse> { return (await apiClient.post('/api/v1/settings/whatsapp/webhook/test')).data; },
   async updateCompany(request: UpdateCompanySettingsRequest): Promise<{ company: CompanySettingsResponse }> {
     return (await apiClient.post('/api/v1/settings/company', request)).data;
   },

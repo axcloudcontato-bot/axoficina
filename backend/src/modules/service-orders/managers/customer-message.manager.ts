@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException, GoneException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, GoneException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { createHash, randomBytes } from 'crypto';
 import type { CustomerMessage } from '@oficina/database';
@@ -16,6 +16,7 @@ const hashToken = (token: string) => createHash('sha256').update(token).digest('
 
 @Injectable()
 export class CustomerMessageManager {
+  private readonly logger = new Logger(CustomerMessageManager.name);
   constructor(
     private readonly messages: CustomerMessageRepository,
     private readonly orders: ServiceOrderManager,
@@ -90,42 +91,53 @@ export class CustomerMessageManager {
   async answer(token: string, selectedOption: number): Promise<PublicCustomerMessageResponse> {
     const { message } = await this.requireToken(token);
     if (message.deliveryMode === 'WA_AKG') throw new NotFoundException('Responda pelos botões na conversa do WhatsApp.');
-    return this.answerToken(token, selectedOption);
+    return (await this.answerToken(token, selectedOption)).response;
   }
 
-  private async answerToken(token: string, selectedOption: number): Promise<PublicCustomerMessageResponse> {
+  private async answerToken(token: string, selectedOption: number): Promise<{ response: PublicCustomerMessageResponse; newlyRecorded: boolean }> {
     const { message } = await this.requireToken(token);
     if (!Number.isInteger(selectedOption) || selectedOption < 0 || selectedOption >= message.options.length) throw new BadRequestException('Escolha uma das opções disponíveis.');
     if (message.answeredAt) {
-      if (message.selectedOption === selectedOption) return this.getTokenResponse(token);
+      if (message.selectedOption === selectedOption) return { response: await this.getTokenResponse(token), newlyRecorded: false };
       throw new ConflictException('Uma resposta já foi registrada para esta pergunta.');
     }
     const result = await this.messages.answer(message.id, message.tenantId, hashToken(token), selectedOption);
     if (result.count !== 1) {
       const current = await this.requireToken(token);
-      if (current.message.selectedOption === selectedOption) return this.getTokenResponse(token);
+      if (current.message.selectedOption === selectedOption) return { response: await this.getTokenResponse(token), newlyRecorded: false };
       throw new ConflictException('Uma resposta já foi registrada para esta pergunta.');
     }
     await this.audit.record({ tenantId: message.tenantId, action: 'customer_message.answered', entity: 'customer_message', entityId: message.id, metadata: { serviceOrderId: message.serviceOrderId } });
-    return this.getTokenResponse(token);
+    return { response: await this.getTokenResponse(token), newlyRecorded: true };
   }
 
   async answerFromWhatsApp(tenantId: string, sessionId: string, sender: string, content: string) {
     const match = /^axm:([a-f0-9]{64}):([0-2])$/.exec(content);
-    if (!match) return { received: true, recorded: false };
+    if (!match) return { received: true, recorded: false, reason: 'UNRECOGNIZED_BUTTON' };
     const [, token, option] = match;
     const record = await this.messages.byTokenHash(hashToken(token));
     const message = record?.message;
     // Only the original recipient, session and tenant may answer this dispatch.
     if (!message || message.tenantId !== tenantId || message.channel !== 'WHATSAPP' || message.deliveryMode !== 'WA_AKG' || message.whatsappSessionId !== sessionId || message.whatsappRecipient !== sender) {
-      return { received: true, recorded: false };
+      return { received: true, recorded: false, reason: 'MESSAGE_OR_SENDER_MISMATCH' };
     }
     try {
-      await this.answerToken(token, Number(option));
-      return { received: true, recorded: true };
+      const result = await this.answerToken(token, Number(option));
+      if (!result.newlyRecorded) return { received: true, recorded: true, confirmation: 'already_recorded' };
+      // The database's conditional write elects one sender, including concurrent
+      // callbacks. A confirmation failure never reverses the recorded choice.
+      try {
+        const connection = await this.whatsapp.getConnection(tenantId);
+        if (!connection || connection.sessionId !== sessionId) throw new Error('Session changed');
+        await this.whatsapp.sendConfirmation(connection, sender, message.question, message.options[Number(option)]);
+        return { received: true, recorded: true, confirmation: 'sent' };
+      } catch {
+        this.logger.warn(`Resposta registrada; confirmação WhatsApp não confirmada para mensagem ${message.id}.`);
+        return { received: true, recorded: true, confirmation: 'failed' };
+      }
     } catch (error) {
       // Duplicate/late events are acknowledged without changing the first answer.
-      if (error instanceof ConflictException || error instanceof GoneException || error instanceof NotFoundException || error instanceof BadRequestException) return { received: true, recorded: false };
+      if (error instanceof ConflictException || error instanceof GoneException || error instanceof NotFoundException || error instanceof BadRequestException) return { received: true, recorded: false, reason: error instanceof ConflictException ? 'ALREADY_ANSWERED_DIFFERENTLY' : error instanceof GoneException ? 'EXPIRED' : 'UNAVAILABLE_OR_INVALID_OPTION' };
       throw error;
     }
   }

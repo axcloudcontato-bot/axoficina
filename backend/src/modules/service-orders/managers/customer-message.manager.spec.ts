@@ -21,7 +21,7 @@ function setup() {
   const customers = { byId: jest.fn().mockResolvedValue({ email: 'cliente@example.invalid', phone: '(12) 99999-9999' }) };
   const mailer = { send: jest.fn().mockResolvedValue({}) };
   const audit = { record: jest.fn().mockResolvedValue(undefined) };
-  const whatsapp = { getConnection: jest.fn().mockResolvedValue(null), sendButtons: jest.fn().mockResolvedValue({ providerMessageId: 'wa-1' }) };
+  const whatsapp = { getConnection: jest.fn().mockResolvedValue(null), sendButtons: jest.fn().mockResolvedValue({ providerMessageId: 'wa-1' }), sendConfirmation: jest.fn().mockResolvedValue(undefined) };
   const manager = new CustomerMessageManager(messages as never, orders as never, customers as never, mailer as never, new ConfigService({ FRONTEND_URL: 'https://oficina.example' }), audit as never, whatsapp as never);
   return { record, messages, order, orders, customers, mailer, audit, whatsapp, manager };
 }
@@ -84,8 +84,9 @@ describe('Customer message replies', () => {
   });
 
   it('binds native responses to the original sender, tenant and session and blocks the public-link bypass', async () => {
-    const { manager, record, messages } = setup();
+    const { manager, record, messages, whatsapp } = setup();
     Object.assign(record, { channel: 'WHATSAPP', deliveryMode: 'WA_AKG', whatsappSessionId: 'oficina', whatsappRecipient: '5512999999999@s.whatsapp.net' });
+    whatsapp.getConnection.mockResolvedValue({ baseUrl: 'https://chat.axcloud.com.br/api', sessionId: 'oficina', apiKey: 'secret' });
     const content = `axm:${token}:0`;
     await expect(manager.answerFromWhatsApp('other-tenant', 'oficina', record.whatsappRecipient!, content)).resolves.toMatchObject({ recorded: false });
     await expect(manager.answerFromWhatsApp(user.tenantId, 'other-session', record.whatsappRecipient!, content)).resolves.toMatchObject({ recorded: false });
@@ -94,9 +95,24 @@ describe('Customer message replies', () => {
     await expect(manager.answer(token, 0)).rejects.toThrow('conversa do WhatsApp');
     await expect(manager.getPublic(token)).rejects.toThrow('conversa do WhatsApp');
     expect(messages.answer).not.toHaveBeenCalled();
-    await expect(manager.answerFromWhatsApp(user.tenantId, 'oficina', record.whatsappRecipient!, content)).resolves.toMatchObject({ recorded: true });
+    await expect(manager.answerFromWhatsApp(user.tenantId, 'oficina', record.whatsappRecipient!, content)).resolves.toMatchObject({ recorded: true, confirmation: 'sent' });
+    await expect(manager.answerFromWhatsApp(user.tenantId, 'oficina', record.whatsappRecipient!, content)).resolves.toMatchObject({ recorded: true, confirmation: 'already_recorded' });
     await expect(manager.answerFromWhatsApp(user.tenantId, 'oficina', record.whatsappRecipient!, `axm:${token}:1`)).resolves.toMatchObject({ recorded: false });
     expect(messages.answer).toHaveBeenCalledTimes(1);
+    expect(whatsapp.sendConfirmation).toHaveBeenCalledTimes(1);
+    expect(whatsapp.sendConfirmation).toHaveBeenCalledWith(expect.any(Object), record.whatsappRecipient, record.question, 'Sim');
+  });
+
+  it('preserves the choice and acknowledges the webhook when sending the confirmation fails', async () => {
+    const { manager, record, whatsapp } = setup();
+    Object.assign(record, { channel: 'WHATSAPP', deliveryMode: 'WA_AKG', whatsappSessionId: 'oficina', whatsappRecipient: '5512999999999@s.whatsapp.net' });
+    whatsapp.getConnection.mockResolvedValue({ baseUrl: 'https://chat.axcloud.com.br/api', sessionId: 'oficina', apiKey: 'secret' });
+    whatsapp.sendConfirmation.mockRejectedValue(new Error('Gateway offline'));
+    await expect(manager.answerFromWhatsApp(user.tenantId, 'oficina', record.whatsappRecipient!, `axm:${token}:0`)).resolves.toMatchObject({ recorded: true, confirmation: 'failed' });
+    expect(record.selectedOption).toBe(0);
+    expect(record.answeredAt).not.toBeNull();
+    await manager.answerFromWhatsApp(user.tenantId, 'oficina', record.whatsappRecipient!, `axm:${token}:0`);
+    expect(whatsapp.sendConfirmation).toHaveBeenCalledTimes(1);
   });
 
   it('checks tenant-scoped order access before creating or listing messages', async () => {

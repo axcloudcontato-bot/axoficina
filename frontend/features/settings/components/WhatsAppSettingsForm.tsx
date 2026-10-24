@@ -24,8 +24,10 @@ export function WhatsAppSettingsForm() {
   const [form, setForm] = useState(EMPTY);
   const [dirty, setDirty] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState('');
+  const [webhookStatus, setWebhookStatus] = useState('');
   const update = useMutation({ mutationFn: settingsApi.updateWhatsApp });
   const testConnection = useMutation({ mutationFn: settingsApi.testWhatsApp });
+  const testWebhook = useMutation({ mutationFn: settingsApi.testWhatsAppWebhook });
 
   useEffect(() => {
     if (!settings.data) return;
@@ -37,6 +39,7 @@ export function WhatsAppSettingsForm() {
     setForm((current) => ({ ...current, [key]: value }));
     setDirty(true);
     setConnectionStatus('');
+    setWebhookStatus('');
   }
 
   async function save() {
@@ -64,10 +67,18 @@ export function WhatsAppSettingsForm() {
     catch { toast.error('Não foi possível copiar. Selecione o texto e copie manualmente.'); }
   }
 
+  async function checkWebhook() {
+    if (dirty) return toast.warning('Salve a configuração antes de testar o recebimento.');
+    try {
+      await testWebhook.mutateAsync();
+      setWebhookStatus('Recebimento validado: a URL pública alcançou o webhook desta oficina e confirmou a assinatura. Confira se essa mesma URL, segredo e evento message.received estão cadastrados no WA-AKG.');
+    } catch (error) { setWebhookStatus(extractErrorMessage(error, 'Não foi possível validar o recebimento.')); }
+  }
+
   if (!canView) return <p className="text-sm text-text-muted">Seu perfil não permite consultar esta configuração.</p>;
   if (settings.isPending) return <p role="status" className="text-sm text-text-muted">Carregando configuração do WhatsApp...</p>;
   if (settings.isError) return <div role="alert"><p>Não foi possível carregar a configuração.</p><Button variant="outline" className="mt-3" onClick={() => settings.refetch()}>Tentar novamente</Button></div>;
-  const busy = update.isPending || testConnection.isPending;
+  const busy = update.isPending || testConnection.isPending || testWebhook.isPending;
   return <div className="space-y-6">
     <section className="rounded-card border border-border bg-card p-5 shadow-sm">
       <div className="flex items-start justify-between gap-4"><div><h2 className="text-base font-bold">WhatsApp via WA-AKG</h2><p className="mt-1 text-sm text-text-muted">Envie as perguntas da OS com botões na conversa e receba as escolhas automaticamente.</p></div><span className="rounded-full bg-muted px-2.5 py-1 text-xs font-semibold">{settings.data.enabled ? 'Ativo' : 'Inativo'}</span></div>
@@ -90,7 +101,9 @@ export function WhatsAppSettingsForm() {
       <p className="mt-2 text-sm text-text-muted">No WA-AKG, crie um webhook para esta sessão, selecione o evento <strong>message.received</strong> e informe o mesmo segredo cadastrado acima. Use esta URL pública HTTPS:</p>
       <label className="mt-4 grid gap-1.5 text-sm font-semibold">URL do webhook<Input readOnly value={settings.data.webhookUrl} onFocus={(event) => event.target.select()} /></label>
       <Button type="button" variant="outline" size="sm" className="mt-2" onClick={() => copy(settings.data.webhookUrl)}>Copiar URL do webhook</Button>
-      <p className="mt-3 text-xs text-text-muted">Se aparecer localhost, configure o endereço público da API antes de cadastrar o webhook. Use WA-AKG 1.7.0 ou superior com sessão conectada. Cada resposta fica vinculada à pergunta e à OS; mensagens digitadas livremente não são consideradas escolhas de botão.</p>
+      <Button type="button" variant="outline" size="sm" className="ml-2 mt-2" onClick={checkWebhook} disabled={!canManage || busy || dirty || !settings.data.enabled}>{testWebhook.isPending ? 'Validando...' : 'Testar recebimento'}</Button>
+      {webhookStatus && <p role="status" className="mt-3 text-sm">{webhookStatus}</p>}
+      <p className="mt-3 text-xs text-text-muted">Se aparecer localhost, configure o endereço público da API antes de cadastrar o webhook. O teste de recebimento exige a integração ativa e verifica a resposta JSON do AX Oficina; uma página HTML com status 200 não confirma o webhook. Use WA-AKG 1.7.0 ou superior com sessão conectada. Cada resposta fica vinculada à pergunta e à OS; mensagens digitadas livremente não são consideradas escolhas de botão.</p>
     </section>
     <section className="rounded-card border border-primary/20 bg-primary-subtle p-5">
       <h2 className="font-bold">Verificar conexão</h2><p className="mt-2 text-sm text-text-muted">Confere a chave e a sessão, sem enviar mensagens. A confirmação do webhook pode ser feita pelo teste do próprio WA-AKG.</p>
