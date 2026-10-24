@@ -17,9 +17,11 @@ import { AppErrorCode } from '../../../shared/errors/app-error-code';
 import { AppException } from '../../../shared/errors/app-exception';
 import { AuditLogService } from '../../../shared/audit-log/audit-log.service';
 import type { AuthenticatedUser } from '../../../shared/guards/jwt-auth.guard';
+import { TenantMailerService } from '../../settings/services/tenant-mailer.service';
 import { PasswordService } from '../services/password.service';
 import { TokenService } from '../services/token.service';
 import { RoleRepository } from '../repositories/role.repository';
+import { TenantRepository } from '../repositories/tenant.repository';
 import { UserRepository } from '../repositories/user.repository';
 
 const DEFAULT_INVITE_TOKEN_TTL_SECONDS = 604800; // 7 dias
@@ -30,8 +32,10 @@ export class UserManager {
   constructor(
     private readonly userRepository: UserRepository,
     private readonly roleRepository: RoleRepository,
+    private readonly tenantRepository: TenantRepository,
     private readonly tokenService: TokenService,
     private readonly passwordService: PasswordService,
+    private readonly mailer: TenantMailerService,
     private readonly auditLog: AuditLogService,
     private readonly config: ConfigService,
   ) {}
@@ -71,11 +75,39 @@ export class UserManager {
     });
 
     const frontendUrl = this.config.get<string>('FRONTEND_URL', DEFAULT_FRONTEND_URL);
+    const inviteLink = `${frontendUrl}/invite/${opaque.token}`;
+
+    const emailSent = await this.sendInviteEmail(actingUser.tenantId, user, inviteLink);
 
     return {
       user: this.toUserResponse(user, role),
-      inviteLink: `${frontendUrl}/invite/${opaque.token}`,
+      inviteLink,
+      emailSent,
     };
+  }
+
+  // Tentativa best-effort: se o tenant não configurou SMTP (ou o envio
+  // falhar), o convite já foi criado e o link acima continua sendo o
+  // fallback manual — não faz sentido derrubar o convite por isso.
+  private async sendInviteEmail(tenantId: string, invitedUser: UserEntity, inviteLink: string): Promise<boolean> {
+    const tenant = await this.tenantRepository.byId(tenantId);
+    if (!tenant?.smtpEnabled) {
+      return false;
+    }
+
+    try {
+      await this.mailer.send(tenantId, {
+        to: invitedUser.email,
+        subject: `Convite para acessar a ${tenant.name}`,
+        text: `Você foi convidado(a) para acessar a ${tenant.name}. Acesse o link para criar sua senha e ativar sua conta: ${inviteLink}\n\nEste link expira em 7 dias.`,
+        html: `<p>Você foi convidado(a) para acessar a <strong>${escapeHtml(tenant.name)}</strong>.</p><p>Acesse o link abaixo para criar sua senha e ativar sua conta:</p><p><a href="${inviteLink}">${inviteLink}</a></p><p>Este link expira em 7 dias.</p>`,
+      });
+      return true;
+    } catch {
+      // Falha de SMTP (host incorreto, credenciais etc.) não deve impedir a
+      // criação do convite — quem convidou ainda tem o link para enviar manualmente.
+      return false;
+    }
   }
 
   async acceptInvite(request: AcceptInviteRequest): Promise<AuthResponse> {
@@ -212,4 +244,8 @@ export class UserManager {
       createdAt: user.createdAt.toISOString(),
     };
   }
+}
+
+function escapeHtml(value: string) {
+  return value.replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' })[char]!);
 }

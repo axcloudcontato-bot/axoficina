@@ -28,6 +28,8 @@ export type UserListItemResponse = UserResponse;
 
 export interface InviteUserResponse {
   user: UserResponse;
-  /** Só presente nesta feature enquanto não há provedor de e-mail real — uso em dev/QA. */
+  /** Sempre presente como fallback manual, mesmo quando emailSent é true. */
   inviteLink: string;
+  /** true se o convite foi enviado por e-mail (SMTP do tenant configurado e ativo). */
+  emailSent: boolean;
 }

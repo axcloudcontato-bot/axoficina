@@ -24,6 +24,12 @@ function buildManager() {
     byId: jest.fn(),
     all: jest.fn(),
   };
+  const tenantRepository = {
+    byId: jest.fn(async () => ({ id: 'tenant-1', name: 'Oficina Teste', smtpEnabled: false })),
+  };
+  const mailer = {
+    send: jest.fn(),
+  };
   const tokenService = {
     signAccessToken: jest.fn(async () => 'access-token'),
     verifyAccessToken: jest.fn(),
@@ -49,13 +55,15 @@ function buildManager() {
   const manager = new UserManager(
     userRepository as never,
     roleRepository as never,
+    tenantRepository as never,
     tokenService as never,
     passwordService as never,
+    mailer as never,
     auditLog as never,
     config,
   );
 
-  return { manager, userRepository, roleRepository, tokenService, passwordService, auditLog };
+  return { manager, userRepository, roleRepository, tenantRepository, tokenService, passwordService, mailer, auditLog };
 }
 
 const invitedUser = {
@@ -120,7 +128,47 @@ describe('UserManager', () => {
 
       expect(result.inviteLink).toContain('raw-invite-token');
       expect(result.user.status).toBe('invited');
+      expect(result.emailSent).toBe(false);
+      expect(deps.mailer.send).not.toHaveBeenCalled();
       expect(deps.auditLog.record).toHaveBeenCalledWith(expect.objectContaining({ action: 'user.invited' }));
+    });
+
+    it('sends the invite by e-mail when the tenant has SMTP configured and reports emailSent', async () => {
+      const deps = buildManager();
+      deps.userRepository.byEmail.mockResolvedValue(null);
+      deps.roleRepository.byName.mockResolvedValue(MECHANIC_ROLE);
+      deps.userRepository.insert.mockResolvedValue(invitedUser);
+      deps.tenantRepository.byId.mockResolvedValue({ id: 'tenant-1', name: 'Oficina Teste', smtpEnabled: true });
+
+      const result = await deps.manager.invite(actingAdmin, {
+        email: 'mecanico@oficina.com',
+        name: 'Mecânico',
+        role: 'MECHANIC',
+      });
+
+      expect(result.emailSent).toBe(true);
+      expect(deps.mailer.send).toHaveBeenCalledWith(
+        'tenant-1',
+        expect.objectContaining({ to: 'mecanico@oficina.com' }),
+      );
+    });
+
+    it('still creates the invite and reports emailSent: false if sending the e-mail fails', async () => {
+      const deps = buildManager();
+      deps.userRepository.byEmail.mockResolvedValue(null);
+      deps.roleRepository.byName.mockResolvedValue(MECHANIC_ROLE);
+      deps.userRepository.insert.mockResolvedValue(invitedUser);
+      deps.tenantRepository.byId.mockResolvedValue({ id: 'tenant-1', name: 'Oficina Teste', smtpEnabled: true });
+      deps.mailer.send.mockRejectedValue(new Error('SMTP down'));
+
+      const result = await deps.manager.invite(actingAdmin, {
+        email: 'mecanico@oficina.com',
+        name: 'Mecânico',
+        role: 'MECHANIC',
+      });
+
+      expect(result.emailSent).toBe(false);
+      expect(result.inviteLink).toContain('raw-invite-token');
     });
 
     it('rejects an email that already exists (global uniqueness)', async () => {

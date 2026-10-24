@@ -45,10 +45,17 @@ export function InviteUserModal({ open, onOpenChange }: InviteUserModalProps) {
   function onSubmit(values: InviteFormValues) {
     invite.mutate(values, {
       onSuccess: (data) => {
-        toast.success(`Convite criado para ${values.email}`, {
-          description: `Link (dev/QA, sem envio de e-mail real ainda): ${data.inviteLink}`,
-          duration: 10000,
-        });
+        if (data.emailSent) {
+          toast.success(`Convite enviado por e-mail para ${values.email}`, {
+            description: `Se precisar, copie o link para enviar por outro canal: ${data.inviteLink}`,
+            duration: 10000,
+          });
+        } else {
+          toast.success(`Convite criado para ${values.email}`, {
+            description: `Envio de e-mail não está configurado em Configurações — copie o link e envie manualmente: ${data.inviteLink}`,
+            duration: 10000,
+          });
+        }
         form.reset();
         onOpenChange(false);
       },
@@ -76,8 +83,8 @@ export function InviteUserModal({ open, onOpenChange }: InviteUserModalProps) {
             Convidar usuário
           </DialogTitle>
           <DialogDescription>
-            Sem envio de e-mail real ainda — o link do convite aparece aqui para você copiar e enviar
-            manualmente.
+            Se o envio de e-mail estiver configurado em Configurações, o convite é enviado
+            automaticamente. Caso contrário, o link aparece aqui para você copiar e enviar manualmente.
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
