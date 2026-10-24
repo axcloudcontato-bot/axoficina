@@ -1,9 +1,10 @@
 'use client';
 
-import { forwardRef, useEffect, useId, useRef, useState, type ComponentPropsWithoutRef, type KeyboardEvent } from 'react';
+import { forwardRef, useEffect, useId, useRef, useState, type ComponentPropsWithoutRef } from 'react';
 import type { VehicleListItemResponse } from '@oficina/contracts';
 import { Input } from '@/components/ui/input';
 import { useVehiclesList } from '@/features/vehicles/hooks/use-vehicles';
+import { useComboboxKeyboard } from '@/components/ui/use-combobox-keyboard';
 
 const SEARCH_DEBOUNCE_MS = 300;
 const MIN_SEARCH_LENGTH = 2;
@@ -33,13 +34,14 @@ export const VehicleSearchCombobox = forwardRef<HTMLInputElement, VehicleSearchC
   const [confirmedLabel, setConfirmedLabel] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
   const [isOpen, setIsOpen] = useState(false);
-  const [highlightedIndex, setHighlightedIndex] = useState(-1);
   const previousCustomerId = useRef<string | undefined>(undefined);
+  const internalChange = useRef(false);
 
   // Reseta o texto exibido quando o form limpa o campo externamente (ex:
   // reabrir o modal) — não reage a toda mudança de `value`, só quando ele
   // volta a vazio, senão apagaria o texto digo logo após uma seleção.
   useEffect(() => {
+    if (internalChange.current) { internalChange.current = false; return; }
     if (value === '') {
       setQuery('');
       setConfirmedLabel('');
@@ -79,26 +81,25 @@ export const VehicleSearchCombobox = forwardRef<HTMLInputElement, VehicleSearchC
   // também pelo nome/documento do cliente dono; a tela de Veículos usa
   // useVehiclesList sem essa flag e mantém a busca original (ver
   // VehicleListRequest.matchOwner).
-  const { data, isFetching } = useVehiclesList(
+  const { data, isFetching, isPlaceholderData } = useVehiclesList(
     { offset: 0, limit: RESULTS_LIMIT, search: debouncedQuery || undefined, customerId, matchOwner: true },
     { enabled: canLoadCustomerVehicles || (canSearch && isOpen) },
   );
 
-  const results = (canLoadCustomerVehicles || (canSearch && isOpen)) ? data?.items ?? [] : [];
-
-  useEffect(() => {
-    setHighlightedIndex(results.length > 0 ? 0 : -1);
-  }, [results.length, debouncedQuery]);
+  const results = (canLoadCustomerVehicles || canSearch) && !isFetching && !isPlaceholderData && query.trim() === debouncedQuery ? data?.items ?? [] : [];
+  const expanded = isOpen && (canLoadCustomerVehicles || canSearch);
 
   function handleQueryChange(newQuery: string) {
     setQuery(newQuery);
     setIsOpen(true);
     if (newQuery !== confirmedLabel) {
+      if (value) internalChange.current = true;
       onChange('');
     }
   }
 
   function handleSelect(vehicle: VehicleListItemResponse) {
+    if (value !== vehicle.id) internalChange.current = true;
     const label = vehicleLabel(vehicle);
     setQuery(label);
     setConfirmedLabel(label);
@@ -106,25 +107,7 @@ export const VehicleSearchCombobox = forwardRef<HTMLInputElement, VehicleSearchC
     onChange(vehicle.id);
   }
 
-  function handleKeyDown(event: KeyboardEvent<HTMLInputElement>) {
-    if (!isOpen || results.length === 0) {
-      return;
-    }
-    if (event.key === 'ArrowDown') {
-      event.preventDefault();
-      setHighlightedIndex((index) => (index + 1) % results.length);
-    } else if (event.key === 'ArrowUp') {
-      event.preventDefault();
-      setHighlightedIndex((index) => (index - 1 + results.length) % results.length);
-    } else if (event.key === 'Enter') {
-      if (highlightedIndex >= 0 && highlightedIndex < results.length) {
-        event.preventDefault();
-        handleSelect(results[highlightedIndex]);
-      }
-    } else if (event.key === 'Escape') {
-      setIsOpen(false);
-    }
-  }
+  const { activeIndex, setActiveIndex, activeId, onKeyDown } = useComboboxKeyboard({ open: expanded, canOpen: canSearch || Boolean(customerId), setOpen: setIsOpen, count: results.length, resetKey: debouncedQuery, listboxId, select: (index) => handleSelect(results[index]) });
 
   return (
     <div className="relative">
@@ -132,21 +115,24 @@ export const VehicleSearchCombobox = forwardRef<HTMLInputElement, VehicleSearchC
         {...rest}
         ref={ref}
         role="combobox"
-        aria-expanded={isOpen}
-        aria-controls={listboxId}
+        data-keyboard-combobox
+        aria-expanded={expanded}
+        aria-controls={expanded ? listboxId : undefined}
         aria-autocomplete="list"
-        aria-activedescendant={highlightedIndex >= 0 ? `${listboxId}-option-${highlightedIndex}` : undefined}
+        aria-activedescendant={activeId}
         placeholder={placeholder ?? 'Nome, CPF ou placa do veículo...'}
         value={query}
         onChange={(event) => handleQueryChange(event.target.value)}
         onFocus={() => setIsOpen(true)}
-        onBlur={() => setTimeout(() => setIsOpen(false), 150)}
-        onKeyDown={handleKeyDown}
+        onBlur={() => setIsOpen(false)}
+        onKeyDown={onKeyDown}
       />
       {isOpen && (canLoadCustomerVehicles || canSearch) && (
         <ul
           id={listboxId}
           role="listbox"
+          aria-label="Veículos encontrados"
+          aria-busy={isFetching}
           className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-button border border-input bg-background shadow-md"
         >
           {isFetching && <li className="px-3 py-2 text-sm text-muted-foreground">Buscando...</li>}
@@ -157,11 +143,12 @@ export const VehicleSearchCombobox = forwardRef<HTMLInputElement, VehicleSearchC
                 <button
                   id={`${listboxId}-option-${index}`}
                   type="button"
+                  tabIndex={-1}
                   role="option"
-                  aria-selected={index === highlightedIndex}
-                  className={`block w-full px-3 py-2 text-left text-sm hover:bg-accent ${index === highlightedIndex ? 'bg-accent' : ''}`}
+                  aria-selected={index === activeIndex}
+                  className={`block w-full px-3 py-2 text-left text-sm hover:bg-accent ${index === activeIndex ? 'bg-accent' : ''}`}
                   onMouseDown={(event) => event.preventDefault()}
-                  onMouseEnter={() => setHighlightedIndex(index)}
+                  onMouseEnter={() => setActiveIndex(index)}
                   onClick={() => handleSelect(vehicle)}
                 >
                   {vehicleLabel(vehicle)}

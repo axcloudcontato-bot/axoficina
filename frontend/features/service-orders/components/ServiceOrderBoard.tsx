@@ -12,7 +12,7 @@ import { formatCurrencyBRL } from '@/lib/format-currency';
 import { extractErrorMessage } from '@/lib/api/client';
 import { isOverdueServiceOrder } from '../service-orders-view-model';
 import { useTransitionServiceOrder } from '../hooks/use-service-orders';
-import { canTransitionServiceOrder, SERVICE_ORDER_STATUS_LABELS } from '../state-machine';
+import { canTransitionServiceOrder, SERVICE_ORDER_STATUS_LABELS, SERVICE_ORDER_TRANSITIONS } from '../state-machine';
 import { StatusBadge } from './StatusBadge';
 
 interface ServiceOrderBoardProps {
@@ -155,13 +155,15 @@ function BoardColumn({ column, items, canManage, canViewPrices, dragging, active
 function BoardCard({ item, canManage, canViewPrices, onDragStart, onDragEnd }: { item: ServiceOrderListItemResponse; canManage: boolean; canViewPrices: boolean; onDragStart: (event: DragEvent<HTMLElement>) => void; onDragEnd: () => void }) {
   const transition = useTransitionServiceOrder();
   const [confirming, setConfirming] = useState(false);
+  const [selectedStatus, setSelectedStatus] = useState<ServiceOrderStatus | null>(null);
   const nextStatus = QUICK_NEXT_STATUS[item.status] ?? null;
+  const targetStatus = selectedStatus ?? nextStatus;
   const overdue = isOverdueServiceOrder(item);
 
   function advance() {
-    if (!nextStatus) return;
-    transition.mutate({ id: item.id, toStatus: nextStatus }, {
-      onSuccess: () => { toast.success(`OS #${item.orderNumber} avançada para ${SERVICE_ORDER_STATUS_LABELS[nextStatus]}.`); setConfirming(false); },
+    if (!targetStatus) return;
+    transition.mutate({ id: item.id, toStatus: targetStatus }, {
+      onSuccess: () => { toast.success(`OS #${item.orderNumber} movida para ${SERVICE_ORDER_STATUS_LABELS[targetStatus]}.`); setConfirming(false); setSelectedStatus(null); },
       onError: (error) => toast.error(extractErrorMessage(error)),
     });
   }
@@ -185,14 +187,15 @@ function BoardCard({ item, canManage, canViewPrices, onDragStart, onDragEnd }: {
         </div>
         {canViewPrices && <div className="mt-2 flex items-center justify-between border-t border-border pt-2 text-[11px]"><span className={item.paymentStatus === 'PAID' ? 'font-bold text-success' : 'font-semibold text-warning'}>{PAYMENT_LABELS[item.paymentStatus]}</span><span className="font-bold tabular-nums text-text">{formatCurrencyBRL(item.totalAmountCents)}</span></div>}
       </Link>
-      {canManage && nextStatus && <button type="button" onClick={() => setConfirming(true)} className="mt-3 flex h-9 w-full items-center justify-center gap-1 rounded-button border border-primary/20 bg-primary-subtle px-2 text-xs font-bold text-primary-strong transition-colors hover:bg-primary/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">{`Avançar para ${SERVICE_ORDER_STATUS_LABELS[nextStatus]}`}<CaretRight className="size-3.5" aria-hidden="true" /></button>}
+      {canManage && nextStatus && <button type="button" onClick={() => { setSelectedStatus(null); setConfirming(true); }} className="mt-3 flex h-9 w-full items-center justify-center gap-1 rounded-button border border-primary/20 bg-primary-subtle px-2 text-xs font-bold text-primary-strong transition-colors hover:bg-primary/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">{`Avançar para ${SERVICE_ORDER_STATUS_LABELS[nextStatus]}`}<CaretRight className="size-3.5" aria-hidden="true" /></button>}
+      {canManage && SERVICE_ORDER_TRANSITIONS[item.status].length > 0 && <select value="" aria-label={`Mover OS #${item.orderNumber} para outra etapa`} className="mt-2 h-9 w-full rounded-button border border-input bg-background px-2 text-xs text-text" onChange={(event) => { if (event.target.value) { setSelectedStatus(event.target.value as ServiceOrderStatus); setConfirming(true); } }}><option value="" disabled>Mover para outra etapa...</option>{SERVICE_ORDER_TRANSITIONS[item.status].map((status) => <option key={status} value={status}>{SERVICE_ORDER_STATUS_LABELS[status]}</option>)}</select>}
     </article>
 
-    <Dialog open={confirming} onOpenChange={setConfirming}>
+    <Dialog open={confirming} onOpenChange={(open) => { setConfirming(open); if (!open) setSelectedStatus(null); }}>
       <DialogContent>
-        <DialogHeader><DialogTitle className="flex items-center gap-2.5"><span data-reveal className="flex size-8 shrink-0 items-center justify-center rounded-button bg-muted text-text-muted"><ClipboardText className="size-[18px]" aria-hidden="true" /></span>Confirmar mudança de etapa</DialogTitle><DialogDescription>Você está alterando a OS #{item.orderNumber}, do veículo {item.vehiclePlate}, de {SERVICE_ORDER_STATUS_LABELS[item.status]} para {nextStatus ? SERVICE_ORDER_STATUS_LABELS[nextStatus] : ''}.</DialogDescription></DialogHeader>
-        {nextStatus === 'DELIVERED' && item.outstandingAmountCents > 0 && <div className="rounded-button border border-warning/30 bg-warning-subtle p-3 text-sm font-semibold text-warning-strong">Atenção: esta OS ainda possui {formatCurrencyBRL(item.outstandingAmountCents)} pendente de recebimento.</div>}
-        <DialogFooter><Button variant="outline" onClick={() => setConfirming(false)}>Voltar</Button><Button onClick={advance} disabled={transition.isPending}>{transition.isPending ? 'Atualizando...' : 'Confirmar mudança'}</Button></DialogFooter>
+        <DialogHeader><DialogTitle className="flex items-center gap-2.5"><span data-reveal className="flex size-8 shrink-0 items-center justify-center rounded-button bg-muted text-text-muted"><ClipboardText className="size-[18px]" aria-hidden="true" /></span>Confirmar mudança de etapa</DialogTitle><DialogDescription>Você está alterando a OS #{item.orderNumber}, do veículo {item.vehiclePlate}, de {SERVICE_ORDER_STATUS_LABELS[item.status]} para {targetStatus ? SERVICE_ORDER_STATUS_LABELS[targetStatus] : ''}.</DialogDescription></DialogHeader>
+        {targetStatus === 'DELIVERED' && item.outstandingAmountCents > 0 && <div className="rounded-button border border-warning/30 bg-warning-subtle p-3 text-sm font-semibold text-warning-strong">Atenção: esta OS ainda possui {formatCurrencyBRL(item.outstandingAmountCents)} pendente de recebimento.</div>}
+        <DialogFooter><Button variant="outline" onClick={() => { setConfirming(false); setSelectedStatus(null); }}>Voltar</Button><Button onClick={advance} disabled={transition.isPending}>{transition.isPending ? 'Atualizando...' : 'Confirmar mudança'}</Button></DialogFooter>
       </DialogContent>
     </Dialog>
   </>;

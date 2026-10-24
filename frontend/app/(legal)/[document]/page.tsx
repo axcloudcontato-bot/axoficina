@@ -13,7 +13,7 @@ export async function generateMetadata({ params }: { params: Promise<{ document:
 export default async function LegalPage({ params }: { params: Promise<{ document: string }> }) {
   const document = getDocument((await params).document);
   if (!document) notFound();
-  return <main className="mx-auto min-h-screen max-w-4xl px-5 py-12 text-text sm:px-8">
+  return <main id="main-content" tabIndex={-1} className="mx-auto min-h-screen max-w-4xl px-5 py-12 text-text sm:px-8">
     <Link href="/login" className="text-sm font-semibold text-primary hover:underline">AX Oficina · Acessar sistema</Link>
     <header className="mb-8 mt-8 border-b border-border pb-6">
       <p className="text-xs font-bold uppercase tracking-widest text-primary">Transparência e privacidade</p>

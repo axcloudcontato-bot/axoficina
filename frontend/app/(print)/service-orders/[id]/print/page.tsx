@@ -17,7 +17,7 @@ export default function ServiceOrderPrintPage() {
 
   return (
     <AuthGuard>
-      <main className="min-h-screen bg-slate-100 px-4 py-6 print:bg-white print:p-0">
+      <main id="main-content" tabIndex={-1} className="min-h-screen bg-slate-100 px-4 py-6 print:bg-white print:p-0">
         <div className="print-hidden mx-auto mb-4 flex max-w-4xl items-center justify-between gap-3">
           <Button variant="outline" onClick={() => window.close()}><ArrowLeft className="mr-2 size-4" />Fechar</Button>
           <Button onClick={() => window.print()}><Printer className="mr-2 size-4" />Imprimir {mode === 'full' ? 'versão completa' : 'resumo'}</Button>
