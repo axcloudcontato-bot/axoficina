@@ -25,7 +25,9 @@ describe('Auth (e2e)', () => {
     // real não tem.
     app = moduleFixture.createNestApplication({ bodyParser: false });
     configureApp(app);
-    await app.init();
+    // Keep the listener alive for concurrent requests; Supertest otherwise
+    // closes its temporary server when the first response completes.
+    await app.listen(0, '127.0.0.1');
     prisma = app.get(PrismaService);
   });
 
@@ -141,6 +143,9 @@ describe('Auth (e2e)', () => {
     );
 
     const responses = await Promise.all(attempts);
-    expect(responses.some((response) => response.status === 429)).toBe(true);
+    expect(responses.filter((response) => response.status === 401)).toHaveLength(5);
+    const blocked = responses.filter((response) => response.status === 429);
+    expect(blocked).toHaveLength(1);
+    expect(blocked[0].body.error.code).toBe('RATE_LIMITED');
   });
 });

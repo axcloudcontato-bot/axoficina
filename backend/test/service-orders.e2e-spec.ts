@@ -17,7 +17,9 @@ describe('Service Orders (e2e)', () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({ imports: [AppModule] }).compile();
     app = moduleFixture.createNestApplication({ bodyParser: false });
     configureApp(app);
-    await app.init();
+    // Concurrent transitions must share a listener that stays open until
+    // app.close(), rather than Supertest's per-request temporary server.
+    await app.listen(0, '127.0.0.1');
     prisma = app.get(PrismaService);
   });
 

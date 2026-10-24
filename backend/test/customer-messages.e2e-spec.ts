@@ -29,7 +29,9 @@ describe('Customer message buttons (HTTP + PostgreSQL)', () => {
       .compile();
     app = module.createNestApplication({ bodyParser: false });
     configureApp(app);
-    await app.init();
+    // This suite sends concurrent replies. The suite owns the listener so
+    // Supertest cannot close it before all responses have completed.
+    await app.listen(0, '127.0.0.1');
     prisma = app.get(PrismaService);
     async function signup(suffix: string) {
       const result = await request(app.getHttpServer()).post('/api/v1/auth/signup').send({
