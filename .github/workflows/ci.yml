@@ -87,6 +87,9 @@ jobs:
             -f deploy/debian/compose.production.yml config --quiet
           bash -n deploy/debian/deploy.sh
           bash -n deploy/debian/backup.sh
+          DOCKER_LIBRARY_REGISTRY=mirror.gcr.io docker compose \
+            --env-file deploy/debian/.env.production.example \
+            -f deploy/debian/compose.production.yml config --quiet
 
       - name: Generate Prisma Client
         run: pnpm --filter @oficina/database run generate
@@ -155,8 +158,8 @@ jobs:
         env:
           DATABASE_URL: postgresql://oficina:oficina_ci_password@localhost:5432/oficina_saas?schema=public
 
-      - name: Build backend image
-        run: docker build -f backend/Dockerfile -t oficina-backend:ci .
+      - name: Build backend image (Google cache)
+        run: docker build --build-arg DOCKER_LIBRARY_REGISTRY=mirror.gcr.io -f backend/Dockerfile -t oficina-backend:ci .
 
       - name: Build frontend image
         run: docker build -f frontend/Dockerfile -t oficina-frontend:ci .

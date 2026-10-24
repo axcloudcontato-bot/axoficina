@@ -2,7 +2,7 @@ name: oficina-production
 
 services:
   postgres:
-    image: postgres:16-alpine
+    image: ${DOCKER_LIBRARY_REGISTRY:-docker.io}/library/postgres:16-alpine
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER:?Defina POSTGRES_USER}
@@ -18,7 +18,7 @@ services:
     networks: [internal]
 
   redis:
-    image: redis:7-alpine
+    image: ${DOCKER_LIBRARY_REGISTRY:-docker.io}/library/redis:7-alpine
     restart: unless-stopped
     command: ["redis-server", "--appendonly", "yes"]
     volumes:
@@ -34,6 +34,8 @@ services:
     build:
       context: ../..
       dockerfile: backend/Dockerfile
+      args:
+        DOCKER_LIBRARY_REGISTRY: ${DOCKER_LIBRARY_REGISTRY:-docker.io}
       target: build
     restart: "no"
     depends_on:
@@ -51,6 +53,8 @@ services:
     build:
       context: ../..
       dockerfile: backend/Dockerfile
+      args:
+        DOCKER_LIBRARY_REGISTRY: ${DOCKER_LIBRARY_REGISTRY:-docker.io}
     restart: unless-stopped
     depends_on:
       migrate:
@@ -91,6 +95,7 @@ services:
       context: ../..
       dockerfile: frontend/Dockerfile
       args:
+        DOCKER_LIBRARY_REGISTRY: ${DOCKER_LIBRARY_REGISTRY:-docker.io}
         NEXT_PUBLIC_API_URL: ${PUBLIC_BACKEND_URL:-http://localhost:3006}
         NEXT_PUBLIC_LEGAL_COMPANY_NAME: ${NEXT_PUBLIC_LEGAL_COMPANY_NAME:-}
         NEXT_PUBLIC_LEGAL_COMPANY_DOCUMENT: ${NEXT_PUBLIC_LEGAL_COMPANY_DOCUMENT:-}
@@ -118,7 +123,7 @@ services:
   # simples, por isso só publica em 127.0.0.1 — nada além do cloudflared
   # rodando no próprio host deve conseguir falar com esta porta.
   caddy:
-    image: caddy:2-alpine
+    image: ${DOCKER_LIBRARY_REGISTRY:-docker.io}/library/caddy:2-alpine
     restart: unless-stopped
     depends_on:
       frontend:

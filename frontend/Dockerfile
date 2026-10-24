@@ -1,5 +1,6 @@
 # Uses the bundled Dockerfile frontend; no external syntax features are needed.
-FROM node:20-alpine AS base
+ARG DOCKER_LIBRARY_REGISTRY=docker.io
+FROM ${DOCKER_LIBRARY_REGISTRY}/library/node:20-alpine AS base
 RUN corepack enable
 WORKDIR /app
 

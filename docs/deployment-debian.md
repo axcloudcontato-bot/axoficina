@@ -154,6 +154,24 @@ e confirma que houve resposta HTTPS. Se ocorrer outro timeout, verifique a
 conectividade do servidor e do daemon Docker antes de repetir o deploy.
 Referência: [frontend do Dockerfile](https://docs.docker.com/reference/dockerfile/#syntax).
 
+Se o download pelo cache público do Google funcionar, use-o na implantação:
+
+```bash
+cd /opt/oficina-mecanica
+git pull --ff-only
+DOCKER_LIBRARY_REGISTRY=mirror.gcr.io ./deploy/debian/deploy.sh
+```
+
+A variável escolhe o registro das imagens oficiais de Node.js, PostgreSQL,
+Redis e Caddy. Assim, tanto o build quanto a inicialização usam o endereço
+selecionado. Para manter a configuração nas próximas atualizações, adicione
+`DOCKER_LIBRARY_REGISTRY=mirror.gcr.io` ao arquivo
+`deploy/debian/.env.production`. Sem essa variável, o padrão é `docker.io`.
+Isso permite usar o cache sem alterar o daemon Docker ou o IPv6 do servidor.
+O cache não contém necessariamente todas as tags; o próprio `docker pull`
+ou o deploy informa se uma imagem não estiver disponível. Referência:
+[cache público de imagens do Google](https://docs.cloud.google.com/artifact-registry/docs/pull-cached-dockerhub-images).
+
 ## 9. Atualizar
 
 ```bash
