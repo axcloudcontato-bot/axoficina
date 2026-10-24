@@ -1,6 +1,8 @@
 // Barrel de tipos e DTOs compartilhados entre backend e frontend.
 export * from './constants';
 export * from './legal';
+export * from './customer-message';
+export * from './whatsapp-settings';
 export * from './request/auth.request';
 export * from './request/user.request';
 export * from './request/customer.request';

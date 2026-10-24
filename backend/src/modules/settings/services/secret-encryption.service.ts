@@ -27,7 +27,7 @@ export class SecretEncryptionService {
       decipher.setAuthTag(Buffer.from(tag, 'base64'));
       return Buffer.concat([decipher.update(Buffer.from(encrypted, 'base64')), decipher.final()]).toString('utf8');
     } catch {
-      throw new BadRequestException('A senha SMTP armazenada não pôde ser lida. Salve uma nova senha.');
+      throw new BadRequestException('A credencial armazenada não pôde ser lida. Cadastre o segredo novamente.');
     }
   }
 }

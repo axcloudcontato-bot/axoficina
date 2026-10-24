@@ -12,6 +12,11 @@ import { ServiceOrderReceiptRepository } from './repositories/service-order-rece
 import { ServiceOrderPhotoRepository } from './repositories/service-order-photo.repository';
 import { ServiceOrderPhotoManager } from './managers/service-order-photo.manager';
 import { ServiceOrderPhotoStorageService } from './services/service-order-photo-storage.service';
+import { SettingsModule } from '../settings/settings.module';
+import { CustomerMessagesController } from './controllers/customer-messages.controller';
+import { CustomerMessageManager } from './managers/customer-message.manager';
+import { CustomerMessageRepository } from './repositories/customer-message.repository';
+import { WaAkgWebhookController } from './controllers/wa-akg-webhook.controller';
 
 // Importa VehiclesModule/CustomersModule/IamModule pra ter acesso aos
 // repositórios que exportam — ServiceOrderManager valida vehicleId (e lê
@@ -23,9 +28,9 @@ import { ServiceOrderPhotoStorageService } from './services/service-order-photo-
 // (pra usar ServiceOrderRepository.lastDeliveredClosedAtUnscoped no job) —
 // ver comentário em maintenance-alerts.module.ts.
 @Module({
-  imports: [VehiclesModule, CustomersModule, IamModule, forwardRef(() => MaintenanceAlertsModule)],
-  controllers: [ServiceOrdersController],
-  providers: [ServiceOrderManager, ServiceOrderPhotoManager, ServiceOrderPhotoStorageService, ServiceOrderRepository, ServiceOrderStatusHistoryRepository, ServiceOrderItemRepository, ServiceOrderReceiptRepository, ServiceOrderPhotoRepository],
+  imports: [VehiclesModule, CustomersModule, IamModule, SettingsModule, forwardRef(() => MaintenanceAlertsModule)],
+  controllers: [ServiceOrdersController, CustomerMessagesController, WaAkgWebhookController],
+  providers: [CustomerMessageManager, CustomerMessageRepository, ServiceOrderManager, ServiceOrderPhotoManager, ServiceOrderPhotoStorageService, ServiceOrderRepository, ServiceOrderStatusHistoryRepository, ServiceOrderItemRepository, ServiceOrderReceiptRepository, ServiceOrderPhotoRepository],
   // MaintenanceAlertsModule (Feature Motor de Manutenção Preventiva) importa
   // este módulo pra usar ServiceOrderRepository.lastDeliveredClosedAtUnscoped
   // no job diário de scan.

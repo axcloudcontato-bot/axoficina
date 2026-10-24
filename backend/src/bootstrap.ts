@@ -31,7 +31,10 @@ function flattenValidationErrors(errors: ValidationError[], parentPath = ''): Ap
 // snake_case sem o snakeToCamelMiddleware, testando um caminho que a
 // aplicação real nunca exercita.
 export function configureApp(app: INestApplication): void {
-  app.use(json());
+  app.use(json({ verify: (req, _res, buffer) => {
+    // HMAC must use the exact bytes signed by WA-AKG, before key conversion.
+    if (req.url?.startsWith('/api/v1/webhooks/wa-akg/')) (req as { rawBody?: Buffer }).rawBody = Buffer.from(buffer);
+  } }));
   app.use(urlencoded({ extended: true }));
 
   // snake_case (rede) -> camelCase (DTOs) ANTES do ValidationPipe;

@@ -1,5 +1,7 @@
 # Oficina SaaS
 
+Mensagens para clientes com perguntas e botões de resposta: [guia de uso e configuração](docs/customer-message-buttons.md).
+
 Políticas de privacidade, termos, cookies, reembolso e procedimentos LGPD: [documentação de implantação e atendimento](docs/privacy-lgpd.md).
 
 Navegação por teclado e atalhos: [guia de uso e implementação](docs/keyboard-navigation.md).

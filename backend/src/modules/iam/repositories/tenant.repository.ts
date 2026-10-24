@@ -36,6 +36,11 @@ export interface UpdateTenantSettingsInput {
   smtpFromEmail?: string | null;
   smtpReplyTo?: string | null;
   smtpEnabled?: boolean;
+  waAkgBaseUrl?: string | null;
+  waAkgSessionId?: string | null;
+  waAkgApiKey?: string | null;
+  waAkgWebhookSecret?: string | null;
+  waAkgEnabled?: boolean;
 }
 
 @Injectable()

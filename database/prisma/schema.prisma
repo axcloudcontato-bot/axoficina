@@ -55,6 +55,11 @@ model Tenant {
   smtpFromEmail       String?   @map("smtp_from_email")
   smtpReplyTo         String?   @map("smtp_reply_to")
   smtpEnabled         Boolean   @default(false) @map("smtp_enabled")
+  waAkgBaseUrl         String?   @map("wa_akg_base_url")
+  waAkgSessionId       String?   @map("wa_akg_session_id")
+  waAkgApiKey          String?   @map("wa_akg_api_key")
+  waAkgWebhookSecret   String?   @map("wa_akg_webhook_secret")
+  waAkgEnabled         Boolean   @default(false) @map("wa_akg_enabled")
   plan                String    @default("free")
   status              String    @default("active")
   createdAt           DateTime  @default(now()) @map("created_at") @db.Timestamptz
@@ -497,6 +502,33 @@ model Supplier {
 
   @@index([tenantId, name])
   @@map("suppliers")
+}
+
+// Public access is limited to a random, hashed, expiring token. Authenticated
+// access is tenant-scoped. Message stores the exact context sent to the client.
+model CustomerMessage {
+  id             String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  tenantId       String    @map("tenant_id") @db.Uuid
+  serviceOrderId String    @map("service_order_id") @db.Uuid
+  customerId     String    @map("customer_id") @db.Uuid
+  channel        String
+  deliveryMode   String    @default("LINK") @map("delivery_mode")
+  sentAt         DateTime? @map("sent_at") @db.Timestamptz
+  whatsappSessionId String? @map("whatsapp_session_id")
+  whatsappRecipient String? @map("whatsapp_recipient")
+  providerMessageId String? @map("provider_message_id")
+  question       String
+  options        String[]
+  message        String
+  tokenHash      String    @unique @map("token_hash")
+  expiresAt      DateTime  @map("expires_at") @db.Timestamptz
+  selectedOption Int?      @map("selected_option")
+  answeredAt     DateTime? @map("answered_at") @db.Timestamptz
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([tenantId, serviceOrderId, createdAt])
+  @@index([tenantId, customerId])
+  @@map("customer_messages")
 }
 
 model Appointment {

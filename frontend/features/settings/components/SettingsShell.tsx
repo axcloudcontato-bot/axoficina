@@ -1,6 +1,6 @@
 'use client';
 
-import { Buildings, Envelope, UsersThree, ShieldCheck } from '@phosphor-icons/react';
+import { Buildings, Envelope, UsersThree, ShieldCheck, WhatsappLogo } from '@phosphor-icons/react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
@@ -10,6 +10,7 @@ import { useAuthStore } from '@/stores/auth-store';
 const items = [
   { href: '/settings/company', label: 'Empresa e marca', description: 'Identidade e documentos', icon: Buildings, permission: 'settings.view' as const },
   { href: '/settings/email', label: 'E-mail', description: 'Servidor e remetente', icon: Envelope, permission: 'settings.view' as const },
+  { href: '/settings/whatsapp', label: 'WhatsApp', description: 'Conexão com WA-AKG', icon: WhatsappLogo, permission: 'settings.view' as const },
   { href: '/settings/team', label: 'Equipe e acesso', description: 'Usuários e permissões', icon: UsersThree, permission: 'team.view' as const },
 ];
 

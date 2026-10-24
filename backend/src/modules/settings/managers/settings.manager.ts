@@ -26,7 +26,7 @@ export class SettingsManager {
 
   async getBranding(user: AuthenticatedUser) {
     const tenant = await this.requireTenant(user.tenantId);
-    return { company: this.toResponse(tenant).company };
+    return { company: this.toResponse(tenant).company, whatsappEnabled: tenant.waAkgEnabled ?? false };
   }
 
   async updateCompany(user: AuthenticatedUser, input: UpdateCompanySettingsRequest) {
