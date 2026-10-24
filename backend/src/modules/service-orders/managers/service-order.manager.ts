@@ -669,7 +669,9 @@ export class ServiceOrderManager {
         where: { id: serviceOrder.id, deletedAt: null },
         data: {
           paymentMethod: request.method,
-          paymentInstallments: installmentCount,
+          // service_orders_payment_installments_check só aceita valor não nulo
+          // quando o método é CREDIT_CARD.
+          paymentInstallments: request.method === 'CREDIT_CARD' ? installmentCount : null,
           paymentAnticipated: request.anticipated,
           paymentFirstDueAt: request.firstDueAt ? new Date(request.firstDueAt) : null,
         },

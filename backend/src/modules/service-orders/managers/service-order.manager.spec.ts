@@ -752,6 +752,24 @@ describe('ServiceOrderManager', () => {
       expect(createMany).not.toHaveBeenCalled();
     });
 
+    it('stores no installment count for non-credit methods (DB check constraint)', async () => {
+      const deps = buildManager();
+      deps.serviceOrderRepository.byId.mockResolvedValue(baseServiceOrder);
+      deps.itemRepository.byServiceOrderId.mockResolvedValue([{ id: 'item-1', serviceOrderId: 'so-1', type: 'SERVICE', description: 'Serviço', quantity: { toNumber: () => 1 }, unitPriceCents: 15000, createdAt: new Date() }]);
+      const updateMany = jest.fn();
+      deps.prisma.transaction.mockImplementation(async (fn) => fn({
+        $executeRaw: jest.fn(),
+        serviceOrderInstallment: { findFirst: jest.fn().mockResolvedValue(null), updateMany: jest.fn(), createMany: jest.fn() },
+        serviceOrder: { updateMany },
+        serviceOrderReceipt: { findFirst: jest.fn().mockResolvedValue(null), create: jest.fn().mockResolvedValue({ id: 'receipt-1' }) },
+      }));
+      jest.spyOn(deps.manager, 'getById').mockResolvedValue({ serviceOrder: {} as never });
+
+      await deps.manager.configurePayment(actingUser, { serviceOrderId: 'so-1', method: 'DEBIT_CARD', installments: 1, anticipated: true });
+
+      expect(updateMany).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ paymentMethod: 'DEBIT_CARD', paymentInstallments: null }) }));
+    });
+
     it('confirms a receipt only within the outstanding balance', async () => {
       const deps = buildManager();
       deps.serviceOrderRepository.byId.mockResolvedValue({ ...baseServiceOrder, paymentMethod: 'PIX' });
