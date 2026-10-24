@@ -126,6 +126,7 @@ export class ServiceOrderRepository {
     vehicleId?: string,
     technicianId?: string,
     customerId?: string,
+    search?: { orderNumber?: number; matchingCustomerIds: string[]; matchingVehicleIds: string[] },
   ) {
     const where = {
       deletedAt: null,
@@ -133,6 +134,20 @@ export class ServiceOrderRepository {
       ...(vehicleId ? { vehicleId } : {}),
       ...(technicianId ? { technicianId } : {}),
       ...(customerId ? { customerId } : {}),
+      // Sem relação FK entre ServiceOrder e Customer/Vehicle — o casamento
+      // por placa/nome do cliente é feito em duas etapas (ver
+      // VehicleRepository.searchIdsByPlateOrModel e
+      // CustomerRepository.searchIdsByNameOrDocument), OR'd aqui com o
+      // número da OS quando o termo de busca é numérico.
+      ...(search
+        ? {
+            OR: [
+              ...(search.orderNumber !== undefined ? [{ orderNumber: search.orderNumber }] : []),
+              ...(search.matchingCustomerIds.length > 0 ? [{ customerId: { in: search.matchingCustomerIds } }] : []),
+              ...(search.matchingVehicleIds.length > 0 ? [{ vehicleId: { in: search.matchingVehicleIds } }] : []),
+            ],
+          }
+        : {}),
     };
 
     const [items, total] = await Promise.all([

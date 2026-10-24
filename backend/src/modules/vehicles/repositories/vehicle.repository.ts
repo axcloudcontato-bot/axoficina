@@ -108,6 +108,28 @@ export class VehicleRepository {
     });
   }
 
+  // Usado pelo ServiceOrderManager pra casar OS pela placa/marca/modelo do
+  // veículo — mesmo padrão de CustomerRepository.searchIdsByNameOrDocument
+  // (sem relação FK entre ServiceOrder e Vehicle, o casamento é em duas
+  // etapas: aqui só os ids que batem; ServiceOrderRepository.listByTenant
+  // faz o OR com número da OS e cliente). `limit` é rede de segurança contra
+  // um IN gigante se o termo bater em muitos veículos.
+  async searchIdsByPlateOrModel(search: string, limit = 500) {
+    const vehicles = await this.prisma.client.vehicle.findMany({
+      where: {
+        deletedAt: null,
+        OR: [
+          { plate: { contains: search, mode: 'insensitive' as const } },
+          { brand: { contains: search, mode: 'insensitive' as const } },
+          { model: { contains: search, mode: 'insensitive' as const } },
+        ],
+      },
+      select: { id: true },
+      take: limit,
+    });
+    return vehicles.map((vehicle) => vehicle.id);
+  }
+
   // `matchingCustomerIds`: ids de clientes cujo nome/documento bateram com
   // `search` (ver CustomerRepository.searchIdsByNameOrDocument) — sem
   // relação FK entre Vehicle e Customer, o casamento por dono é feito assim,

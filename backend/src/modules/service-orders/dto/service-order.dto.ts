@@ -1,4 +1,4 @@
-import { IsIn, IsInt, IsISO8601, IsNotEmpty, IsObject, IsOptional, IsString, IsUUID, Max, Min } from 'class-validator';
+import { IsIn, IsInt, IsISO8601, IsNotEmpty, IsObject, IsOptional, IsString, IsUUID, Max, MaxLength, Min } from 'class-validator';
 import { PAYMENT_METHODS, SERVICE_ORDER_STATUSES } from '@oficina/contracts';
 import type {
   CreateServiceOrderRequest,
@@ -100,6 +100,11 @@ export class ServiceOrderListDto implements ServiceOrderListRequest {
   @IsOptional()
   @IsUUID('4', { message: 'customer_id must be a valid id' })
   customerId?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  search?: string;
 
   @IsInt()
   @Min(0)

@@ -39,10 +39,12 @@ function buildManager() {
   const vehicleRepository = {
     byId: jest.fn(),
     byIds: jest.fn().mockResolvedValue([]),
+    searchIdsByPlateOrModel: jest.fn().mockResolvedValue([]),
   };
   const customerRepository = {
     byId: jest.fn(),
     byIds: jest.fn().mockResolvedValue([]),
+    searchIdsByNameOrDocument: jest.fn().mockResolvedValue([]),
   };
   const userRepository = {
     byId: jest.fn(),
@@ -586,7 +588,45 @@ describe('ServiceOrderManager', () => {
         customerId: 'customer-1',
       });
 
-      expect(deps.serviceOrderRepository.listByTenant).toHaveBeenCalledWith(0, 20, 'IN_PROGRESS', 'vehicle-1', 'technician-1', 'customer-1');
+      expect(deps.serviceOrderRepository.listByTenant).toHaveBeenCalledWith(0, 20, 'IN_PROGRESS', 'vehicle-1', 'technician-1', 'customer-1', undefined);
+    });
+
+    it('resolves matching customer/vehicle ids and parses a numeric term as order number', async () => {
+      const deps = buildManager();
+      deps.serviceOrderRepository.listByTenant.mockResolvedValue({ items: [], total: 0 });
+      deps.vehicleRepository.byIds.mockResolvedValue([]);
+      deps.customerRepository.byIds.mockResolvedValue([]);
+      deps.userRepository.byIds.mockResolvedValue([]);
+      deps.customerRepository.searchIdsByNameOrDocument.mockResolvedValue(['customer-9']);
+      deps.vehicleRepository.searchIdsByPlateOrModel.mockResolvedValue(['vehicle-9']);
+
+      await deps.manager.list({ offset: 0, limit: 20, search: ' 42 ' });
+
+      expect(deps.customerRepository.searchIdsByNameOrDocument).toHaveBeenCalledWith('42');
+      expect(deps.vehicleRepository.searchIdsByPlateOrModel).toHaveBeenCalledWith('42');
+      expect(deps.serviceOrderRepository.listByTenant).toHaveBeenCalledWith(0, 20, undefined, undefined, undefined, undefined, {
+        orderNumber: 42,
+        matchingCustomerIds: ['customer-9'],
+        matchingVehicleIds: ['vehicle-9'],
+      });
+    });
+
+    it('leaves orderNumber undefined for a non-numeric search term', async () => {
+      const deps = buildManager();
+      deps.serviceOrderRepository.listByTenant.mockResolvedValue({ items: [], total: 0 });
+      deps.vehicleRepository.byIds.mockResolvedValue([]);
+      deps.customerRepository.byIds.mockResolvedValue([]);
+      deps.userRepository.byIds.mockResolvedValue([]);
+      deps.customerRepository.searchIdsByNameOrDocument.mockResolvedValue([]);
+      deps.vehicleRepository.searchIdsByPlateOrModel.mockResolvedValue(['vehicle-9']);
+
+      await deps.manager.list({ offset: 0, limit: 20, search: 'ABC1D23' });
+
+      expect(deps.serviceOrderRepository.listByTenant).toHaveBeenCalledWith(0, 20, undefined, undefined, undefined, undefined, {
+        orderNumber: undefined,
+        matchingCustomerIds: [],
+        matchingVehicleIds: ['vehicle-9'],
+      });
     });
 
     it('aggregates totalAmountCents per order in one batch call, without loading full items', async () => {

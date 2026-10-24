@@ -385,6 +385,15 @@ export class ServiceOrderManager {
   }
 
   async list(request: ServiceOrderListRequest): Promise<PaginationData<ServiceOrderResponse>> {
+    const trimmedSearch = request.search?.trim();
+    let search: { orderNumber?: number; matchingCustomerIds: string[]; matchingVehicleIds: string[] } | undefined;
+    if (trimmedSearch) {
+      const [matchingCustomerIds, matchingVehicleIds] = await Promise.all([
+        this.customerRepository.searchIdsByNameOrDocument(trimmedSearch),
+        this.vehicleRepository.searchIdsByPlateOrModel(trimmedSearch),
+      ]);
+      search = { orderNumber: /^\d+$/.test(trimmedSearch) ? Number(trimmedSearch) : undefined, matchingCustomerIds, matchingVehicleIds };
+    }
     const { items, total } = await this.serviceOrderRepository.listByTenant(
       request.offset,
       request.limit,
@@ -392,6 +401,7 @@ export class ServiceOrderManager {
       request.vehicleId,
       request.technicianId,
       request.customerId,
+      search,
     );
 
     const vehicleIds = [...new Set(items.map((item) => item.vehicleId))];

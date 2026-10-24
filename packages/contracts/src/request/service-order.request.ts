@@ -45,4 +45,7 @@ export interface ServiceOrderListRequest extends PageableRequest {
   technicianId?: string;
   // Feature 6 (Cadastro de Cliente Expandido) — aba Histórico do cliente.
   customerId?: string;
+  // Casa número da OS, placa/marca/modelo do veículo e nome/documento do
+  // cliente — usado pela busca global do cabeçalho.
+  search?: string;
 }

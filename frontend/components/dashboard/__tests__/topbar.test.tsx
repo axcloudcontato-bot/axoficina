@@ -10,6 +10,7 @@ vi.mock('@/features/maintenance-alerts/hooks/use-maintenance-alerts', () => ({
 }));
 vi.mock('@/features/service-orders/hooks/use-service-orders', () => ({
   useDueServiceOrderInstallments: () => ({ data: { items: [], total: 0 } }),
+  useServiceOrdersList: () => ({ data: undefined, isFetching: false }),
 }));
 vi.mock('@/features/auth/hooks/use-auth', () => ({ useLogout: () => ({ mutate: vi.fn() }) }));
 

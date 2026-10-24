@@ -10,10 +10,10 @@ import { cn } from '@/lib/utils';
 import { hasPermission } from '@/features/auth/permissions';
 import { useLogout } from '@/features/auth/hooks/use-auth';
 import { useMaintenanceAlertsList } from '@/features/maintenance-alerts/hooks/use-maintenance-alerts';
-import { useDueServiceOrderInstallments } from '@/features/service-orders/hooks/use-service-orders';
+import { useDueServiceOrderInstallments, useServiceOrdersList } from '@/features/service-orders/hooks/use-service-orders';
 import { useAuthStore } from '@/stores/auth-store';
 
-type View = 'default' | 'alerts' | 'theme' | 'profile';
+type View = 'default' | 'search' | 'alerts' | 'theme' | 'profile';
 
 const ROLE_LABELS: Record<string, string> = { ADMIN: 'Administrador', MANAGER: 'Gestor', MECHANIC: 'Mecânico', FRONT_DESK: 'Recepção' };
 const THEME_OPTIONS: Array<{ key: 'light' | 'dark' | 'system'; icon: PhosphorIcon; label: string }> = [
@@ -29,6 +29,8 @@ export function HeaderDock() {
   const [panelRef, panelBounds] = useMeasure();
   const [hiddenRef, hiddenBounds] = useMeasure();
   const [view, setView] = useState<View>('default');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
 
   const user = useAuthStore((state) => state.user);
   const logout = useLogout();
@@ -47,6 +49,20 @@ export function HeaderDock() {
     : '/financial';
 
   useEffect(() => {
+    const timeout = setTimeout(() => setDebouncedSearch(searchQuery.trim()), 250);
+    return () => clearTimeout(timeout);
+  }, [searchQuery]);
+  // Limpa o termo ao fechar pra próxima abertura começar vazia, não com a
+  // última busca.
+  useEffect(() => {
+    if (view !== 'search') { setSearchQuery(''); setDebouncedSearch(''); }
+  }, [view]);
+  const searchResults = useServiceOrdersList(
+    { offset: 0, limit: 8, search: debouncedSearch },
+    { enabled: view === 'search' && debouncedSearch.length >= 2 },
+  );
+
+  useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (containerRef.current && !containerRef.current.contains(event.target as Node)) setView('default');
     }
@@ -58,6 +74,42 @@ export function HeaderDock() {
 
   const content = useMemo(() => {
     switch (view) {
+      case 'search': {
+        const searched = debouncedSearch.length >= 2;
+        // `useServiceOrdersList` usa `placeholderData: (prev) => prev` (pra
+        // paginação não piscar vazia) — sem essa guarda, reabrir a busca
+        // mostraria por um instante o resultado da busca ANTERIOR mesmo com
+        // a caixa vazia, porque o React Query devolve esse placeholder
+        // enquanto a query atual (desabilitada) não tem dado próprio.
+        const items = searched ? (searchResults.data?.items ?? []) : [];
+        return <div className="w-[320px] p-2">
+          <div className="relative">
+            <MagnifyingGlass className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-text-muted" aria-hidden="true" />
+            <input
+              autoFocus
+              value={searchQuery}
+              onChange={(event) => setSearchQuery(event.target.value)}
+              placeholder="Placa, cliente ou nº da OS"
+              aria-label="Buscar ordens de serviço"
+              className="h-10 w-full rounded-button border border-border bg-bg pl-9 pr-3 text-sm text-text outline-none placeholder:text-text-muted focus-visible:ring-2 focus-visible:ring-ring"
+            />
+          </div>
+          <div className="mt-2 max-h-72 space-y-0.5 overflow-y-auto" aria-live="polite">
+            {!searched && <p className="px-3 py-6 text-center text-xs text-text-muted">Digite ao menos 2 caracteres.</p>}
+            {searched && searchResults.isFetching && <p className="px-3 py-6 text-center text-xs text-text-muted">Buscando...</p>}
+            {searched && !searchResults.isFetching && items.length === 0 && <p className="px-3 py-6 text-center text-xs text-text-muted">Nenhuma OS encontrada.</p>}
+            {items.map((item) => (
+              <Link key={item.id} href={`/service-orders/${item.id}`} className={rowClass} onClick={() => setView('default')}>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate font-bold text-text">{item.vehicleBrand} {item.vehicleModel} · {item.vehiclePlate}</span>
+                  <span className="mt-0.5 block truncate text-xs text-text-muted">{item.customerName} · OS #{String(item.orderNumber).padStart(5, '0')}</span>
+                </span>
+              </Link>
+            ))}
+          </div>
+        </div>;
+      }
+
       case 'alerts':
         return <div className="min-w-[250px] space-y-0.5 p-1.5">
           {openAlertCount === 0 && <p className="px-3 py-2 text-sm text-text-muted">Nenhum alerta pendente.</p>}
@@ -81,7 +133,7 @@ export function HeaderDock() {
       default:
         return null;
     }
-  }, [view, openAlertCount, maintenanceAlertCount, financialAlertCount, financialAlertHref, theme, user, logout]);
+  }, [view, searchQuery, debouncedSearch, searchResults.data, searchResults.isFetching, openAlertCount, maintenanceAlertCount, financialAlertCount, financialAlertHref, theme, user, logout]);
 
   return <div ref={containerRef} className="relative flex items-center">
     <div ref={hiddenRef} style={{ visibility: 'hidden' }} className="pointer-events-none absolute left-0 top-0">
@@ -109,7 +161,7 @@ export function HeaderDock() {
     </AnimatePresence>
 
     <div className="flex items-center gap-1 rounded-pill border border-border bg-card p-1">
-      <Link href="/service-orders" aria-label="Buscar ordens de serviço" className="flex size-9 items-center justify-center rounded-pill text-text-muted transition-colors duration-fast hover:bg-muted hover:text-text"><MagnifyingGlass className="size-[18px]" aria-hidden="true" /></Link>
+      <button type="button" aria-label="Buscar ordens de serviço" onClick={() => setView(view === 'search' ? 'default' : 'search')} className={cn('flex size-9 items-center justify-center rounded-pill transition-colors duration-fast', view === 'search' ? 'bg-selection text-accent-foreground' : 'text-text-muted hover:bg-muted hover:text-text')}><MagnifyingGlass className="size-[18px]" aria-hidden="true" /></button>
       <button type="button" aria-label="Alertas" onClick={() => setView(view === 'alerts' ? 'default' : 'alerts')} className={cn('relative flex size-9 items-center justify-center rounded-pill transition-colors duration-fast', view === 'alerts' ? 'bg-selection text-accent-foreground' : 'text-text-muted hover:bg-muted hover:text-text')}>
         <Bell className="size-[18px]" aria-hidden="true" />
         {openAlertCount > 0 && <span data-testid="open-alert-indicator" className="absolute right-1.5 top-1.5 size-1.5 rounded-full bg-warning" aria-hidden="true" />}
