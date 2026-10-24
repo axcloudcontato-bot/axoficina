@@ -70,6 +70,8 @@ services:
       THROTTLE_LIMIT: ${THROTTLE_LIMIT:-100}
       CORS_ORIGIN: ${PUBLIC_FRONTEND_URL:-http://localhost:3005}
       FRONTEND_URL: ${PUBLIC_FRONTEND_URL:-http://localhost:3005}
+      PUBLIC_API_URL: ${PUBLIC_BACKEND_URL:-http://localhost:3006}
+      WA_AKG_ALLOWED_HOSTS: ${WA_AKG_ALLOWED_HOSTS:-chat.axcloud.com.br}
       UPLOAD_DIR: /app/uploads
       BACKEND_PORT: 3001
     volumes:

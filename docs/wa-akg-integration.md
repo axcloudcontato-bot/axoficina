@@ -6,6 +6,7 @@ A integração envia os botões diretamente para a conversa pelo endpoint intera
 
 1. No backend, aplicar `28_wa_akg_integration`, gerar o cliente Prisma e reconstruir a aplicação.
 2. Definir `PUBLIC_API_URL` com a URL HTTPS pública do backend. Essa URL precisa ser acessível pelo WA-AKG. O endereço do frontend, `FRONTEND_URL`, continua usado para respostas de e-mail e compartilhamentos por link.
+   Na implantação Debian com Compose, informe `PUBLIC_BACKEND_URL` em `deploy/debian/.env.production`: o Compose repassa esse valor como `PUBLIC_API_URL` para a API.
 3. Acessar **Configurações → WhatsApp** (`/settings/whatsapp`).
 4. Informar `https://chat.axcloud.com.br`, o **sessionId** da sessão do número desejado e uma chave de API que tenha acesso à sessão. Esse é o identificador lógico `sessionId`, não o ID interno do registro no banco do WA-AKG.
 5. Gerar um segredo, copiá-lo antes de salvar e usar o mesmo valor no webhook do WA-AKG. Chave e segredo são criptografados na base e não são retornados pela API de configuração. Campos vazios preservam os segredos existentes.

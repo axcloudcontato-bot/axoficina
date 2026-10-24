@@ -30,7 +30,7 @@ docker compose version
 ```bash
 sudo mkdir -p /opt/oficina-mecanica
 sudo chown "$USER":"$USER" /opt/oficina-mecanica
-git clone https://github.com/axcloudcontato-bot/axoficina.git \
+git clone --branch main https://github.com/axcloudcontato-bot/axoficina.git \
   /opt/oficina-mecanica
 cd /opt/oficina-mecanica
 ```
@@ -138,13 +138,41 @@ docker compose --env-file deploy/debian/.env.production \
 Para um serviço específico, acrescente `backend`, `frontend`, `postgres` ou
 `migrate` ao final do comando.
 
+Se o build falhar com `TLS handshake timeout` ao consultar `registry-1.docker.io`,
+a conexão com o Docker Hub expirou antes de o build executar as instruções.
+Os Dockerfiles usam o frontend embutido no BuildKit para evitar um download
+extra de `docker/dockerfile:1`. As imagens base ainda precisam estar acessíveis.
+Confira a conexão no próprio servidor:
+
+```bash
+curl -I --connect-timeout 15 --max-time 30 https://registry-1.docker.io/v2/
+docker pull node:20-alpine
+```
+
+Um `401 Unauthorized` do endpoint `/v2/` é esperado na consulta sem autenticação
+e confirma que houve resposta HTTPS. Se ocorrer outro timeout, verifique a
+conectividade do servidor e do daemon Docker antes de repetir o deploy.
+Referência: [frontend do Dockerfile](https://docs.docker.com/reference/dockerfile/#syntax).
+
 ## 9. Atualizar
 
 ```bash
 cd /opt/oficina-mecanica
+git fetch origin
+git switch main
 git pull --ff-only
 ./deploy/debian/deploy.sh
 ```
+
+As mudanças de mensagens e WA-AKG estão na `main`. Instalações antigas podem
+estar na `master`: `git pull` atualiza apenas a branch selecionada. No primeiro
+`git switch main`, o Git cria a branch local rastreando `origin/main` quando
+ela ainda não existe localmente. Se houver alterações locais que impeçam a
+troca, revise-as antes de prosseguir.
+
+No Compose de produção, `PUBLIC_BACKEND_URL` também define `PUBLIC_API_URL`
+dentro da API. Para receber respostas do WA-AKG, use o endereço público HTTPS
+da API e cadastre a URL exibida em **Configurações → WhatsApp** no gateway.
 
 ## 10. Backup
 

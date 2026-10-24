@@ -1,4 +1,4 @@
-# syntax=docker/dockerfile:1
+# Uses the bundled Dockerfile frontend; no external syntax features are needed.
 FROM node:20-alpine AS base
 RUN corepack enable
 WORKDIR /app
