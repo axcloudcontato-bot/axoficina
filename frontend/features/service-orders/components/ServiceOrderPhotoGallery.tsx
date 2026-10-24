@@ -2,7 +2,7 @@
 
 import type { ServiceOrderItemResponse, ServiceOrderPhotoAngle, ServiceOrderPhotoCategory, ServiceOrderPhotoResponse } from '@oficina/contracts';
 import { SERVICE_ORDER_PHOTO_ANGLES } from '@oficina/contracts';
-import { Camera, CheckCircle, CircleNotch, Trash, WarningCircle, Wrench, X } from '@phosphor-icons/react';
+import { Camera, CheckCircle, CircleNotch, Trash, UploadSimple, WarningCircle, Wrench, X } from '@phosphor-icons/react';
 import Image from 'next/image';
 import { ChangeEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
@@ -111,7 +111,8 @@ export function ItemPhotosSection({ serviceOrderId, items, canManage }: { servic
 
 function PhotoSlot({ serviceOrderId, payload, label, photos, canManage, onSelect }: { serviceOrderId: string; payload: Payload; label: string; photos: ServiceOrderPhotoResponse[]; canManage: boolean; onSelect: (photo: ServiceOrderPhotoResponse) => void }) {
   const upload = useUploadServiceOrderPhoto();
-  const input = useRef<HTMLInputElement>(null);
+  const fileInput = useRef<HTMLInputElement>(null);
+  const cameraInput = useRef<HTMLInputElement>(null);
   const latest = photos[photos.length - 1];
 
   async function selectFile(event: ChangeEvent<HTMLInputElement>) {
@@ -131,9 +132,14 @@ function PhotoSlot({ serviceOrderId, payload, label, photos, canManage, onSelect
       {latest ? <PhotoContent photo={latest} /> : <span className="flex size-full flex-col items-center justify-center gap-1 text-text-muted"><Camera className="size-5" /><span className="text-[10px] font-semibold">Sem foto</span></span>}
       {photos.length > 1 && <span className="absolute right-1.5 top-1.5 rounded-full bg-black/60 px-1.5 py-0.5 text-[10px] font-bold text-white">{photos.length}</span>}
     </button>
-    <div className="flex items-center justify-between gap-2 bg-card px-2.5 py-2">
+    <div className="space-y-2 bg-card px-2.5 py-2">
       <span className="flex min-w-0 items-center gap-1 text-xs font-semibold text-text">{latest ? <CheckCircle weight="fill" className="size-3.5 shrink-0 text-success" /> : <WarningCircle className="size-3.5 shrink-0 text-text-muted" />}<span className="truncate">{label}</span></span>
-      {canManage && <><button type="button" onClick={() => input.current?.click()} disabled={upload.isPending} className="shrink-0 text-[11px] font-bold text-primary hover:underline disabled:opacity-50">{upload.isPending ? '...' : latest ? '+ foto' : 'Adicionar'}</button><input ref={input} type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" onChange={selectFile} /></>}
+      {canManage && <div className="grid grid-cols-2 gap-1.5">
+        <button type="button" onClick={() => cameraInput.current?.click()} disabled={upload.isPending} className="flex h-8 items-center justify-center gap-1 rounded-button border border-border text-[11px] font-bold text-primary transition-colors hover:bg-muted disabled:opacity-50"><Camera className="size-3.5" aria-hidden="true" />{upload.isPending ? '...' : 'Câmera'}</button>
+        <button type="button" onClick={() => fileInput.current?.click()} disabled={upload.isPending} className="flex h-8 items-center justify-center gap-1 rounded-button border border-border text-[11px] font-bold text-primary transition-colors hover:bg-muted disabled:opacity-50"><UploadSimple className="size-3.5" aria-hidden="true" />{upload.isPending ? '...' : 'Arquivo'}</button>
+        <input ref={cameraInput} type="file" accept="image/jpeg,image/png,image/webp" capture="environment" className="sr-only" tabIndex={-1} aria-hidden="true" onChange={selectFile} />
+        <input ref={fileInput} type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" tabIndex={-1} aria-hidden="true" onChange={selectFile} />
+      </div>}
     </div>
   </div>;
 }

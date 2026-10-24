@@ -21,18 +21,21 @@ describe('VehiclePhotoSection', () => {
     expect(screen.getByText('Lateral direita')).toBeInTheDocument();
     expect(screen.getByText('Estepe/porta-malas')).toBeInTheDocument();
     expect(screen.getByText('Painel (km)')).toBeInTheDocument();
-    expect(screen.getAllByText('Adicionar')).toHaveLength(6);
+    expect(screen.getAllByText('Câmera')).toHaveLength(6);
+    expect(screen.getAllByText('Arquivo')).toHaveLength(6);
   });
 
   it('shows all 6 required angle slots for the exit section', () => {
     render(<VehiclePhotoSection serviceOrderId="order-1" category="EXIT" canManage />);
     expect(screen.getByRole('heading', { name: /fotos de saída do veículo/i })).toBeInTheDocument();
-    expect(screen.getAllByText('Adicionar')).toHaveLength(6);
+    expect(screen.getAllByText('Câmera')).toHaveLength(6);
+    expect(screen.getAllByText('Arquivo')).toHaveLength(6);
   });
 
   it('hides upload actions for users without management permission', () => {
     render(<VehiclePhotoSection serviceOrderId="order-1" category="ENTRY" canManage={false} />);
-    expect(screen.queryByText('Adicionar')).not.toBeInTheDocument();
+    expect(screen.queryByText('Câmera')).not.toBeInTheDocument();
+    expect(screen.queryByText('Arquivo')).not.toBeInTheDocument();
   });
 });
 
@@ -51,6 +54,15 @@ describe('ItemPhotosSection', () => {
 
   it('hides upload actions for users without management permission', () => {
     render(<ItemPhotosSection serviceOrderId="order-1" items={[item]} canManage={false} />);
-    expect(screen.queryByText('Adicionar')).not.toBeInTheDocument();
+    expect(screen.queryByText('Câmera')).not.toBeInTheDocument();
+    expect(screen.queryByText('Arquivo')).not.toBeInTheDocument();
+  });
+});
+
+describe('PhotoSlot capture inputs', () => {
+  it('offers a camera input (rear camera) and a regular file input per slot', () => {
+    const { container } = render(<ItemPhotosSection serviceOrderId="order-1" items={[item]} canManage />);
+    expect(container.querySelectorAll('input[type="file"][capture="environment"]')).toHaveLength(2);
+    expect(container.querySelectorAll('input[type="file"]:not([capture])')).toHaveLength(2);
   });
 });
