@@ -1,13 +1,19 @@
-import { render, screen } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ItemPhotosSection, VehiclePhotoSection } from '../ServiceOrderPhotoGallery';
+import { compressImageFile, ImagePreparationError } from '@/lib/compress-image';
+
+const { mutateAsync, photoQuery } = vi.hoisted(() => ({ mutateAsync: vi.fn(), photoQuery: vi.fn() }));
+vi.mock('@/lib/compress-image', async (original) => ({ ...await original<typeof import('@/lib/compress-image')>(), compressImageFile: vi.fn() }));
 
 vi.mock('../../hooks/use-service-orders', () => ({
   useServiceOrderPhotos: () => ({ data: { photos: [] }, isLoading: false, isError: false }),
-  useUploadServiceOrderPhoto: () => ({ isPending: false, mutateAsync: vi.fn() }),
+  useUploadServiceOrderPhoto: () => ({ isPending: false, mutateAsync }),
   useDeleteServiceOrderPhoto: () => ({ isPending: false, mutate: vi.fn() }),
-  useServiceOrderPhotoBlob: () => ({ data: undefined }),
+  useServiceOrderPhotoBlob: () => photoQuery(),
 }));
+
+beforeEach(() => { vi.clearAllMocks(); photoQuery.mockReturnValue({ data: undefined }); });
 
 const item = { id: 'item-1', serviceOrderId: 'order-1', type: 'PART' as const, description: 'Pastilha de freio', quantity: 1, unitPriceCents: 1000, lineTotalCents: 1000, createdAt: new Date().toISOString() };
 
@@ -64,5 +70,50 @@ describe('PhotoSlot capture inputs', () => {
     const { container } = render(<ItemPhotosSection serviceOrderId="order-1" items={[item]} canManage />);
     expect(container.querySelectorAll('input[type="file"][capture="environment"]')).toHaveLength(2);
     expect(container.querySelectorAll('input[type="file"]:not([capture])')).toHaveLength(2);
+  });
+
+  it('blocks repeated captures while preparing, then confirms the saved upload', async () => {
+    let prepare!: (file: File) => void;
+    vi.mocked(compressImageFile).mockReturnValue(new Promise<File>((resolve) => { prepare = resolve; }));
+    mutateAsync.mockResolvedValue({});
+    render(<VehiclePhotoSection serviceOrderId="order-1" category="ENTRY" canManage />);
+    const slot = screen.getByRole('group', { name: /^Foto: Frente$/ });
+    const input = slot.querySelector('input[capture]')!;
+    const file = new File(['camera'], 'camera.jpg', { type: 'image/jpeg' });
+    fireEvent.change(input, { target: { files: [file] } });
+    expect(within(slot).getByRole('status')).toHaveTextContent('Preparando foto');
+    expect(within(slot).getByRole('button', { name: 'Câmera' })).toBeDisabled();
+    fireEvent.change(input, { target: { files: [file] } });
+    expect(compressImageFile).toHaveBeenCalledTimes(1);
+    expect(mutateAsync).not.toHaveBeenCalled();
+    prepare(file);
+    await waitFor(() => expect(within(slot).getByRole('status')).toHaveTextContent('Foto salva na OS.'));
+    expect(mutateAsync).toHaveBeenCalledWith({ serviceOrderId: 'order-1', category: 'ENTRY', angle: 'FRONT', file });
+    expect(within(slot).getByRole('button', { name: 'Câmera' })).toBeEnabled();
+  });
+
+  it('keeps the prepared photo for a manual retry when the server refuses the upload', async () => {
+    const file = new File(['small jpeg'], 'camera.jpg', { type: 'image/jpeg' });
+    vi.mocked(compressImageFile).mockResolvedValue(file);
+    mutateAsync.mockRejectedValueOnce(new Error('offline')).mockResolvedValueOnce({});
+    render(<VehiclePhotoSection serviceOrderId="order-1" category="ENTRY" canManage />);
+    const slot = screen.getByRole('group', { name: /^Foto: Frente$/ });
+    fireEvent.change(slot.querySelector('input[capture]')!, { target: { files: [file] } });
+    await waitFor(() => expect(within(slot).getByRole('alert')).toHaveTextContent('Não foi possível enviar a foto.'));
+    fireEvent.click(within(slot).getByRole('button', { name: 'Tentar enviar novamente' }));
+    await waitFor(() => expect(within(slot).getByRole('status')).toHaveTextContent('Foto salva na OS.'));
+    expect(compressImageFile).toHaveBeenCalledTimes(1);
+    expect(mutateAsync).toHaveBeenCalledTimes(2);
+    expect(mutateAsync.mock.calls[1][0].file).toBe(file);
+  });
+
+  it('shows preparation errors inline and never uploads an unsupported original', async () => {
+    vi.mocked(compressImageFile).mockRejectedValue(new ImagePreparationError('Selecione uma cópia em JPEG.'));
+    render(<VehiclePhotoSection serviceOrderId="order-1" category="ENTRY" canManage />);
+    const slot = screen.getByRole('group', { name: /^Foto: Frente$/ });
+    fireEvent.change(slot.querySelector('input[capture]')!, { target: { files: [new File(['heic'], 'camera.heic', { type: 'image/heic' })] } });
+    await waitFor(() => expect(within(slot).getByRole('alert')).toHaveTextContent('Selecione uma cópia em JPEG.'));
+    expect(mutateAsync).not.toHaveBeenCalled();
+    expect(within(slot).queryByRole('button', { name: 'Tentar enviar novamente' })).not.toBeInTheDocument();
   });
 });

@@ -83,7 +83,7 @@ export const serviceOrdersApi = {
     if (input.serviceOrderItemId) form.append('serviceOrderItemId', input.serviceOrderItemId);
     if (input.caption) form.append('caption', input.caption);
     form.append('file', input.file);
-    return (await apiClient.post('/api/v1/service-orders/photos', form)).data;
+    return (await apiClient.post('/api/v1/service-orders/photos', form, { timeout: 120_000 })).data;
   },
   async deletePhoto(id: string): Promise<{ success: true }> {
     return (await apiClient.post('/api/v1/service-orders/photos/delete', { id })).data;

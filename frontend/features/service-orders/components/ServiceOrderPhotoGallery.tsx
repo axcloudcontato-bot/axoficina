@@ -9,7 +9,8 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { extractErrorMessage } from '@/lib/api/client';
-import { compressImageFile } from '@/lib/compress-image';
+import { compressImageFile, ImagePreparationError } from '@/lib/compress-image';
+import { isAxiosError } from 'axios';
 import { useDeleteServiceOrderPhoto, useServiceOrderPhotoBlob, useServiceOrderPhotos, useUploadServiceOrderPhoto } from '../hooks/use-service-orders';
 
 const ANGLE_LABELS: Record<ServiceOrderPhotoAngle, string> = {
@@ -60,9 +61,9 @@ export function VehiclePhotoSection({ serviceOrderId, category, canManage }: { s
       </div>
     </header>
     {query.isLoading && <div className="flex h-40 items-center justify-center text-text-muted"><CircleNotch className="size-6 animate-spin" /></div>}
-    {query.isError && <p className="py-8 text-center text-sm font-semibold text-danger">Não foi possível carregar as fotos.</p>}
-    {!query.isLoading && !query.isError && <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
-      {SERVICE_ORDER_PHOTO_ANGLES.map((angle) => <PhotoSlot key={angle} serviceOrderId={serviceOrderId} payload={{ category, angle }} label={ANGLE_LABELS[angle]} photos={byAngle.get(angle) ?? []} canManage={canManage} onSelect={setSelected} />)}
+    {query.isError && <p role="alert" className="py-4 text-center text-sm font-semibold text-danger">Não foi possível atualizar as fotos. <button type="button" className="underline" onClick={() => query.refetch()}>Tentar novamente</button></p>}
+    {!query.isLoading && (!query.isError || query.data) && <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
+      {SERVICE_ORDER_PHOTO_ANGLES.map((angle) => <PhotoSlot key={`${serviceOrderId}:${category}:${angle}`} serviceOrderId={serviceOrderId} payload={{ category, angle }} label={ANGLE_LABELS[angle]} photos={byAngle.get(angle) ?? []} canManage={canManage} onSelect={setSelected} />)}
     </div>}
     <PhotoViewer photo={selected} onClose={() => setSelected(null)} canManage={canManage} serviceOrderId={serviceOrderId} />
   </section>;
@@ -94,8 +95,8 @@ export function ItemPhotosSection({ serviceOrderId, items, canManage }: { servic
       </div>
     </header>
     {query.isLoading && <div className="flex h-40 items-center justify-center text-text-muted"><CircleNotch className="size-6 animate-spin" /></div>}
-    {query.isError && <p className="py-8 text-center text-sm font-semibold text-danger">Não foi possível carregar as fotos.</p>}
-    {!query.isLoading && !query.isError && (
+    {query.isError && <p role="alert" className="py-4 text-center text-sm font-semibold text-danger">Não foi possível atualizar as fotos. <button type="button" className="underline" onClick={() => query.refetch()}>Tentar novamente</button></p>}
+    {!query.isLoading && (!query.isError || query.data) && (
       items.length === 0
         ? <div className="mt-4 flex min-h-20 items-center justify-center rounded-button border border-dashed border-border bg-muted/30 px-4 text-center text-xs text-text-muted">Nenhum item lançado nesta OS ainda.</div>
         : <div className="mt-4 space-y-3">
@@ -116,22 +117,59 @@ function PhotoSlot({ serviceOrderId, payload, label, photos, canManage, onSelect
   const upload = useUploadServiceOrderPhoto();
   const fileInput = useRef<HTMLInputElement>(null);
   const cameraInput = useRef<HTMLInputElement>(null);
+  const busyRef = useRef(false);
+  const preparedFile = useRef<File | null>(null);
+  const [stage, setStage] = useState<'idle' | 'preparing' | 'uploading' | 'saved' | 'error'>('idle');
+  const [errorMessage, setErrorMessage] = useState('');
+  const busy = stage === 'preparing' || stage === 'uploading' || upload.isPending;
   const latest = photos[photos.length - 1];
 
-  async function selectFile(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    try {
-      const compressed = await compressImageFile(file);
-      await upload.mutateAsync({ serviceOrderId, ...payload, file: compressed });
-    } catch (error) {
-      toast.error(extractErrorMessage(error, 'Não foi possível enviar a foto.'));
-    } finally {
-      event.target.value = '';
-    }
+  function fail(error: unknown) {
+    const message = error instanceof ImagePreparationError ? error.message
+      : isAxiosError(error) && error.response?.status === 413 ? 'A foto excedeu o limite de envio do servidor. Selecione uma foto menor.'
+      : isAxiosError(error) && !error.response ? 'A conexão foi interrompida. Confira se a foto apareceu na galeria antes de tentar novamente.'
+      : extractErrorMessage(error, 'Não foi possível enviar a foto. Confira a conexão e tente novamente.');
+    setErrorMessage(message);
+    setStage('error');
+    toast.error(message);
   }
 
-  return <div className="overflow-hidden rounded-button border border-border bg-muted">
+  async function sendPreparedFile(file: File) {
+    setStage('uploading');
+    await upload.mutateAsync({ serviceOrderId, ...payload, file });
+    preparedFile.current = null;
+    setStage('saved');
+    toast.success(`Foto de ${label.toLowerCase()} salva na OS.`);
+  }
+
+  async function selectFile(event: ChangeEvent<HTMLInputElement>) {
+    const input = event.currentTarget;
+    const file = input.files?.[0];
+    // Reset synchronously so a second capture with the same name fires change.
+    input.value = '';
+    if (!file || busyRef.current) return;
+    busyRef.current = true;
+    preparedFile.current = null;
+    setErrorMessage('');
+    setStage('preparing');
+    try {
+      const compressed = await compressImageFile(file);
+      preparedFile.current = compressed;
+      await sendPreparedFile(compressed);
+    } catch (error) { fail(error); }
+    finally { busyRef.current = false; }
+  }
+
+  async function retry() {
+    if (!preparedFile.current || busyRef.current) return;
+    busyRef.current = true;
+    setErrorMessage('');
+    try { await sendPreparedFile(preparedFile.current); }
+    catch (error) { fail(error); }
+    finally { busyRef.current = false; }
+  }
+
+  return <div role="group" aria-label={`Foto: ${label}`} aria-busy={busy} className="overflow-hidden rounded-button border border-border bg-muted">
     <button type="button" disabled={!latest} onClick={() => latest && onSelect(latest)} className="relative block aspect-[4/3] w-full text-left disabled:cursor-default">
       {latest ? <PhotoContent photo={latest} /> : <span className="flex size-full flex-col items-center justify-center gap-1 text-text-muted"><Camera className="size-5" /><span className="text-[10px] font-semibold">Sem foto</span></span>}
       {photos.length > 1 && <span className="absolute right-1.5 top-1.5 rounded-full bg-black/60 px-1.5 py-0.5 text-[10px] font-bold text-white">{photos.length}</span>}
@@ -139,11 +177,13 @@ function PhotoSlot({ serviceOrderId, payload, label, photos, canManage, onSelect
     <div className="space-y-2 bg-card px-2.5 py-2">
       <span className="flex min-w-0 items-center gap-1 text-xs font-semibold text-text">{latest ? <CheckCircle weight="fill" className="size-3.5 shrink-0 text-success" /> : <WarningCircle className="size-3.5 shrink-0 text-text-muted" />}<span className="truncate">{label}</span></span>
       {canManage && <div className="grid grid-cols-2 gap-1.5">
-        <button type="button" onClick={() => cameraInput.current?.click()} disabled={upload.isPending} className="flex h-8 items-center justify-center gap-1 rounded-button border border-border text-[11px] font-bold text-primary transition-colors hover:bg-muted disabled:opacity-50"><Camera className="size-3.5" aria-hidden="true" />{upload.isPending ? '...' : 'Câmera'}</button>
-        <button type="button" onClick={() => fileInput.current?.click()} disabled={upload.isPending} className="flex h-8 items-center justify-center gap-1 rounded-button border border-border text-[11px] font-bold text-primary transition-colors hover:bg-muted disabled:opacity-50"><UploadSimple className="size-3.5" aria-hidden="true" />{upload.isPending ? '...' : 'Arquivo'}</button>
-        <input ref={cameraInput} type="file" accept="image/jpeg,image/png,image/webp" capture="environment" className="sr-only" tabIndex={-1} aria-hidden="true" onChange={selectFile} />
-        <input ref={fileInput} type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" tabIndex={-1} aria-hidden="true" onChange={selectFile} />
+        <button type="button" onClick={() => cameraInput.current?.click()} disabled={busy} className="flex h-8 items-center justify-center gap-1 rounded-button border border-border text-[11px] font-bold text-primary transition-colors hover:bg-muted disabled:opacity-50"><Camera className="size-3.5" aria-hidden="true" />Câmera</button>
+        <button type="button" onClick={() => fileInput.current?.click()} disabled={busy} className="flex h-8 items-center justify-center gap-1 rounded-button border border-border text-[11px] font-bold text-primary transition-colors hover:bg-muted disabled:opacity-50"><UploadSimple className="size-3.5" aria-hidden="true" />Arquivo</button>
+        <input ref={cameraInput} type="file" accept="image/*" capture="environment" className="sr-only" tabIndex={-1} aria-hidden="true" onChange={selectFile} />
+        <input ref={fileInput} type="file" accept="image/*" className="sr-only" tabIndex={-1} aria-hidden="true" onChange={selectFile} />
       </div>}
+      {stage !== 'idle' && <p role={stage === 'error' ? 'alert' : 'status'} className={`break-words text-xs ${stage === 'error' ? 'text-danger' : 'text-text-muted'}`}>{stage === 'preparing' ? 'Preparando foto...' : stage === 'uploading' ? 'Enviando foto...' : stage === 'saved' ? 'Foto salva na OS.' : errorMessage}</p>}
+      {canManage && stage === 'error' && preparedFile.current && <button type="button" onClick={retry} className="min-h-9 w-full rounded-button border border-border px-2 text-xs font-bold text-primary hover:bg-muted">Tentar enviar novamente</button>}
     </div>
   </div>;
 }
@@ -157,6 +197,7 @@ function PhotoContent({ photo, fit = 'cover' }: { photo: ServiceOrderPhotoRespon
     setUrl(next);
     return () => URL.revokeObjectURL(next);
   }, [blob.data]);
+  if (blob.isError) return <span className="flex size-full flex-col items-center justify-center gap-1 p-2 text-center text-xs text-danger"><WarningCircle className="size-5" />Não foi possível carregar a foto.</span>;
   if (!url) return <span className="flex size-full items-center justify-center text-text-muted"><CircleNotch className="size-5 animate-spin" /></span>;
   return <Image src={url} alt={photo.caption || `Foto ${photo.originalName}`} fill unoptimized sizes={fit === 'contain' ? '100vw' : '(max-width: 640px) 50vw, 25vw'} className={fit === 'contain' ? 'object-contain' : 'object-cover transition-transform duration-300 group-hover:scale-[1.03]'} />;
 }

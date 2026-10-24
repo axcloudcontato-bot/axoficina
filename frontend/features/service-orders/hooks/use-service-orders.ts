@@ -13,6 +13,7 @@ import type {
   ConfirmServiceOrderInstallmentRequest,
   ServiceOrderPhotoCategory,
   ServiceOrderPhotoAngle,
+  ServiceOrderPhotoResponse,
   TechnicianProductivityRequest,
 } from '@oficina/contracts';
 import { serviceOrdersApi } from '../api/service-orders-api';
@@ -161,7 +162,16 @@ export function useUploadServiceOrderPhoto() {
   const client = useQueryClient();
   return useMutation({
     mutationFn: (input: { serviceOrderId: string; category: ServiceOrderPhotoCategory; angle?: ServiceOrderPhotoAngle; serviceOrderItemId?: string; caption?: string; file: File }) => serviceOrdersApi.uploadPhoto(input),
-    onSuccess: (_, input) => client.invalidateQueries({ queryKey: [SERVICE_ORDER_PHOTOS_KEY, input.serviceOrderId] }),
+    onSuccess: (data, input) => {
+      const queryKey = [SERVICE_ORDER_PHOTOS_KEY, input.serviceOrderId];
+      // The POST already confirms persistence. Show its result immediately;
+      // a slow/offline gallery refresh must not keep the upload pending.
+      client.setQueryData<{ photos: ServiceOrderPhotoResponse[] }>(queryKey, (current) => ({
+        photos: [...(current?.photos.filter((photo) => photo.id !== data.photo.id) ?? []), data.photo]
+          .sort((a, b) => Date.parse(a.createdAt) - Date.parse(b.createdAt)),
+      }));
+      void client.invalidateQueries({ queryKey });
+    },
   });
 }
 
