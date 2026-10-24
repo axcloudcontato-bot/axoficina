@@ -18,8 +18,9 @@ export function CustomerNotesTab({ form }: CustomerNotesTabProps) {
         <FormItem>
           <FormLabel>Observações internas (opcional)</FormLabel>
           <FormControl>
-            <Textarea rows={8} placeholder="Notas internas sobre o cliente, visíveis só pra equipe." {...field} />
+            <Textarea rows={8} maxLength={2000} placeholder="Notas internas sobre o cliente, visíveis só pra equipe." {...field} />
           </FormControl>
+          <p className="text-xs text-text-muted">Registre somente informações necessárias ao atendimento. Não inclua dados sensíveis, senhas ou documentos completos.</p>
           <FormMessage />
         </FormItem>
       )}

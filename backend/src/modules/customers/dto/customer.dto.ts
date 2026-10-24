@@ -1,4 +1,5 @@
-import { IsEmail, IsIn, IsInt, IsNotEmpty, IsObject, IsOptional, IsString, IsUUID, Max, Min } from 'class-validator';
+import { Type } from 'class-transformer';
+import { IsEmail, IsIn, IsInt, IsNotEmpty, IsObject, IsOptional, IsString, IsUUID, Max, MaxLength, Min, ValidateIf, ValidateNested } from 'class-validator';
 import { CUSTOMER_CONTACT_CHANNELS, CUSTOMER_CONTACT_TIMES, CUSTOMER_TYPES } from '@oficina/contracts';
 import type {
   CreateCustomerRequest,
@@ -13,16 +14,35 @@ import type {
 const MAX_LIST_LIMIT = 100;
 const DEFAULT_LIST_LIMIT = 100;
 
+class CustomerAddressDto implements CustomerAddress {
+  @IsOptional() @IsString() @MaxLength(200)
+  street?: string;
+  @IsOptional() @IsString() @MaxLength(200)
+  number?: string;
+  @IsOptional() @IsString() @MaxLength(200)
+  complement?: string;
+  @IsOptional() @IsString() @MaxLength(200)
+  neighborhood?: string;
+  @IsOptional() @IsString() @MaxLength(200)
+  city?: string;
+  @IsOptional() @IsString() @MaxLength(200)
+  state?: string;
+  @IsOptional() @IsString() @MaxLength(200)
+  zipCode?: string;
+}
+
 export class CreateCustomerDto implements CreateCustomerRequest {
   @IsIn(CUSTOMER_TYPES, { message: 'type must be one of PF, PJ' })
   type!: CreateCustomerRequest['type'];
 
-  @IsNotEmpty({ message: 'document is required' })
-  document!: string;
+  @IsOptional() @IsString() @MaxLength(24)
+  document?: string;
 
+  @IsString() @MaxLength(200)
   @IsNotEmpty({ message: 'name is required' })
   name!: string;
 
+  @IsString() @MaxLength(30)
   @IsNotEmpty({ message: 'phone is required' })
   phone!: string;
 
@@ -31,31 +51,31 @@ export class CreateCustomerDto implements CreateCustomerRequest {
   email?: string;
 
   @IsOptional()
-  @IsObject()
-  address?: CustomerAddress;
+  @IsObject() @ValidateNested() @Type(() => CustomerAddressDto)
+  address?: CustomerAddressDto;
 
   @IsOptional()
-  @IsString()
+  @IsString() @MaxLength(2000)
   notes?: string;
 
   @IsOptional()
-  @IsString()
+  @IsString() @MaxLength(2000)
   rg?: string;
 
   @IsOptional()
-  @IsString()
+  @IsString() @MaxLength(2000)
   stateRegistration?: string;
 
   @IsOptional()
-  @IsString()
+  @IsString() @MaxLength(2000)
   secondaryContactName?: string;
 
   @IsOptional()
-  @IsString()
+  @IsString() @MaxLength(2000)
   secondaryContactPhone?: string;
 
   @IsOptional()
-  @IsString()
+  @IsString() @MaxLength(2000)
   secondaryContactRelation?: string;
 
   @IsOptional()
@@ -72,53 +92,58 @@ export class UpdateCustomerDto implements UpdateCustomerRequest {
   @IsUUID('4', { message: 'id must be a valid id' })
   id!: string;
 
-  @IsOptional()
+  @ValidateIf((_object, value) => value !== undefined) @IsString() @MaxLength(24)
+  document?: string;
+
+  @ValidateIf((_object, value) => value !== undefined)
+  @IsString() @MaxLength(200)
   @IsNotEmpty({ message: 'name cannot be empty' })
   name?: string;
 
-  @IsOptional()
+  @ValidateIf((_object, value) => value !== undefined)
+  @IsString() @MaxLength(200)
   @IsNotEmpty({ message: 'phone cannot be empty' })
   phone?: string;
 
   @IsOptional()
   @IsEmail({}, { message: 'email must be a valid email' })
-  email?: string;
+  email?: string | null;
 
   @IsOptional()
-  @IsObject()
-  address?: CustomerAddress;
+  @IsObject() @ValidateNested() @Type(() => CustomerAddressDto)
+  address?: CustomerAddressDto | null;
 
   @IsOptional()
-  @IsString()
-  notes?: string;
+  @IsString() @MaxLength(2000)
+  notes?: string | null;
 
   @IsOptional()
-  @IsString()
-  rg?: string;
+  @IsString() @MaxLength(2000)
+  rg?: string | null;
 
   @IsOptional()
-  @IsString()
-  stateRegistration?: string;
+  @IsString() @MaxLength(2000)
+  stateRegistration?: string | null;
 
   @IsOptional()
-  @IsString()
-  secondaryContactName?: string;
+  @IsString() @MaxLength(2000)
+  secondaryContactName?: string | null;
 
   @IsOptional()
-  @IsString()
-  secondaryContactPhone?: string;
+  @IsString() @MaxLength(2000)
+  secondaryContactPhone?: string | null;
 
   @IsOptional()
-  @IsString()
-  secondaryContactRelation?: string;
+  @IsString() @MaxLength(2000)
+  secondaryContactRelation?: string | null;
 
   @IsOptional()
   @IsIn(CUSTOMER_CONTACT_CHANNELS, { message: 'preferred_contact_channel must be one of PHONE, WHATSAPP, EMAIL, SMS' })
-  preferredContactChannel?: CustomerContactChannel;
+  preferredContactChannel?: CustomerContactChannel | null;
 
   @IsOptional()
   @IsIn(CUSTOMER_CONTACT_TIMES, { message: 'preferred_contact_time must be one of MORNING, AFTERNOON, EVENING, ANY' })
-  preferredContactTime?: CustomerContactTime;
+  preferredContactTime?: CustomerContactTime | null;
 }
 
 export class DeleteCustomerDto implements DeleteCustomerRequest {
@@ -135,7 +160,7 @@ export class GetCustomerDto {
 
 export class CustomerListDto implements CustomerListRequest {
   @IsOptional()
-  @IsString()
+  @IsString() @MaxLength(2000)
   search?: string;
 
   @IsInt()

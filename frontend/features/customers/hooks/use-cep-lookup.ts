@@ -29,12 +29,12 @@ async function fetchCep(digits: string): Promise<CepLookupResult | null> {
   };
 }
 
-export function useCepLookup(zipCode: string) {
+export function useCepLookup(zipCode: string, requested = false) {
   const digits = zipCode.replace(/\D/g, '');
   return useQuery({
     queryKey: ['cep-lookup', digits],
     queryFn: () => fetchCep(digits),
-    enabled: digits.length === 8,
+    enabled: requested && digits.length === 8,
     staleTime: Infinity,
     retry: 1,
   });

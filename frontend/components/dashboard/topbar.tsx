@@ -2,7 +2,7 @@
 
 import { usePathname } from 'next/navigation';
 import type { Icon as PhosphorIcon } from '@phosphor-icons/react';
-import { Bell, Car, CalendarBlank, ChartBar, ChartLine, ClipboardText, SquaresFour, Users, UsersThree } from '@phosphor-icons/react';
+import { Bell, Car, CalendarBlank, ChartBar, ChartLine, ClipboardText, ShieldCheck, SquaresFour, Users, UsersThree } from '@phosphor-icons/react';
 import { HeaderDock } from '@/components/dashboard/header-dock';
 
 interface PageMeta { title: string; description: string; icon: PhosphorIcon }
@@ -17,6 +17,7 @@ const PAGE_META: Record<string, PageMeta> = {
   '/productivity': { title: 'Produtividade', description: 'OS entregues, mão de obra gerada e carga por técnico.', icon: ChartBar },
   '/maintenance-alerts': { title: 'Alertas de manutenção', description: 'Acompanhe os contatos preventivos pendentes.', icon: Bell },
   '/users': { title: 'Equipe e acesso', description: 'Gerencie usuários, perfis e permissões.', icon: UsersThree },
+  '/settings/privacy': { title: 'Privacidade e solicitações', description: 'Seus dados, direitos e protocolos de atendimento.', icon: ShieldCheck },
 };
 
 const PREFIX_PAGE_META: Array<{ prefix: string } & PageMeta> = [

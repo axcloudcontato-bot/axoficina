@@ -1,4 +1,6 @@
-export interface SignupRequest {
+import type { LegalAcknowledgement } from '../legal';
+
+export interface SignupRequest extends LegalAcknowledgement {
   tenantName: string;
   tenantDocument: string;
   adminName: string;

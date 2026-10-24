@@ -52,11 +52,23 @@ async function fillValidForm(user: ReturnType<typeof userEvent.setup>) {
   await user.type(screen.getByLabelText(/seu nome/i), 'Admin');
   await user.type(screen.getByLabelText(/^e-mail$/i), 'admin@test.com');
   await user.type(screen.getByLabelText(/^senha$/i), 'supersecret1');
+  await user.click(screen.getByRole('checkbox'));
 }
 
 describe('SignupForm', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+  });
+
+  it('requires an unchecked-by-default acceptance even when account data is valid', async () => {
+    const user = userEvent.setup();
+    renderWithClient(<SignupForm />);
+    expect(screen.getByRole('checkbox')).not.toBeChecked();
+    await fillValidForm(user);
+    await user.click(screen.getByRole('checkbox'));
+    await user.click(screen.getByRole('button', { name: /criar minha oficina/i }));
+    expect(await screen.findByText(/aceite os termos de uso para continuar/i)).toBeInTheDocument();
+    expect(authApi.signup).not.toHaveBeenCalled();
   });
 
   it('shows field validation errors when submitted empty', async () => {

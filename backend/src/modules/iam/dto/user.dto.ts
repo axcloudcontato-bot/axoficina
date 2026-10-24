@@ -1,6 +1,6 @@
 import { Type } from 'class-transformer';
-import { IsEmail, IsIn, IsInt, IsNotEmpty, IsOptional, IsUUID, Max, Min, MinLength, ValidateNested } from 'class-validator';
-import { INVITABLE_ROLES, MIN_PASSWORD_LENGTH, USER_ROLES, USER_STATUSES } from '@oficina/contracts';
+import { Equals, IsEmail, IsIn, IsInt, IsNotEmpty, IsOptional, IsUUID, Max, Min, MinLength, ValidateNested } from 'class-validator';
+import { INVITABLE_ROLES, LEGAL_VERSION, MIN_PASSWORD_LENGTH, USER_ROLES, USER_STATUSES } from '@oficina/contracts';
 import type { AcceptInviteRequest, InviteUserRequest, UserListFilters, UserListRequest } from '@oficina/contracts';
 
 const MAX_LIST_LIMIT = 100;
@@ -19,6 +19,12 @@ export class InviteUserDto implements InviteUserRequest {
 }
 
 export class AcceptInviteDto implements AcceptInviteRequest {
+  @Equals(true, { message: 'Aceite os Termos de uso para continuar.' })
+  acceptedTerms!: boolean;
+
+  @Equals(LEGAL_VERSION, { message: 'Leia e aceite a versão atual dos documentos.' })
+  legalVersion!: string;
+
   @IsNotEmpty({ message: 'invite_token is required' })
   inviteToken!: string;
 

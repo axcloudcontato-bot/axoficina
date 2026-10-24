@@ -1,3 +1,4 @@
+import { LEGAL_VERSION } from '@oficina/contracts';
 import { INestApplication } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { ThrottlerStorage, ThrottlerStorageService } from '@nestjs/throttler';
@@ -46,6 +47,7 @@ describe('Service Orders (e2e)', () => {
     const response = await request(app.getHttpServer())
       .post('/api/v1/auth/signup')
       .send({
+        accepted_terms: true, legal_version: LEGAL_VERSION,
         tenant_name: `Oficina OS E2E ${suffix}`,
         tenant_document: generateValidCpf(),
         admin_name: 'Admin E2E',
@@ -65,7 +67,7 @@ describe('Service Orders (e2e)', () => {
 
     const accept = await request(app.getHttpServer())
       .post('/api/v1/users/accept-invite')
-      .send({ invite_token: inviteToken, password: 'supersecret1' });
+      .send({ accepted_terms: true, legal_version: LEGAL_VERSION, invite_token: inviteToken, password: 'supersecret1' });
     return accept.body.access_token as string;
   }
 
@@ -78,7 +80,7 @@ describe('Service Orders (e2e)', () => {
 
     const accept = await request(app.getHttpServer())
       .post('/api/v1/users/accept-invite')
-      .send({ invite_token: inviteToken, password: 'supersecret1' });
+      .send({ accepted_terms: true, legal_version: LEGAL_VERSION, invite_token: inviteToken, password: 'supersecret1' });
     return { token: accept.body.access_token as string, userId: accept.body.user.id as string };
   }
 

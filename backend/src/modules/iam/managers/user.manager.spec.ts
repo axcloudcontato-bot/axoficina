@@ -1,3 +1,4 @@
+import { LEGAL_VERSION } from '@oficina/contracts';
 import { HttpStatus } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { UserManager } from './user.manager';
@@ -148,7 +149,7 @@ describe('UserManager', () => {
       deps.userRepository.byInviteTokenHash.mockResolvedValue(invitedUser);
       deps.roleRepository.byId.mockResolvedValue(MECHANIC_ROLE);
 
-      const result = await deps.manager.acceptInvite({ inviteToken: 'raw-invite-token', password: 'supersecret1' });
+      const result = await deps.manager.acceptInvite({ acceptedTerms: true, legalVersion: LEGAL_VERSION, inviteToken: 'raw-invite-token', password: 'supersecret1' });
 
       expect(deps.userRepository.update).toHaveBeenCalledWith(
         'user-2',
@@ -162,7 +163,7 @@ describe('UserManager', () => {
       const deps = buildManager();
       deps.userRepository.byInviteTokenHash.mockResolvedValue(null);
 
-      await expect(deps.manager.acceptInvite({ inviteToken: 'bad', password: 'supersecret1' })).rejects.toMatchObject({
+      await expect(deps.manager.acceptInvite({ acceptedTerms: true, legalVersion: LEGAL_VERSION, inviteToken: 'bad', password: 'supersecret1' })).rejects.toMatchObject({
         status: HttpStatus.BAD_REQUEST,
       });
     });
@@ -172,7 +173,7 @@ describe('UserManager', () => {
       deps.userRepository.byInviteTokenHash.mockResolvedValue({ ...invitedUser, status: 'active' });
 
       await expect(
-        deps.manager.acceptInvite({ inviteToken: 'raw-invite-token', password: 'supersecret1' }),
+        deps.manager.acceptInvite({ acceptedTerms: true, legalVersion: LEGAL_VERSION, inviteToken: 'raw-invite-token', password: 'supersecret1' }),
       ).rejects.toMatchObject({ status: HttpStatus.BAD_REQUEST });
     });
 
@@ -184,7 +185,7 @@ describe('UserManager', () => {
       });
 
       await expect(
-        deps.manager.acceptInvite({ inviteToken: 'raw-invite-token', password: 'supersecret1' }),
+        deps.manager.acceptInvite({ acceptedTerms: true, legalVersion: LEGAL_VERSION, inviteToken: 'raw-invite-token', password: 'supersecret1' }),
       ).rejects.toMatchObject({ status: HttpStatus.BAD_REQUEST });
     });
 
@@ -193,7 +194,7 @@ describe('UserManager', () => {
       deps.userRepository.byInviteTokenHash.mockResolvedValue(invitedUser);
 
       await expect(
-        deps.manager.acceptInvite({ inviteToken: 'raw-invite-token', password: 'short' }),
+        deps.manager.acceptInvite({ acceptedTerms: true, legalVersion: LEGAL_VERSION, inviteToken: 'raw-invite-token', password: 'short' }),
       ).rejects.toMatchObject({ status: HttpStatus.BAD_REQUEST });
     });
   });

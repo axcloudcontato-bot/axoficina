@@ -23,6 +23,7 @@ import { MaintenanceAlertsModule } from './modules/maintenance-alerts/maintenanc
 import { AppointmentsModule } from './modules/appointments/appointments.module';
 import { FinancialModule } from './modules/financial/financial.module';
 import { SettingsModule } from './modules/settings/settings.module';
+import { PrivacyModule } from './modules/privacy/privacy.module';
 
 @Module({
   imports: [
@@ -59,6 +60,7 @@ import { SettingsModule } from './modules/settings/settings.module';
     AppointmentsModule,
     FinancialModule,
     SettingsModule,
+    PrivacyModule,
   ],
   providers: [
     // Ordem importa: ThrottlerGuard e JwtAuthGuard rodam antes do RolesGuard

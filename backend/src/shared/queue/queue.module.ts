@@ -15,6 +15,7 @@ export const MAINTENANCE_ALERTS_QUEUE = 'maintenance-alerts-scan';
       useFactory: (config: ConfigService) => {
         const redisUrl = new URL(config.getOrThrow<string>('REDIS_URL'));
         return {
+          prefix: config.get<string>('QUEUE_PREFIX', 'bull'),
           connection: {
             host: redisUrl.hostname,
             port: Number(redisUrl.port || 6379),

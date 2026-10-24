@@ -113,6 +113,7 @@ export function ServiceOrderFormModal({ open, onOpenChange, initialVehicleId, in
           <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-5">
             <div className="rounded-button border border-primary/15 bg-primary-subtle px-3 py-2.5 text-xs leading-5 text-primary-strong">
               Comece pelo cliente. A busca de veículos será filtrada automaticamente para mostrar apenas os carros dele.
+              {' '}Registre somente informações do atendimento. Não inclua dados sensíveis, senhas ou dados completos de cartão nas observações.
             </div>
             <FormField
               control={form.control}

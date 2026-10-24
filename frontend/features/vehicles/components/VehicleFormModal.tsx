@@ -155,6 +155,7 @@ export function VehicleFormModal({ open, onOpenChange, vehicle, initialCustomer,
           <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-5">
             <div className="rounded-button border border-primary/15 bg-primary-subtle px-3 py-2.5 text-xs leading-5 text-primary-strong">
               Comece pelo proprietário e pela identificação do veículo. Os demais dados ajudam sua equipe no diagnóstico e na entrega.
+              {' '}Preencha dados opcionais somente quando necessários ao serviço. Evite documentos e informações pessoais nos campos do veículo.
             </div>
             {isEditing || initialCustomer ? (
               // Sem FormField/FormLabel aqui de propósito: não há campo do

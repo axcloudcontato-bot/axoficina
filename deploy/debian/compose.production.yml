@@ -90,6 +90,10 @@ services:
       dockerfile: frontend/Dockerfile
       args:
         NEXT_PUBLIC_API_URL: ${PUBLIC_BACKEND_URL:-http://localhost:3006}
+        NEXT_PUBLIC_LEGAL_COMPANY_NAME: ${NEXT_PUBLIC_LEGAL_COMPANY_NAME:-}
+        NEXT_PUBLIC_LEGAL_COMPANY_DOCUMENT: ${NEXT_PUBLIC_LEGAL_COMPANY_DOCUMENT:-}
+        NEXT_PUBLIC_LEGAL_COMPANY_ADDRESS: ${NEXT_PUBLIC_LEGAL_COMPANY_ADDRESS:-}
+        NEXT_PUBLIC_PRIVACY_EMAIL: ${NEXT_PUBLIC_PRIVACY_EMAIL:-}
     restart: unless-stopped
     depends_on:
       backend:

@@ -25,12 +25,14 @@ export class CustomerManager {
   ) {}
 
   async create(actingUser: AuthenticatedUser, request: CreateCustomerRequest): Promise<{ customer: CustomerResponse }> {
-    const documentCheck = this.documentValidator.validate(request.document);
+    const documentCheck = request.document?.trim()
+      ? this.documentValidator.validate(request.document)
+      : { valid: true, normalized: '' };
     if (!documentCheck.valid) {
       throw new AppException(AppErrorCode.VALIDATION_ERROR, 'CPF/CNPJ inválido.');
     }
 
-    const existing = await this.customerRepository.byDocument(documentCheck.normalized);
+    const existing = documentCheck.normalized ? await this.customerRepository.byDocument(documentCheck.normalized) : null;
     if (existing) {
       throw new AppException(
         AppErrorCode.CUSTOMER_DOCUMENT_ALREADY_EXISTS,
@@ -79,7 +81,7 @@ export class CustomerManager {
       action: 'customer.created',
       entity: 'customer',
       entityId: customer.id,
-      metadata: { document: customer.document },
+      metadata: {},
     });
 
     return { customer: this.toResponse(customer) };
@@ -91,22 +93,35 @@ export class CustomerManager {
       throw new AppException(AppErrorCode.CUSTOMER_NOT_FOUND, 'Cliente não encontrado.', HttpStatus.NOT_FOUND);
     }
 
-    // type/document não são editáveis após criação (identidade do cliente)
-    // — mesmo que venham no body, o repository só recebe os campos abaixo.
-    await this.customerRepository.update(request.id, {
-      name: request.name,
-      phone: request.phone,
-      email: request.email,
-      address: request.address,
-      notes: request.notes,
-      rg: request.rg,
-      stateRegistration: request.stateRegistration,
-      secondaryContactName: request.secondaryContactName,
-      secondaryContactPhone: request.secondaryContactPhone,
-      secondaryContactRelation: request.secondaryContactRelation,
-      preferredContactChannel: request.preferredContactChannel,
-      preferredContactTime: request.preferredContactTime,
-    });
+    let document: string | undefined;
+    if (request.document !== undefined) {
+      const checked = request.document.trim() ? this.documentValidator.validate(request.document) : { valid: true, normalized: '' };
+      if (!checked.valid) throw new AppException(AppErrorCode.VALIDATION_ERROR, 'CPF/CNPJ inválido.');
+      const duplicate = checked.normalized ? await this.customerRepository.byDocument(checked.normalized) : null;
+      if (duplicate && duplicate.id !== existing.id) throw new AppException(AppErrorCode.CUSTOMER_DOCUMENT_ALREADY_EXISTS, 'Já existe um cliente cadastrado com este documento.', HttpStatus.CONFLICT);
+      document = checked.normalized;
+    }
+    // Corrigir ou remover documento não exige recriar o cadastro.
+    try {
+      await this.customerRepository.update(request.id, {
+        document,
+        name: request.name,
+        phone: request.phone,
+        email: request.email,
+        address: request.address,
+        notes: request.notes,
+        rg: request.rg,
+        stateRegistration: request.stateRegistration,
+        secondaryContactName: request.secondaryContactName,
+        secondaryContactPhone: request.secondaryContactPhone,
+        secondaryContactRelation: request.secondaryContactRelation,
+        preferredContactChannel: request.preferredContactChannel,
+        preferredContactTime: request.preferredContactTime,
+      });
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') throw new AppException(AppErrorCode.CUSTOMER_DOCUMENT_ALREADY_EXISTS, 'Já existe um cliente cadastrado com este documento.', HttpStatus.CONFLICT);
+      throw error;
+    }
 
     const updated = await this.customerRepository.byId(request.id);
     if (!updated) {

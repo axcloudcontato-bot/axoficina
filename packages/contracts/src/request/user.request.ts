@@ -1,5 +1,6 @@
 import type { PageableRequest } from '../response/pagination.response';
 import type { InvitableRole, UserRole, UserStatus } from '../response/user.response';
+import type { LegalAcknowledgement } from '../legal';
 
 export interface InviteUserRequest {
   email: string;
@@ -7,7 +8,7 @@ export interface InviteUserRequest {
   role: InvitableRole;
 }
 
-export interface AcceptInviteRequest {
+export interface AcceptInviteRequest extends LegalAcknowledgement {
   inviteToken: string;
   password: string;
 }

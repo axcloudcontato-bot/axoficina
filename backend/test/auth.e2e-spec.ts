@@ -1,3 +1,4 @@
+import { LEGAL_VERSION } from '@oficina/contracts';
 import { INestApplication } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { ThrottlerStorage, ThrottlerStorageService } from '@nestjs/throttler';
@@ -46,7 +47,8 @@ describe('Auth (e2e)', () => {
 
   function signupPayload(suffix: string) {
     return {
-      tenant_name: `Oficina E2E ${suffix}`,
+      accepted_terms: true, legal_version: LEGAL_VERSION,
+        tenant_name: `Oficina E2E ${suffix}`,
       // Documento único por chamada — um valor fixo colide (unique
       // constraint) assim que mais de um teste da suíte faz signup.
       tenant_document: generateValidCpf(),

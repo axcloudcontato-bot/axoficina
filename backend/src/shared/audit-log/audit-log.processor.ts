@@ -4,6 +4,7 @@ import type { Job } from 'bullmq';
 import { AUDIT_LOG_QUEUE } from '../queue/queue.module';
 import { AuditLogRepository } from './audit-log.repository';
 import type { AuditLogEvent } from './audit-log.service';
+import { minimizeAuditMetadata } from './audit-metadata';
 
 @Processor(AUDIT_LOG_QUEUE)
 export class AuditLogProcessor extends WorkerHost {
@@ -21,7 +22,7 @@ export class AuditLogProcessor extends WorkerHost {
         action: job.data.action,
         entity: job.data.entity,
         entityId: job.data.entityId,
-        metadata: job.data.metadata ?? {},
+        metadata: minimizeAuditMetadata(job.data.metadata),
       });
     } catch (error) {
       this.logger.warn(`Falha ao gravar audit log (action=${job.data.action})`, error as Error);

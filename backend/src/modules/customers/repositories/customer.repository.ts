@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import type { CustomerAddress } from '@oficina/contracts';
-import type { Prisma } from '@oficina/database';
+import { Prisma } from '@oficina/database';
 import { PrismaService } from '../../../shared/prisma/prisma.service';
 
 export interface CreateCustomerInput {
@@ -25,18 +25,19 @@ export interface CreateCustomerInput {
 }
 
 export interface UpdateCustomerInput {
+  document?: string;
   name?: string;
   phone?: string;
-  email?: string;
-  address?: CustomerAddress;
-  notes?: string;
-  rg?: string;
-  stateRegistration?: string;
-  secondaryContactName?: string;
-  secondaryContactPhone?: string;
-  secondaryContactRelation?: string;
-  preferredContactChannel?: string;
-  preferredContactTime?: string;
+  email?: string | null;
+  address?: CustomerAddress | null;
+  notes?: string | null;
+  rg?: string | null;
+  stateRegistration?: string | null;
+  secondaryContactName?: string | null;
+  secondaryContactPhone?: string | null;
+  secondaryContactRelation?: string | null;
+  preferredContactChannel?: string | null;
+  preferredContactTime?: string | null;
 }
 
 export interface ListCustomersResult<T> {
@@ -144,7 +145,7 @@ export class CustomerRepository {
   async update(id: string, patch: UpdateCustomerInput) {
     return this.prisma.client.customer.updateMany({
       where: { id, deletedAt: null },
-      data: { ...patch, address: patch.address as Prisma.InputJsonValue | undefined },
+      data: { ...patch, address: patch.address === null ? Prisma.DbNull : patch.address as Prisma.InputJsonValue | undefined },
     });
   }
 

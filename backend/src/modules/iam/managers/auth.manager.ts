@@ -1,5 +1,5 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
-import { MIN_PASSWORD_LENGTH } from '@oficina/contracts';
+import { LEGAL_VERSION, MIN_PASSWORD_LENGTH } from '@oficina/contracts';
 import type {
   AuthResponse,
   LoginRequest,
@@ -25,6 +25,8 @@ import { UserRepository } from '../repositories/user.repository';
 const ADMIN_ROLE_NAME = 'ADMIN';
 
 export interface SignupInput {
+  acceptedTerms: boolean;
+  legalVersion: string;
   tenantName: string;
   tenantDocument: string;
   adminName: string;
@@ -47,6 +49,9 @@ export class AuthManager {
   ) {}
 
   async signup(input: SignupInput): Promise<SignupResponse> {
+    if (input.acceptedTerms !== true || input.legalVersion !== LEGAL_VERSION) {
+      throw new AppException(AppErrorCode.VALIDATION_ERROR, 'Leia e aceite os Termos de uso e a ciência da Política de privacidade atuais.');
+    }
     if (input.password.length < MIN_PASSWORD_LENGTH) {
       throw new AppException(AppErrorCode.VALIDATION_ERROR, `A senha deve ter pelo menos ${MIN_PASSWORD_LENGTH} caracteres.`);
     }
@@ -86,6 +91,8 @@ export class AuthManager {
           roleId: adminRole.id,
           status: 'active',
           passwordHash,
+          legalVersion: LEGAL_VERSION,
+          legalAcceptedAt: new Date(),
         },
         tx,
       );
@@ -100,7 +107,7 @@ export class AuthManager {
       action: 'auth.signup',
       entity: 'tenant',
       entityId: tenant.id,
-      metadata: { adminEmail: user.email },
+      metadata: { legalVersion: LEGAL_VERSION },
     });
 
     return {

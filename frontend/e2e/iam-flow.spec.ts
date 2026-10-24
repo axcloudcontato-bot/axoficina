@@ -15,6 +15,7 @@ test.describe('IAM flow', () => {
     await page.getByLabel('Seu nome').fill('Admin E2E');
     await page.getByLabel('E-mail').fill(adminEmail);
     await page.getByLabel('Senha').fill('supersecret1');
+    await page.getByRole('checkbox').check();
     await page.getByRole('button', { name: 'Criar minha oficina' }).click();
 
     await expect(page).toHaveURL(/\/users$/);
@@ -34,6 +35,7 @@ test.describe('IAM flow', () => {
 
     await page.goto(`/invite/${inviteToken}`);
     await page.getByLabel('Crie sua senha').fill('supersecret1');
+    await page.getByRole('checkbox').check();
     await page.getByRole('button', { name: 'Ativar minha conta' }).click();
     await expect(page).toHaveURL(/\/users$/);
 

@@ -1,3 +1,4 @@
+import { LEGAL_VERSION } from '@oficina/contracts';
 import { INestApplication } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import * as request from 'supertest';
@@ -33,6 +34,7 @@ describe('Users (e2e)', () => {
     const response = await request(app.getHttpServer())
       .post('/api/v1/auth/signup')
       .send({
+        accepted_terms: true, legal_version: LEGAL_VERSION,
         tenant_name: `Oficina Users E2E ${suffix}`,
         // Documento único por chamada — ver comentário equivalente em auth.e2e-spec.ts.
         tenant_document: generateValidCpf(),
@@ -78,7 +80,7 @@ describe('Users (e2e)', () => {
 
     const accept = await request(app.getHttpServer())
       .post('/api/v1/users/accept-invite')
-      .send({ invite_token: inviteToken, password: 'supersecret1' });
+      .send({ accepted_terms: true, legal_version: LEGAL_VERSION, invite_token: inviteToken, password: 'supersecret1' });
 
     expect(accept.status).toBe(200);
     expect(accept.body.user.status).toBe('active');
@@ -101,7 +103,7 @@ describe('Users (e2e)', () => {
   it('rejects accept-invite with an expired or unknown token', async () => {
     const response = await request(app.getHttpServer())
       .post('/api/v1/users/accept-invite')
-      .send({ invite_token: 'this-token-does-not-exist', password: 'supersecret1' });
+      .send({ accepted_terms: true, legal_version: LEGAL_VERSION, invite_token: 'this-token-does-not-exist', password: 'supersecret1' });
 
     expect(response.status).toBe(400);
     expect(response.body.error.code).toBe('INVITE_TOKEN_INVALID');

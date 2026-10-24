@@ -41,7 +41,40 @@ const editingCompanyCustomer: CustomerListItemResponse = { ...editingCustomer, i
 describe('CustomerFormModal', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.unstubAllGlobals();
     vi.mocked(serviceOrdersApi.list).mockResolvedValue({ items: [], total: 0, offset: 0, limit: 20, hasMore: false });
+  });
+
+  it('creates a basic customer without requiring CPF or CNPJ', async () => {
+    vi.mocked(customersApi.create).mockResolvedValue({ customer: { ...editingCustomer, document: '' } });
+    const user = userEvent.setup();
+    renderWithClient(<CustomerFormModal open onOpenChange={() => {}} />);
+    await user.type(screen.getByLabelText(/^nome$/i), 'Cliente básico');
+    await user.type(screen.getByLabelText(/telefone/i), '11999998888');
+    await user.click(screen.getByRole('button', { name: /cadastrar cliente/i }));
+    await waitFor(() => expect(customersApi.create).toHaveBeenCalledWith(expect.objectContaining({ document: undefined, name: 'Cliente básico' })));
+  });
+
+  it('actually removes an optional email when it is cleared in edit mode', async () => {
+    vi.mocked(customersApi.update).mockResolvedValue({ customer: editingCustomer });
+    const user = userEvent.setup();
+    renderWithClient(<CustomerFormModal open onOpenChange={() => {}} customer={{ ...editingCustomer, email: 'remove@example.invalid' }} />);
+    await user.clear(screen.getByLabelText(/e-mail/i));
+    await user.click(screen.getByRole('button', { name: /salvar alterações/i }));
+    await waitFor(() => expect(customersApi.update).toHaveBeenCalledWith(expect.objectContaining({ email: null })));
+  });
+
+  it('sends CEP to ViaCEP only after an explicit lookup click', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ logradouro: 'Rua de teste', localidade: 'São Paulo', uf: 'SP', bairro: 'Centro' }) });
+    vi.stubGlobal('fetch', fetchMock);
+    const user = userEvent.setup();
+    renderWithClient(<CustomerFormModal open onOpenChange={() => {}} />);
+    await user.click(screen.getByRole('tab', { name: /endereço/i }));
+    await user.type(screen.getByLabelText(/^cep$/i), '01001000');
+    expect(fetchMock).not.toHaveBeenCalled();
+    await user.click(screen.getByRole('button', { name: 'Consultar CEP' }));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith('https://viacep.com.br/ws/01001000/json/'));
+    await waitFor(() => expect(screen.getByLabelText(/^rua$/i)).toHaveValue('Rua de teste'));
   });
 
   it('shows type/document fields in create mode', () => {
@@ -67,10 +100,10 @@ describe('CustomerFormModal', () => {
     expect(screen.queryByLabelText(/^nome$/i)).not.toBeInTheDocument();
   });
 
-  it('hides type/document fields in edit mode', () => {
+  it('allows document correction in edit mode', () => {
     renderWithClient(<CustomerFormModal open onOpenChange={() => {}} customer={editingCustomer} />);
 
-    expect(screen.queryByLabelText(/cpf ou cnpj/i)).not.toBeInTheDocument();
+    expect(screen.getByLabelText(/cpf ou cnpj/i)).toHaveValue('11144477735');
     expect(screen.getByDisplayValue('João da Silva')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /salvar alterações/i })).toBeInTheDocument();
   });
@@ -92,7 +125,7 @@ describe('CustomerFormModal', () => {
 
     await user.click(screen.getByRole('button', { name: /cadastrar cliente/i }));
 
-    expect(await screen.findByText(/informe o documento/i)).toBeInTheDocument();
+    expect(await screen.findByText(/informe o nome/i)).toBeInTheDocument();
     expect(customersApi.create).not.toHaveBeenCalled();
   });
 

@@ -3,6 +3,8 @@ import type { PrismaClient } from '@oficina/database';
 import { PrismaService } from '../../../shared/prisma/prisma.service';
 
 export interface CreateUserInput {
+  legalVersion?: string;
+  legalAcceptedAt?: Date;
   tenantId: string;
   email: string;
   name: string;
@@ -14,6 +16,8 @@ export interface CreateUserInput {
 }
 
 export interface UpdateUserInput {
+  legalVersion?: string;
+  legalAcceptedAt?: Date;
   passwordHash?: string;
   status?: 'active' | 'invited' | 'disabled';
   inviteTokenHash?: string | null;
@@ -47,6 +51,8 @@ export class UserRepository {
         passwordHash: input.passwordHash,
         inviteTokenHash: input.inviteTokenHash,
         inviteExpiresAt: input.inviteExpiresAt,
+        legalVersion: input.legalVersion,
+        legalAcceptedAt: input.legalAcceptedAt,
       },
     });
   }

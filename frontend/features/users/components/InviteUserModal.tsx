@@ -82,6 +82,7 @@ export function InviteUserModal({ open, onOpenChange }: InviteUserModalProps) {
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-4">
+            <p className="text-xs leading-5 text-text-muted">Informe apenas nome, e-mail e perfil necessários ao acesso. Dê ciência à pessoa sobre o convite e conceda somente as permissões de que ela precisa.</p>
             <FormField
               control={form.control}
               name="name"

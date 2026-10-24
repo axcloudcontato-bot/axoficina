@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import { useForm, type FieldErrors } from 'react-hook-form';
 import { toast } from 'sonner';
 import { z } from 'zod';
+import Link from 'next/link';
 import type { CustomerAddress, CustomerListItemResponse } from '@oficina/contracts';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Form } from '@/components/ui/form';
@@ -32,9 +33,9 @@ const addressSchema = z.object({
 
 export const customerSchema = z.object({
   type: z.enum(['PF', 'PJ']),
-  document: z.string().min(1, 'Informe o documento'),
-  name: z.string().min(1, 'Informe o nome'),
-  phone: z.string().min(1, 'Informe o telefone'),
+  document: z.string().max(24, 'Documento muito longo'),
+  name: z.string().trim().min(1, 'Informe o nome').max(200),
+  phone: z.string().trim().min(1, 'Informe o telefone').max(30),
   email: z.union([z.string().email('Informe um e-mail válido'), z.literal('')]).optional(),
   notes: z.string().optional(),
   address: addressSchema,
@@ -181,9 +182,17 @@ export function CustomerFormModal({ open, onOpenChange, customer, onCreated, pre
     };
 
     if (isEditing && customer) {
-      update.mutate({ id: customer.id, ...sharedFields }, { onSuccess, onError });
+      update.mutate({ id: customer.id, ...sharedFields, document: values.document,
+        email: values.email || null, notes: values.notes || null, address: address ?? null,
+        rg: values.rg || null, stateRegistration: values.stateRegistration || null,
+        secondaryContactName: values.secondaryContactName || null,
+        secondaryContactPhone: values.secondaryContactPhone || null,
+        secondaryContactRelation: values.secondaryContactRelation || null,
+        preferredContactChannel: values.preferredContactChannel ?? null,
+        preferredContactTime: values.preferredContactTime ?? null,
+      }, { onSuccess, onError });
     } else {
-      create.mutate({ type: values.type, document: values.document, ...sharedFields }, { onSuccess, onError });
+      create.mutate({ type: values.type, document: values.document || undefined, ...sharedFields }, { onSuccess, onError });
     }
   }
 
@@ -235,12 +244,13 @@ export function CustomerFormModal({ open, onOpenChange, customer, onCreated, pre
           </DialogTitle>
           <DialogDescription>
             {isEditing
-              ? 'Documento e tipo não podem ser alterados depois do cadastro.'
+              ? 'Corrija os dados e remova informações opcionais quando deixarem de ser necessárias.'
               : 'Cadastre um cliente pessoa física ou jurídica da sua oficina.'}
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit, onInvalid)} className="flex flex-col gap-4">
+            <p className="rounded-button bg-muted p-3 text-xs leading-5 text-text-muted">Para o cadastro básico, informe nome e telefone. CPF/CNPJ e os demais dados são opcionais: preencha apenas o necessário ao atendimento ou a uma obrigação legal. Dados de contato não autorizam marketing. <Link href="/privacidade" target="_blank" rel="noopener noreferrer" className="text-primary underline">Política de privacidade</Link>.</p>
             {isGuidedCreate ? (
               <div className="flex flex-col gap-5">
                 <ol aria-label="Etapas do cadastro do cliente" className="grid gap-2 sm:grid-cols-5">

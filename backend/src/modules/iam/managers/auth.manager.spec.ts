@@ -1,3 +1,4 @@
+import { LEGAL_VERSION } from '@oficina/contracts';
 import { HttpStatus } from '@nestjs/common';
 import { AuthManager } from './auth.manager';
 import { AppException } from '../../../shared/errors/app-exception';
@@ -103,6 +104,13 @@ const baseUser = {
 
 describe('AuthManager', () => {
   describe('signup', () => {
+    it('rejects absent or stale legal acceptance before creating records', async () => {
+      const deps = buildManager();
+      const input = { tenantName: 'Test', tenantDocument: '11444777000161', adminName: 'Test', adminEmail: 'test@example.invalid', password: 'supersecret1', acceptedTerms: false, legalVersion: LEGAL_VERSION };
+      await expect(deps.manager.signup(input)).rejects.toThrow(AppException);
+      await expect(deps.manager.signup({ ...input, acceptedTerms: true, legalVersion: 'old' })).rejects.toThrow(AppException);
+      expect(deps.prisma.transaction).not.toHaveBeenCalled();
+    });
     it('creates a tenant + admin user and returns tokens', async () => {
       const deps = buildManager();
       deps.tenantRepository.byDocument.mockResolvedValue(null);
@@ -120,7 +128,7 @@ describe('AuthManager', () => {
       });
       deps.userRepository.insert.mockResolvedValue(baseUser);
 
-      const result = await deps.manager.signup({
+      const result = await deps.manager.signup({ acceptedTerms: true, legalVersion: LEGAL_VERSION,
         tenantName: 'Oficina do Zé',
         tenantDocument: '11.444.777/0001-61',
         adminName: 'Admin',
@@ -138,7 +146,7 @@ describe('AuthManager', () => {
     it('rejects a password shorter than 8 characters', async () => {
       const deps = buildManager();
       await expect(
-        deps.manager.signup({
+        deps.manager.signup({ acceptedTerms: true, legalVersion: LEGAL_VERSION,
           tenantName: 'X',
           tenantDocument: '11444777000161',
           adminName: 'Admin',
@@ -153,7 +161,7 @@ describe('AuthManager', () => {
       deps.documentValidator.validate.mockReturnValue({ valid: false, type: null, normalized: '123' });
 
       await expect(
-        deps.manager.signup({
+        deps.manager.signup({ acceptedTerms: true, legalVersion: LEGAL_VERSION,
           tenantName: 'X',
           tenantDocument: '123',
           adminName: 'Admin',
@@ -168,7 +176,7 @@ describe('AuthManager', () => {
       deps.tenantRepository.byDocument.mockResolvedValue({ id: 'existing-tenant' });
 
       await expect(
-        deps.manager.signup({
+        deps.manager.signup({ acceptedTerms: true, legalVersion: LEGAL_VERSION,
           tenantName: 'X',
           tenantDocument: '11444777000161',
           adminName: 'Admin',
@@ -184,7 +192,7 @@ describe('AuthManager', () => {
       deps.userRepository.byEmail.mockResolvedValue(baseUser);
 
       await expect(
-        deps.manager.signup({
+        deps.manager.signup({ acceptedTerms: true, legalVersion: LEGAL_VERSION,
           tenantName: 'X',
           tenantDocument: '11444777000161',
           adminName: 'Admin',
@@ -201,7 +209,7 @@ describe('AuthManager', () => {
       deps.roleRepository.byName.mockResolvedValue(null);
 
       await expect(
-        deps.manager.signup({
+        deps.manager.signup({ acceptedTerms: true, legalVersion: LEGAL_VERSION,
           tenantName: 'X',
           tenantDocument: '11444777000161',
           adminName: 'Admin',

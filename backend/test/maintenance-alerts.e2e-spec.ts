@@ -1,3 +1,4 @@
+import { LEGAL_VERSION } from '@oficina/contracts';
 import { randomUUID } from 'node:crypto';
 import { INestApplication } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
@@ -48,6 +49,7 @@ describe('Maintenance Alerts (e2e)', () => {
     const response = await request(app.getHttpServer())
       .post('/api/v1/auth/signup')
       .send({
+        accepted_terms: true, legal_version: LEGAL_VERSION,
         tenant_name: `Oficina Alertas E2E ${suffix}`,
         tenant_document: generateValidCpf(),
         admin_name: 'Admin E2E',

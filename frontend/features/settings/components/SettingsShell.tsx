@@ -1,6 +1,6 @@
 'use client';
 
-import { Buildings, Envelope, UsersThree } from '@phosphor-icons/react';
+import { Buildings, Envelope, UsersThree, ShieldCheck } from '@phosphor-icons/react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
@@ -24,6 +24,7 @@ export function SettingsShell({ children }: { children: React.ReactNode }) {
     </header>
     <div className="grid items-start gap-6 lg:grid-cols-[240px_minmax(0,1fr)]">
       <nav aria-label="Seções das configurações" className="flex gap-2 overflow-x-auto lg:sticky lg:top-24 lg:flex-col">
+        <Link href="/settings/privacy" className={cn('flex min-w-[190px] items-center gap-3 rounded-button border px-3 py-3 lg:min-w-0', pathname === '/settings/privacy' ? 'border-primary/30 bg-primary-subtle text-primary-strong' : 'border-transparent text-text-muted hover:border-border hover:bg-muted')}><ShieldCheck className="size-5 shrink-0" aria-hidden="true" /><span><span className="block text-sm font-bold">Privacidade e solicitações</span><span className="block text-[11px]">Seus dados e direitos</span></span></Link>
         {items.filter((item) => hasPermission(user, item.permission)).map(({ href, label, description, icon: Icon }) => {
           const active = pathname === href;
           return <Link key={href} href={href} className={cn('flex min-w-[190px] items-center gap-3 rounded-button border px-3 py-3 transition-colors lg:min-w-0', active ? 'border-primary/30 bg-primary-subtle text-primary-strong' : 'border-transparent text-text-muted hover:border-border hover:bg-muted')}>

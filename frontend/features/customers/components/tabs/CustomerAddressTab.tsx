@@ -1,9 +1,10 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { UseFormReturn } from 'react-hook-form';
 import { CheckCircle, CircleNotch } from '@phosphor-icons/react';
 import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 import { FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { formatCEP } from '@/lib/format-br-document';
 import { useCepLookup } from '../../hooks/use-cep-lookup';
@@ -16,13 +17,14 @@ interface CustomerAddressTabProps {
 export function CustomerAddressTab({ form }: CustomerAddressTabProps) {
   const zipCode = form.watch('address.zipCode') ?? '';
   const digits = zipCode.replace(/\D/g, '');
-  const lookup = useCepLookup(zipCode);
+  const [requestedCep, setRequestedCep] = useState<string | null>(null);
+  const lookup = useCepLookup(zipCode, requestedCep === digits);
   // Evita reaplicar o mesmo CEP (ex.: ao trocar de aba e voltar) e evita
   // brigar com edição manual do usuário depois do preenchimento automático.
   const appliedFor = useRef<string | null>(null);
 
   useEffect(() => {
-    if (digits.length !== 8 || !lookup.data || appliedFor.current === digits) {
+    if (requestedCep !== digits || digits.length !== 8 || !lookup.data || appliedFor.current === digits) {
       return;
     }
     appliedFor.current = digits;
@@ -30,13 +32,14 @@ export function CustomerAddressTab({ form }: CustomerAddressTabProps) {
     form.setValue('address.neighborhood', lookup.data.neighborhood, { shouldDirty: true });
     form.setValue('address.city', lookup.data.city, { shouldDirty: true });
     form.setValue('address.state', lookup.data.state, { shouldDirty: true });
-  }, [digits, lookup.data, form]);
+  }, [digits, requestedCep, lookup.data, form]);
 
   const notFound = digits.length === 8 && lookup.isFetched && !lookup.isFetching && lookup.data === null;
   const found = digits.length === 8 && !lookup.isFetching && Boolean(lookup.data);
 
   return (
     <div className="flex flex-col gap-4">
+      <p className="text-xs leading-5 text-text-muted">Endereço é opcional. Ao clicar em Consultar CEP, o CEP e dados técnicos da conexão serão enviados ao ViaCEP. Você pode preencher tudo manualmente.</p>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-4">
         <FormField
           control={form.control}
@@ -44,8 +47,8 @@ export function CustomerAddressTab({ form }: CustomerAddressTabProps) {
           render={({ field }) => (
             <FormItem className="sm:col-span-2">
               <FormLabel>CEP</FormLabel>
-              <FormControl>
-                <div className="relative">
+              <div className="relative">
+                <FormControl>
                   <Input
                     placeholder="00000-000"
                     inputMode="numeric"
@@ -53,25 +56,28 @@ export function CustomerAddressTab({ form }: CustomerAddressTabProps) {
                     {...field}
                     onChange={(event) => {
                       appliedFor.current = null;
+                      setRequestedCep(null);
                       field.onChange(formatCEP(event.target.value));
                     }}
                   />
-                  {lookup.isFetching && <CircleNotch className="absolute right-3 top-1/2 size-4 -translate-y-1/2 animate-spin text-text-muted" aria-hidden="true" />}
-                  {found && <CheckCircle className="absolute right-3 top-1/2 size-4 -translate-y-1/2 text-success" aria-hidden="true" />}
-                </div>
-              </FormControl>
+                </FormControl>
+                {lookup.isFetching && <CircleNotch className="absolute right-3 top-1/2 size-4 -translate-y-1/2 animate-spin text-text-muted" aria-hidden="true" />}
+                {found && <CheckCircle className="absolute right-3 top-1/2 size-4 -translate-y-1/2 text-success" aria-hidden="true" />}
+              </div>
               {notFound ? (
                 <p className="text-xs text-warning">CEP não encontrado — preencha o endereço manualmente.</p>
               ) : lookup.isError ? (
                 <p className="text-xs text-text-muted">Não foi possível consultar o CEP agora — preencha o endereço manualmente.</p>
               ) : (
-                <p className="text-xs text-text-muted">Preenche rua, bairro, cidade e UF automaticamente.</p>
+                <p className="text-xs text-text-muted">Consulte somente se desejar preencher rua, bairro, cidade e UF pelo ViaCEP.</p>
               )}
               <FormMessage />
             </FormItem>
           )}
         />
       </div>
+
+      <Button type="button" variant="outline" className="self-start" disabled={digits.length !== 8 || lookup.isFetching} onClick={() => { setRequestedCep(digits); if (requestedCep === digits) void lookup.refetch(); }}>Consultar CEP</Button>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <FormField

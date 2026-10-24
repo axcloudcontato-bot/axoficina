@@ -76,6 +76,8 @@ model User {
   inviteExpiresAt DateTime? @map("invite_expires_at") @db.Timestamptz
   mfaEnabled      Boolean   @default(false) @map("mfa_enabled")
   mfaSecret       String?   @map("mfa_secret")
+  legalVersion    String?   @map("legal_version")
+  legalAcceptedAt DateTime? @map("legal_accepted_at") @db.Timestamptz
   createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz
   updatedAt       DateTime? @updatedAt @map("updated_at") @db.Timestamptz
   deletedAt       DateTime? @map("deleted_at") @db.Timestamptz
@@ -83,6 +85,27 @@ model User {
   @@index([tenantId])
   @@index([email])
   @@map("users")
+}
+
+// Protocolos: não armazenar senhas, documentos completos ou anexos.
+model PrivacyRequest {
+  id             String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  tenantId       String    @map("tenant_id") @db.Uuid
+  userId         String    @map("user_id") @db.Uuid
+  customerId     String?   @map("customer_id") @db.Uuid
+  type           String
+  status         String    @default("OPEN")
+  details        String?
+  response       String?
+  resolvedBy     String?   @map("resolved_by") @db.Uuid
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  dueAt          DateTime  @map("due_at") @db.Timestamptz
+  resolvedAt     DateTime? @map("resolved_at") @db.Timestamptz
+  retentionUntil DateTime? @map("retention_until") @db.Timestamptz
+
+  @@index([tenantId, userId, createdAt])
+  @@index([tenantId, status, dueAt])
+  @@map("privacy_requests")
 }
 
 model RefreshToken {

@@ -41,11 +41,12 @@ export function DeleteCustomerDialog({ open, onOpenChange, customer }: DeleteCus
             <span data-reveal className="flex size-8 shrink-0 items-center justify-center rounded-button bg-danger-subtle text-danger">
               <Trash className="size-[18px]" aria-hidden="true" />
             </span>
-            Excluir cliente
+            Arquivar cliente
           </DialogTitle>
           <DialogDescription>
-            Tem certeza que quer excluir <strong>{customer?.name}</strong>? Este cliente pode ter veículos ou ordens de
+            Tem certeza que quer arquivar <strong>{customer?.name}</strong>? Este cliente pode ter veículos ou ordens de
             serviço vinculados — o histórico deles não é afetado, mas o cliente deixa de aparecer na lista.
+            Isso não elimina os dados pessoais. Para solicitar exclusão pela LGPD, utilize a Central de privacidade nas configurações.
           </DialogDescription>
         </DialogHeader>
         <DialogFooter>
@@ -53,7 +54,7 @@ export function DeleteCustomerDialog({ open, onOpenChange, customer }: DeleteCus
             Cancelar
           </Button>
           <Button variant="destructive" disabled={deleteCustomer.isPending} onClick={handleConfirm}>
-            {deleteCustomer.isPending ? 'Excluindo...' : 'Excluir'}
+            {deleteCustomer.isPending ? 'Arquivando...' : 'Arquivar'}
           </Button>
         </DialogFooter>
       </DialogContent>

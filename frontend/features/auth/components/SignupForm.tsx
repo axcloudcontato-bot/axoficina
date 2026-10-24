@@ -5,7 +5,8 @@ import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 import { z } from 'zod';
-import { MIN_PASSWORD_LENGTH } from '@oficina/contracts';
+import { LEGAL_VERSION, MIN_PASSWORD_LENGTH } from '@oficina/contracts';
+import { LegalAcceptance } from '@/features/privacy/components/LegalAcceptance';
 import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
@@ -13,6 +14,7 @@ import { extractErrorMessage, extractFieldErrors } from '@/lib/api/client';
 import { useSignup } from '../hooks/use-auth';
 
 const signupSchema = z.object({
+  acceptedTerms: z.boolean().refine((value) => value, 'Aceite os Termos de uso para continuar.'),
   tenantName: z.string().min(1, 'Informe o nome da oficina'),
   tenantDocument: z.string().min(11, 'Informe um CPF ou CNPJ válido'),
   adminName: z.string().min(1, 'Informe seu nome'),
@@ -27,11 +29,11 @@ export function SignupForm() {
   const signup = useSignup();
   const form = useForm<SignupFormValues>({
     resolver: zodResolver(signupSchema),
-    defaultValues: { tenantName: '', tenantDocument: '', adminName: '', adminEmail: '', password: '' },
+    defaultValues: { acceptedTerms: false, tenantName: '', tenantDocument: '', adminName: '', adminEmail: '', password: '' },
   });
 
   function onSubmit(values: SignupFormValues) {
-    signup.mutate(values, {
+    signup.mutate({ ...values, legalVersion: LEGAL_VERSION }, {
       onSuccess: () => {
         toast.success('Oficina criada com sucesso!');
         router.push('/users');
@@ -98,7 +100,7 @@ export function SignupForm() {
             <FormItem>
               <FormLabel>E-mail</FormLabel>
               <FormControl>
-                <Input type="email" placeholder="voce@oficina.com" {...field} />
+                <Input type="email" autoComplete="email" placeholder="voce@oficina.com" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -111,12 +113,13 @@ export function SignupForm() {
             <FormItem>
               <FormLabel>Senha</FormLabel>
               <FormControl>
-                <Input type="password" placeholder={`Mínimo ${MIN_PASSWORD_LENGTH} caracteres`} {...field} />
+                <Input type="password" autoComplete="new-password" placeholder={`Mínimo ${MIN_PASSWORD_LENGTH} caracteres`} {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
           )}
         />
+        <LegalAcceptance form={form} />
         <Button type="submit" disabled={signup.isPending} className="mt-2">
           {signup.isPending ? 'Criando oficina...' : 'Criar minha oficina'}
         </Button>

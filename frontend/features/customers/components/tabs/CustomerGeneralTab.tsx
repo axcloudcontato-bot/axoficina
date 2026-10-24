@@ -22,7 +22,7 @@ export function CustomerGeneralTab({ form, isEditing }: CustomerGeneralTabProps)
 
   return (
     <div className="flex flex-col gap-4">
-      {!isEditing && (
+      {(
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <FormField
             control={form.control}
@@ -30,7 +30,7 @@ export function CustomerGeneralTab({ form, isEditing }: CustomerGeneralTabProps)
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Tipo</FormLabel>
-                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                <Select disabled={isEditing} onValueChange={field.onChange} defaultValue={field.value}>
                   <FormControl>
                     <SelectTrigger>
                       <SelectValue placeholder="Selecione o tipo" />
@@ -53,7 +53,7 @@ export function CustomerGeneralTab({ form, isEditing }: CustomerGeneralTabProps)
             name="document"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>CPF ou CNPJ</FormLabel>
+                <FormLabel>CPF ou CNPJ (opcional)</FormLabel>
                 <FormControl>
                   <Input
                     placeholder={type === 'PJ' ? '00.000.000/0000-00' : '000.000.000-00'}

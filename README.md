@@ -1,5 +1,7 @@
 # Oficina SaaS
 
+Políticas de privacidade, termos, cookies, reembolso e procedimentos LGPD: [documentação de implantação e atendimento](docs/privacy-lgpd.md).
+
 ERP SaaS multi-tenant para oficinas mecânicas.
 
 ## Stack

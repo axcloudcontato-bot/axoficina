@@ -1,6 +1,6 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { MIN_PASSWORD_LENGTH } from '@oficina/contracts';
+import { LEGAL_VERSION, MIN_PASSWORD_LENGTH } from '@oficina/contracts';
 import type {
   AcceptInviteRequest,
   AuthResponse,
@@ -79,6 +79,9 @@ export class UserManager {
   }
 
   async acceptInvite(request: AcceptInviteRequest): Promise<AuthResponse> {
+    if (request.acceptedTerms !== true || request.legalVersion !== LEGAL_VERSION) {
+      throw new AppException(AppErrorCode.VALIDATION_ERROR, 'Leia e aceite os documentos atuais para ativar a conta.');
+    }
     const tokenHash = this.tokenService.hashToken(request.inviteToken);
     const user = await this.userRepository.byInviteTokenHash(tokenHash);
 
@@ -104,6 +107,8 @@ export class UserManager {
       status: 'active',
       inviteTokenHash: null,
       inviteExpiresAt: null,
+      legalVersion: LEGAL_VERSION,
+      legalAcceptedAt: new Date(),
     });
 
     const role = await this.roleRepository.byId(user.roleId);
@@ -127,7 +132,7 @@ export class UserManager {
       action: 'user.invite_accepted',
       entity: 'user',
       entityId: user.id,
-      metadata: {},
+      metadata: { legalVersion: LEGAL_VERSION },
     });
 
     return {

@@ -56,6 +56,7 @@ export function VehiclePhotoSection({ serviceOrderId, category, canManage }: { s
         <p className="text-xs font-bold uppercase tracking-[0.12em] text-primary">Evidências da OS</p>
         <h3 id={`vehicle-photos-${category}`} className="mt-1 text-lg font-bold">{copy.title} <span className="ml-1 text-sm font-semibold text-text-muted">{coveredCount}/6</span></h3>
         <p className="mt-1 text-sm text-text-muted">{copy.description}</p>
+        <p className="mt-2 text-xs leading-5 text-text-muted">Fotografe somente o veículo e as evidências necessárias ao serviço. Evite rostos, documentos e objetos pessoais.</p>
       </div>
     </header>
     {query.isLoading && <div className="flex h-40 items-center justify-center text-text-muted"><CircleNotch className="size-6 animate-spin" /></div>}
@@ -89,6 +90,7 @@ export function ItemPhotosSection({ serviceOrderId, items, canManage }: { servic
         <p className="text-xs font-bold uppercase tracking-[0.12em] text-primary">Evidências da OS</p>
         <h3 id="item-photos-title" className="mt-1 text-lg font-bold">Antes e depois por item</h3>
         <p className="mt-1 text-sm text-text-muted">Para cada peça ou serviço lançado na OS, registre uma foto do problema e uma da solução.</p>
+        <p className="mt-2 text-xs leading-5 text-text-muted">Limite as imagens à peça e ao serviço; evite pessoas, documentos e objetos pessoais.</p>
       </div>
     </header>
     {query.isLoading && <div className="flex h-40 items-center justify-center text-text-muted"><CircleNotch className="size-6 animate-spin" /></div>}

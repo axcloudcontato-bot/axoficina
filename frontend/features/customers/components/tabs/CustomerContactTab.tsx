@@ -13,6 +13,7 @@ interface CustomerContactTabProps {
 export function CustomerContactTab({ form }: CustomerContactTabProps) {
   return (
     <div className="flex flex-col gap-4">
+      <p className="text-xs text-text-muted">Contato secundário é opcional. Informe somente quando necessário e dê ciência à pessoa sobre o uso de seus dados no atendimento.</p>
       <p className="text-sm text-text-muted">
         Contato alternativo (cônjuge, sócio, motorista) pra quando quem atende o telefone principal não é o cliente.
       </p>

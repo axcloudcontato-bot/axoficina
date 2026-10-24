@@ -1,8 +1,14 @@
-import { IsEmail, IsNotEmpty, MinLength } from 'class-validator';
-import { MIN_PASSWORD_LENGTH } from '@oficina/contracts';
+import { Equals, IsEmail, IsNotEmpty, MinLength } from 'class-validator';
+import { LEGAL_VERSION, MIN_PASSWORD_LENGTH } from '@oficina/contracts';
 import type { LoginRequest, LogoutRequest, RefreshRequest, SignupRequest } from '@oficina/contracts';
 
 export class SignupDto implements SignupRequest {
+  @Equals(true, { message: 'Aceite os Termos de uso para continuar.' })
+  acceptedTerms!: boolean;
+
+  @Equals(LEGAL_VERSION, { message: 'Leia e aceite a versão atual dos documentos.' })
+  legalVersion!: string;
+
   @IsNotEmpty({ message: 'tenant_name is required' })
   tenantName!: string;
 
