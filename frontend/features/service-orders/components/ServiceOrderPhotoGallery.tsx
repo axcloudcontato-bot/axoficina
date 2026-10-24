@@ -138,7 +138,7 @@ function PhotoSlot({ serviceOrderId, payload, label, photos, canManage, onSelect
   </div>;
 }
 
-function PhotoContent({ photo }: { photo: ServiceOrderPhotoResponse }) {
+function PhotoContent({ photo, fit = 'cover' }: { photo: ServiceOrderPhotoResponse; fit?: 'cover' | 'contain' }) {
   const blob = useServiceOrderPhotoBlob(photo.id);
   const [url, setUrl] = useState('');
   useEffect(() => {
@@ -148,7 +148,7 @@ function PhotoContent({ photo }: { photo: ServiceOrderPhotoResponse }) {
     return () => URL.revokeObjectURL(next);
   }, [blob.data]);
   if (!url) return <span className="flex size-full items-center justify-center text-text-muted"><CircleNotch className="size-5 animate-spin" /></span>;
-  return <Image src={url} alt={photo.caption || `Foto ${photo.originalName}`} fill unoptimized sizes="(max-width: 640px) 50vw, 25vw" className="object-cover transition-transform duration-300 group-hover:scale-[1.03]" />;
+  return <Image src={url} alt={photo.caption || `Foto ${photo.originalName}`} fill unoptimized sizes={fit === 'contain' ? '100vw' : '(max-width: 640px) 50vw, 25vw'} className={fit === 'contain' ? 'object-contain' : 'object-cover transition-transform duration-300 group-hover:scale-[1.03]'} />;
 }
 
 function PhotoViewer({ photo, onClose, canManage, serviceOrderId }: { photo: ServiceOrderPhotoResponse | null; onClose: () => void; canManage: boolean; serviceOrderId: string }) {
@@ -157,5 +157,5 @@ function PhotoViewer({ photo, onClose, canManage, serviceOrderId }: { photo: Ser
     if (!photo || !window.confirm('Excluir esta foto da ordem de serviço?')) return;
     remove.mutate(photo.id, { onSuccess: () => { toast.success('Foto excluída.'); onClose(); }, onError: (error) => toast.error(extractErrorMessage(error)) });
   }
-  return <Dialog open={Boolean(photo)} onOpenChange={(open) => !open && onClose()}><DialogContent className="max-w-4xl overflow-hidden p-0"><DialogHeader className="sr-only"><DialogTitle>Visualização da foto</DialogTitle></DialogHeader>{photo && <><div className="relative aspect-[4/3] max-h-[70vh] bg-slate-950"><PhotoContent photo={photo} /><button onClick={onClose} className="absolute right-3 top-3 flex size-9 items-center justify-center rounded-full bg-black/60 text-white" aria-label="Fechar"><X className="size-5" /></button></div><div className="flex items-center justify-between gap-3 p-4"><div><p className="font-semibold">{photo.caption || photo.originalName}</p><p className="text-xs text-text-muted">{new Date(photo.createdAt).toLocaleString('pt-BR')}</p></div>{canManage && <Button variant="ghost" className="text-danger" onClick={deletePhoto} disabled={remove.isPending}><Trash className="size-4" />Excluir foto</Button>}</div></>}</DialogContent></Dialog>;
+  return <Dialog open={Boolean(photo)} onOpenChange={(open) => !open && onClose()}><DialogContent className="gap-0 overflow-hidden p-0 sm:max-w-[min(96vw,1400px)]"><DialogHeader className="sr-only"><DialogTitle>Visualização da foto</DialogTitle></DialogHeader>{photo && <><div className="relative h-[72dvh] w-full bg-slate-950 sm:h-[80dvh]"><PhotoContent photo={photo} fit="contain" /><button onClick={onClose} className="absolute right-3 top-3 z-10 flex size-9 items-center justify-center rounded-full bg-black/60 text-white" aria-label="Fechar"><X className="size-5" /></button></div><div className="flex items-center justify-between gap-3 p-4"><div><p className="font-semibold">{photo.caption || photo.originalName}</p><p className="text-xs text-text-muted">{new Date(photo.createdAt).toLocaleString('pt-BR')}</p></div>{canManage && <Button variant="ghost" className="text-danger" onClick={deletePhoto} disabled={remove.isPending}><Trash className="size-4" />Excluir foto</Button>}</div></>}</DialogContent></Dialog>;
 }
