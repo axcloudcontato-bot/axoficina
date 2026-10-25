@@ -5,7 +5,7 @@ const event = { companyName: 'AX Oficina', customerName: 'João Silva', orderNum
 describe('WhatsApp movement messages', () => {
   it.each(SERVICE_ORDER_STATUSES)('formats %s with WhatsApp bold, order data and Brasília timestamps', toStatus => {
     const text = serviceOrderStatusMessage({ ...event, toStatus });
-    expect(text).toMatch(/^\*[^*\n]+\*\n/); expect(text).not.toContain('**');
+    expect(text).toMatch(/^\S+ \*[^*\n]+\*\n/u); expect(text).not.toContain('**');
     expect(text).toContain('*OS:* #00004'); expect(text).toContain('*Veículo:* Honda HR-V'); expect(text).toContain('*Placa:* ABC1D23');
     expect(text).toContain('25/10/2026, 12:30 (Brasília)');
   });

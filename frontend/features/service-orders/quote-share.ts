@@ -1,24 +1,24 @@
 import type { ServiceOrderResponse } from '@oficina/contracts';
 import { formatCurrencyBRL } from '@/lib/format-currency';
 
-export function buildQuoteMessage(serviceOrder: ServiceOrderResponse): string {
+export function buildQuoteMessage(serviceOrder: ServiceOrderResponse, whatsapp = true): string {
   const items = serviceOrder.items ?? [];
   const lines = items.map((item) => {
     const type = item.type === 'PART' ? 'Peça' : 'Mão de obra';
-    return `• ${type}: ${item.description} — ${formatCurrencyBRL(item.lineTotalCents)}`;
+    return whatsapp ? `${item.type === 'PART' ? '🔩' : '🔧'} *${type}:* ${item.description} — ${formatCurrencyBRL(item.lineTotalCents)}` : `• ${type}: ${item.description} — ${formatCurrencyBRL(item.lineTotalCents)}`;
   });
 
   return [
-    `Olá, ${serviceOrder.customerName}!`,
+    ...(whatsapp ? [`💰 *ORÇAMENTO DA OS #${String(serviceOrder.orderNumber).padStart(5, '0')}*`, ''] : []),
+    `${whatsapp ? '👋 ' : ''}Olá, ${serviceOrder.customerName}!`,
     '',
-    `Segue o orçamento da OS #${String(serviceOrder.orderNumber).padStart(5, '0')}.`,
-    `Veículo: ${serviceOrder.vehicleBrand} ${serviceOrder.vehicleModel} · ${serviceOrder.vehiclePlate}`,
+    ...(whatsapp ? [`🚗 *Veículo:* ${serviceOrder.vehicleBrand} ${serviceOrder.vehicleModel}`, `🔖 *Placa:* ${serviceOrder.vehiclePlate}`] : [`Segue o orçamento da OS #${String(serviceOrder.orderNumber).padStart(5, '0')}.`, `Veículo: ${serviceOrder.vehicleBrand} ${serviceOrder.vehicleModel} · ${serviceOrder.vehiclePlate}`]),
     '',
     ...(lines.length ? lines : ['Nenhum item lançado no orçamento.']),
     '',
-    `Total: ${formatCurrencyBRL(serviceOrder.totalAmountCents)}`,
+    `${whatsapp ? '💰 *Total:*' : 'Total:'} ${formatCurrencyBRL(serviceOrder.totalAmountCents)}`,
     '',
-    'Por favor, confirme a aprovação para prosseguirmos com o serviço.',
+    `${whatsapp ? '💬 ' : ''}Por favor, confirme a aprovação para prosseguirmos com o serviço.`,
   ].join('\n');
 }
 
@@ -39,5 +39,5 @@ export function buildEmailQuoteUrl(email: string, serviceOrder: ServiceOrderResp
   const recipient = email.trim();
   if (!recipient || !recipient.includes('@')) return null;
   const subject = `Orçamento OS #${String(serviceOrder.orderNumber).padStart(5, '0')} — ${serviceOrder.vehiclePlate}`;
-  return `mailto:${recipient}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(buildQuoteMessage(serviceOrder))}`;
+  return `mailto:${recipient}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(buildQuoteMessage(serviceOrder, false))}`;
 }

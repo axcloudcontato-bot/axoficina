@@ -74,7 +74,7 @@ describe('WA-AKG connection', () => {
     const connection = (await service.getConnection('tenant-a'))!;
     await service.sendConfirmation(connection, '5511999998888@s.whatsapp.net', 'Aprovar orçamento');
     expect(fetchMock.mock.calls[0][0]).toBe('https://chat.axcloud.com.br/api/messages/oficina/5511999998888%40s.whatsapp.net/send');
-    expect(JSON.parse(fetchMock.mock.calls[0][1]!.body as string)).toMatchObject({ message: { text: 'Sua resposta foi registrada: Aprovar orçamento.\n\nA equipe da oficina recebeu sua escolha.' } });
+    expect(JSON.parse(fetchMock.mock.calls[0][1]!.body as string)).toMatchObject({ message: { text: '📩 *Sua resposta foi registrada:* Aprovar orçamento.\n\n🔔 A equipe da oficina recebeu sua escolha.' } });
   });
 
   it('validates the public callback using a signed test without sending a client message', async () => {

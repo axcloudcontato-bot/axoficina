@@ -50,8 +50,8 @@ export class CustomerMessageManager {
     if (!['http:', 'https:'].includes(frontendUrl.protocol)) throw new BadRequestException('Configure uma URL pública válida para o sistema.');
     const token = randomBytes(32).toString('hex');
     const responseUrl = new URL(`/responder/${token}`, frontendUrl).toString();
-    const message = customerMessageContent(order, input.includeQuote);
-    const text = `${message}\n\n${input.question}\n${input.options.map((option) => `• ${option}`).join('\n')}\n\nResponda pelos botões neste link (válido por 7 dias):\n${responseUrl}`;
+    const message = customerMessageContent(order, input.includeQuote, input.channel === 'WHATSAPP' ? input.purpose ?? 'CUSTOM' : undefined);
+    const text = `${message}\n\n${input.question}\n${input.options.map((option) => `• ${option}`).join('\n')}\n\n${input.channel === 'WHATSAPP' ? '🔗 ' : ''}Responda pelos botões neste link (válido por 7 dias):\n${responseUrl}`;
     const record = await this.messages.create({
       tenantId: user.tenantId, serviceOrderId: order.id, customerId: order.customerId,
       purpose: input.purpose ?? 'CUSTOM',
@@ -187,7 +187,7 @@ export class CustomerMessageManager {
       if (message.purpose === 'QUOTE' && (error instanceof ConflictException || error instanceof GoneException)) {
         try {
           const connection = await this.whatsapp.getConnection(tenantId);
-          if (connection?.sessionId === sessionId) await this.whatsapp.sendNotice(connection, sender, `${error.message}\n\nEntre em contato com a oficina para conferir a solicitação atual.`);
+          if (connection?.sessionId === sessionId) await this.whatsapp.sendNotice(connection, sender, `⚠️ *SOLICITAÇÃO INDISPONÍVEL*\n\n${error.message}\n\n💬 Entre em contato com a oficina para conferir a solicitação atual.`);
         } catch { this.logger.warn(`Aviso de solicitação indisponível não confirmado para mensagem ${message.id}.`); }
       }
       if (error instanceof ConflictException || error instanceof GoneException || error instanceof NotFoundException || error instanceof BadRequestException) return { received: true, recorded: false, reason: error instanceof ConflictException ? 'ALREADY_ANSWERED_DIFFERENTLY' : error instanceof GoneException ? 'EXPIRED' : 'UNAVAILABLE_OR_INVALID_OPTION' };

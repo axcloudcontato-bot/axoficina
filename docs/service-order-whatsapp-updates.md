@@ -9,22 +9,22 @@ As mensagens usam a formatação nativa do WhatsApp, com asteriscos simples em t
 Exemplo:
 
 ```text
-*ORDEM DE SERVIÇO ABERTA*
+📝 *ORDEM DE SERVIÇO ABERTA*
 
-Olá, João Silva!
+👋 Olá, João Silva!
 Seu atendimento foi aberto. Vamos avaliar o veículo e preparar o orçamento.
 
-*OS:* #00004
-*Cliente:* João Silva
-*Veículo:* Honda HR-V
-*Placa:* ABC1D23
+📋 *OS:* #00004
+👤 *Cliente:* João Silva
+🚗 *Veículo:* Honda HR-V
+🔖 *Placa:* ABC1D23
 *Status registrado:* Aberta
-*Movimentação em:* 25/10/2026, 09:00 (Brasília)
+🕒 *Movimentação em:* 25/10/2026, 09:00 (Brasília)
 *Abertura:* 25/10/2026, 09:00 (Brasília)
 *Solicitação:* Ruído ao frear
 
 *AX Oficina*
-Para falar sobre o atendimento ou ajustar os avisos, entre em contato com a oficina.
+💬 Para falar sobre o atendimento ou ajustar os avisos, entre em contato com a oficina.
 ```
 
 ## Entrega e recuperação

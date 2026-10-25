@@ -1,5 +1,9 @@
 export const RELEASE_NOTES = [
   {
+    id: '2026-10-25-icones-whatsapp', date: '2026-10-25', title: 'Mensagens do WhatsApp com ícones por assunto',
+    items: ['Emojis nas mensagens de abertura, orçamento, agendamento, execução, peças, retirada, entrega e avaliação.', 'Títulos em negrito e dados da OS organizados com ícones nativos do WhatsApp.'],
+  },
+  {
     id: '2026-10-25-relatorio-analitico', date: '2026-10-25', title: 'Relatório financeiro analítico em paisagem',
     items: ['Detalhamento de cada receita e despesa, incluindo cliente ou fornecedor, datas, categoria, situação, valores e observações.', 'Filtros por período, vencimento ou realização, natureza, situação e categoria, com busca por cliente, fornecedor, OS ou placa.', 'Impressão em A4 paisagem com todos os registros filtrados, totais e cabeçalho repetido nas páginas.'],
   },

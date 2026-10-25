@@ -183,7 +183,7 @@ describe('Customer message buttons (HTTP + PostgreSQL)', () => {
     expect(replies.every((reply) => reply.body.recorded === true)).toBe(true);
     expect(confirmationFetch).toHaveBeenCalledTimes(1);
     expect(String(confirmationFetch.mock.calls[0][0])).toContain('/5511999998888%40s.whatsapp.net/send');
-    expect(JSON.parse(confirmationFetch.mock.calls[0][1]!.body as string)).toMatchObject({ message: { text: expect.stringContaining('Sua resposta foi registrada: Confirmar') } });
+    expect(JSON.parse(confirmationFetch.mock.calls[0][1]!.body as string)).toMatchObject({ message: { text: expect.stringContaining('📩 *Sua resposta foi registrada:* Confirmar') } });
     const changedChoice = { ...event, data: { ...event.data, content: `axm:${token}:1` } };
     expect((await request(app.getHttpServer()).post(webhookPath).set('X-Webhook-Signature', sign(changedChoice)).send(changedChoice).expect(200)).body.recorded).toBe(false);
     expect(confirmationFetch).toHaveBeenCalledTimes(1);

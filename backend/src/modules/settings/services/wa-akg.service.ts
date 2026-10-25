@@ -73,7 +73,7 @@ export class WaAkgService {
     const result = await this.request(connection, `/messages/${encodeURIComponent(connection.sessionId)}/${encodeURIComponent(input.recipient)}/interactive`, {
       method: 'POST', body: JSON.stringify({
         body: `${input.message}\n\n${input.question}`,
-        footer: 'Toque em uma opção para registrar sua resposta. Válido por 7 dias.',
+        footer: '👇 Toque em uma opção para registrar sua resposta. Válido por 7 dias.',
         buttons: input.options.length > 3 ? [{ type: 'single_select', displayText: 'Avaliar serviço', title: 'Avaliar serviço', sections: [{ title: 'Escolha sua nota', rows: input.options.map((label, index) => ({ title: label, id: `axm:${input.token}:${index}` })) }] }] : input.options.map((label, index) => ({ type: 'quick_reply', displayText: label, id: `axm:${input.token}:${index}` })),
       }),
     });
@@ -84,7 +84,7 @@ export class WaAkgService {
   }
 
   async sendConfirmation(connection: WaAkgConnection, recipient: string, option: string) {
-    return this.sendNotice(connection, recipient, `Sua resposta foi registrada: ${option}.\n\nA equipe da oficina recebeu sua escolha.`);
+    return this.sendNotice(connection, recipient, `📩 *Sua resposta foi registrada:* ${option}.\n\n🔔 A equipe da oficina recebeu sua escolha.`);
   }
 
   async sendNotice(connection: WaAkgConnection, recipient: string, text: string) {
