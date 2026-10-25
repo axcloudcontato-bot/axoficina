@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import type { FinancialEntryType } from '@oficina/contracts';
 import { ArrowCircleDown, ArrowCircleUp, Check, Plus, Printer, Trash, TreeStructure } from '@phosphor-icons/react';
 import { toast } from 'sonner';
@@ -15,6 +15,7 @@ import { hasPermission } from '@/features/auth/permissions';
 import { useAuthStore } from '@/stores/auth-store';
 import { useCashFlow, useCreateFinancialCategory, useDeleteFinancialCategory, useDeleteFinancialEntry, useFinancialCategories, useSettleFinancialEntry } from '../hooks/use-financial';
 
+import { FinancialAnalyticalReport } from './FinancialAnalyticalReport';
 import { FinancialEntryDialog } from './FinancialEntryDialog';
 
 type Mode = 'overview' | 'payables' | 'receivables' | 'cash-flow' | 'transactions' | 'categories' | 'reports';
@@ -25,17 +26,19 @@ export function FinancialWorkspace({ mode }: { mode: Mode }) {
   const [month, setMonth] = useState(new Date().toISOString().slice(0, 7));
   const startAt = `${month}-01T00:00:00.000Z`;
   const next = new Date(`${month}-01T00:00:00.000Z`); next.setUTCMonth(next.getUTCMonth() + 1);
-  const flow = useCashFlow({ startAt, endAt: next.toISOString() });
+  const flow = useCashFlow({ startAt, endAt: next.toISOString() }, { enabled: mode !== 'reports' });
   const categories = useFinancialCategories();
   const [entryOpen, setEntryOpen] = useState(false);
   const [categoryOpen, setCategoryOpen] = useState(false);
+
+  if (mode === 'reports') return <FinancialAnalyticalReport />;
 
   if (flow.isLoading || categories.isLoading) return <div className="h-72 animate-pulse rounded-card bg-muted" />;
   if (!flow.data) return <div className="rounded-card border border-danger/30 bg-danger-subtle p-8 text-center text-danger">Não foi possível carregar os dados financeiros.</div>;
   const data = flow.data;
 
   return <div className="space-y-5">
-    <header className="flex flex-col gap-3 border-b border-border pb-5 sm:flex-row sm:items-end sm:justify-between"><div><p className="text-xs font-bold uppercase tracking-[0.14em] text-primary">Controle financeiro</p><h2 className="mt-1 text-2xl font-bold text-text">{MODE_TITLES[mode]}</h2><p className="mt-1 text-sm text-text-muted">{MODE_DESCRIPTIONS[mode]}</p></div><div className="flex flex-wrap gap-2"><Input className="w-40" type="month" value={month} onChange={(event) => setMonth(event.target.value)} />{(mode === 'transactions' || mode === 'reports') && <Button variant="outline" onClick={() => window.open(`/financial/print?mode=${mode === 'reports' ? 'report' : 'transactions'}&month=${month}`, '_blank', 'noopener,noreferrer')}><Printer className="size-4" />Imprimir</Button>}{canManage && ['payables', 'receivables', 'transactions'].includes(mode) && <Button onClick={() => setEntryOpen(true)}><Plus className="size-4" />Novo lançamento</Button>}{canManage && mode === 'categories' && <Button onClick={() => setCategoryOpen(true)}><Plus className="size-4" />Nova categoria</Button>}</div></header>
+    <header className="flex flex-col gap-3 border-b border-border pb-5 sm:flex-row sm:items-end sm:justify-between"><div><p className="text-xs font-bold uppercase tracking-[0.14em] text-primary">Controle financeiro</p><h2 className="mt-1 text-2xl font-bold text-text">{MODE_TITLES[mode]}</h2><p className="mt-1 text-sm text-text-muted">{MODE_DESCRIPTIONS[mode]}</p></div><div className="flex flex-wrap gap-2"><Input className="w-40" type="month" value={month} onChange={(event) => setMonth(event.target.value)} />{mode === 'transactions' && <Button variant="outline" onClick={() => window.open(`/financial/print?mode=transactions&month=${month}`, '_blank', 'noopener,noreferrer')}><Printer className="size-4" />Imprimir</Button>}{canManage && ['payables', 'receivables', 'transactions'].includes(mode) && <Button onClick={() => setEntryOpen(true)}><Plus className="size-4" />Novo lançamento</Button>}{canManage && mode === 'categories' && <Button onClick={() => setCategoryOpen(true)}><Plus className="size-4" />Nova categoria</Button>}</div></header>
 
     {mode === 'overview' && <FinancialOverview data={data} />}
     {mode === 'cash-flow' && <CashFlow data={data} />}
@@ -43,7 +46,6 @@ export function FinancialWorkspace({ mode }: { mode: Mode }) {
     {mode === 'receivables' && <Entries data={{ ...data, entries: data.entries.filter((entry) => entry.type === 'INCOME' && entry.status === 'PENDING') }} canManage={canManage} />}
     {mode === 'transactions' && <Entries data={{ ...data, entries: data.entries.filter((entry) => entry.status === 'PAID') }} canManage={canManage} />}
     {mode === 'categories' && <Categories categories={categories.data?.categories ?? []} canManage={canManage} />}
-    {mode === 'reports' && <Reports data={data} />}
 
     <FinancialEntryDialog open={entryOpen} onOpenChange={setEntryOpen} categories={categories.data?.categories ?? []} initialType={mode === 'receivables' ? 'INCOME' : 'EXPENSE'} lockType={mode === 'receivables' || mode === 'payables'} />
     <CategoryDialog open={categoryOpen} onOpenChange={setCategoryOpen} />
@@ -83,12 +85,6 @@ function Categories({ categories, canManage }: { categories: NonNullable<ReturnT
     return <section key={type} className="rounded-card border border-border bg-card p-5 shadow-sm"><div className="flex items-center gap-2">{type === 'INCOME' ? <ArrowCircleUp className="text-success" /> : <ArrowCircleDown className="text-danger" />}<h3 className="font-bold text-text">{type === 'INCOME' ? 'Categorias de receita' : 'Categorias de custo'}</h3></div><div className="mt-5 space-y-5">{groups.map((group) => <div key={group}><p className="border-b border-border pb-2 text-xs font-bold uppercase tracking-wide text-text-muted">{group}</p><div className="divide-y divide-border">{typeCategories.filter((item) => item.group === group).map((item) => <div key={item.id} className="flex items-center justify-between py-2.5"><span className="flex items-center gap-2 text-sm font-semibold"><span className="size-2 rounded-full" style={{ backgroundColor: item.color ?? '#64748B' }} />{item.name}</span>{canManage && !item.isSystem && <Button variant="ghost" size="icon" className="text-danger" onClick={() => remove.mutate(item.id, { onError: (error) => toast.error(extractErrorMessage(error)) })}><Trash className="size-4" /></Button>}</div>)}</div></div>)}{groups.length === 0 && <p className="py-6 text-center text-sm text-text-muted">Nenhuma categoria cadastrada.</p>}</div></section>;
   })}</div>;
 }
-
-function Reports({ data }: { data: CashData }) {
-  const rows = useMemo(() => { const map = new Map<string, { income: number; expense: number }>(); data.entries.filter((item) => item.status === 'PAID').forEach((item) => { const row = map.get(item.categoryName) ?? { income: 0, expense: 0 }; row[item.type === 'INCOME' ? 'income' : 'expense'] += item.amountCents; map.set(item.categoryName, row); }); return [...map.entries()]; }, [data.entries]);
-  return <div className="grid gap-5 xl:grid-cols-[0.7fr_1.3fr]"><section className="rounded-card border border-border bg-card p-5 shadow-sm"><p className="text-xs font-bold uppercase tracking-wide text-text-muted">DRE gerencial simplificada</p><div className="mt-5 space-y-4"><ReportLine label="Receita realizada" value={data.realizedIncomeCents} /><ReportLine label="(−) Custos e despesas" value={-data.realizedExpenseCents} /><div className="border-t border-border pt-4"><ReportLine label="Resultado do período" value={data.realizedBalanceCents} strong /></div></div><p className="mt-5 text-xs leading-5 text-text-muted">Resultado pelo regime de caixa. Custos de peças ainda dependem do lançamento da despesa de aquisição.</p></section><section className="rounded-card border border-border bg-card p-5 shadow-sm"><h3 className="font-bold text-text">Resultado realizado por categoria</h3><div className="mt-4 divide-y divide-border">{rows.map(([name, values]) => <div key={name} className="grid grid-cols-[1fr_140px_140px] gap-3 py-3 text-sm"><strong>{name}</strong><span className="text-right text-success">{formatCurrencyBRL(values.income)}</span><span className="text-right text-danger">{formatCurrencyBRL(values.expense)}</span></div>)}{rows.length === 0 && <p className="py-10 text-center text-sm text-text-muted">Sem movimentos realizados no período.</p>}</div></section></div>;
-}
-function ReportLine({ label, value, strong }: { label: string; value: number; strong?: boolean }) { return <div className={`flex items-center justify-between gap-3 ${strong ? 'text-base font-bold' : 'text-sm'}`}><span>{label}</span><span className={value < 0 ? 'text-danger' : strong ? 'text-success' : 'text-text'}>{formatCurrencyBRL(value)}</span></div>; }
 
 function CategoryDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) { const create = useCreateFinancialCategory(); const [name, setName] = useState(''); const [type, setType] = useState<FinancialEntryType>('EXPENSE'); return <Dialog open={open} onOpenChange={onOpenChange}><DialogContent><DialogHeader><DialogTitle className="flex items-center gap-2.5"><span data-reveal className="flex size-8 shrink-0 items-center justify-center rounded-button bg-muted text-text-muted"><TreeStructure className="size-[18px]" aria-hidden="true" /></span>Nova categoria</DialogTitle></DialogHeader><Field label="Nome"><Input value={name} onChange={(e) => setName(e.target.value)} /></Field><Field label="Natureza"><Select value={type} onValueChange={(value) => setType(value as FinancialEntryType)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="INCOME">Receita</SelectItem><SelectItem value="EXPENSE">Custo/despesa</SelectItem></SelectContent></Select></Field><DialogFooter><Button onClick={() => create.mutate({ name, type }, { onSuccess: () => { toast.success('Categoria criada.'); setName(''); onOpenChange(false); }, onError: (error) => toast.error(extractErrorMessage(error)) })}>Criar categoria</Button></DialogFooter></DialogContent></Dialog>; }
 function Field({ label, children }: { label: string; children: React.ReactNode }) { return <div className="space-y-2"><Label>{label}</Label>{children}</div>; }

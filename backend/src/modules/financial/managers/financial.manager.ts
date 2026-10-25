@@ -100,28 +100,37 @@ export class FinancialManager {
   async cashFlow(request: ListFinancialEntriesRequest): Promise<CashFlowSummaryResponse> {
     const startAt = new Date(request.startAt);
     const endAt = new Date(request.endAt);
+    if (!Number.isFinite(startAt.getTime()) || !Number.isFinite(endAt.getTime()) || startAt >= endAt) throw new AppException(AppErrorCode.VALIDATION_ERROR, 'Informe um período financeiro válido.', HttpStatus.BAD_REQUEST);
+    if (request.dateField === 'PAID' && request.status === 'PENDING') throw new AppException(AppErrorCode.VALIDATION_ERROR, 'A consulta por realização inclui apenas pagamentos e recebimentos realizados.', HttpStatus.BAD_REQUEST);
     const [categories, manualEntries, receipts, installments] = await Promise.all([
       this.repository.categories(),
-      this.repository.entries(startAt, endAt, { type: request.type, status: request.status, categoryId: request.categoryId }),
+      this.repository.entries(startAt, endAt, { type: request.type, status: request.status, categoryId: request.categoryId }, request.dateField ?? 'DUE'),
       request.type === 'EXPENSE' || request.status === 'PENDING' || request.categoryId ? [] : this.repository.receipts(startAt, endAt),
-      request.type === 'EXPENSE' || request.status === 'PAID' || request.categoryId ? [] : this.repository.pendingInstallments(startAt, endAt),
+      request.type === 'EXPENSE' || request.status === 'PAID' || request.dateField === 'PAID' || request.categoryId ? [] : this.repository.pendingInstallments(startAt, endAt),
     ]);
     const suppliers = await this.repository.suppliersByIds([...new Set(manualEntries.map((entry) => entry.supplierId).filter((id): id is string => Boolean(id)))]);
-    const customers = await this.repository.customersByIds([...new Set(manualEntries.map((entry) => entry.customerId).filter((id): id is string => Boolean(id)))]);
+    const orderIds = [...new Set([...receipts, ...installments].map(item => item.serviceOrderId))];
+    const orders = orderIds.length ? await this.repository.ordersByIds(orderIds) : [];
+    const [customers, vehicles] = await Promise.all([
+      this.repository.customersByIds([...new Set([...manualEntries.map(entry => entry.customerId), ...orders.map(order => order.customerId)].filter((id): id is string => Boolean(id)))]),
+      orders.length ? this.repository.vehiclesByIds([...new Set(orders.map(order => order.vehicleId))]) : [],
+    ]);
     const supplierMap = new Map(suppliers.map((supplier) => [supplier.id, supplier.name]));
     const customerMap = new Map(customers.map((customer) => [customer.id, customer.name]));
     const categoryMap = new Map(categories.map((item) => [item.id, item.name]));
+    const vehicleMap = new Map(vehicles.map(vehicle => [vehicle.id, vehicle.plate]));
+    const orderMap = new Map(orders.map(order => [order.id, { serviceOrderNumber: order.orderNumber, customerId: order.customerId, customerName: customerMap.get(order.customerId), vehiclePlate: vehicleMap.get(order.vehicleId) }]));
     const entries: FinancialEntryResponse[] = [
       ...manualEntries.map((entry) => this.entryResponse(entry, categoryMap.get(entry.categoryId) ?? 'Categoria removida', entry.supplierId ? supplierMap.get(entry.supplierId) : undefined, entry.customerId ? customerMap.get(entry.customerId) : undefined)),
       ...receipts.map((receipt) => ({
         id: receipt.id, categoryName: 'Recebimentos de OS', type: 'INCOME' as const, description: 'Recebimento de ordem de serviço',
         amountCents: receipt.amountCents, dueAt: receipt.receivedAt.toISOString(), status: 'PAID' as const, paidAt: receipt.receivedAt.toISOString(),
-        source: 'SERVICE_ORDER' as const, serviceOrderId: receipt.serviceOrderId,
+        source: 'SERVICE_ORDER' as const, serviceOrderId: receipt.serviceOrderId, ...orderMap.get(receipt.serviceOrderId), paymentMethod: receipt.method, notes: receipt.notes ?? undefined,
       })),
       ...installments.map((item) => ({
         id: item.id, categoryName: 'Parcelas de OS', type: 'INCOME' as const, description: `Parcela ${item.installmentNumber}/${item.installmentCount} de ordem de serviço`,
         amountCents: item.amountCents, dueAt: item.dueAt.toISOString(), status: 'PENDING' as const,
-        source: 'SERVICE_ORDER' as const, serviceOrderId: item.serviceOrderId,
+        source: 'SERVICE_ORDER' as const, serviceOrderId: item.serviceOrderId, ...orderMap.get(item.serviceOrderId),
       })),
     ].sort((a, b) => a.dueAt.localeCompare(b.dueAt));
     const sum = (type: 'INCOME' | 'EXPENSE', status: 'PAID' | 'PENDING') => entries.filter((item) => item.type === type && item.status === status).reduce((total, item) => total + item.amountCents, 0);

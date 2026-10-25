@@ -27,6 +27,9 @@ export interface FinancialEntryResponse {
   notes?: string;
   source: 'MANUAL' | 'SERVICE_ORDER';
   serviceOrderId?: string;
+  serviceOrderNumber?: number;
+  vehiclePlate?: string;
+  paymentMethod?: string;
 }
 
 export interface CashFlowSummaryResponse {

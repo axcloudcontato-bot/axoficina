@@ -21,6 +21,8 @@ function buildManager() {
     supplierById: jest.fn(),
     suppliers: jest.fn().mockResolvedValue([]),
     customersByIds: jest.fn().mockResolvedValue([]),
+    ordersByIds: jest.fn().mockResolvedValue([]),
+    vehiclesByIds: jest.fn().mockResolvedValue([]),
     customerById: jest.fn(),
     createSupplier: jest.fn(),
     updateSupplier: jest.fn(),
@@ -64,11 +66,24 @@ describe('FinancialManager', () => {
       { id: 'e2', categoryId: 'c1', type: 'EXPENSE', description: 'Energia', amountCents: 1000, dueAt: new Date(), status: 'PENDING', paidAt: null, notes: null },
     ]);
     repository.categories.mockResolvedValue([{ id: 'c1', name: 'Estrutura', type: 'EXPENSE', group: 'Despesas fixas', color: null, isSystem: false }]);
-    repository.receipts.mockResolvedValue([{ id: 'r1', serviceOrderId: 'so1', amountCents: 10000, receivedAt: new Date() }]);
+    repository.receipts.mockResolvedValue([{ id: 'r1', serviceOrderId: 'so1', amountCents: 10000, receivedAt: new Date(), method: 'PIX', notes: 'Recebimento conferido' }]);
+    repository.ordersByIds.mockResolvedValue([{ id: 'so1', orderNumber: 8, customerId: 'customer-1', vehicleId: 'vehicle-1' }]);
+    repository.customersByIds.mockResolvedValue([{ id: 'customer-1', name: 'Maria' }]);
+    repository.vehiclesByIds.mockResolvedValue([{ id: 'vehicle-1', plate: 'ABC1D23' }]);
     repository.pendingInstallments.mockResolvedValue([{ id: 'i1', serviceOrderId: 'so2', installmentNumber: 1, installmentCount: 2, amountCents: 5000, dueAt: new Date(), status: 'PENDING' }]);
 
     const result = await manager.cashFlow({ startAt: '2026-07-01T00:00:00Z', endAt: '2026-08-01T00:00:00Z' });
     expect(result.realizedBalanceCents).toBe(7000);
     expect(result.projectedBalanceCents).toBe(11000);
+    expect(result.entries.find(entry => entry.id === 'r1')).toMatchObject({ serviceOrderNumber: 8, customerName: 'Maria', vehiclePlate: 'ABC1D23', paymentMethod: 'PIX', notes: 'Recebimento conferido' });
+  });
+
+  it('uses the realization basis without including pending installments and rejects conflicting or invalid periods', async () => {
+    const { manager, repository } = buildManager();
+    await manager.cashFlow({ startAt: '2026-10-01T03:00:00Z', endAt: '2026-11-01T03:00:00Z', dateField: 'PAID' });
+    expect(repository.entries).toHaveBeenCalledWith(expect.any(Date), expect.any(Date), expect.any(Object), 'PAID');
+    expect(repository.pendingInstallments).not.toHaveBeenCalled();
+    await expect(manager.cashFlow({ startAt: '2026-10-01T03:00:00Z', endAt: '2026-11-01T03:00:00Z', dateField: 'PAID', status: 'PENDING' })).rejects.toThrow('apenas pagamentos');
+    await expect(manager.cashFlow({ startAt: '2026-11-01T03:00:00Z', endAt: '2026-10-01T03:00:00Z' })).rejects.toThrow('período financeiro válido');
   });
 });

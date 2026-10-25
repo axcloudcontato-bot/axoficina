@@ -25,6 +25,7 @@ export class CreateFinancialEntryDto implements CreateFinancialEntryRequest {
 export class ListFinancialEntriesDto implements ListFinancialEntriesRequest {
   @IsISO8601() startAt!: string;
   @IsISO8601() endAt!: string;
+  @IsOptional() @IsIn(['DUE', 'PAID']) dateField?: 'DUE' | 'PAID';
   @IsOptional() @IsIn(TYPES) type?: ListFinancialEntriesRequest['type'];
   @IsOptional() @IsIn(STATUSES) status?: ListFinancialEntriesRequest['status'];
   @IsOptional() @IsUUID() categoryId?: string;

@@ -28,8 +28,8 @@ export class FinancialRepository {
   entryById(id: string): Promise<FinancialEntry | null> {
     return this.prisma.client.financialEntry.findFirst({ where: { id, deletedAt: null } });
   }
-  entries(startAt: Date, endAt: Date, filters?: { type?: FinancialEntryType; status?: FinancialEntryStatus; categoryId?: string }) {
-    return this.prisma.client.financialEntry.findMany({ where: { deletedAt: null, dueAt: { gte: startAt, lt: endAt }, ...filters }, orderBy: { dueAt: 'asc' } });
+  entries(startAt: Date, endAt: Date, filters?: { type?: FinancialEntryType; status?: FinancialEntryStatus; categoryId?: string }, dateField: 'DUE' | 'PAID' = 'DUE') {
+    return this.prisma.client.financialEntry.findMany({ where: { deletedAt: null, ...filters, ...(dateField === 'PAID' ? { status: 'PAID', paidAt: { gte: startAt, lt: endAt } } : { dueAt: { gte: startAt, lt: endAt } }) }, orderBy: { [dateField === 'PAID' ? 'paidAt' : 'dueAt']: 'asc' } });
   }
   settleEntry(id: string, paidAt: Date): Promise<FinancialEntry> {
     return this.prisma.client.financialEntry.update({ where: { id }, data: { status: 'PAID', paidAt } });
@@ -51,6 +51,12 @@ export class FinancialRepository {
   }
   customersByIds(ids: string[]): Promise<Customer[]> {
     return this.prisma.client.customer.findMany({ where: { id: { in: ids }, deletedAt: null } });
+  }
+  ordersByIds(ids: string[]) {
+    return this.prisma.client.serviceOrder.findMany({ where: { id: { in: ids }, deletedAt: null }, select: { id: true, orderNumber: true, customerId: true, vehicleId: true } });
+  }
+  vehiclesByIds(ids: string[]) {
+    return this.prisma.client.vehicle.findMany({ where: { id: { in: ids }, deletedAt: null }, select: { id: true, plate: true } });
   }
   customerById(id: string): Promise<Customer | null> {
     return this.prisma.client.customer.findFirst({ where: { id, deletedAt: null } });

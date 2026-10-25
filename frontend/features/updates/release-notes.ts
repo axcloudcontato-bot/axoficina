@@ -1,5 +1,9 @@
 export const RELEASE_NOTES = [
   {
+    id: '2026-10-25-relatorio-analitico', date: '2026-10-25', title: 'Relatório financeiro analítico em paisagem',
+    items: ['Detalhamento de cada receita e despesa, incluindo cliente ou fornecedor, datas, categoria, situação, valores e observações.', 'Filtros por período, vencimento ou realização, natureza, situação e categoria, com busca por cliente, fornecedor, OS ou placa.', 'Impressão em A4 paisagem com todos os registros filtrados, totais e cabeçalho repetido nas páginas.'],
+  },
+  {
     id: '2026-10-25-cadastro-lancamento', date: '2026-10-25', title: 'Cadastre sem sair do lançamento',
     items: ['Novo botão + ao lado de Cliente e Fornecedor no lançamento financeiro.', 'O cadastro abre em um modal e o novo registro é selecionado automaticamente, preservando os dados da receita ou despesa.'],
   },

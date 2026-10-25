@@ -24,6 +24,7 @@ export interface CreateFinancialEntryRequest {
 export interface ListFinancialEntriesRequest {
   startAt: string;
   endAt: string;
+  dateField?: 'DUE' | 'PAID';
   type?: FinancialEntryType;
   status?: FinancialEntryStatus;
   categoryId?: string;
