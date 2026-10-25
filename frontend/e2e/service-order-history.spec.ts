@@ -65,7 +65,10 @@ test('shortcuts use Brasília dates, invalid ranges are blocked, clear returns t
   await expect(page.getByRole('alert').filter({ hasText: 'A data final' })).toBeVisible();
   await page.getByRole('button', { name: 'Limpar filtros', exact: true }).click();
   await expect(page.getByLabel('Data inicial', { exact: true })).toHaveValue('');
-  await expect.poll(() => bodies.at(-1)).toMatchObject({ attention: 'ACTIVE', offset: 0, date_field: 'OPENED' });
+  // Clearing can reuse the fresh initial query from cache. Search explicitly
+  // to verify the cleared filters in a new server request.
+  await page.getByRole('textbox', { name: 'Buscar ordens de serviço', exact: true }).fill('ABC1D23');
+  await expect.poll(() => bodies.at(-1)).toMatchObject({ attention: 'ACTIVE', offset: 0, date_field: 'OPENED', search: 'ABC1D23' });
   expect(bodies.at(-1)).not.toHaveProperty('start_date');
   await page.getByRole('combobox', { name: 'Filtrar por atenção necessária' }).click();
   await page.getByRole('option', { name: 'Todas as condições', exact: true }).click();

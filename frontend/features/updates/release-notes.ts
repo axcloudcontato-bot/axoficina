@@ -1,5 +1,9 @@
 export const RELEASE_NOTES = [
   {
+    id: '2026-10-25-largura-painel', date: '2026-10-25', title: 'Mais espaço para trabalhar no desktop',
+    items: ['As telas do painel aproveitam toda a largura disponível, com margens laterais menores em monitores grandes.'],
+  },
+  {
     id: '2026-10-25-avisos-whatsapp-status', date: '2026-10-25', title: 'Cliente acompanha a OS pelo WhatsApp',
     items: [
       'Nova opção nas Preferências do cliente: receber avisos sobre toda movimentação da Ordem de Serviço.',
