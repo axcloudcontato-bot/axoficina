@@ -12,7 +12,12 @@ coverage
 *.tsbuildinfo
 .env
 .env.local
+.env.production
+**/.env.production
 !.env.example
+backups
+runtime-logs
+*.log
 .worktrees
 .planning
 docs
