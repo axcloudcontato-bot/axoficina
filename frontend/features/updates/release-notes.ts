@@ -1,5 +1,9 @@
 export const RELEASE_NOTES = [
   {
+    id: '2026-10-25-cadastro-lancamento', date: '2026-10-25', title: 'Cadastre sem sair do lançamento',
+    items: ['Novo botão + ao lado de Cliente e Fornecedor no lançamento financeiro.', 'O cadastro abre em um modal e o novo registro é selecionado automaticamente, preservando os dados da receita ou despesa.'],
+  },
+  {
     id: '2026-10-25-avaliacao-servico', date: '2026-10-25', title: 'Avaliação do serviço após a entrega',
     items: ['Ao registrar a entrega da OS, o cliente recebe pelo WhatsApp uma avaliação de 1 a 5 estrelas, de Ruim a Ótimo.', 'A nota fica registrada na OS e a resposta aparece no sino de notificações.'],
   },
