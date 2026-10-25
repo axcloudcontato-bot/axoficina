@@ -43,6 +43,7 @@ services:
       DATABASE_URL: postgresql://${POSTGRES_USER:-oficina}:${POSTGRES_PASSWORD:?Missing POSTGRES_PASSWORD — copy .env.example to .env first}@postgres:5432/${POSTGRES_DB:-oficina_saas}?schema=public
       REDIS_URL: redis://redis:6379
       UPLOAD_DIR: /app/uploads
+      SAAS_ADMIN_USER_IDS: ${SAAS_ADMIN_USER_IDS:-}
       # BACKEND_PORT is intentionally NOT forwarded here — the app always
       # listens on 3001 inside the container (see backend/src/main.ts default
       # and the EXPOSE in backend/Dockerfile). Only the HOST side of the port

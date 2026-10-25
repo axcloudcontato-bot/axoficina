@@ -1,5 +1,6 @@
 // Barrel de tipos e DTOs compartilhados entre backend e frontend.
 export * from './constants';
+export * from './subscriptions';
 export * from './legal';
 export * from './customer-message';
 export * from './service-order-status-notification';

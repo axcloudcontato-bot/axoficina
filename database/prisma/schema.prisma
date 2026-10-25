@@ -61,6 +61,11 @@ model Tenant {
   waAkgWebhookSecret   String?   @map("wa_akg_webhook_secret")
   waAkgEnabled         Boolean   @default(false) @map("wa_akg_enabled")
   plan                String    @default("free")
+  subscriptionStatus      String    @default("unconfigured") @map("subscription_status")
+  subscriptionAmountCents Int       @default(0) @map("subscription_amount_cents")
+  subscriptionCycle       String    @default("monthly") @map("subscription_cycle")
+  subscriptionDueAt       DateTime? @map("subscription_due_at") @db.Timestamptz
+  subscriptionNotes       String?   @map("subscription_notes")
   status              String    @default("active")
   createdAt           DateTime  @default(now()) @map("created_at") @db.Timestamptz
   updatedAt           DateTime? @updatedAt @map("updated_at") @db.Timestamptz

@@ -78,6 +78,7 @@ services:
       WA_AKG_ALLOWED_HOSTS: ${WA_AKG_ALLOWED_HOSTS:-chat.axcloud.com.br}
       UPLOAD_DIR: /app/uploads
       BACKEND_PORT: 3001
+      SAAS_ADMIN_USER_IDS: ${SAAS_ADMIN_USER_IDS:-}
     volumes:
       - service_order_uploads:/app/uploads
     ports:

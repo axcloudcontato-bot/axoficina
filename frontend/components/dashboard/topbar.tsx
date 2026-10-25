@@ -8,6 +8,7 @@ import { HeaderDock } from '@/components/dashboard/header-dock';
 interface PageMeta { title: string; description: string; icon: PhosphorIcon }
 
 const PAGE_META: Record<string, PageMeta> = {
+  '/admin/subscriptions': { title: 'Administração do SaaS', description: 'Gestão global das assinaturas de todas as oficinas.', icon: ShieldCheck },
   '/dashboard': { title: 'Visão da oficina', description: 'O que precisa da sua atenção hoje.', icon: SquaresFour },
   '/financial': { title: 'Financeiro', description: 'Indicadores financeiros e desempenho da oficina.', icon: ChartLine },
   '/appointments': { title: 'Agenda', description: 'Organize os atendimentos da oficina.', icon: CalendarBlank },

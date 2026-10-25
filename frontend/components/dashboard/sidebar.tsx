@@ -14,6 +14,7 @@ import { OfixLogo } from '@/components/brand/ofix-logo';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/stores/auth-store';
 import { useBranding } from '@/features/settings/hooks/use-settings';
+import { useSaasAdminAccess } from '@/features/subscriptions/hooks/use-subscriptions';
 
 interface NavItem {
   href: string; label: string; shortLabel: string;
@@ -48,6 +49,7 @@ export function Sidebar() {
   const user = useAuthStore((state) => state.user);
   const logout = useLogout();
   const branding = useBranding();
+  const saasAccess = useSaasAdminAccess();
   const [collapsed, setCollapsed] = useState(false);
   const navigationId = useId();
   const toggleRef = useRef<HTMLButtonElement>(null);
@@ -85,6 +87,7 @@ export function Sidebar() {
         {!collapsed && <button type="button" ref={toggleRef} aria-expanded={!collapsed} aria-controls={navigationId} onClick={toggleSidebar} aria-label="Recolher menu lateral" className="group flex size-8 items-center justify-center rounded-button text-text-muted hover:bg-muted hover:text-text"><AnimatedIcon icon={SidebarSimple} className="size-4" /></button>}
       </div>
       <nav id={navigationId} aria-label="Navegação principal" className="flex-1 space-y-1 overflow-y-auto px-3 py-2">
+        {saasAccess.data?.allowed && <Link href="/admin/subscriptions" aria-current={isActive(pathname, '/admin/subscriptions') ? 'page' : undefined} title={collapsed ? 'Assinaturas do SaaS' : undefined} className={cn('mb-3 flex min-h-10 items-center rounded-button text-sm font-semibold', collapsed ? 'justify-center' : 'gap-3 px-3', isActive(pathname, '/admin/subscriptions') ? 'bg-primary text-primary-foreground' : 'text-text-muted hover:bg-muted hover:text-text')}><Buildings className="size-[18px] shrink-0" aria-hidden="true" />{!collapsed && 'Assinaturas do SaaS'}</Link>}
         {groups.map((group) => {
           const items = visibleItems.filter((item) => item.group === group);
           return items.length ? <div key={group}>{!collapsed && <p className="px-3 pb-2 pt-4 text-[11px] font-bold uppercase tracking-wider text-text-muted">{group}</p>}{items.map((item) => <DesktopNavItem key={item.href} item={item} active={isActive(pathname, item.href)} collapsed={collapsed} />)}</div> : null;
@@ -93,7 +96,7 @@ export function Sidebar() {
       {user && <div className={cn('flex items-center border-t border-border py-4', collapsed ? 'justify-center px-3' : 'gap-2.5 px-4')}><div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">{initials(user.name)}</div>{!collapsed && <div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold">{user.name}</p><p className="text-xs text-text-muted">{ROLE_LABELS[user.profileName ?? ''] ?? user.profileName ?? ROLE_LABELS[user.role] ?? user.role}</p></div>}<button type="button" aria-label="Sair" onClick={() => logout.mutate()} className="group flex size-9 items-center justify-center rounded-button text-text-muted hover:text-danger"><AnimatedIcon icon={SignOut} className="size-[18px]" /></button></div>}
       {collapsed && <button type="button" ref={toggleRef} aria-expanded={!collapsed} aria-controls={navigationId} onClick={toggleSidebar} aria-label="Expandir menu lateral" className="group absolute right-[-14px] top-5 flex size-7 items-center justify-center rounded-full border border-border bg-background text-text-muted hover:text-text"><AnimatedIcon icon={SidebarSimple} className="size-3.5" /></button>}
     </aside>
-    <nav aria-label="Navegação móvel" className="fixed inset-x-0 bottom-0 z-40 grid h-16 grid-cols-5 border-t border-border bg-background px-2 md:hidden">{visibleItems.slice(0, 5).map((item) => { const active = isActive(pathname, item.href); return <Link key={item.href} href={item.href} aria-current={active ? 'page' : undefined} className={cn('group flex min-w-0 flex-col items-center justify-center gap-1 text-[10px] font-semibold', active ? 'text-primary' : 'text-text-muted')}><AnimatedIcon icon={item.icon} active={active} className="size-[18px]" /><span className="truncate">{item.shortLabel}</span></Link>; })}</nav>
+    <nav aria-label="Navegação móvel" className="fixed inset-x-0 bottom-0 z-40 grid h-16 grid-cols-5 border-t border-border bg-background px-2 md:hidden">{visibleItems.slice(0, saasAccess.data?.allowed ? 4 : 5).map((item) => { const active = isActive(pathname, item.href); return <Link key={item.href} href={item.href} aria-current={active ? 'page' : undefined} className={cn('group flex min-w-0 flex-col items-center justify-center gap-1 text-[10px] font-semibold', active ? 'text-primary' : 'text-text-muted')}><AnimatedIcon icon={item.icon} active={active} className="size-[18px]" /><span className="truncate">{item.shortLabel}</span></Link>; })}{saasAccess.data?.allowed && <Link href="/admin/subscriptions" aria-current={isActive(pathname, '/admin/subscriptions') ? 'page' : undefined} className={cn('flex min-w-0 flex-col items-center justify-center gap-1 text-[10px] font-semibold', isActive(pathname, '/admin/subscriptions') ? 'text-primary' : 'text-text-muted')}><Buildings className="size-[18px]" aria-hidden="true" /><span>Assinaturas</span></Link>}</nav>
   </>;
 }
 
