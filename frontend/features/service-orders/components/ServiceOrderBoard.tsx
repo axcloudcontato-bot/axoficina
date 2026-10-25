@@ -40,6 +40,19 @@ const QUICK_NEXT_STATUS: Partial<Record<ServiceOrderStatus, ServiceOrderStatus>>
   COMPLETED: 'DELIVERED',
 };
 
+function reviewStep(from: ServiceOrderStatus, target: ServiceOrderStatus) {
+  if (target === 'AWAITING_APPROVAL') return 'approval';
+  if (target === 'IN_PROGRESS') return from === 'WAITING_PARTS' ? 'execution' : 'approval';
+  if (target === 'COMPLETED' || target === 'DELIVERED') return 'delivery';
+  return undefined;
+}
+
+const QUICK_ACTIONS: Partial<Record<ServiceOrderStatus, { label: string; step: string }>> = {
+  OPEN: { label: 'Preparar atendimento', step: 'entry' }, AWAITING_APPROVAL: { label: 'Conferir aprovação', step: 'approval' },
+  IN_PROGRESS: { label: 'Conferir conclusão', step: 'delivery' }, WAITING_PARTS: { label: 'Retomar execução', step: 'execution' },
+  COMPLETED: { label: 'Conferir entrega', step: 'delivery' },
+};
+
 const PAYMENT_LABELS = {
   AWAITING_PAYMENT: 'Aguardando pagamento',
   PARTIALLY_PAID: 'Parcialmente recebido',
@@ -118,7 +131,8 @@ export function ServiceOrderBoard({ items, isLoading, isError, onRetry, canManag
     <Dialog open={Boolean(pendingMove)} onOpenChange={(open) => !open && setPendingMove(undefined)}>
       <DialogContent>
         <DialogHeader><DialogTitle className="flex items-center gap-2.5"><span data-reveal className="flex size-8 shrink-0 items-center justify-center rounded-button bg-muted text-text-muted"><ClipboardText className="size-[18px]" aria-hidden="true" /></span>Confirmar mudança de etapa</DialogTitle><DialogDescription>{pendingMove ? `Mover a OS #${pendingMove.item.orderNumber}, placa ${pendingMove.item.vehiclePlate}, de ${SERVICE_ORDER_STATUS_LABELS[pendingMove.item.status]} para ${SERVICE_ORDER_STATUS_LABELS[pendingMove.toStatus]}?` : ''}</DialogDescription></DialogHeader>
-        <DialogFooter><Button variant="outline" onClick={() => setPendingMove(undefined)}>Voltar</Button><Button onClick={confirmDrop} disabled={transition.isPending}>{transition.isPending ? 'Movendo...' : 'Confirmar mudança'}</Button></DialogFooter>
+        {pendingMove && reviewStep(pendingMove.item.status, pendingMove.toStatus) && <p className="text-sm text-text-muted">Confira a aprovação, as fotos ou a entrega dentro do atendimento antes de confirmar esta mudança.</p>}
+        <DialogFooter><Button variant="outline" onClick={() => setPendingMove(undefined)}>Voltar</Button>{pendingMove && reviewStep(pendingMove.item.status, pendingMove.toStatus) ? <Button asChild><Link href={`/service-orders/${pendingMove.item.id}?step=${reviewStep(pendingMove.item.status, pendingMove.toStatus)}`}>Conferir atendimento</Link></Button> : <Button onClick={confirmDrop} disabled={transition.isPending}>{transition.isPending ? 'Movendo...' : 'Confirmar mudança'}</Button>}</DialogFooter>
       </DialogContent>
     </Dialog>
   </>;
@@ -157,6 +171,7 @@ function BoardCard({ item, canManage, canViewPrices, onDragStart, onDragEnd }: {
   const [confirming, setConfirming] = useState(false);
   const [selectedStatus, setSelectedStatus] = useState<ServiceOrderStatus | null>(null);
   const nextStatus = QUICK_NEXT_STATUS[item.status] ?? null;
+  const quickAction = QUICK_ACTIONS[item.status];
   const targetStatus = selectedStatus ?? nextStatus;
   const overdue = isOverdueServiceOrder(item);
 
@@ -187,7 +202,7 @@ function BoardCard({ item, canManage, canViewPrices, onDragStart, onDragEnd }: {
         </div>
         {canViewPrices && <div className="mt-2 flex items-center justify-between border-t border-border pt-2 text-[11px]"><span className={item.paymentStatus === 'PAID' ? 'font-bold text-success' : 'font-semibold text-warning'}>{PAYMENT_LABELS[item.paymentStatus]}</span><span className="font-bold tabular-nums text-text">{formatCurrencyBRL(item.totalAmountCents)}</span></div>}
       </Link>
-      {canManage && nextStatus && <button type="button" onClick={() => { setSelectedStatus(null); setConfirming(true); }} className="mt-3 flex h-9 w-full items-center justify-center gap-1 rounded-button border border-primary/20 bg-primary-subtle px-2 text-xs font-bold text-primary-strong transition-colors hover:bg-primary/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">{`Avançar para ${SERVICE_ORDER_STATUS_LABELS[nextStatus]}`}<CaretRight className="size-3.5" aria-hidden="true" /></button>}
+      {canManage && quickAction && <Link href={`/service-orders/${item.id}?step=${quickAction.step}`} className="mt-3 flex h-9 w-full items-center justify-center gap-1 rounded-button border border-primary/20 bg-primary-subtle px-2 text-xs font-bold text-primary-strong transition-colors hover:bg-primary/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">{quickAction.label}<CaretRight className="size-3.5" aria-hidden="true" /></Link>}
       {canManage && SERVICE_ORDER_TRANSITIONS[item.status].length > 0 && <select value="" aria-label={`Mover OS #${item.orderNumber} para outra etapa`} className="mt-2 h-9 w-full rounded-button border border-input bg-background px-2 text-xs text-text" onChange={(event) => { if (event.target.value) { setSelectedStatus(event.target.value as ServiceOrderStatus); setConfirming(true); } }}><option value="" disabled>Mover para outra etapa...</option>{SERVICE_ORDER_TRANSITIONS[item.status].map((status) => <option key={status} value={status}>{SERVICE_ORDER_STATUS_LABELS[status]}</option>)}</select>}
     </article>
 
@@ -195,7 +210,8 @@ function BoardCard({ item, canManage, canViewPrices, onDragStart, onDragEnd }: {
       <DialogContent>
         <DialogHeader><DialogTitle className="flex items-center gap-2.5"><span data-reveal className="flex size-8 shrink-0 items-center justify-center rounded-button bg-muted text-text-muted"><ClipboardText className="size-[18px]" aria-hidden="true" /></span>Confirmar mudança de etapa</DialogTitle><DialogDescription>Você está alterando a OS #{item.orderNumber}, do veículo {item.vehiclePlate}, de {SERVICE_ORDER_STATUS_LABELS[item.status]} para {targetStatus ? SERVICE_ORDER_STATUS_LABELS[targetStatus] : ''}.</DialogDescription></DialogHeader>
         {targetStatus === 'DELIVERED' && item.outstandingAmountCents > 0 && <div className="rounded-button border border-warning/30 bg-warning-subtle p-3 text-sm font-semibold text-warning-strong">Atenção: esta OS ainda possui {formatCurrencyBRL(item.outstandingAmountCents)} pendente de recebimento.</div>}
-        <DialogFooter><Button variant="outline" onClick={() => { setConfirming(false); setSelectedStatus(null); }}>Voltar</Button><Button onClick={advance} disabled={transition.isPending}>{transition.isPending ? 'Atualizando...' : 'Confirmar mudança'}</Button></DialogFooter>
+        {targetStatus && reviewStep(item.status, targetStatus) && <p className="text-sm text-text-muted">Você será levado à conferência desta etapa. Nenhuma mensagem será enviada apenas por mudar o status.</p>}
+        <DialogFooter><Button variant="outline" onClick={() => { setConfirming(false); setSelectedStatus(null); }}>Voltar</Button>{targetStatus && reviewStep(item.status, targetStatus) ? <Button asChild><Link href={`/service-orders/${item.id}?step=${reviewStep(item.status, targetStatus)}`}>Conferir atendimento</Link></Button> : <Button onClick={advance} disabled={transition.isPending}>{transition.isPending ? 'Atualizando...' : 'Confirmar mudança'}</Button>}</DialogFooter>
       </DialogContent>
     </Dialog>
   </>;

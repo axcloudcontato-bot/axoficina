@@ -27,6 +27,7 @@ export interface ServiceOrderStatusHistoryItemResponse {
 }
 
 export interface ServiceOrderResponse {
+  quoteRevision?: string;
   id: string;
   tenantId: string;
   orderNumber: number;

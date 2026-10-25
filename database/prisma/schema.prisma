@@ -512,6 +512,8 @@ model CustomerMessage {
   serviceOrderId String    @map("service_order_id") @db.Uuid
   customerId     String    @map("customer_id") @db.Uuid
   channel        String
+  purpose        String    @default("CUSTOM")
+  quoteSnapshot  Json?     @map("quote_snapshot")
   deliveryMode   String    @default("LINK") @map("delivery_mode")
   sentAt         DateTime? @map("sent_at") @db.Timestamptz
   whatsappSessionId String? @map("whatsapp_session_id")

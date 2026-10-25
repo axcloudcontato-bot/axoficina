@@ -52,6 +52,9 @@ import { SERVICE_ORDER_CLOSING_STATUSES, SERVICE_ORDER_TRANSITIONS } from './ser
 // `forwardRef()` — ver comentário em service-orders.module.ts e Gotchas do
 // plano motor-manutencao-preventiva.md).
 import { MaintenanceAlertRepository } from '../../maintenance-alerts/repositories/maintenance-alert.repository';
+import { quoteRevision, quoteSnapshot, quotesMatch } from '../services/customer-message-quote';
+import type { CustomerMessageQuote } from '@oficina/contracts';
+import { CustomerMessageRepository } from '../repositories/customer-message.repository';
 
 const PHOTO_ANGLE_LABELS: Record<ServiceOrderPhotoAngle, string> = {
   FRONT: 'frente',
@@ -76,6 +79,7 @@ export class ServiceOrderManager {
     private readonly auditLog: AuditLogService,
     private readonly maintenanceAlertRepository: MaintenanceAlertRepository,
     private readonly photoRepository: ServiceOrderPhotoRepository,
+    private readonly customerMessageRepository?: CustomerMessageRepository,
   ) {}
 
   async create(actingUser: AuthenticatedUser, request: CreateServiceOrderRequest): Promise<{ serviceOrder: ServiceOrderResponse }> {
@@ -255,6 +259,17 @@ export class ServiceOrderManager {
     }
 
     const changedAt = new Date();
+    let authorizationMetadata: Record<string, string> = {};
+    if (request.toStatus === 'IN_PROGRESS' && ['OPEN', 'AWAITING_APPROVAL'].includes(fromStatus) && request.authorization) {
+      const current = quoteSnapshot((await this.getById(request.id)).serviceOrder);
+      if (request.authorization === 'CUSTOMER_MESSAGE') {
+        const approval = await this.customerMessageRepository?.latestQuote(request.id);
+        if (!approval?.answeredAt || approval.selectedOption !== 0 || !approval.quoteSnapshot || !quotesMatch(approval.quoteSnapshot as unknown as CustomerMessageQuote, current)) {
+          throw new AppException(AppErrorCode.VALIDATION_ERROR, 'O orçamento atual ainda não tem uma aprovação válida do cliente. Confira a resposta ou confirme a autorização presencial.');
+        }
+        authorizationMetadata = { authorization: 'CUSTOMER_MESSAGE', customerMessageId: approval.id, quoteRevision: quoteRevision(current.items) };
+      } else authorizationMetadata = { authorization: 'MANUAL', quoteRevision: quoteRevision(current.items) };
+    }
     const closedAt = SERVICE_ORDER_CLOSING_STATUSES.includes(request.toStatus) ? changedAt : undefined;
 
     await this.prisma.transaction(async (tx) => {
@@ -307,7 +322,7 @@ export class ServiceOrderManager {
       action: 'service_order.transitioned',
       entity: 'service_order',
       entityId: updated.id,
-      metadata: { fromStatus, toStatus: request.toStatus },
+      metadata: { fromStatus, toStatus: request.toStatus, ...authorizationMetadata },
     });
 
     return { serviceOrder: this.toResponse(updated, vehicle, customer, technician, { totalAmountCentsOverride: totalAmountCents }) };
@@ -316,6 +331,11 @@ export class ServiceOrderManager {
   private async missingAngles(serviceOrderId: string, category: 'ENTRY' | 'EXIT'): Promise<string[]> {
     const covered = new Set(await this.photoRepository.distinctAngles(serviceOrderId, category));
     return SERVICE_ORDER_PHOTO_ANGLES.filter((angle) => !covered.has(angle)).map((angle) => PHOTO_ANGLE_LABELS[angle]);
+  }
+
+  async assertReadyForApproval(serviceOrderId: string) {
+    const missing = await this.missingAngles(serviceOrderId, 'ENTRY');
+    if (missing.length) throw new AppException(AppErrorCode.SERVICE_ORDER_MISSING_ENTRY_PHOTO, `Complete as fotos de entrada antes de solicitar a aprovação: ${missing.join(', ')}.`);
   }
 
   // Cada peça/serviço ativo da OS precisa de 1 foto ISSUE (o problema, antes)
@@ -864,6 +884,7 @@ export class ServiceOrderManager {
 
     return {
       id: serviceOrder.id,
+      ...(itemResponses ? { quoteRevision: quoteRevision(itemResponses.map(({ id, description, type, quantity, unitPriceCents, lineTotalCents }) => ({ id, description, type, quantity, unitPriceCents, lineTotalCents }))) } : {}),
       tenantId: serviceOrder.tenantId,
       orderNumber: serviceOrder.orderNumber,
       customerId: serviceOrder.customerId,

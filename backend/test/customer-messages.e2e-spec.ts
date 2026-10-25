@@ -207,7 +207,7 @@ describe('Customer message buttons (HTTP + PostgreSQL)', () => {
     const ids: string[] = [];
     try {
       for (let index = 0; index < 22; index++) {
-        const record = await prisma.unscoped.customerMessage.create({ data: { ...original, id: undefined, tokenHash: `notification-${owner.tenantId}-${index}` } });
+        const record = await prisma.unscoped.customerMessage.create({ data: { ...original, quoteSnapshot: original.quoteSnapshot ?? undefined, id: undefined, tokenHash: `notification-${owner.tenantId}-${index}` } });
         ids.push(record.id);
       }
       const first = await request(app.getHttpServer()).get('/api/v1/customer-reply-notifications').set('Authorization', `Bearer ${owner.token}`).expect(200);

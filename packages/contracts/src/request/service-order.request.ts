@@ -33,6 +33,7 @@ export interface UpdateServiceOrderRequest {
 export interface TransitionServiceOrderRequest {
   id: string;
   toStatus: ServiceOrderStatus;
+  authorization?: 'CUSTOMER_MESSAGE' | 'MANUAL';
 }
 
 export interface DeleteServiceOrderRequest {

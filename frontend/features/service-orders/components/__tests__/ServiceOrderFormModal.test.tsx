@@ -109,11 +109,12 @@ describe('ServiceOrderFormModal', () => {
     await user.click(await screen.findByRole('option', { name: /JoÃ£o da Silva/ }));
     await user.type(vehicleSearchInput, 'Uno');
     await user.click(await screen.findByRole('option', { name: /Fiat Uno · ABC1D23/ }));
+    await user.type(screen.getByRole('textbox', { name: 'Solicitação do cliente (opcional)' }), 'Ruído ao frear');
 
     await user.click(screen.getByRole('button', { name: /abrir os/i }));
 
     await waitFor(() =>
-      expect(serviceOrdersApi.create).toHaveBeenCalledWith(expect.objectContaining({ vehicleId: 'v1', technicianId: undefined })),
+      expect(serviceOrdersApi.create).toHaveBeenCalledWith(expect.objectContaining({ vehicleId: 'v1', technicianId: undefined, customerComplaint: 'Ruído ao frear' })),
     );
     await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
   });

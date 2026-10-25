@@ -1,8 +1,10 @@
-import { ArrayMaxSize, ArrayMinSize, ArrayUnique, IsArray, IsBoolean, IsIn, IsInt, IsString, IsUUID, Length, Max, MaxLength, Min } from 'class-validator';
+import { ArrayMaxSize, ArrayMinSize, ArrayUnique, IsArray, IsBoolean, IsIn, IsInt, IsOptional, IsString, IsUUID, Length, Matches, Max, MaxLength, Min } from 'class-validator';
 import { Transform } from 'class-transformer';
-import type { CreateCustomerMessageRequest } from '@oficina/contracts';
+import { CUSTOMER_MESSAGE_PURPOSES, type CreateCustomerMessageRequest } from '@oficina/contracts';
 
 export class CreateCustomerMessageDto implements CreateCustomerMessageRequest {
+  @IsOptional() @IsIn(CUSTOMER_MESSAGE_PURPOSES) purpose?: CreateCustomerMessageRequest['purpose'];
+  @IsOptional() @IsString() @Matches(/^[a-f0-9]{64}$/) expectedQuoteRevision?: string;
   @IsUUID() serviceOrderId!: string;
   @IsIn(['EMAIL', 'WHATSAPP']) channel!: 'EMAIL' | 'WHATSAPP';
   @Transform(({ value }: { value: unknown }) => typeof value === 'string' ? value.trim() : value)
@@ -23,4 +25,8 @@ export class AnswerCustomerMessageDto extends CustomerMessageTokenDto {
 
 export class ListCustomerMessagesDto {
   @IsUUID() serviceOrderId!: string;
+}
+
+export class ConfirmCustomerMessageDispatchDto {
+  @IsUUID() id!: string;
 }

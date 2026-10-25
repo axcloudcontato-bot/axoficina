@@ -1,5 +1,7 @@
+import { QUOTE_APPROVAL_QUESTION, QUOTE_APPROVAL_OPTIONS } from '@oficina/contracts';
+
 export const CUSTOMER_MESSAGE_PRESETS = {
-  QUOTE: { label: 'Aprovação do orçamento', question: 'Você aprova este orçamento para realizarmos o serviço?', options: ['Aprovar orçamento', 'Não aprovar', 'Falar com a oficina'], includeQuote: true },
+  QUOTE: { label: 'Aprovação do orçamento', question: QUOTE_APPROVAL_QUESTION, options: QUOTE_APPROVAL_OPTIONS, includeQuote: true },
   SCHEDULE: { label: 'Confirmação de agendamento', question: 'Podemos confirmar o agendamento combinado?', options: ['Confirmar agendamento', 'Solicitar outro horário', 'Cancelar agendamento'], includeQuote: false },
   PICKUP: { label: 'Retirada do veículo', question: 'Seu veículo está pronto. Você poderá retirá-lo no horário combinado?', options: ['Confirmar retirada', 'Combinar outro horário'], includeQuote: false },
   CUSTOM: { label: 'Pergunta personalizada', question: '', options: ['Sim', 'Não'], includeQuote: false },

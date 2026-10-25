@@ -17,6 +17,7 @@ const ITEM_TYPE_LABELS: Record<ServiceOrderItemType, string> = {
 
 interface ServiceOrderItemsSectionProps {
   serviceOrder: ServiceOrderResponse;
+  readOnly?: boolean;
 }
 
 interface ItemForm {
@@ -54,7 +55,7 @@ function isValidForm(form: ItemForm): boolean {
 
 // Sem trava por status da OS (spec: itens editáveis em qualquer status,
 // incluindo DELIVERED/CANCELLED) — este componente não checa serviceOrder.status.
-export function ServiceOrderItemsSection({ serviceOrder }: ServiceOrderItemsSectionProps) {
+export function ServiceOrderItemsSection({ serviceOrder, readOnly = false }: ServiceOrderItemsSectionProps) {
   const [form, setForm] = useState<ItemForm>(EMPTY_FORM);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<ItemForm>(EMPTY_FORM);
@@ -124,10 +125,10 @@ export function ServiceOrderItemsSection({ serviceOrder }: ServiceOrderItemsSect
 
   return (
     <div className="rounded-card border border-border bg-card p-4 shadow-sm sm:p-5">
-      <div className="mb-4 flex items-center justify-between">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="text-lg font-bold tracking-tight text-text">Itens e valores</p>
-          <p className="mt-1 text-sm text-text-muted">Peças e mão de obra lançadas nesta OS.</p>
+          <p className="mt-1 text-sm text-text-muted">Peças e mão de obra que compõem o orçamento.</p>
         </div>
         <p className="text-xl font-bold text-text">{formatCurrencyBRL(serviceOrder.totalAmountCents)}</p>
       </div>
@@ -203,12 +204,12 @@ export function ServiceOrderItemsSection({ serviceOrder }: ServiceOrderItemsSect
                     <td className="py-2 pr-2 text-right">{formatCurrencyBRL(item.unitPriceCents)}</td>
                     <td className="py-2 pr-2 text-right font-semibold">{formatCurrencyBRL(item.lineTotalCents)}</td>
                     <td className="py-2 text-right whitespace-nowrap">
-                      <Button variant="ghost" size="sm" disabled={editingId !== null} onClick={() => startEdit(item)}>
+                      {!readOnly && <><Button variant="ghost" size="sm" disabled={editingId !== null} onClick={() => startEdit(item)}>
                         Editar
                       </Button>
                       <Button variant="ghost" size="sm" disabled={deleteItem.isPending || editingId !== null} onClick={() => handleRemove(item)}>
                         Remover
-                      </Button>
+                      </Button></>}
                     </td>
                   </tr>
                 ),
@@ -218,7 +219,7 @@ export function ServiceOrderItemsSection({ serviceOrder }: ServiceOrderItemsSect
         </div>
       )}
 
-      <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-5">
+      {!readOnly && <><div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-5">
         <label className="space-y-1.5 text-xs font-semibold text-text-muted">Tipo<Select value={form.type} onValueChange={(value) => setForm((prev) => ({ ...prev, type: value as ServiceOrderItemType }))}>
           <SelectTrigger>
             <SelectValue />
@@ -245,7 +246,7 @@ export function ServiceOrderItemsSection({ serviceOrder }: ServiceOrderItemsSect
         <Button onClick={handleAdd} disabled={addItem.isPending}>
           {addItem.isPending ? 'Adicionando...' : 'Adicionar item'}
         </Button>
-      </div>
+      </div></>}
     </div>
   );
 }

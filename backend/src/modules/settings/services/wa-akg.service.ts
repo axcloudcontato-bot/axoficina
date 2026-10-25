@@ -84,8 +84,12 @@ export class WaAkgService {
   }
 
   async sendConfirmation(connection: WaAkgConnection, recipient: string, question: string, option: string) {
+    return this.sendNotice(connection, recipient, `Sua resposta foi registrada: ${option}.\n\nPergunta: ${question}\n\nA equipe da oficina recebeu sua escolha.`);
+  }
+
+  async sendNotice(connection: WaAkgConnection, recipient: string, text: string) {
     const result = await this.request(connection, `/messages/${encodeURIComponent(connection.sessionId)}/${encodeURIComponent(recipient)}/send`, {
-      method: 'POST', body: JSON.stringify({ message: { text: `Sua resposta foi registrada: ${option}.\n\nPergunta: ${question}\n\nA equipe da oficina recebeu sua escolha.` } }),
+      method: 'POST', body: JSON.stringify({ message: { text } }),
     }, 5_000);
     if (!isRecord(result) || result.status !== true) throw new BadGatewayException('O WA-AKG não confirmou o envio da confirmação.');
   }

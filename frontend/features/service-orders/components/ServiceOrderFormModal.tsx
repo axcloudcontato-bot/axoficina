@@ -26,7 +26,7 @@ const serviceOrderSchema = z.object({
   customerId: z.string().min(1, 'Selecione um cliente'),
   vehicleId: z.string().min(1, 'Selecione um veículo'),
   technicianId: z.string().optional(),
-  diagnosis: z.string().optional(),
+  customerComplaint: z.string().optional(),
 });
 
 type ServiceOrderFormValues = z.infer<typeof serviceOrderSchema>;
@@ -35,7 +35,7 @@ const EMPTY_VALUES: ServiceOrderFormValues = {
   customerId: '',
   vehicleId: '',
   technicianId: '',
-  diagnosis: '',
+  customerComplaint: '',
 };
 
 interface ServiceOrderFormModalProps {
@@ -79,7 +79,7 @@ export function ServiceOrderFormModal({ open, onOpenChange, initialVehicleId, in
       {
         vehicleId: values.vehicleId,
         technicianId: values.technicianId || undefined,
-        diagnosis: values.diagnosis || undefined,
+        customerComplaint: values.customerComplaint || undefined,
       },
       {
         onSuccess: (result?: { serviceOrder: ServiceOrderListItemResponse }) => {
@@ -111,7 +111,7 @@ export function ServiceOrderFormModal({ open, onOpenChange, initialVehicleId, in
             </span>
             Nova ordem de serviço
           </DialogTitle>
-          <DialogDescription>Pesquise o cliente, selecione o veículo e registre o atendimento em uma única OS.</DialogDescription>
+          <DialogDescription>Selecione o cliente e o veículo para abrir o atendimento. O orçamento e a aprovação vêm nas próximas etapas.</DialogDescription>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-5">
@@ -169,12 +169,12 @@ export function ServiceOrderFormModal({ open, onOpenChange, initialVehicleId, in
             />
             <FormField
               control={form.control}
-              name="diagnosis"
+              name="customerComplaint"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Diagnóstico (opcional)</FormLabel>
+                  <FormLabel>Solicitação do cliente (opcional)</FormLabel>
                   <FormControl>
-                    <Textarea placeholder="Descreva o problema relatado..." {...field} />
+                    <Textarea placeholder="O que o cliente relatou ou solicitou?" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

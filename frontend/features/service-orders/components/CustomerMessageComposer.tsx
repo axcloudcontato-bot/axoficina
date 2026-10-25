@@ -12,12 +12,12 @@ export interface CustomerMessageDraft {
   includeQuote: boolean;
 }
 
-export function CustomerMessageComposer({ value, onChange, disabled, whatsappIntegrated = false }: { value: CustomerMessageDraft; onChange: (value: CustomerMessageDraft) => void; disabled: boolean; whatsappIntegrated?: boolean }) {
+export function CustomerMessageComposer({ value, onChange, disabled, whatsappIntegrated = false, allowQuotePreset = true, allowPickupPreset = true }: { value: CustomerMessageDraft; onChange: (value: CustomerMessageDraft) => void; disabled: boolean; whatsappIntegrated?: boolean; allowQuotePreset?: boolean; allowPickupPreset?: boolean }) {
   return <fieldset disabled={disabled} className="mt-4 space-y-4 rounded-button border border-border p-4">
-    <label className="flex items-center gap-2 text-sm font-semibold text-text">
+    {allowQuotePreset && <label className="flex items-center gap-2 text-sm font-semibold text-text">
       <input type="checkbox" checked={value.enabled} onChange={(event) => onChange({ ...value, enabled: event.target.checked })} className="size-4 accent-primary" />
       Solicitar resposta por botões
-    </label>
+    </label>}
     {value.enabled && <>
       <label className="block text-sm font-medium">Tipo de pergunta
         <select value={value.preset} onChange={(event) => {
@@ -25,7 +25,7 @@ export function CustomerMessageComposer({ value, onChange, disabled, whatsappInt
           const template = CUSTOMER_MESSAGE_PRESETS[preset];
           onChange({ ...value, preset, question: template.question, options: [...template.options], includeQuote: template.includeQuote });
         }} className="mt-1 w-full rounded-button border border-border bg-bg px-3 py-2 text-text">
-          {Object.entries(CUSTOMER_MESSAGE_PRESETS).map(([key, preset]) => <option key={key} value={key}>{preset.label}</option>)}
+          {Object.entries(CUSTOMER_MESSAGE_PRESETS).filter(([key]) => (allowQuotePreset || key !== 'QUOTE') && (allowPickupPreset || key !== 'PICKUP')).map(([key, preset]) => <option key={key} value={key}>{preset.label}</option>)}
         </select>
       </label>
       <label className="block text-sm font-medium">Pergunta para o cliente

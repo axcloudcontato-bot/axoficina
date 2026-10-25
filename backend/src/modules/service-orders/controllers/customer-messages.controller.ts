@@ -6,7 +6,7 @@ import { Roles } from '../../../shared/decorators/roles.decorator';
 import { CurrentUser } from '../../../shared/decorators/current-user.decorator';
 import type { AuthenticatedUser } from '../../../shared/guards/jwt-auth.guard';
 import { CustomerMessageManager } from '../managers/customer-message.manager';
-import { AnswerCustomerMessageDto, CreateCustomerMessageDto, CustomerMessageTokenDto, ListCustomerMessagesDto } from '../dto/customer-message.dto';
+import { AnswerCustomerMessageDto, ConfirmCustomerMessageDispatchDto, CreateCustomerMessageDto, CustomerMessageTokenDto, ListCustomerMessagesDto } from '../dto/customer-message.dto';
 
 @Controller('api/v1')
 export class CustomerMessagesController {
@@ -16,6 +16,12 @@ export class CustomerMessagesController {
   @Roles('ADMIN', 'MANAGER', 'FRONT_DESK', 'MECHANIC')
   @Permissions('service_orders.manage', 'service_orders.prices')
   create(@CurrentUser() user: AuthenticatedUser, @Body() input: CreateCustomerMessageDto) { return this.manager.create(user, input); }
+
+  @Post('service-orders/customer-messages/confirm-dispatch')
+  @Roles('ADMIN', 'MANAGER', 'FRONT_DESK', 'MECHANIC')
+  @Permissions('service_orders.manage', 'service_orders.prices')
+  @HttpCode(HttpStatus.OK)
+  confirmDispatch(@CurrentUser() user: AuthenticatedUser, @Body() input: ConfirmCustomerMessageDispatchDto) { return this.manager.confirmDispatch(user, input.id); }
 
   @Get('service-orders/customer-messages')
   @Roles('ADMIN', 'MANAGER', 'FRONT_DESK', 'MECHANIC')

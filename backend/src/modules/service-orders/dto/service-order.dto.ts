@@ -64,6 +64,8 @@ export class UpdateServiceOrderDto implements UpdateServiceOrderRequest {
 }
 
 export class TransitionServiceOrderDto implements TransitionServiceOrderRequest {
+  @IsOptional() @IsIn(['CUSTOMER_MESSAGE', 'MANUAL'])
+  authorization?: TransitionServiceOrderRequest['authorization'];
   @IsNotEmpty({ message: 'id is required' })
   @IsUUID('4', { message: 'id must be a valid id' })
   id!: string;

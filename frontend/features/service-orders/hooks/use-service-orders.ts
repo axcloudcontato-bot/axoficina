@@ -33,11 +33,12 @@ export function useServiceOrdersList(request: ServiceOrderListRequest, options?:
   });
 }
 
-export function useServiceOrder(id: string) {
+export function useServiceOrder(id: string, options?: { refetchInterval?: number | false }) {
   return useQuery({
     queryKey: [SERVICE_ORDER_KEY, id],
     queryFn: () => serviceOrdersApi.get(id),
     enabled: Boolean(id),
+    refetchInterval: options?.refetchInterval,
   });
 }
 

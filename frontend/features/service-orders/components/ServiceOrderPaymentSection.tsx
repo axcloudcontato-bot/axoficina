@@ -83,8 +83,10 @@ export function ServiceOrderPaymentSection({ serviceOrder }: { serviceOrder: Ser
     <div className="flex flex-wrap items-start justify-between gap-3"><div><h3 className="text-lg font-bold text-text">Pagamento e recebimento</h3><p className="mt-1 text-sm text-text-muted">O valor só entra no caixa depois da confirmação abaixo.</p></div><span className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-bold ${status.tone}`}><StatusIcon className="size-4" />{status.label}</span></div>
     <div className="mt-5 grid gap-3 sm:grid-cols-3"><Amount label="Total da OS" value={serviceOrder.totalAmountCents} /><Amount label="Já recebido" value={serviceOrder.receivedAmountCents} positive /><Amount label="Saldo pendente" value={serviceOrder.outstandingAmountCents} warning={serviceOrder.outstandingAmountCents > 0} /></div>
 
-    <div className="mt-5 rounded-button border border-border p-4">
-      <div className={`grid gap-3 ${plannedMethod === 'CREDIT_CARD' ? 'sm:grid-cols-2' : ''}`}>
+    <details open={!serviceOrder.paymentMethod && serviceOrder.outstandingAmountCents > 0 || undefined} className="mt-5 rounded-button border border-border p-4">
+      <summary className="cursor-pointer text-sm font-semibold text-text">{serviceOrder.paymentMethod ? 'Consultar ou ajustar a condição de pagamento' : '1. Combinar a forma de pagamento'}</summary>
+      <p className="mt-2 text-xs text-text-muted">Registrar a condição cria as parcelas a receber. A entrada no caixa exige a confirmação do recebimento.</p>
+      <div className={`mt-4 grid gap-3 ${plannedMethod === 'CREDIT_CARD' ? 'sm:grid-cols-2' : ''}`}>
         <div><Label>Forma de pagamento combinada</Label><Select value={plannedMethod} onValueChange={(value) => setPlannedMethod(value as PaymentMethod)}><SelectTrigger className="mt-2"><SelectValue placeholder="Selecione a forma combinada" /></SelectTrigger><SelectContent>{METHODS.map(([value, label]) => <SelectItem key={value} value={value}>{label}</SelectItem>)}</SelectContent></Select></div>
         {plannedMethod === 'CREDIT_CARD' && <div><Label>Quantidade de parcelas</Label><Select value={paymentInstallments} onValueChange={setPaymentInstallments}><SelectTrigger className="mt-2"><SelectValue /></SelectTrigger><SelectContent>{CREDIT_INSTALLMENTS.map((installment) => <SelectItem key={installment} value={String(installment)}>{installment}x</SelectItem>)}</SelectContent></Select></div>}
       </div>
@@ -98,13 +100,13 @@ export function ServiceOrderPaymentSection({ serviceOrder }: { serviceOrder: Ser
       {plannedMethod && <div className="mt-4 grid gap-3 border-t border-border pt-4 sm:grid-cols-[minmax(0,1fr)_220px]">
         <label className="flex cursor-pointer items-start gap-3 rounded-button border border-border p-3">
           <input className="mt-1 size-4 accent-primary" type="checkbox" checked={anticipated} onChange={(event) => setAnticipated(event.target.checked)} />
-          <span><span className="block text-sm font-bold text-text">Recebimento antecipado</span><span className="mt-0.5 block text-xs text-text-muted">Marque somente se o valor integral já foi recebido. O total será lançado no caixa ao salvar.</span></span>
+          <span><span className="block text-sm font-bold text-text">Já recebi o valor integral</span><span className="mt-0.5 block text-xs text-text-muted">Marque somente após receber. Ao confirmar abaixo, o total será lançado no caixa.</span></span>
         </label>
         {!anticipated && <div><Label>Vencimento da primeira parcela</Label><Input className="mt-2" type="date" value={firstDueAt} onChange={(event) => setFirstDueAt(event.target.value)} /></div>}
       </div>}
-      <div className="mt-4 flex justify-end"><Button variant="outline" onClick={saveMethod} disabled={configure.isPending}>{configure.isPending ? 'Salvando...' : anticipated ? 'Salvar e lançar no caixa' : 'Salvar e gerar parcelas'}</Button></div>
+      <div className="mt-4 flex justify-end"><Button variant="outline" onClick={saveMethod} disabled={configure.isPending}>{configure.isPending ? 'Registrando...' : anticipated ? 'Confirmar recebimento integral' : 'Registrar condição e parcelas'}</Button></div>
       {serviceOrder.paymentMethod === 'CREDIT_CARD' && serviceOrder.paymentInstallments && <p className="mt-3 text-xs font-semibold text-text-muted">Condição salva: cartão de crédito em {serviceOrder.paymentInstallments}x.</p>}
-    </div>
+    </details>
 
     {(serviceOrder.installments?.length ?? 0) > 0 && <div className="mt-4 rounded-button border border-border p-4"><h4 className="font-bold text-text">Cronograma de recebimento</h4><div className="mt-3 divide-y divide-border">{serviceOrder.installments?.map((installment) => <div key={installment.id} className="flex flex-wrap items-center justify-between gap-3 py-3"><div><p className="text-sm font-bold text-text">Parcela {installment.installmentNumber}/{installment.installmentCount} · {formatCurrencyBRL(installment.amountCents)}</p><p className="mt-0.5 text-xs text-text-muted">Vencimento: {new Date(installment.dueAt).toLocaleDateString('pt-BR')}</p></div>{installment.status === 'PAID' ? <span className="rounded-full bg-success-subtle px-3 py-1 text-xs font-bold text-success">Recebida</span> : <Button size="sm" onClick={() => confirmInstallment.mutate({ id: installment.id }, { onSuccess: () => toast.success('Parcela confirmada e lançada no caixa.'), onError: (error) => toast.error(extractErrorMessage(error)) })} disabled={confirmInstallment.isPending}>Confirmar recebimento</Button>}</div>)}</div></div>}
 

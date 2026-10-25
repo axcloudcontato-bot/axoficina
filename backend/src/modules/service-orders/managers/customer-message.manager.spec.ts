@@ -17,7 +17,7 @@ function setup() {
   };
   const messages = { create: jest.fn().mockResolvedValue(record), markSent: jest.fn(), remove: jest.fn(), list: jest.fn().mockResolvedValue([record]), byTokenHash: jest.fn().mockImplementation(async () => ({ message: record, companyName: 'Oficina' })), answer: jest.fn().mockImplementation(async (_id, _tenantId, _hash, option: number) => { record.selectedOption = option; record.answeredAt = new Date(); return { count: 1 }; }) };
   const order = { id: 'order-1', customerId: 'customer-1', orderNumber: 12, status: 'OPEN', customerName: '<Cliente>', vehicleBrand: 'Honda', vehicleModel: 'Fit', vehiclePlate: 'ABC1234', totalAmountCents: 35000, items: [{ description: '<Freios & óleo>', type: 'PART', lineTotalCents: 35000 }] };
-  const orders = { getById: jest.fn().mockResolvedValue({ serviceOrder: order }) };
+  const orders = { getById: jest.fn().mockResolvedValue({ serviceOrder: order }), assertReadyForApproval: jest.fn().mockResolvedValue(undefined), transition: jest.fn().mockResolvedValue({ serviceOrder: { ...order, status: 'AWAITING_APPROVAL' } }) };
   const customers = { byId: jest.fn().mockResolvedValue({ email: 'cliente@example.invalid', phone: '(12) 99999-9999' }) };
   const mailer = { send: jest.fn().mockResolvedValue({}) };
   const audit = { record: jest.fn().mockResolvedValue(undefined) };
@@ -165,5 +165,23 @@ describe('Customer message replies', () => {
   ])('validates question and button labels: %j', async (changes) => {
     const dto = plainToInstance(CreateCustomerMessageDto, { ...input, serviceOrderId: 'dffb4d33-1b58-441d-bb18-06770469737a', ...changes });
     expect((await validate(dto)).length).toBeGreaterThan(0);
+  });
+});
+
+describe('Approval dispatch coordination', () => {
+  it('returns a visible status warning after a successful delivery instead of asking to resend', async () => {
+    const { manager, orders, mailer } = setup();
+    orders.transition.mockRejectedValueOnce(new Error('status changed concurrently'));
+    const result = await manager.create(user, { ...input, purpose: 'QUOTE' });
+    expect(mailer.send).toHaveBeenCalledTimes(1);
+    expect(result.sent).toBe(true);
+    expect(result.workflowWarning).toContain('mensagem foi enviada');
+    expect(orders.transition).toHaveBeenCalledWith(user, { id: 'order-1', toStatus: 'AWAITING_APPROVAL' });
+  });
+  it('never changes the operational status for a prepared WhatsApp app handoff', async () => {
+    const { manager, orders } = setup();
+    const result = await manager.create(user, { ...input, channel: 'WHATSAPP', purpose: 'QUOTE' });
+    expect(result.sent).toBe(false);
+    expect(orders.transition).not.toHaveBeenCalled();
   });
 });

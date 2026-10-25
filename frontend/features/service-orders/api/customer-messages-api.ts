@@ -13,6 +13,9 @@ export const customerMessagesApi = {
   async list(serviceOrderId: string) {
     return (await apiClient.get<{ messages: CustomerMessageResponse[] }>('/api/v1/service-orders/customer-messages', { params: { serviceOrderId } })).data;
   },
+  async confirmDispatch(id: string) {
+    return (await apiClient.post<{ sent: boolean; workflowWarning?: string }>('/api/v1/service-orders/customer-messages/confirm-dispatch', { id })).data;
+  },
   async getPublic(token: string): Promise<PublicCustomerMessageResponse> {
     return keysToCamel((await publicClient.get('/api/v1/public/customer-message', { params: { token } })).data) as PublicCustomerMessageResponse;
   },

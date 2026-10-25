@@ -1,5 +1,15 @@
 export const RELEASE_NOTES = [
   {
+    id: '2026-10-24-fluxo-atendimento', date: '2026-10-24', title: 'Do atendimento à entrega, com etapas mais claras',
+    items: [
+      'A OS agora acompanha Entrada, Orçamento, Aprovação, Execução e Entrega, com as ações de cada momento.',
+      'A aprovação tem prévia do orçamento, escolha do canal e acompanhamento da resposta. O início do serviço é confirmado pela equipe.',
+      'Orçamentos alterados precisam de uma nova aprovação. O cliente vê os itens e valores da mensagem que recebeu.',
+      'A conferência mostra as fotos pendentes antes da conclusão, e a retirada é registrada separadamente do aviso ao cliente.',
+      'Alterações em digitação são preservadas durante as atualizações da OS e têm indicação de salvamento.',
+    ],
+  },
+  {
     id: '2026-10-24-painel-mobile', date: '2026-10-24', title: 'Painel mais compacto no celular',
     items: ['Valores e ícones menores nos cards do painel, com títulos e descrições alinhados.', 'Valores monetários maiores ajustam o tamanho do texto para caber melhor na tela.'],
   },
