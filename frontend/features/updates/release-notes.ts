@@ -1,5 +1,9 @@
 export const RELEASE_NOTES = [
   {
+    id: '2026-10-24-painel-mobile', date: '2026-10-24', title: 'Painel mais compacto no celular',
+    items: ['Valores e ícones menores nos cards do painel, com títulos e descrições alinhados.', 'Valores monetários maiores ajustam o tamanho do texto para caber melhor na tela.'],
+  },
+  {
     id: '2026-10-24-historico-os', date: '2026-10-24', title: 'Entregas e histórico de ordens de serviço',
     items: [
       'Novo card Entregues, com os veículos entregues no dia ou período escolhido. Clique para consultar as respectivas ordens.',

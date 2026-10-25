@@ -118,7 +118,7 @@ Each state color ships three steps — `-subtle` (tinted background), the solid 
 **Character:** A clean, slightly geometric grotesk at every scale; the hierarchy comes from size, weight, and tracking, not from mixing faces.
 
 ### Hierarchy
-- **Display** (700, 2.25rem / 36px, tight leading, −0.01em tracking): hero KPI numerals. Drops to 1.875rem/30px (`text-3xl`) for a long or currency-formatted value so it never wraps inside a narrow tile. Always `tabular-nums`.
+- **Display** (700, tight leading, −0.01em tracking): hero KPI numerals use 24px on mobile, 30px on tablet and 36px on desktop. Currency uses 20/24/30px, with smaller text for long amounts. Always `tabular-nums`; preserve the complete value and allow wrapping for exceptional lengths.
 - **Headline** (700, 1.5rem / 24px, −0.01em tracking): the page's own H2 ("Operação de hoje").
 - **Title** (600, 1.125rem / 18px, line-height 1.33, −0.01em tracking): `CardTitle` — every card and panel heading.
 - **Body** (400–600, 0.875rem / 14px, line-height 1.43): row content, descriptions, button labels.
@@ -170,7 +170,7 @@ Three radius steps, applied by role rather than by component size: `--radius-but
 - **Background:** `--card` (near-white light / lifted dark surface).
 - **Shadow:** `shadow-card` at rest, `shadow-card-hover` when the whole card is an interactive link/button.
 - **Border:** 1px hairline, `--border`.
-- **Internal padding:** `p-4` → `p-5`/`p-6` across breakpoints for header/content; KPI tiles use `p-5` → `p-6`.
+- **Internal padding:** `p-4` → `p-5`/`p-6` across breakpoints for header/content; KPI tiles use `p-3.5` → `p-5` → `p-6`, with vertically centered icons and arrows and equal-height areas for values, labels and captions.
 
 ### Navigation
 - **Desktop sidebar:** fixed width (16rem / 5rem collapsed), grouped links under uppercase 11px tracked section labels, active item gets a tinted `--selection` background with `--accent-foreground` text. Collapsed state persists per browser.

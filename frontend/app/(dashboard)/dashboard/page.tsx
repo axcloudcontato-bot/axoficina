@@ -83,7 +83,7 @@ export default function DashboardPage() {
           <h2 className="text-2xl font-bold tracking-tight text-text">Operação de hoje</h2>
           <p className="mt-1.5 text-sm text-text-muted">{new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' })} · Agenda, pendências e veículos que exigem decisão agora.</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap items-center gap-2 sm:shrink-0">
           <Button variant="outline" size="sm" onClick={refreshDashboard} disabled={isRefreshing}><ArrowClockwise className={`size-4 ${isRefreshing ? 'animate-spin' : ''}`} />Atualizar</Button>
           {canManageServiceOrders && <NewServiceOrderQuickStart size="sm" />}
         </div>
@@ -140,20 +140,26 @@ export default function DashboardPage() {
 
 function MetricLink({ href, label, value, caption, icon: Icon, tone, loading, order }: { href: string; label: string; value?: number | string; caption: string; icon: React.ComponentType<{ className?: string }>; tone: 'primary' | 'neutral' | 'danger' | 'success'; loading: boolean; order: number }) {
   const toneClass = tone === 'primary' ? 'bg-primary/10 text-primary' : tone === 'danger' ? 'bg-danger-subtle text-danger' : tone === 'success' ? 'bg-success-subtle text-success' : 'bg-muted text-text-muted';
+  const formattedValue = String(value ?? 0);
+  const valueSize = typeof value === 'string'
+    ? formattedValue.length > 11 ? 'text-sm sm:text-xl xl:text-2xl' : 'text-xl sm:text-2xl xl:text-3xl'
+    : formattedValue.length > 6 ? 'text-lg sm:text-2xl xl:text-3xl' : 'text-2xl sm:text-3xl xl:text-4xl';
   return (
     <Link
       href={href}
       data-reveal
       style={{ '--reveal-order': order } as React.CSSProperties}
-      className="group rounded-card border border-border bg-card p-5 shadow-card transition-[box-shadow,border-color,background-color] duration-normal ease-settle hover:border-primary/30 hover:bg-selection/30 hover:shadow-card-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:p-6"
+      className="group min-w-0 rounded-card border border-border bg-card p-3.5 shadow-card transition-[box-shadow,border-color,background-color] duration-normal ease-settle hover:border-primary/30 hover:bg-selection/30 hover:shadow-card-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:p-5 xl:p-6"
     >
-      <div className="flex items-start justify-between">
-        <span className={`flex size-9 items-center justify-center rounded-button ${toneClass}`}><Icon className="size-[18px]" /></span>
-        <ArrowRight className="size-4 text-text-muted transition-transform group-hover:translate-x-0.5" />
+      <div className="flex items-center justify-between gap-2" aria-hidden="true">
+        <span className={`flex size-7 shrink-0 items-center justify-center rounded-button sm:size-9 ${toneClass}`}><Icon className="size-4 sm:size-[18px]" /></span>
+        <ArrowRight className="size-3.5 shrink-0 text-text-muted transition-transform group-hover:translate-x-0.5 sm:size-4" />
       </div>
-      {loading ? <div className="mt-5 h-10 w-14 animate-pulse rounded bg-muted" /> : <p className="mt-5 text-4xl font-bold tabular-nums leading-tight tracking-tight text-text">{value ?? 0}</p>}
-      <p className="mt-2.5 text-sm font-semibold text-text">{label}</p>
-      <p className="mt-1 text-xs leading-4 text-text-muted">{caption}</p>
+      <div className="mt-3 flex min-h-8 items-end sm:mt-4 sm:min-h-10 xl:min-h-12">
+        {loading ? <div className="h-7 w-16 animate-pulse rounded bg-muted sm:h-9" /> : <p data-metric-value className={`min-w-0 font-bold tabular-nums leading-tight tracking-tight text-text [overflow-wrap:anywhere] ${valueSize}`}>{formattedValue}</p>}
+      </div>
+      <p data-metric-label className="mt-2 min-h-8 text-xs font-semibold leading-4 text-text sm:min-h-10 sm:text-sm sm:leading-5">{label}</p>
+      <p data-metric-caption className="mt-1 min-h-8 text-xs leading-4 text-text-muted">{caption}</p>
     </Link>
   );
 }
