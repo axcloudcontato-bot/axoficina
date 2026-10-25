@@ -75,7 +75,7 @@ export class PrivacyService {
     await this.requireAdmin(user, ['customers.manage']);
     const customer = await this.prisma.client.customer.findFirst({ where: { id, tenantId: user.tenantId }, select: {
       id: true, type: true, document: true, name: true, email: true, phone: true, address: true,
-      rg: true, stateRegistration: true, preferredContactChannel: true, preferredContactTime: true, createdAt: true,
+      rg: true, stateRegistration: true, preferredContactChannel: true, preferredContactTime: true, notifyServiceOrderUpdates: true, createdAt: true,
     } });
     if (!customer) throw new NotFoundException('Cliente não encontrado nesta oficina.');
     // Notas internas e contatos de terceiros exigem revisão antes da entrega.
@@ -100,11 +100,12 @@ export class PrivacyService {
           tx.appointment.count({ where }), tx.financialEntry.count({ where }), tx.maintenanceAlert.count({ where }),
         ]);
         if (references.some((count) => count > 0)) throw new ConflictException('Há veículos, serviços, agendamentos ou registros financeiros vinculados, inclusive arquivados. Revise obrigações legais, anexos, cópias e integrações antes de executar a exclusão assistida. O pedido permanece aberto.');
+        await tx.serviceOrderStatusNotification.deleteMany({ where });
         const changed = await tx.customer.updateMany({ where: { id: customerId, tenantId: user.tenantId }, data: {
           name: 'Cadastro com dados apagados', document: '', phone: '', email: null,
           address: Prisma.DbNull, notes: null, rg: null, stateRegistration: null,
           secondaryContactName: null, secondaryContactPhone: null, secondaryContactRelation: null,
-          preferredContactChannel: null, preferredContactTime: null, deletedAt: new Date(),
+          preferredContactChannel: null, preferredContactTime: null, notifyServiceOrderUpdates: false, deletedAt: new Date(),
         } });
         if (!changed.count) throw new NotFoundException('Cliente não encontrado nesta oficina.');
         // Remove cópias de documento em auditorias legadas e texto livre dos pedidos.

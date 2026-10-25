@@ -33,6 +33,7 @@ const addressSchema = z.object({
 });
 
 export const customerSchema = z.object({
+  notifyServiceOrderUpdates: z.boolean().default(false),
   type: z.enum(['PF', 'PJ']),
   document: z.string().max(24, 'Documento muito longo'),
   name: z.string().trim().min(1, 'Informe o nome').max(200),
@@ -48,6 +49,9 @@ export const customerSchema = z.object({
   secondaryContactRelation: z.string().optional(),
   preferredContactChannel: z.enum(['PHONE', 'WHATSAPP', 'EMAIL', 'SMS']).optional(),
   preferredContactTime: z.enum(['MORNING', 'AFTERNOON', 'EVENING', 'ANY']).optional(),
+}).superRefine((values, context) => {
+  const digits = values.phone.replace(/\D/g, '');
+  if (values.notifyServiceOrderUpdates && !([10, 11].includes(digits.length) || /^55\d{10,11}$/.test(digits))) context.addIssue({ code: z.ZodIssueCode.custom, path: ['phone'], message: 'Informe um telefone com DDD válido para ativar os avisos pelo WhatsApp.' });
 });
 
 export type CustomerFormValues = z.infer<typeof customerSchema>;
@@ -63,6 +67,7 @@ const EMPTY_ADDRESS: NonNullable<CustomerFormValues['address']> = {
 };
 
 const EMPTY_VALUES: CustomerFormValues = {
+  notifyServiceOrderUpdates: false,
   type: 'PF',
   document: '',
   name: '',
@@ -83,7 +88,7 @@ const GUIDED_STEPS = [
   { id: 'general', label: 'Dados gerais', fields: ['type', 'document', 'name', 'phone', 'email', 'rg', 'stateRegistration'] },
   { id: 'address', label: 'Endereço', fields: ['address'] },
   { id: 'contact', label: 'Contato', fields: ['secondaryContactName', 'secondaryContactPhone', 'secondaryContactRelation'] },
-  { id: 'preferences', label: 'Preferências', fields: ['preferredContactChannel', 'preferredContactTime'] },
+  { id: 'preferences', label: 'Preferências', fields: ['preferredContactChannel', 'preferredContactTime', 'notifyServiceOrderUpdates'] },
   { id: 'notes', label: 'Observações', fields: ['notes'] },
 ] as const;
 
@@ -146,6 +151,7 @@ export function CustomerFormModal({ open, onOpenChange, customer, onCreated, pre
             secondaryContactRelation: customer.secondaryContactRelation ?? '',
             preferredContactChannel: customer.preferredContactChannel,
             preferredContactTime: customer.preferredContactTime,
+            notifyServiceOrderUpdates: customer.notifyServiceOrderUpdates ?? false,
           }
         : { ...EMPTY_VALUES, ...initialValues },
     );
@@ -169,6 +175,7 @@ export function CustomerFormModal({ open, onOpenChange, customer, onCreated, pre
     };
     const address = buildAddressPayload(values.address);
     const sharedFields = {
+      notifyServiceOrderUpdates: values.notifyServiceOrderUpdates,
       name: values.name,
       phone: values.phone,
       email: values.email || undefined,
@@ -206,7 +213,7 @@ export function CustomerFormModal({ open, onOpenChange, customer, onCreated, pre
       setActiveTab('address');
     } else if (firstPath.startsWith('secondaryContact')) {
       setActiveTab('contact');
-    } else if (firstPath.startsWith('preferredContact')) {
+    } else if (firstPath.startsWith('preferredContact') || firstPath === 'notifyServiceOrderUpdates') {
       setActiveTab('preferences');
     } else if (firstPath === 'notes') {
       setActiveTab('notes');
@@ -228,7 +235,7 @@ export function CustomerFormModal({ open, onOpenChange, customer, onCreated, pre
   const hasGeneralErrors = ['type', 'document', 'name', 'phone', 'email', 'rg', 'stateRegistration'].some((field) => Boolean(form.formState.errors[field as keyof CustomerFormValues]));
   const hasAddressErrors = Boolean(form.formState.errors.address);
   const hasContactErrors = ['secondaryContactName', 'secondaryContactPhone', 'secondaryContactRelation'].some((field) => Boolean(form.formState.errors[field as keyof CustomerFormValues]));
-  const hasPreferenceErrors = ['preferredContactChannel', 'preferredContactTime'].some((field) => Boolean(form.formState.errors[field as keyof CustomerFormValues]));
+  const hasPreferenceErrors = ['preferredContactChannel', 'preferredContactTime', 'notifyServiceOrderUpdates'].some((field) => Boolean(form.formState.errors[field as keyof CustomerFormValues]));
   const hasNotesErrors = Boolean(form.formState.errors.notes);
 
   return (
@@ -309,7 +316,7 @@ export function CustomerFormModal({ open, onOpenChange, customer, onCreated, pre
                 Cancelar
               </Button>
               {isGuidedCreate && activeTab !== 'general' && <Button type="button" variant="outline" onClick={goToPreviousGuidedStep} disabled={isPending}><CaretLeft className="size-4" aria-hidden="true" /> Voltar</Button>}
-              {isGuidedCreate && activeTab !== 'notes' ? <Button type="button" onClick={goToNextGuidedStep} disabled={isPending} className="sm:min-w-32">Próximo <CaretRight className="size-4" aria-hidden="true" /></Button> : <Button type="submit" disabled={isPending} className="sm:min-w-40">
+              {isGuidedCreate && activeTab !== 'notes' ? <Button type="button" onClick={(event) => { event.preventDefault(); void goToNextGuidedStep(); }} disabled={isPending} className="sm:min-w-32">Próximo <CaretRight className="size-4" aria-hidden="true" /></Button> : <Button type="submit" disabled={isPending} className="sm:min-w-40">
                 {isPending ? 'Salvando...' : isEditing ? 'Salvar alterações' : 'Cadastrar cliente'}
               </Button>}
             </DialogFooter>

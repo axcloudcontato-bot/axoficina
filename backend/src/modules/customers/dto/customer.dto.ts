@@ -1,5 +1,5 @@
 import { Type } from 'class-transformer';
-import { IsEmail, IsIn, IsInt, IsNotEmpty, IsObject, IsOptional, IsString, IsUUID, Max, MaxLength, Min, ValidateIf, ValidateNested } from 'class-validator';
+import { IsBoolean, IsEmail, IsIn, IsInt, IsNotEmpty, IsObject, IsOptional, IsString, IsUUID, Max, MaxLength, Min, ValidateIf, ValidateNested } from 'class-validator';
 import { CUSTOMER_CONTACT_CHANNELS, CUSTOMER_CONTACT_TIMES, CUSTOMER_TYPES } from '@oficina/contracts';
 import type {
   CreateCustomerRequest,
@@ -32,6 +32,8 @@ class CustomerAddressDto implements CustomerAddress {
 }
 
 export class CreateCustomerDto implements CreateCustomerRequest {
+  @ValidateIf((_object, value) => value !== undefined) @IsBoolean()
+  notifyServiceOrderUpdates?: boolean;
   @IsIn(CUSTOMER_TYPES, { message: 'type must be one of PF, PJ' })
   type!: CreateCustomerRequest['type'];
 
@@ -88,6 +90,8 @@ export class CreateCustomerDto implements CreateCustomerRequest {
 }
 
 export class UpdateCustomerDto implements UpdateCustomerRequest {
+  @ValidateIf((_object, value) => value !== undefined) @IsBoolean()
+  notifyServiceOrderUpdates?: boolean;
   @IsNotEmpty({ message: 'id is required' })
   @IsUUID('4', { message: 'id must be a valid id' })
   id!: string;

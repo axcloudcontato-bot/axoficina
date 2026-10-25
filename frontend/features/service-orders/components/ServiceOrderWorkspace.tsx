@@ -26,6 +26,7 @@ import { InspectionChecklist } from './InspectionChecklist';
 import { ServiceOrderItemsSection } from './ServiceOrderItemsSection';
 import { ServiceOrderQuoteActions } from './ServiceOrderQuoteActions';
 import { CustomerPickupMessage } from './CustomerPickupMessage';
+import { ServiceOrderStatusNotifications } from './ServiceOrderStatusNotifications';
 import { ItemPhotosSection, VehiclePhotoSection } from './ServiceOrderPhotoGallery';
 import { ServiceOrderPaymentSection } from './ServiceOrderPaymentSection';
 import { StatusBadge } from './StatusBadge';
@@ -166,6 +167,7 @@ export function ServiceOrderWorkspace({ serviceOrder: order }: { serviceOrder: S
       <StepFooter back="Execução" onBack={() => setStep('execution')} />
     </div>}
 
+    <ServiceOrderStatusNotifications serviceOrderId={order.id} canManage={canManage} />
     <details className="rounded-card border border-border bg-card p-4 sm:p-5"><summary className="cursor-pointer text-sm font-semibold">Histórico das etapas da OS</summary><div className="mt-4"><StatusHistoryTimeline history={order.statusHistory ?? []} /></div></details>
     <DeleteServiceOrderDialog open={deleteOpen} onOpenChange={setDeleteOpen} serviceOrder={order} onDeleted={() => router.push('/service-orders')} />
     <VehicleServiceHistoryDialog open={vehicleHistoryOpen} onOpenChange={setVehicleHistoryOpen} vehicleId={order.vehicleId} vehicleLabel={`${order.vehicleBrand} ${order.vehicleModel}`} plate={order.vehiclePlate} />

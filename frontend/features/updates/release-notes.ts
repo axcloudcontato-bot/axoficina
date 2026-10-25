@@ -1,5 +1,13 @@
 export const RELEASE_NOTES = [
   {
+    id: '2026-10-25-avisos-whatsapp-status', date: '2026-10-25', title: 'Cliente acompanha a OS pelo WhatsApp',
+    items: [
+      'Nova opção nas Preferências do cliente: receber avisos sobre toda movimentação da Ordem de Serviço.',
+      'A abertura e cada mudança de status enviam uma mensagem estruturada, com títulos em negrito e dados da OS.',
+      'Os avisos ficam registrados na OS, com acompanhamento do envio e nova tentativa após conferência da conversa.',
+    ],
+  },
+  {
     id: '2026-10-24-fluxo-atendimento', date: '2026-10-24', title: 'Do atendimento à entrega, com etapas mais claras',
     items: [
       'A OS agora acompanha Entrada, Orçamento, Aprovação, Execução e Entrega, com as ações de cada momento.',

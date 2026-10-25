@@ -18,6 +18,7 @@ export interface CustomerAddress {
 }
 
 export interface CustomerResponse {
+  notifyServiceOrderUpdates?: boolean;
   id: string;
   tenantId: string;
   type: CustomerType;

@@ -26,6 +26,14 @@ interface CustomerPreferencesTabProps {
 export function CustomerPreferencesTab({ form }: CustomerPreferencesTabProps) {
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <FormField control={form.control} name="notifyServiceOrderUpdates" render={({ field }) => (
+        <FormItem className="rounded-card border border-border p-4 sm:col-span-2">
+          <div className="flex items-start gap-3">
+            <FormControl><input type="checkbox" checked={field.value} onChange={event => field.onChange(event.target.checked)} onBlur={field.onBlur} ref={field.ref} name={field.name} className="mt-0.5 size-4 shrink-0 accent-primary" /></FormControl>
+            <div><FormLabel className="cursor-pointer text-sm font-semibold">Me avise sobre toda movimentação da Ordem de Serviço.</FormLabel><p className="mt-1 text-xs leading-5 text-text-muted">Envia avisos imediatos pelo WhatsApp do telefone principal na abertura e em cada mudança de status da OS. Requer a integração WhatsApp ativa na oficina.</p></div>
+          </div><FormMessage />
+        </FormItem>
+      )} />
       <FormField
         control={form.control}
         name="preferredContactChannel"

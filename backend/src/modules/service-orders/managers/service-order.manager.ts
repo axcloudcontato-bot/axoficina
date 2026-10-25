@@ -55,6 +55,7 @@ import { MaintenanceAlertRepository } from '../../maintenance-alerts/repositorie
 import { quoteRevision, quoteSnapshot, quotesMatch } from '../services/customer-message-quote';
 import type { CustomerMessageQuote } from '@oficina/contracts';
 import { CustomerMessageRepository } from '../repositories/customer-message.repository';
+import { ServiceOrderStatusNotificationRepository } from '../repositories/service-order-status-notification.repository';
 
 const PHOTO_ANGLE_LABELS: Record<ServiceOrderPhotoAngle, string> = {
   FRONT: 'frente',
@@ -80,6 +81,7 @@ export class ServiceOrderManager {
     private readonly maintenanceAlertRepository: MaintenanceAlertRepository,
     private readonly photoRepository: ServiceOrderPhotoRepository,
     private readonly customerMessageRepository?: CustomerMessageRepository,
+    private readonly statusNotifications?: ServiceOrderStatusNotificationRepository,
   ) {}
 
   async create(actingUser: AuthenticatedUser, request: CreateServiceOrderRequest): Promise<{ serviceOrder: ServiceOrderResponse }> {
@@ -118,7 +120,7 @@ export class ServiceOrderManager {
         tx,
       );
 
-      await this.statusHistoryRepository.insert(
+      const event = await this.statusHistoryRepository.insert(
         {
           serviceOrderId: created.id,
           fromStatus: null,
@@ -128,6 +130,8 @@ export class ServiceOrderManager {
         },
         tx,
       );
+
+      await this.statusNotifications?.record(tx, created, { id: event.id, fromStatus: null, toStatus: 'OPEN', changedAt: openedAt });
 
       return created;
     });
@@ -284,7 +288,7 @@ export class ServiceOrderManager {
         );
       }
 
-      await this.statusHistoryRepository.insert(
+      const event = await this.statusHistoryRepository.insert(
         {
           serviceOrderId: request.id,
           fromStatus,
@@ -294,6 +298,7 @@ export class ServiceOrderManager {
         },
         tx,
       );
+      await this.statusNotifications?.record(tx, existing, { id: event.id, fromStatus, toStatus: request.toStatus, changedAt });
 
       // Edge Case 4 (spec Motor de Manutenção Preventiva): a referência de
       // manutenção do veículo mudou — qualquer alerta OPEN anterior fica

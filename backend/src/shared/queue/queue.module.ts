@@ -5,6 +5,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 export const AUDIT_LOG_QUEUE = 'audit-log';
 export const FIPE_SYNC_QUEUE = 'fipe-sync';
 export const MAINTENANCE_ALERTS_QUEUE = 'maintenance-alerts-scan';
+export const SERVICE_ORDER_STATUS_QUEUE = 'service-order-status-notifications';
 
 @Global()
 @Module({
@@ -26,6 +27,7 @@ export const MAINTENANCE_ALERTS_QUEUE = 'maintenance-alerts-scan';
     BullModule.registerQueue({ name: AUDIT_LOG_QUEUE }),
     BullModule.registerQueue({ name: FIPE_SYNC_QUEUE }),
     BullModule.registerQueue({ name: MAINTENANCE_ALERTS_QUEUE }),
+    BullModule.registerQueue({ name: SERVICE_ORDER_STATUS_QUEUE }),
   ],
   exports: [BullModule],
 })

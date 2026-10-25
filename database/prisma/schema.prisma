@@ -202,6 +202,7 @@ model Customer {
   secondaryContactRelation  String?   @map("secondary_contact_relation")
   preferredContactChannel   String?   @map("preferred_contact_channel")
   preferredContactTime      String?   @map("preferred_contact_time")
+  notifyServiceOrderUpdates Boolean   @default(false) @map("notify_service_order_updates")
 
   createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz
   updatedAt DateTime? @updatedAt @map("updated_at") @db.Timestamptz
@@ -290,6 +291,30 @@ model ServiceOrderStatusHistory {
 
   @@index([serviceOrderId])
   @@map("service_order_status_history")
+}
+
+model ServiceOrderStatusNotification {
+  id             String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  tenantId       String    @map("tenant_id") @db.Uuid
+  serviceOrderId String    @map("service_order_id") @db.Uuid
+  customerId     String    @map("customer_id") @db.Uuid
+  historyId      String    @unique @map("history_id") @db.Uuid
+  fromStatus     String?   @map("from_status")
+  toStatus       String    @map("to_status")
+  recipient      String
+  message        String
+  status         String    @default("PENDING")
+  failureReason  String?   @map("failure_reason")
+  attempts       Int       @default(0)
+  occurredAt     DateTime  @map("occurred_at") @db.Timestamptz
+  attemptedAt    DateTime? @map("attempted_at") @db.Timestamptz
+  sentAt         DateTime? @map("sent_at") @db.Timestamptz
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([tenantId, serviceOrderId, createdAt], map: "service_order_status_notifications_tenant_id_service_order_id_c")
+  @@index([status, createdAt, id])
+  @@index([serviceOrderId, status, createdAt, id], map: "service_order_status_notifications_service_order_id_status_crea")
+  @@map("service_order_status_notifications")
 }
 
 // Feature: Itens e Preço da OS. Sem tenantId de propósito, mesmo padrão de

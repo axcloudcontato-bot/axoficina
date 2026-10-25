@@ -2,6 +2,7 @@ import type { PageableRequest } from '../response/pagination.response';
 import type { CustomerAddress, CustomerContactChannel, CustomerContactTime, CustomerType } from '../response/customer.response';
 
 export interface CreateCustomerRequest {
+  notifyServiceOrderUpdates?: boolean;
   type: CustomerType;
   document?: string;
   name: string;
@@ -19,6 +20,7 @@ export interface CreateCustomerRequest {
 }
 
 export interface UpdateCustomerRequest {
+  notifyServiceOrderUpdates?: boolean;
   id: string;
   document?: string;
   name?: string;

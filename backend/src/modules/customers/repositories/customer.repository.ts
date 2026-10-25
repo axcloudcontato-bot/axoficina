@@ -5,6 +5,7 @@ import { PrismaService } from '../../../shared/prisma/prisma.service';
 import { TenantContextService } from '../../../shared/tenant-context/tenant-context.service';
 
 export interface CreateCustomerInput {
+  notifyServiceOrderUpdates?: boolean;
   // O Prisma Middleware sobrescreve isto com o tenant do contexto ativo em
   // runtime (ver CREATE_OPERATIONS em tenant-isolation.middleware.ts) — só
   // existe aqui para satisfazer o tipo `CustomerCreateInput` do Prisma.
@@ -26,6 +27,7 @@ export interface CreateCustomerInput {
 }
 
 export interface UpdateCustomerInput {
+  notifyServiceOrderUpdates?: boolean;
   document?: string;
   name?: string;
   phone?: string;
@@ -100,6 +102,7 @@ export class CustomerRepository {
         secondaryContactRelation: input.secondaryContactRelation,
         preferredContactChannel: input.preferredContactChannel,
         preferredContactTime: input.preferredContactTime,
+        notifyServiceOrderUpdates: input.notifyServiceOrderUpdates,
       },
     });
   }

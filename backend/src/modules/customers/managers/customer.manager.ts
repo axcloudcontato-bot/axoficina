@@ -15,6 +15,7 @@ import { AuditLogService } from '../../../shared/audit-log/audit-log.service';
 import { DocumentValidatorService } from '../../../shared/documents/document-validator.service';
 import type { AuthenticatedUser } from '../../../shared/guards/jwt-auth.guard';
 import { CustomerRepository } from '../repositories/customer.repository';
+import { whatsappRecipient } from '../../settings/services/whatsapp-recipient';
 
 @Injectable()
 export class CustomerManager {
@@ -25,6 +26,7 @@ export class CustomerManager {
   ) {}
 
   async create(actingUser: AuthenticatedUser, request: CreateCustomerRequest): Promise<{ customer: CustomerResponse }> {
+    this.validateNotificationPhone(request.notifyServiceOrderUpdates, request.phone);
     const documentCheck = request.document?.trim()
       ? this.documentValidator.validate(request.document)
       : { valid: true, normalized: '' };
@@ -63,6 +65,7 @@ export class CustomerManager {
         secondaryContactRelation: request.secondaryContactRelation,
         preferredContactChannel: request.preferredContactChannel,
         preferredContactTime: request.preferredContactTime,
+        notifyServiceOrderUpdates: request.notifyServiceOrderUpdates,
       });
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
@@ -81,7 +84,7 @@ export class CustomerManager {
       action: 'customer.created',
       entity: 'customer',
       entityId: customer.id,
-      metadata: {},
+      metadata: request.notifyServiceOrderUpdates === undefined ? {} : { notifyServiceOrderUpdates: request.notifyServiceOrderUpdates },
     });
 
     return { customer: this.toResponse(customer) };
@@ -92,6 +95,7 @@ export class CustomerManager {
     if (!existing) {
       throw new AppException(AppErrorCode.CUSTOMER_NOT_FOUND, 'Cliente não encontrado.', HttpStatus.NOT_FOUND);
     }
+    this.validateNotificationPhone(request.notifyServiceOrderUpdates ?? existing.notifyServiceOrderUpdates, request.phone ?? existing.phone);
 
     let document: string | undefined;
     if (request.document !== undefined) {
@@ -117,6 +121,7 @@ export class CustomerManager {
         secondaryContactRelation: request.secondaryContactRelation,
         preferredContactChannel: request.preferredContactChannel,
         preferredContactTime: request.preferredContactTime,
+        notifyServiceOrderUpdates: request.notifyServiceOrderUpdates,
       });
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') throw new AppException(AppErrorCode.CUSTOMER_DOCUMENT_ALREADY_EXISTS, 'Já existe um cliente cadastrado com este documento.', HttpStatus.CONFLICT);
@@ -134,7 +139,7 @@ export class CustomerManager {
       action: 'customer.updated',
       entity: 'customer',
       entityId: updated.id,
-      metadata: {},
+      metadata: request.notifyServiceOrderUpdates === undefined ? {} : { notifyServiceOrderUpdates: request.notifyServiceOrderUpdates },
     });
 
     return { customer: this.toResponse(updated) };
@@ -195,6 +200,7 @@ export class CustomerManager {
       name: customer.name,
       email: customer.email ?? undefined,
       phone: customer.phone,
+      notifyServiceOrderUpdates: customer.notifyServiceOrderUpdates ?? false,
       address: (customer.address as CustomerResponse['address']) ?? undefined,
       notes: customer.notes ?? undefined,
       rg: customer.rg ?? undefined,
@@ -206,5 +212,9 @@ export class CustomerManager {
       preferredContactTime: (customer.preferredContactTime as CustomerResponse['preferredContactTime']) ?? undefined,
       createdAt: customer.createdAt.toISOString(),
     };
+  }
+
+  private validateNotificationPhone(enabled: boolean | undefined, phone: string) {
+    if (enabled && !whatsappRecipient(phone)) throw new AppException(AppErrorCode.VALIDATION_ERROR, 'Informe um telefone com DDD válido para ativar os avisos da OS pelo WhatsApp.', HttpStatus.BAD_REQUEST, [{ field: 'phone', message: 'Informe um telefone com DDD válido para WhatsApp.' }]);
   }
 }
