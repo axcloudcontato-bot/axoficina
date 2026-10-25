@@ -2,9 +2,8 @@ import { apiClient } from '@/lib/api/client';
 import type {
   CreateServiceOrderRequest,
   DeleteServiceOrderRequest,
-  PaginationData,
-  ServiceOrderListItemResponse,
   ServiceOrderListRequest,
+  ServiceOrderListResponse,
   ServiceOrderResponse,
   TransitionServiceOrderRequest,
   UpdateServiceOrderRequest,
@@ -48,8 +47,8 @@ export const serviceOrdersApi = {
     return response.data;
   },
 
-  async list(request: ServiceOrderListRequest): Promise<PaginationData<ServiceOrderListItemResponse>> {
-    const response = await apiClient.post<PaginationData<ServiceOrderListItemResponse>>('/api/v1/service-orders/list', request);
+  async list(request: ServiceOrderListRequest): Promise<ServiceOrderListResponse> {
+    const response = await apiClient.post<ServiceOrderListResponse>('/api/v1/service-orders/list', request);
     return response.data;
   },
   async confirmReceipt(request: ConfirmServiceOrderReceiptRequest): Promise<{ receipt: ServiceOrderReceiptResponse }> {

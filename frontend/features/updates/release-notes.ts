@@ -1,5 +1,13 @@
 export const RELEASE_NOTES = [
   {
+    id: '2026-10-24-historico-os', date: '2026-10-24', title: 'Entregas e histórico de ordens de serviço',
+    items: [
+      'Novo card Entregues, com os veículos entregues no dia ou período escolhido. Clique para consultar as respectivas ordens.',
+      'Consulte o histórico por data de entrada ou de entrega e cancelamento, com atalhos de período e datas personalizadas.',
+      'Os filtros consultam todo o histórico e os resultados têm paginação. A lista também mostra as datas de entrada e encerramento.',
+    ],
+  },
+  {
     id: '2026-10-24-atendimento-busca', date: '2026-10-24', title: 'Atendimento com menos digitação',
     items: [
       'A busca aproveita o nome, CPF/CNPJ, telefone, e-mail ou dados do veículo ao abrir um novo cadastro. Você pode escolher o campo de destino.',

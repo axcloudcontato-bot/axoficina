@@ -1,8 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import type { Prisma, PrismaClient } from '@oficina/database';
-import type { ServiceOrderStatus } from '@oficina/contracts';
+import type { ServiceOrderStatus, ServiceOrderListRequest } from '@oficina/contracts';
 import type { PaymentMethod } from '@oficina/contracts';
 import { PrismaService } from '../../../shared/prisma/prisma.service';
+import { TenantContextService } from '../../../shared/tenant-context/tenant-context.service';
+import { serviceOrderPeriod } from '../service-order-period';
 
 export interface CreateServiceOrderInput {
   // O Prisma Middleware sobrescreve isto com o tenant do contexto ativo em
@@ -39,7 +41,7 @@ export interface UpdateServiceOrderInput {
 
 @Injectable()
 export class ServiceOrderRepository {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService, private readonly tenantContext: TenantContextService) {}
 
   // `this.prisma.client` (tenant-scoped): toda operação de ServiceOrder
   // roda dentro de uma requisição autenticada — o Prisma Middleware injeta
@@ -127,10 +129,10 @@ export class ServiceOrderRepository {
     technicianId?: string,
     customerId?: string,
     search?: { orderNumber?: number; matchingCustomerIds: string[]; matchingVehicleIds: string[] },
+    filters: Pick<ServiceOrderListRequest, 'startDate' | 'endDate' | 'dateField' | 'attention' | 'includeMetrics'> = {},
   ) {
-    const where = {
+    const base: Prisma.ServiceOrderWhereInput = {
       deletedAt: null,
-      ...(status ? { status } : {}),
       ...(vehicleId ? { vehicleId } : {}),
       ...(technicianId ? { technicianId } : {}),
       ...(customerId ? { customerId } : {}),
@@ -142,6 +144,9 @@ export class ServiceOrderRepository {
       ...(search
         ? {
             OR: [
+              // Prisma may discard an empty nested OR: keep an explicit false
+              // predicate so a search with no matches never returns all orders.
+              { id: { in: [] } },
               ...(search.orderNumber !== undefined ? [{ orderNumber: search.orderNumber }] : []),
               ...(search.matchingCustomerIds.length > 0 ? [{ customerId: { in: search.matchingCustomerIds } }] : []),
               ...(search.matchingVehicleIds.length > 0 ? [{ vehicleId: { in: search.matchingVehicleIds } }] : []),
@@ -150,17 +155,56 @@ export class ServiceOrderRepository {
         : {}),
     };
 
-    const [items, total] = await Promise.all([
+    const period = serviceOrderPeriod(filters.startDate, filters.endDate);
+    const periodWhere: Prisma.ServiceOrderWhereInput = filters.dateField === 'CLOSED'
+      ? { closedAt: { not: null, ...period } }
+      : filters.startDate || filters.endDate ? { openedAt: period } : {};
+    const active = { notIn: ['DELIVERED', 'CANCELLED'] };
+    const now = new Date();
+    const conditions: Prisma.ServiceOrderWhereInput[] = [];
+    if (status) conditions.push({ status });
+    if (filters.attention === 'ACTIVE') conditions.push({ status: active });
+    if (filters.attention === 'OVERDUE') conditions.push({ status: active, expectedDeliveryAt: { lt: now } });
+    if (filters.attention === 'UNASSIGNED') conditions.push({ status: active, technicianId: null });
+    if (filters.attention === 'PAYMENT_PENDING') {
+      // Raw SQL does not use the tenant extension: scope both tables explicitly.
+      const tenantId = this.tenantContext.getStore()?.tenantId;
+      if (!tenantId) throw new Error('Payment filter requires a tenant context');
+      const pending = await this.prisma.client.$queryRaw<{ id: string }[]>`
+        SELECT so.id FROM service_orders so
+        WHERE so.tenant_id = ${tenantId}::uuid AND so.deleted_at IS NULL
+        AND COALESCE((SELECT SUM(ROUND(i.quantity * i.unit_price_cents)) FROM service_order_items i
+          WHERE i.service_order_id = so.id AND i.deleted_at IS NULL), 0)
+          > COALESCE((SELECT SUM(r.amount_cents) FROM service_order_receipts r
+          WHERE r.service_order_id = so.id AND r.tenant_id = ${tenantId}::uuid AND r.deleted_at IS NULL), 0)`;
+      conditions.push({ id: { in: pending.map((order) => order.id) } });
+    }
+    const where: Prisma.ServiceOrderWhereInput = { AND: [base, periodWhere, ...conditions] };
+
+    const [items, total, metrics] = await Promise.all([
       this.prisma.client.serviceOrder.findMany({
         where,
-        orderBy: { createdAt: 'desc' },
+        orderBy: [{ [filters.dateField === 'CLOSED' ? 'closedAt' : 'openedAt']: 'desc' }, { id: 'desc' }],
         skip: offset,
         take: limit,
       }),
       this.prisma.client.serviceOrder.count({ where }),
+      filters.includeMetrics ? this.listMetrics(base, periodWhere, period, now) : undefined,
     ]);
 
-    return { items, total };
+    return { items, total, metrics };
+  }
+
+  private async listMetrics(base: Prisma.ServiceOrderWhereInput, periodWhere: Prisma.ServiceOrderWhereInput, period: ReturnType<typeof serviceOrderPeriod>, now: Date) {
+    const count = (condition: Prisma.ServiceOrderWhereInput) => this.prisma.client.serviceOrder.count({ where: { AND: [base, periodWhere, condition] } });
+    const active = { notIn: ['DELIVERED', 'CANCELLED'] };
+    const [activeCount, overdue, waitingParts, ready, delivered] = await Promise.all([
+      count({ status: active }), count({ status: active, expectedDeliveryAt: { lt: now } }),
+      count({ status: 'WAITING_PARTS' }), count({ status: 'COMPLETED' }),
+      // Delivery always uses its actual date, even when the list filters entries.
+      this.prisma.client.serviceOrder.count({ where: { AND: [base, { status: 'DELIVERED', closedAt: period }] } }),
+    ]);
+    return { active: activeCount, overdue, waitingParts, ready, delivered };
   }
 
   async listForBusinessSummary(since: Date) {

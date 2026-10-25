@@ -8,12 +8,12 @@ import {
   type DeleteServiceOrderReceiptRequest,
   type CreateServiceOrderRequest,
   type DashboardBusinessSummaryResponse,
-  type PaginationData,
   type ServiceOrderItemResponse,
   type ServiceOrderInstallmentResponse,
   type ServiceOrderPhotoAngle,
   type ServiceOrderReceiptResponse,
   type ServiceOrderListRequest,
+  type ServiceOrderListResponse,
   type ServiceOrderResponse,
   type ServiceOrderStatusHistoryItemResponse,
   type TechnicianProductivityRequest,
@@ -384,7 +384,10 @@ export class ServiceOrderManager {
     return { serviceOrder: this.toResponse(serviceOrder, vehicle, customer, technician, { history, items, receipts, installments }) };
   }
 
-  async list(request: ServiceOrderListRequest): Promise<PaginationData<ServiceOrderResponse>> {
+  async list(request: ServiceOrderListRequest): Promise<ServiceOrderListResponse> {
+    if (request.startDate && request.endDate && request.startDate > request.endDate) {
+      throw new AppException(AppErrorCode.VALIDATION_ERROR, 'A data final deve ser igual ou posterior à data inicial.');
+    }
     const trimmedSearch = request.search?.trim();
     let search: { orderNumber?: number; matchingCustomerIds: string[]; matchingVehicleIds: string[] } | undefined;
     if (trimmedSearch) {
@@ -397,7 +400,7 @@ export class ServiceOrderManager {
       const orderNumber = Number.isInteger(number) && number >= 0 && number <= 2_147_483_647 ? number : undefined;
       search = { orderNumber, matchingCustomerIds, matchingVehicleIds };
     }
-    const { items, total } = await this.serviceOrderRepository.listByTenant(
+    const { items, total, metrics } = await this.serviceOrderRepository.listByTenant(
       request.offset,
       request.limit,
       request.status,
@@ -405,17 +408,20 @@ export class ServiceOrderManager {
       request.technicianId,
       request.customerId,
       search,
+      ...(request.startDate || request.endDate || request.dateField || request.attention || request.includeMetrics
+        ? [{ startDate: request.startDate, endDate: request.endDate, dateField: request.dateField, attention: request.attention, includeMetrics: request.includeMetrics }] : []),
     );
 
     const vehicleIds = [...new Set(items.map((item) => item.vehicleId))];
     const customerIds = [...new Set(items.map((item) => item.customerId))];
     const technicianIds = [...new Set(items.map((item) => item.technicianId).filter((id): id is string => !!id))];
 
-    const [vehicles, customers, technicians, totalsByOrderId] = await Promise.all([
+    const [vehicles, customers, technicians, totalsByOrderId, receipts] = await Promise.all([
       this.vehicleRepository.byIds(vehicleIds),
       this.customerRepository.byIds(customerIds),
       this.userRepository.byIds(technicianIds),
       this.itemRepository.sumTotalsByServiceOrderIds(items.map((serviceOrder) => serviceOrder.id)),
+      this.receiptRepository.byServiceOrderIds(items.map((serviceOrder) => serviceOrder.id)),
     ]);
     const vehicleById = new Map(vehicles.map((vehicle) => [vehicle.id, vehicle]));
     const customerById = new Map(customers.map((customer) => [customer.id, customer]));
@@ -428,10 +434,11 @@ export class ServiceOrderManager {
           vehicleById.get(serviceOrder.vehicleId) ?? null,
           customerById.get(serviceOrder.customerId) ?? null,
           serviceOrder.technicianId ? (technicianById.get(serviceOrder.technicianId) ?? null) : null,
-          { totalAmountCentsOverride: totalsByOrderId.get(serviceOrder.id) ?? 0 },
+          { totalAmountCentsOverride: totalsByOrderId.get(serviceOrder.id) ?? 0, receipts: receipts.filter((receipt) => receipt.serviceOrderId === serviceOrder.id) },
         ),
       ),
       total,
+      ...(metrics ? { metrics } : {}),
       offset: request.offset,
       limit: request.limit,
       hasMore: request.offset + items.length < total,

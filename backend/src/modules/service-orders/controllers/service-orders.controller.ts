@@ -1,7 +1,7 @@
 import { Body, Controller, Get, HttpCode, HttpStatus, Post, Query, Res, StreamableFile, UploadedFile, UseInterceptors } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import type { Response } from 'express';
-import type { DashboardBusinessSummaryResponse, DueServiceOrderInstallmentsResponse, PaginationData, ServiceOrderInstallmentResponse, ServiceOrderItemResponse, ServiceOrderListItemResponse, ServiceOrderReceiptResponse, ServiceOrderResponse, TechnicianProductivityResponse } from '@oficina/contracts';
+import type { DashboardBusinessSummaryResponse, DueServiceOrderInstallmentsResponse, ServiceOrderInstallmentResponse, ServiceOrderItemResponse, ServiceOrderListResponse, ServiceOrderReceiptResponse, ServiceOrderResponse, TechnicianProductivityResponse } from '@oficina/contracts';
 import { Roles } from '../../../shared/decorators/roles.decorator';
 import { CurrentUser } from '../../../shared/decorators/current-user.decorator';
 import { Permissions } from '../../../shared/decorators/permissions.decorator';
@@ -81,7 +81,7 @@ export class ServiceOrdersController {
   @Permissions('service_orders.view')
   @HttpCode(HttpStatus.OK)
   @Post('service-orders/list')
-  async list(@Body() body: ServiceOrderListDto): Promise<PaginationData<ServiceOrderListItemResponse>> {
+  async list(@Body() body: ServiceOrderListDto): Promise<ServiceOrderListResponse> {
     return this.serviceOrderManager.list(body);
   }
 

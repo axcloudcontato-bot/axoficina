@@ -40,6 +40,12 @@ export interface DeleteServiceOrderRequest {
 }
 
 export interface ServiceOrderListRequest extends PageableRequest {
+  // Calendar dates in America/Sao_Paulo, inclusive on both ends.
+  startDate?: string;
+  endDate?: string;
+  dateField?: 'OPENED' | 'CLOSED';
+  attention?: 'ACTIVE' | 'OVERDUE' | 'UNASSIGNED' | 'PAYMENT_PENDING';
+  includeMetrics?: boolean;
   status?: ServiceOrderStatus;
   vehicleId?: string;
   technicianId?: string;

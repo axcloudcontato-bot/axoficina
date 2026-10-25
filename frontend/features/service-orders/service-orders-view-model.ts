@@ -1,6 +1,6 @@
 import type { ServiceOrderListItemResponse, ServiceOrderStatus } from '@oficina/contracts';
 
-export type ServiceOrderAttentionFilter = 'ALL' | 'OVERDUE' | 'UNASSIGNED' | 'PAYMENT_PENDING';
+export type ServiceOrderAttentionFilter = 'ALL' | 'ACTIVE' | 'OVERDUE' | 'UNASSIGNED' | 'PAYMENT_PENDING';
 
 const CLOSED_STATUSES: ServiceOrderStatus[] = ['DELIVERED', 'CANCELLED'];
 
@@ -39,6 +39,7 @@ export function filterServiceOrders(
     .filter((item) => options.status === 'ALL' || item.status === options.status)
     .filter((item) => {
       if (options.attention === 'OVERDUE') return isOverdueServiceOrder(item, now);
+      if (options.attention === 'ACTIVE') return !isClosedServiceOrder(item);
       if (options.attention === 'UNASSIGNED') return !isClosedServiceOrder(item) && !item.technicianId;
       if (options.attention === 'PAYMENT_PENDING') return item.outstandingAmountCents > 0;
       return true;

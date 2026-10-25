@@ -61,6 +61,8 @@ export function ServiceOrdersTable({
             <TableHead>Cliente</TableHead>
             <TableHead>Técnico</TableHead>
             <TableHead>Status</TableHead>
+            <TableHead>Entrada</TableHead>
+            <TableHead>Entrega / cancelamento</TableHead>
             <TableHead>Previsão de entrega</TableHead>
             {canViewPrices && <TableHead>Pagamento</TableHead>}
             {canViewPrices && <TableHead className="text-right">Valor</TableHead>}
@@ -74,6 +76,8 @@ export function ServiceOrdersTable({
               <LinkedCell href={`/service-orders/${serviceOrder.id}`}>{serviceOrder.customerName}</LinkedCell>
               <LinkedCell href={`/service-orders/${serviceOrder.id}`}>{serviceOrder.technicianName ?? 'Sem técnico'}</LinkedCell>
               <LinkedCell href={`/service-orders/${serviceOrder.id}`}><StatusBadge status={serviceOrder.status} /></LinkedCell>
+              <LinkedCell href={`/service-orders/${serviceOrder.id}`}>{formatHistoryDate(serviceOrder.openedAt)}</LinkedCell>
+              <LinkedCell href={`/service-orders/${serviceOrder.id}`}>{formatHistoryDate(serviceOrder.closedAt)}</LinkedCell>
               <LinkedCell href={`/service-orders/${serviceOrder.id}`} className={serviceOrder.expectedDeliveryAt && new Date(serviceOrder.expectedDeliveryAt) < new Date() && !['DELIVERED', 'CANCELLED'].includes(serviceOrder.status) ? 'font-semibold text-danger' : undefined}>{serviceOrder.expectedDeliveryAt ? new Date(serviceOrder.expectedDeliveryAt).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : 'Sem previsão'}</LinkedCell>
               {canViewPrices && <LinkedCell href={`/service-orders/${serviceOrder.id}`}><span className={serviceOrder.paymentStatus === 'PAID' ? 'text-success' : 'text-warning'}>{serviceOrder.paymentStatus === 'PAID' ? 'Pago' : serviceOrder.paymentStatus === 'PARTIALLY_PAID' ? 'Parcial' : 'Pendente'}</span></LinkedCell>}
               {canViewPrices && <LinkedCell href={`/service-orders/${serviceOrder.id}`} className="text-right font-semibold text-text">{formatCurrencyBRL(serviceOrder.totalAmountCents)}</LinkedCell>}
@@ -83,6 +87,10 @@ export function ServiceOrdersTable({
       </Table>
     </div>
   );
+}
+
+function formatHistoryDate(value?: string) {
+  return value ? new Date(value).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', dateStyle: 'short', timeStyle: 'short' }) : '—';
 }
 
 function LinkedCell({ href, className = '', children }: { href: string; className?: string; children: React.ReactNode }) {

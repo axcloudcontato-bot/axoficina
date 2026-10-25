@@ -1,4 +1,4 @@
-import { IsIn, IsInt, IsISO8601, IsNotEmpty, IsObject, IsOptional, IsString, IsUUID, Max, MaxLength, Min } from 'class-validator';
+import { IsBoolean, IsIn, IsInt, IsISO8601, IsNotEmpty, IsObject, IsOptional, IsString, IsUUID, Matches, Max, MaxLength, Min } from 'class-validator';
 import { PAYMENT_METHODS, SERVICE_ORDER_STATUSES } from '@oficina/contracts';
 import type {
   CreateServiceOrderRequest,
@@ -85,6 +85,21 @@ export class GetServiceOrderDto {
 }
 
 export class ServiceOrderListDto implements ServiceOrderListRequest {
+  @IsOptional() @IsISO8601({ strict: true }) @Matches(/^\d{4}-\d{2}-\d{2}$/)
+  startDate?: string;
+
+  @IsOptional() @IsISO8601({ strict: true }) @Matches(/^\d{4}-\d{2}-\d{2}$/)
+  endDate?: string;
+
+  @IsOptional() @IsIn(['OPENED', 'CLOSED'])
+  dateField?: ServiceOrderListRequest['dateField'];
+
+  @IsOptional() @IsIn(['ACTIVE', 'OVERDUE', 'UNASSIGNED', 'PAYMENT_PENDING'])
+  attention?: ServiceOrderListRequest['attention'];
+
+  @IsOptional() @IsBoolean()
+  includeMetrics?: boolean;
+
   @IsOptional()
   @IsIn(SERVICE_ORDER_STATUSES, { message: 'status must be a valid status' })
   status?: ServiceOrderListRequest['status'];

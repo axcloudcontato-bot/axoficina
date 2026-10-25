@@ -1,3 +1,4 @@
+import type { PaginationData } from './pagination.response';
 import type { ServiceOrderItemResponse } from './service-order-item.response';
 import type { PaymentMethod, PaymentStatus, ServiceOrderReceiptResponse } from './service-order-receipt.response';
 import type { ServiceOrderInstallmentResponse } from './service-order-installment.response';
@@ -70,3 +71,7 @@ export interface ServiceOrderResponse {
 }
 
 export type ServiceOrderListItemResponse = ServiceOrderResponse;
+
+export interface ServiceOrderListResponse extends PaginationData<ServiceOrderListItemResponse> {
+  metrics?: { active: number; overdue: number; waitingParts: number; ready: number; delivered: number };
+}
