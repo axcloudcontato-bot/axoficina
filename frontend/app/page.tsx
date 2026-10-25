@@ -1,13 +1,11 @@
-import { HealthStatus } from '@/features/health/HealthStatus';
+import type { Metadata } from 'next';
+import { LandingPage } from '@/components/landing/landing-page';
+
+export const metadata: Metadata = {
+  title: 'Ofix — Sistema para oficina mecânica | Mais controle para sua oficina',
+  description: 'Ordens de serviço, orçamento aprovado pelo WhatsApp, agenda, alertas de manutenção e financeiro em um só sistema para oficinas mecânicas.',
+};
 
 export default function Home() {
-  return (
-    <main id="main-content" tabIndex={-1} className="flex min-h-screen items-center justify-center p-4">
-      <div className="w-full max-w-[420px] rounded-card border border-border bg-surface p-6 shadow-md">
-        <h2 className="text-xl font-semibold text-text">Oficina SaaS</h2>
-        <p className="mb-4 text-sm text-text-muted">Ambiente de desenvolvimento</p>
-        <HealthStatus />
-      </div>
-    </main>
-  );
+  return <LandingPage />;
 }
