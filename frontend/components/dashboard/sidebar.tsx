@@ -2,7 +2,7 @@
 
 import type { PermissionKey } from '@oficina/contracts';
 import type { Icon as PhosphorIcon } from '@phosphor-icons/react';
-import { Bell, Buildings, CalendarBlank, Car, ChartBar, ChartLine, ClipboardText, Envelope, Gear, SidebarSimple, SignOut, SquaresFour, Users, UsersThree, Wrench } from '@phosphor-icons/react';
+import { Bell, Buildings, CalendarBlank, Car, ChartBar, ChartLine, ClipboardText, Envelope, Gear, SidebarSimple, SignOut, SquaresFour, Users, UsersThree } from '@phosphor-icons/react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -10,6 +10,7 @@ import { useEffect, useId, useRef, useState } from 'react';
 import { hasPermission } from '@/features/auth/permissions';
 import { useLogout } from '@/features/auth/hooks/use-auth';
 import { AnimatedIcon } from '@/components/ui/animated-icon';
+import { OfixLogo } from '@/components/brand/ofix-logo';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/stores/auth-store';
 import { useBranding } from '@/features/settings/hooks/use-settings';
@@ -77,10 +78,10 @@ export function Sidebar() {
   }
 
   return <>
-    <aside className={cn('fixed inset-y-0 left-0 z-40 hidden h-screen shrink-0 flex-col border-r border-border bg-surface transition-[width] duration-normal md:flex', collapsed ? 'w-20' : 'w-64')}>
+    <aside className={cn('dark fixed inset-y-0 left-0 z-40 hidden h-screen shrink-0 flex-col border-r border-border bg-background text-foreground transition-[width] duration-normal md:flex', collapsed ? 'w-20' : 'w-64')}>
       <div className={cn('flex items-center py-5', collapsed ? 'justify-center px-3' : 'gap-3 px-4')}>
-        <div className="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-button bg-primary text-primary-foreground shadow-sm">{branding.data?.company.logoDataUrl ? <Image src={branding.data.company.logoDataUrl} alt="" width={36} height={36} unoptimized className="size-full object-contain p-1" /> : <Wrench className="size-[18px]" />}</div>
-        {!collapsed && <div className="min-w-0 flex-1 leading-tight"><p className="truncate font-bold tracking-tight text-text">{branding.data?.company.name || 'Oficina'}</p><p className="text-xs text-text-muted">Gestão operacional</p></div>}
+        {collapsed ? <OfixLogo variant="mark" className="w-9 shrink-0" /> : branding.data?.company.logoDataUrl ? <div className="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-button bg-white"><Image src={branding.data.company.logoDataUrl} alt="" width={36} height={36} unoptimized className="size-full object-contain p-1" /></div> : null}
+        {!collapsed && <div className="min-w-0 flex-1 leading-tight">{branding.data?.company.logoDataUrl ? <><p className="truncate font-bold tracking-tight text-text">{branding.data.company.name}</p><p className="text-xs text-text-muted">Gestão com Ofix</p></> : <><OfixLogo className="w-24 text-white" /><p className="mt-1 truncate text-xs text-text-muted">{branding.data?.company.name || 'Gestão operacional'}</p></>}</div>}
         {!collapsed && <button type="button" ref={toggleRef} aria-expanded={!collapsed} aria-controls={navigationId} onClick={toggleSidebar} aria-label="Recolher menu lateral" className="group flex size-8 items-center justify-center rounded-button text-text-muted hover:bg-muted hover:text-text"><AnimatedIcon icon={SidebarSimple} className="size-4" /></button>}
       </div>
       <nav id={navigationId} aria-label="Navegação principal" className="flex-1 space-y-1 overflow-y-auto px-3 py-2">
@@ -100,5 +101,5 @@ function DesktopNavItem({ item, active, collapsed }: { item: NavItem; active: bo
   const pathname = usePathname();
   const user = useAuthStore((state) => state.user);
   const children = item.children?.filter((child) => hasPermission(user, child.permission)) ?? [];
-  return <div><Link href={children[0]?.href ?? item.href} aria-current={active ? 'page' : undefined} aria-label={item.label} title={collapsed ? item.label : undefined} className={cn('group flex min-h-10 items-center rounded-button text-sm font-semibold', collapsed ? 'justify-center' : 'gap-3 px-3', active ? 'bg-selection text-accent-foreground' : 'text-text-muted hover:bg-accent/60 hover:text-text')}><AnimatedIcon icon={item.icon} active={active} className="size-[18px] shrink-0" />{!collapsed && item.label}</Link>{!collapsed && active && children.length > 0 && <div className="ml-5 mt-1 space-y-0.5 border-l border-border pl-3">{children.map((child) => { const childActive = isActive(pathname, child.href); return <Link key={child.href} href={child.href} aria-current={childActive ? 'page' : undefined} className={cn('group flex min-h-9 items-center gap-2 rounded-button px-2 text-xs font-semibold', childActive ? 'text-primary' : 'text-text-muted hover:bg-muted hover:text-text')}><AnimatedIcon icon={child.icon} active={childActive} className="size-3.5" />{child.label}</Link>; })}</div>}</div>;
+  return <div><Link href={children[0]?.href ?? item.href} aria-current={active ? 'page' : undefined} aria-label={item.label} title={collapsed ? item.label : undefined} className={cn('group flex min-h-10 items-center rounded-button text-sm font-semibold', collapsed ? 'justify-center' : 'gap-3 px-3', active ? 'bg-primary text-primary-foreground' : 'text-text-muted hover:bg-muted hover:text-text')}><AnimatedIcon icon={item.icon} active={active} className="size-[18px] shrink-0" />{!collapsed && item.label}</Link>{!collapsed && active && children.length > 0 && <div className="ml-5 mt-1 space-y-0.5 border-l border-border pl-3">{children.map((child) => { const childActive = isActive(pathname, child.href); return <Link key={child.href} href={child.href} aria-current={childActive ? 'page' : undefined} className={cn('group flex min-h-9 items-center gap-2 rounded-button px-2 text-xs font-semibold', childActive ? 'text-primary' : 'text-text-muted hover:bg-muted hover:text-text')}><AnimatedIcon icon={child.icon} active={childActive} className="size-3.5" />{child.label}</Link>; })}</div>}</div>;
 }

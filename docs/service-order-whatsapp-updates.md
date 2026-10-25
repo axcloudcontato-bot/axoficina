@@ -23,7 +23,7 @@ Seu atendimento foi aberto. Vamos avaliar o veículo e preparar o orçamento.
 *Abertura:* 25/10/2026, 09:00 (Brasília)
 *Solicitação:* Ruído ao frear
 
-*AX Oficina*
+*Ofix*
 💬 Para falar sobre o atendimento ou ajustar os avisos, entre em contato com a oficina.
 ```
 

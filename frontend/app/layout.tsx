@@ -3,14 +3,14 @@ import type { Metadata } from 'next';
 // busca o CSS da fonte no Google ao vivo durante `next build`, e esse fetch
 // falhou de forma intermitente em CI (`next/font` loader.js: "Cannot read
 // properties of null (reading '1')" quando a resposta vem vazia/bloqueada).
-import '@fontsource-variable/plus-jakarta-sans';
+import '@fontsource-variable/montserrat';
 import { ThemeProvider } from '@/components/theme-provider';
 import { Providers } from '@/components/providers';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'Oficina',
-  description: 'ERP SaaS multi-tenant para oficinas mecânicas',
+  title: 'Ofix — Sistema para Oficina Mecânica',
+  description: 'Mais controle para sua oficina. Gestão de ordens de serviço, clientes, estoque e financeiro.',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

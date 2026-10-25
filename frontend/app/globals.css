@@ -5,8 +5,13 @@
 @layer base {
 :root {
   --sidebar-width: 16rem;
-    --font-sans: 'Plus Jakarta Sans Variable';
+    --font-sans: 'Montserrat Variable';
     /* Primitivos: únicos tokens que contêm valores de cor brutos. */
+    --brand-yellow: #ffbe00;
+    --brand-graphite: #0f171f;
+    --brand-gray: #27323d;
+    --brand-offwhite: #f4f6f8;
+
     --orange-50: #fff7ed;
     --orange-100: #ffedd5;
     --orange-200: #fed7aa;
@@ -50,31 +55,33 @@
     --blue-800: #1e40af;
 
     /* Semânticos: componentes e telas devem consumir esta camada. */
-    --background: var(--slate-0);
-    --foreground: var(--slate-900);
-    --surface: var(--slate-50);
+    --background: var(--brand-offwhite);
+    --foreground: var(--brand-graphite);
+    --surface: var(--slate-0);
     --card: var(--slate-0);
     --card-foreground: var(--foreground);
     --popover: var(--slate-0);
     --popover-foreground: var(--foreground);
-    --muted: var(--slate-100);
-    --muted-foreground: var(--slate-500);
-    --subtle-foreground: var(--slate-400);
-    --border: var(--slate-200);
-    --border-strong: var(--slate-300);
-    --input: var(--slate-300);
+    --muted: #e8ecf0;
+    --muted-foreground: #526070;
+    --subtle-foreground: #7b8794;
+    --border: #dde3e9;
+    --border-strong: #c3ccd5;
+    --input: #c3ccd5;
 
-    --primary: var(--orange-700);
-    --primary-hover: var(--orange-800);
-    --primary-active: var(--orange-900);
-    --primary-foreground: var(--slate-0);
-    --selection: var(--orange-50);
+    --primary: var(--brand-yellow);
+    --primary-hover: #e6ab00;
+    --primary-active: #cc9800;
+    --primary-foreground: var(--brand-graphite);
+    /* Amarelo como cor de texto/link em fundo claro precisa ser escurecido. */
+    --primary-ink: #7a5800;
+    --selection: #fff4cc;
     --accent: var(--selection);
-    --accent-foreground: var(--orange-800);
-    --ring: var(--orange-700);
+    --accent-foreground: #5c4300;
+    --ring: #a87c00;
 
-    --secondary: var(--slate-100);
-    --secondary-foreground: var(--slate-900);
+    --secondary: #e8ecf0;
+    --secondary-foreground: var(--brand-graphite);
     --destructive: var(--red-600);
     --destructive-foreground: var(--slate-0);
 
@@ -118,31 +125,32 @@
   }
 
   .dark {
-    --background: var(--slate-950);
-    --foreground: var(--slate-100);
-    --surface: #111827;
-    --card: #111827;
+    --background: var(--brand-graphite);
+    --foreground: var(--brand-offwhite);
+    --surface: #151f29;
+    --card: #151f29;
     --card-foreground: var(--foreground);
-    --popover: #131a26;
+    --popover: #1a2631;
     --popover-foreground: var(--foreground);
-    --muted: #1f2937;
-    --muted-foreground: var(--slate-400);
-    --subtle-foreground: var(--slate-500);
-    --border: #1f2937;
-    --border-strong: var(--slate-700);
-    --input: var(--slate-700);
+    --muted: var(--brand-gray);
+    --muted-foreground: #a3afbb;
+    --subtle-foreground: #7b8794;
+    --border: var(--brand-gray);
+    --border-strong: #3a4856;
+    --input: #3a4856;
 
-    --primary: var(--orange-400);
-    --primary-hover: var(--orange-300);
-    --primary-active: var(--orange-200);
-    --primary-foreground: #1c0a02;
-    --selection: #2a1a0f;
+    --primary: var(--brand-yellow);
+    --primary-hover: #ffd033;
+    --primary-active: #ffdb66;
+    --primary-foreground: var(--brand-graphite);
+    --primary-ink: var(--brand-yellow);
+    --selection: #2b2713;
     --accent: var(--selection);
-    --accent-foreground: var(--orange-300);
-    --ring: var(--orange-400);
+    --accent-foreground: #ffd24d;
+    --ring: var(--brand-yellow);
 
-    --secondary: var(--slate-800);
-    --secondary-foreground: var(--slate-100);
+    --secondary: var(--brand-gray);
+    --secondary-foreground: var(--brand-offwhite);
     --destructive: var(--red-400);
     --destructive-foreground: var(--slate-950);
     --success: var(--green-400);
@@ -317,4 +325,11 @@
   .print-break-inside-avoid {
     break-inside: avoid;
   }
+}
+
+/* Fora de @layer para vencer o utilitário `text-primary` do Tailwind: amarelo
+   puro some em fundo claro, então texto/link usa o tom --primary-ink. */
+.text-primary,
+.hover\:text-primary:hover {
+  color: var(--primary-ink);
 }

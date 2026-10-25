@@ -8,13 +8,13 @@ type DocumentKey = keyof typeof legalDocuments;
 function getDocument(key: string) { return Object.hasOwn(legalDocuments, key) ? legalDocuments[key as DocumentKey] : undefined; }
 export function generateStaticParams() { return Object.keys(legalDocuments).map((document) => ({ document })); }
 export async function generateMetadata({ params }: { params: Promise<{ document: string }> }): Promise<Metadata> {
-  return { title: `${getDocument((await params).document)?.title ?? 'Documento'} | AX Oficina` };
+  return { title: `${getDocument((await params).document)?.title ?? 'Documento'} | Ofix` };
 }
 export default async function LegalPage({ params }: { params: Promise<{ document: string }> }) {
   const document = getDocument((await params).document);
   if (!document) notFound();
   return <main id="main-content" tabIndex={-1} className="mx-auto min-h-screen max-w-4xl px-5 py-12 text-text sm:px-8">
-    <Link href="/login" className="text-sm font-semibold text-primary hover:underline">AX Oficina · Acessar sistema</Link>
+    <Link href="/login" className="text-sm font-semibold text-primary hover:underline">Ofix · Acessar sistema</Link>
     <header className="mb-8 mt-8 border-b border-border pb-6">
       <p className="text-xs font-bold uppercase tracking-widest text-primary">Transparência e privacidade</p>
       <h1 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">{document.title}</h1>
@@ -22,7 +22,7 @@ export default async function LegalPage({ params }: { params: Promise<{ document
       <p className="mt-3 text-sm text-text-muted">Versão {LEGAL_VERSION} · Atualizado em 24 de outubro de 2026</p>
     </header>
     <aside className="mb-8 rounded-card border border-border bg-surface p-5 text-sm">
-      <h2 className="font-bold">Responsável pelo AX Oficina e contato</h2>
+      <h2 className="font-bold">Responsável pelo Ofix e contato</h2>
       {legalIdentity.name && <p className="mt-2">{legalIdentity.name}</p>}
       {legalIdentity.document && <p>CPF/CNPJ: {legalIdentity.document}</p>}
       {legalIdentity.address && <p>{legalIdentity.address}</p>}

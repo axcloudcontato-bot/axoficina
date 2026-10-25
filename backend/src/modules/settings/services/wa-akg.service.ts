@@ -106,12 +106,12 @@ export class WaAkgService {
     } catch {
       throw new BadGatewayException('Não foi possível acessar a URL pública do webhook. Confira o domínio da API e o proxy ou túnel.');
     }
-    if (!response.headers.get('content-type')?.includes('application/json')) throw new BadRequestException('A URL do webhook retornou HTML ou outro conteúdo inesperado. Ela deve apontar para a API do AX Oficina. Confira PUBLIC_BACKEND_URL e o roteamento de /api/* no proxy ou túnel.');
+    if (!response.headers.get('content-type')?.includes('application/json')) throw new BadRequestException('A URL do webhook retornou HTML ou outro conteúdo inesperado. Ela deve apontar para a API do Ofix. Confira PUBLIC_BACKEND_URL e o roteamento de /api/* no proxy ou túnel.');
     if (response.status === 401) throw new BadRequestException('O webhook recusou a assinatura. Confira se a URL aponta para esta oficina e se a integração está ativa no backend de destino.');
     if (response.status !== 200) throw new BadRequestException(`O webhook retornou HTTP ${response.status}. Confira a URL pública e se o backend está atualizado.`);
     let result: unknown;
-    try { result = await response.json(); } catch { throw new BadRequestException('A URL pública não retornou JSON válido do AX Oficina.'); }
-    if (!isRecord(result) || result.received !== true || result.recorded !== false) throw new BadRequestException('A URL respondeu, mas não confirmou o teste do webhook do AX Oficina. Confira o domínio e o caminho completos.');
+    try { result = await response.json(); } catch { throw new BadRequestException('A URL pública não retornou JSON válido do Ofix.'); }
+    if (!isRecord(result) || result.received !== true || result.recorded !== false) throw new BadRequestException('A URL respondeu, mas não confirmou o teste do webhook do Ofix. Confira o domínio e o caminho completos.');
     return { reachable: true, webhookUrl };
   }
 

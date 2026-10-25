@@ -1,4 +1,4 @@
-# Privacidade e LGPD no AX Oficina
+# Privacidade e LGPD no Ofix
 
 Revisão do código: 24/10/2026. Versão dos documentos: `2026-10-24`.
 

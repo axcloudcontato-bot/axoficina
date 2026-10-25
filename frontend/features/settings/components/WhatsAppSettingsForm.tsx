@@ -103,7 +103,7 @@ export function WhatsAppSettingsForm() {
       <Button type="button" variant="outline" size="sm" className="mt-2" onClick={() => copy(settings.data.webhookUrl)}>Copiar URL do webhook</Button>
       <Button type="button" variant="outline" size="sm" className="ml-2 mt-2" onClick={checkWebhook} disabled={!canManage || busy || dirty || !settings.data.enabled}>{testWebhook.isPending ? 'Validando...' : 'Testar recebimento'}</Button>
       {webhookStatus && <p role="status" className="mt-3 text-sm">{webhookStatus}</p>}
-      <p className="mt-3 text-xs text-text-muted">Se aparecer localhost, configure o endereço público da API antes de cadastrar o webhook. O teste de recebimento exige a integração ativa e verifica a resposta JSON do AX Oficina; uma página HTML com status 200 não confirma o webhook. Use WA-AKG 1.7.0 ou superior com sessão conectada. Cada resposta fica vinculada à pergunta e à OS; mensagens digitadas livremente não são consideradas escolhas de botão.</p>
+      <p className="mt-3 text-xs text-text-muted">Se aparecer localhost, configure o endereço público da API antes de cadastrar o webhook. O teste de recebimento exige a integração ativa e verifica a resposta JSON do Ofix; uma página HTML com status 200 não confirma o webhook. Use WA-AKG 1.7.0 ou superior com sessão conectada. Cada resposta fica vinculada à pergunta e à OS; mensagens digitadas livremente não são consideradas escolhas de botão.</p>
     </section>
     <section className="rounded-card border border-primary/20 bg-primary-subtle p-5">
       <h2 className="font-bold">Verificar conexão</h2><p className="mt-2 text-sm text-text-muted">Confere a chave e a sessão, sem enviar mensagens. A confirmação do webhook pode ser feita pelo teste do próprio WA-AKG.</p>

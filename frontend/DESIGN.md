@@ -1,43 +1,42 @@
 ---
-name: Ax Oficina
+name: Ofix
 description: Calm neutral SaaS operations panel for mechanic-shop management, one accent reserved for action and real state.
 colors:
-  operational-orange: "#c2410c"
-  oficina-ink: "#0f172a"
-  oficina-paper: "#ffffff"
-  oficina-surface: "#f8fafc"
-  oficina-border: "#e2e8f0"
-  oficina-muted: "#64748b"
+  ofix-yellow: "#ffbe00"
+  ofix-graphite: "#0f171f"
+  ofix-gray: "#27323d"
+  ofix-offwhite: "#f4f6f8"
+  yellow-ink: "#7a5800"
   state-success: "#16a34a"
   state-warning: "#d97706"
   state-danger: "#dc2626"
   state-info: "#2563eb"
 typography:
   display:
-    fontFamily: "Plus Jakarta Sans, sans-serif"
+    fontFamily: "Montserrat, sans-serif"
     fontSize: "2.25rem"
     fontWeight: 700
     lineHeight: 1.1
     letterSpacing: "-0.01em"
   headline:
-    fontFamily: "Plus Jakarta Sans, sans-serif"
+    fontFamily: "Montserrat, sans-serif"
     fontSize: "1.5rem"
     fontWeight: 700
     lineHeight: 1.2
     letterSpacing: "-0.01em"
   title:
-    fontFamily: "Plus Jakarta Sans, sans-serif"
+    fontFamily: "Montserrat, sans-serif"
     fontSize: "1.125rem"
     fontWeight: 600
     lineHeight: 1.33
     letterSpacing: "-0.01em"
   body:
-    fontFamily: "Plus Jakarta Sans, sans-serif"
+    fontFamily: "Montserrat, sans-serif"
     fontSize: "0.875rem"
     fontWeight: 400
     lineHeight: 1.43
   label:
-    fontFamily: "Plus Jakarta Sans, sans-serif"
+    fontFamily: "Montserrat, sans-serif"
     fontSize: "0.75rem"
     fontWeight: 600
     lineHeight: 1
@@ -53,8 +52,8 @@ spacing:
   lg: "24px"
 components:
   button-primary:
-    backgroundColor: "{colors.operational-orange}"
-    textColor: "#ffffff"
+    backgroundColor: "{colors.ofix-yellow}"
+    textColor: "#0f171f"
     rounded: "{rounded.sm}"
     padding: "0 16px"
     height: "40px"
@@ -66,13 +65,15 @@ components:
     padding: "20px"
 ---
 
-# Design System: Ax Oficina
+# Design System: Ofix
+
+> Identidade vigente: pasta `/Logo` (prancha de marca). Grafite `#0F171F`, cinza `#27323D`, amarelo `#FFBE00`, off-white `#F4F6F8`; Montserrat. Sidebar sempre grafite, botão primário amarelo com texto grafite, texto/link em amarelo usa `--primary-ink` (`#7A5800`) no tema claro. Logo: `components/brand/ofix-logo.tsx` e `public/brand/*.svg`.
 
 ## Overview
 
 **Creative North Star: "The Calm Shop Floor"**
 
-Ax Oficina rejects two ruts at once: the generic Tailwind-starter-kit look the product shipped with, and any theatrical "mechanic shop" costume (wrenches, caution-stripe yellow-and-black). What replaces both is the restraint of the best operational SaaS panels — a near-white/near-black neutral scale, a single confident accent reserved for action and real state, and typography carrying the entire hierarchy. The finish bar is explicitly Linear: full fidelity to that level of polish and calm, no ironic or "customized" flourish layered on top.
+Ofix rejects two ruts at once: the generic Tailwind-starter-kit look the product shipped with, and any theatrical "mechanic shop" costume (wrenches, caution-stripe yellow-and-black). What replaces both is the restraint of the best operational SaaS panels — a near-white/near-black neutral scale, a single confident accent reserved for action and real state, and typography carrying the entire hierarchy. The finish bar is explicitly Linear: full fidelity to that level of polish and calm, no ironic or "customized" flourish layered on top.
 
 The system was built code-led (no comp), refined and finish-reviewed in this session: a calm hairline-and-soft-shadow elevation model, one authored entrance motion, tabular-numeral KPI typography, and — as of this review — color that communicates only real state, never decoration or position. An empty state is not automatically "success"; a KPI tile's icon chip is not colored unless it represents a genuine warning, danger, success, or the one reserved primary/active accent.
 
@@ -113,7 +114,7 @@ Each state color ships three steps — `-subtle` (tinted background), the solid 
 
 ## Typography
 
-**Family:** Plus Jakarta Sans (weights 400/500/600/700/800), loaded via `next/font/google`, with `font-feature-settings: 'cv11', 'ss01'` enabled globally and system `sans-serif` as fallback. One family for the whole system — no separate display face.
+**Family:** Montserrat (weights 400/500/600/700/800), loaded via `next/font/google`, with `font-feature-settings: 'cv11', 'ss01'` enabled globally and system `sans-serif` as fallback. One family for the whole system — no separate display face.
 
 **Character:** A clean, slightly geometric grotesk at every scale; the hierarchy comes from size, weight, and tracking, not from mixing faces.
 
