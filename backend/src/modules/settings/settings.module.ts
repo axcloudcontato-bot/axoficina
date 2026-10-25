@@ -11,6 +11,6 @@ import { WhatsAppSettingsController } from './controllers/whatsapp-settings.cont
   imports: [IamModule],
   controllers: [SettingsController, WhatsAppSettingsController],
   providers: [SettingsManager, SecretEncryptionService, TenantMailerService, WaAkgService],
-  exports: [TenantMailerService, WaAkgService],
+  exports: [TenantMailerService, WaAkgService, SecretEncryptionService],
 })
 export class SettingsModule {}

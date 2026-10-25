@@ -1,5 +1,9 @@
 export const RELEASE_NOTES = [
   {
+    id: '2026-10-25-avaliacao-servico', date: '2026-10-25', title: 'Avaliação do serviço após a entrega',
+    items: ['Ao registrar a entrega da OS, o cliente recebe pelo WhatsApp uma avaliação de 1 a 5 estrelas, de Ruim a Ótimo.', 'A nota fica registrada na OS e a resposta aparece no sino de notificações.'],
+  },
+  {
     id: '2026-10-25-confirmacao-resposta', date: '2026-10-25', title: 'Confirmações do WhatsApp mais objetivas',
     items: ['Após responder por um botão, o cliente recebe a confirmação da escolha sem repetir a pergunta original.'],
   },

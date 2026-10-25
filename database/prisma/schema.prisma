@@ -298,7 +298,10 @@ model ServiceOrderStatusNotification {
   tenantId       String    @map("tenant_id") @db.Uuid
   serviceOrderId String    @map("service_order_id") @db.Uuid
   customerId     String    @map("customer_id") @db.Uuid
-  historyId      String    @unique @map("history_id") @db.Uuid
+  historyId      String    @map("history_id") @db.Uuid
+  kind           String    @default("STATUS")
+  customerMessageId String? @map("customer_message_id") @db.Uuid
+  responseToken  String?   @map("response_token")
   fromStatus     String?   @map("from_status")
   toStatus       String    @map("to_status")
   recipient      String
@@ -311,6 +314,7 @@ model ServiceOrderStatusNotification {
   sentAt         DateTime? @map("sent_at") @db.Timestamptz
   createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz
 
+  @@unique([historyId, kind], map: "service_order_notices_history_kind_key")
   @@index([tenantId, serviceOrderId, createdAt], map: "service_order_status_notifications_tenant_id_service_order_id_c")
   @@index([status, createdAt, id])
   @@index([serviceOrderId, status, createdAt, id], map: "service_order_status_notifications_service_order_id_status_crea")

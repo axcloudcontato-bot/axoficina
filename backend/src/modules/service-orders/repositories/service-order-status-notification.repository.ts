@@ -1,23 +1,26 @@
 import { Injectable } from '@nestjs/common';
+import { createHash, randomBytes } from 'node:crypto';
 import type { PrismaClient, ServiceOrder, ServiceOrderStatusNotification } from '@oficina/database';
-import type { ServiceOrderStatus } from '@oficina/contracts';
+import { SERVICE_RATING_OPTIONS, SERVICE_RATING_QUESTION, type ServiceOrderStatus } from '@oficina/contracts';
 import { PrismaService } from '../../../shared/prisma/prisma.service';
 import { whatsappRecipient } from '../../settings/services/whatsapp-recipient';
 import { serviceOrderStatusMessage } from '../services/service-order-status-message';
+import { serviceRatingMessage } from '../services/service-rating-message';
+import { SecretEncryptionService } from '../../settings/services/secret-encryption.service';
 
 @Injectable()
 export class ServiceOrderStatusNotificationRepository {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService, private readonly secrets: SecretEncryptionService) {}
 
   async record(tx: PrismaClient, order: ServiceOrder, event: { id: string; fromStatus: ServiceOrderStatus | null; toStatus: ServiceOrderStatus; changedAt: Date }) {
     const customer = await tx.customer.findFirst({ where: { id: order.customerId, tenantId: order.tenantId, deletedAt: null } });
-    if (!customer?.notifyServiceOrderUpdates) return;
+    if (!customer || (!customer.notifyServiceOrderUpdates && event.toStatus !== 'DELIVERED')) return;
     const [vehicle, tenant] = await Promise.all([
       tx.vehicle.findFirst({ where: { id: order.vehicleId, tenantId: order.tenantId, deletedAt: null } }),
       tx.tenant.findFirst({ where: { id: order.tenantId, deletedAt: null } }),
     ]);
     if (!vehicle || !tenant) return;
-    await tx.serviceOrderStatusNotification.create({ data: {
+    if (customer.notifyServiceOrderUpdates) await tx.serviceOrderStatusNotification.create({ data: {
       tenantId: order.tenantId, serviceOrderId: order.id, customerId: customer.id, historyId: event.id,
       fromStatus: event.fromStatus, toStatus: event.toStatus, occurredAt: event.changedAt,
       recipient: whatsappRecipient(customer.phone) ?? '',
@@ -26,6 +29,21 @@ export class ServiceOrderStatusNotificationRepository {
         expectedDeliveryAt: order.expectedDeliveryAt, complaint: order.customerComplaint,
         fromStatus: event.fromStatus, toStatus: event.toStatus, occurredAt: event.changedAt }),
     } });
+    if (event.toStatus === 'DELIVERED') {
+      const token = randomBytes(32).toString('hex');
+      const message = serviceRatingMessage({ companyName: tenant.name, customerName: customer.name, orderNumber: order.orderNumber, vehicle: `${vehicle.brand} ${vehicle.model}`, plate: vehicle.plate });
+      const recipient = whatsappRecipient(customer.phone) ?? '';
+      const request = await tx.customerMessage.create({ data: {
+        tenantId: order.tenantId, serviceOrderId: order.id, customerId: customer.id, channel: 'WHATSAPP', purpose: 'RATING',
+        deliveryMode: 'WA_AKG', whatsappRecipient: recipient, question: SERVICE_RATING_QUESTION, options: [...SERVICE_RATING_OPTIONS], message,
+        tokenHash: createHash('sha256').update(token).digest('hex'), expiresAt: new Date(event.changedAt.getTime() + 7 * 24 * 60 * 60_000),
+      } });
+      await tx.serviceOrderStatusNotification.create({ data: {
+        tenantId: order.tenantId, serviceOrderId: order.id, customerId: customer.id, historyId: event.id, kind: 'RATING',
+        fromStatus: event.fromStatus, toStatus: event.toStatus, occurredAt: event.changedAt, message, recipient,
+        customerMessageId: request.id, responseToken: this.secrets.encrypt(token),
+      } });
+    }
   }
 
   async list(serviceOrderId: string, offset: number, limit: number) {
@@ -55,8 +73,9 @@ export class ServiceOrderStatusNotificationRepository {
           SELECT 1 FROM service_order_status_notifications earlier
           WHERE earlier.tenant_id = candidate.tenant_id AND earlier.service_order_id = candidate.service_order_id
             AND (earlier.status = 'SENDING' OR (earlier.status = 'PENDING'
-              AND (earlier.created_at, earlier.id) < (candidate.created_at, candidate.id)))
-        ) ORDER BY candidate.created_at, candidate.id LIMIT 1 FOR UPDATE OF candidate SKIP LOCKED
+              AND (earlier.created_at, CASE WHEN earlier.kind = 'STATUS' THEN 0 ELSE 1 END, earlier.id)
+                < (candidate.created_at, CASE WHEN candidate.kind = 'STATUS' THEN 0 ELSE 1 END, candidate.id)))
+        ) ORDER BY candidate.created_at, CASE WHEN candidate.kind = 'STATUS' THEN 0 ELSE 1 END, candidate.id LIMIT 1 FOR UPDATE OF candidate SKIP LOCKED
       ) RETURNING n.id`;
     return claimed.length ? this.prisma.unscoped.serviceOrderStatusNotification.findFirst({ where: { id: claimed[0].id } }) : null;
   }

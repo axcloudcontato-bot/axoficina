@@ -74,7 +74,7 @@ export class WaAkgService {
       method: 'POST', body: JSON.stringify({
         body: `${input.message}\n\n${input.question}`,
         footer: 'Toque em uma opção para registrar sua resposta. Válido por 7 dias.',
-        buttons: input.options.map((label, index) => ({ type: 'quick_reply', displayText: label, id: `axm:${input.token}:${index}` })),
+        buttons: input.options.length > 3 ? [{ type: 'single_select', displayText: 'Avaliar serviço', title: 'Avaliar serviço', sections: [{ title: 'Escolha sua nota', rows: input.options.map((label, index) => ({ title: label, id: `axm:${input.token}:${index}` })) }] }] : input.options.map((label, index) => ({ type: 'quick_reply', displayText: label, id: `axm:${input.token}:${index}` })),
       }),
     });
     if (!isRecord(result) || result.status !== true) throw new BadGatewayException('O WA-AKG não confirmou o envio. Confira o histórico antes de tentar novamente.');

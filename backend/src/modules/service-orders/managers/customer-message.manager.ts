@@ -29,6 +29,7 @@ export class CustomerMessageManager {
   ) {}
 
   async create(user: AuthenticatedUser, input: CreateCustomerMessageRequest): Promise<CreatedCustomerMessageResponse> {
+    if (input.purpose === 'RATING') throw new BadRequestException('A avaliação é enviada automaticamente após a entrega da OS.');
     if (input.purpose === 'QUOTE') input = { ...input, question: QUOTE_APPROVAL_QUESTION, options: [...QUOTE_APPROVAL_OPTIONS], includeQuote: true };
     const { serviceOrder: order } = await this.orders.getById(input.serviceOrderId);
     if (order.status === 'CANCELLED') throw new BadRequestException('Não é possível solicitar respostas para uma OS cancelada.');
@@ -158,7 +159,7 @@ export class CustomerMessageManager {
   }
 
   async answerFromWhatsApp(tenantId: string, sessionId: string, sender: string, content: string) {
-    const match = /^axm:([a-f0-9]{64}):([0-2])$/.exec(content);
+    const match = /^axm:([a-f0-9]{64}):([0-4])$/.exec(content);
     if (!match) return { received: true, recorded: false, reason: 'UNRECOGNIZED_BUTTON' };
     const [, token, option] = match;
     const record = await this.messages.byTokenHash(hashToken(token));

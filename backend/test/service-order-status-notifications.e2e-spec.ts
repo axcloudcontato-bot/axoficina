@@ -10,13 +10,15 @@ import { AuditLogService } from '../src/shared/audit-log/audit-log.service';
 import { WaAkgService } from '../src/modules/settings/services/wa-akg.service';
 import { ServiceOrderStatusNotificationService } from '../src/modules/service-orders/services/service-order-status-notification.service';
 import { ServiceOrderStatusNotificationRepository } from '../src/modules/service-orders/repositories/service-order-status-notification.repository';
+import { CustomerMessageManager } from '../src/modules/service-orders/managers/customer-message.manager';
+import { SecretEncryptionService } from '../src/modules/settings/services/secret-encryption.service';
 import { generateValidCpf } from './utils/generate-cpf';
 
 describe('Automatic WhatsApp status notices (HTTP + PostgreSQL)', () => {
   let app: INestApplication; let prisma: PrismaService; let dispatcher: ServiceOrderStatusNotificationService;
   const tenants: string[] = []; const tokens: string[] = []; const currentOrders: string[] = [];
   let customerId: string; let vehicleId: string; let sequence = 0;
-  const whatsapp = { getConnection: jest.fn().mockImplementation(async (tenantId: string) => ({ sessionId: tenantId })), sendNotice: jest.fn().mockResolvedValue(undefined) };
+  const whatsapp = { getConnection: jest.fn().mockImplementation(async (tenantId: string) => ({ sessionId: tenantId })), sendNotice: jest.fn().mockResolvedValue(undefined), sendButtons: jest.fn().mockResolvedValue({ providerMessageId: 'rating-provider-id' }), sendConfirmation: jest.fn().mockResolvedValue(undefined) };
   beforeAll(async () => {
     const fixture = await Test.createTestingModule({ imports: [AppModule] })
       .overrideProvider(WaAkgService).useValue(whatsapp).overrideProvider(AuditLogService).useValue({ record: async () => undefined }).compile();
@@ -28,16 +30,20 @@ describe('Automatic WhatsApp status notices (HTTP + PostgreSQL)', () => {
     }
   });
   beforeEach(async () => {
-    jest.clearAllMocks(); whatsapp.getConnection.mockImplementation(async (tenantId: string) => ({ sessionId: tenantId })); whatsapp.sendNotice.mockResolvedValue(undefined);
+    jest.clearAllMocks(); whatsapp.getConnection.mockImplementation(async (tenantId: string) => ({ sessionId: tenantId })); whatsapp.sendNotice.mockResolvedValue(undefined); whatsapp.sendButtons.mockResolvedValue({ providerMessageId: 'rating-provider-id' });
     currentOrders.length = 0;
     const customer = await post('customers', { type: 'PF', name: 'Cliente Avisos', phone: '11999998888', preferred_contact_channel: 'WHATSAPP' }).expect(201); customerId = customer.body.customer.id;
     const vehicle = await prisma.unscoped.vehicle.create({ data: { tenantId: tenants[0], customerId, brand: 'Honda', model: 'Fit', plate: `NTF${String(++sequence).padStart(4, '0')}` } }); vehicleId = vehicle.id;
   });
-  afterEach(async () => { await prisma.unscoped.serviceOrderStatusNotification.deleteMany({ where: { serviceOrderId: { in: currentOrders }, tenantId: { in: tenants } } }); });
+  afterEach(async () => {
+    await prisma.unscoped.serviceOrderStatusNotification.deleteMany({ where: { serviceOrderId: { in: currentOrders }, tenantId: { in: tenants } } });
+    await prisma.unscoped.customerMessage.deleteMany({ where: { serviceOrderId: { in: currentOrders }, tenantId: { in: tenants } } });
+  });
   afterAll(async () => {
     if (prisma && tenants.length) {
       const ids = (await prisma.unscoped.serviceOrder.findMany({ where: { tenantId: { in: tenants } }, select: { id: true } })).map(order => order.id);
       await prisma.unscoped.serviceOrderStatusNotification.deleteMany({ where: { tenantId: { in: tenants } } });
+      await prisma.unscoped.customerMessage.deleteMany({ where: { tenantId: { in: tenants } } });
       await prisma.unscoped.serviceOrderPhoto.deleteMany({ where: { tenantId: { in: tenants } } });
       await prisma.unscoped.serviceOrderStatusHistory.deleteMany({ where: { serviceOrderId: { in: ids } } });
       await prisma.unscoped.serviceOrder.deleteMany({ where: { tenantId: { in: tenants } } });
@@ -75,8 +81,9 @@ describe('Automatic WhatsApp status notices (HTTP + PostgreSQL)', () => {
     expected.forEach((title, index) => expect(whatsapp.sendNotice.mock.calls[index][2]).toContain(`*${title}*`));
     expect(whatsapp.sendNotice.mock.calls[0]).toEqual([expect.objectContaining({ sessionId: tenants[0] }), '5511999998888@s.whatsapp.net', expect.stringContaining('*Solicitação:* Revisão dos freios')]);
     await drain(); expect(whatsapp.sendNotice).toHaveBeenCalledTimes(7);
-    const history = await list(id).expect(200); expect(history.body.total).toBe(7); expect(history.body.items.every((record: { status: string }) => record.status === 'SENT')).toBe(true);
-    await post('service-orders/transition', { id, to_status: 'IN_PROGRESS' }).expect(400); expect((await list(id)).body.total).toBe(7);
+    expect(whatsapp.sendButtons).toHaveBeenCalledTimes(1);
+    const history = await list(id).expect(200); expect(history.body.total).toBe(8); expect(history.body.items.every((record: { status: string }) => record.status === 'SENT')).toBe(true);
+    await post('service-orders/transition', { id, to_status: 'IN_PROGRESS' }).expect(400); expect((await list(id)).body.total).toBe(8);
   });
 
   it('only notifies the winning transition and only once across concurrent dispatchers', async () => {
@@ -134,5 +141,72 @@ describe('Automatic WhatsApp status notices (HTTP + PostgreSQL)', () => {
     expect((await prisma.unscoped.serviceOrder.findFirstOrThrow({ where: { id } })).status).toBe('OPEN');
     expect(await prisma.unscoped.serviceOrderStatusHistory.count({ where: { serviceOrderId: id } })).toBe(1);
     expect((await list(id)).body.total).toBe(1); expect(whatsapp.sendNotice).not.toHaveBeenCalled();
+  });
+
+  async function readyForDelivery() {
+    const id = await open(); await photos(id, 'ENTRY'); await photos(id, 'EXIT');
+    for (const status of ['IN_PROGRESS', 'COMPLETED']) await post('service-orders/transition', { id, to_status: status }).expect(200);
+    return id;
+  }
+
+  it.each([0, 1, 2, 3, 4])('automatically requests a rating after delivery, independently of status opt-in, and records option %s once', async option => {
+    const id = await readyForDelivery(); expect((await list(id)).body.total).toBe(0);
+    const changes = await Promise.all([post('service-orders/transition', { id, to_status: 'DELIVERED' }), post('service-orders/transition', { id, to_status: 'DELIVERED' })]);
+    expect(changes.filter(result => result.status === 200)).toHaveLength(1);
+    await Promise.all([dispatcher.dispatchPending(), dispatcher.dispatchPending()]); await drain();
+    expect(whatsapp.sendNotice).not.toHaveBeenCalled(); expect(whatsapp.sendButtons).toHaveBeenCalledTimes(1);
+    const input = whatsapp.sendButtons.mock.calls[0][1];
+    expect(input.message).toContain('*AVALIE NOSSO SERVIÇO*'); expect(input.options).toHaveLength(5);
+    expect(input.options[0]).toContain('Ruim'); expect(input.options[4]).toContain('Ótimo');
+    const handler = app.get(CustomerMessageManager); const content = `axm:${input.token}:${option}`;
+    await expect(handler.answerFromWhatsApp(tenants[1], tenants[0], input.recipient, content)).resolves.toMatchObject({ recorded: false });
+    await expect(handler.answerFromWhatsApp(tenants[0], 'another-session', input.recipient, content)).resolves.toMatchObject({ recorded: false });
+    await expect(handler.answerFromWhatsApp(tenants[0], tenants[0], '5511888887777@s.whatsapp.net', content)).resolves.toMatchObject({ recorded: false });
+    await expect(handler.answerFromWhatsApp(tenants[0], tenants[0], input.recipient, `axm:${input.token}:5`)).resolves.toMatchObject({ recorded: false });
+    await expect(handler.answerFromWhatsApp(tenants[0], tenants[0], input.recipient, content)).resolves.toMatchObject({ recorded: true, confirmation: 'sent' });
+    await expect(handler.answerFromWhatsApp(tenants[0], tenants[0], input.recipient, content)).resolves.toMatchObject({ recorded: true, confirmation: 'already_recorded' });
+    await expect(handler.answerFromWhatsApp(tenants[0], tenants[0], input.recipient, `axm:${input.token}:${(option + 1) % 5}`)).resolves.toMatchObject({ recorded: false });
+    expect(whatsapp.sendConfirmation).toHaveBeenCalledTimes(1);
+    const history = await list(id).expect(200); expect(history.body.total).toBe(1);
+    expect(history.body.items[0]).toMatchObject({ kind: 'RATING', status: 'SENT', rating: option + 1 });
+    expect(JSON.stringify(history.body)).not.toContain(input.token);
+    const notifications = await request(app.getHttpServer()).get('/api/v1/customer-reply-notifications').set('Authorization', `Bearer ${tokens[0]}`).expect(200);
+    expect(notifications.body.items.some((item: { service_order_id: string; selected_option: string }) => item.service_order_id === id && item.selected_option === input.options[option])).toBe(true);
+    const other = await request(app.getHttpServer()).get('/api/v1/customer-reply-notifications').set('Authorization', `Bearer ${tokens[1]}`).expect(200);
+    expect(other.body.items).toHaveLength(0);
+    await list(id, tokens[1]).expect(404);
+  });
+
+  it('keeps delivery successful on rating failures and retries the original request without generating another token or question', async () => {
+    const id = await readyForDelivery(); whatsapp.sendButtons.mockRejectedValueOnce(new Error('timeout-private-key'));
+    await post('service-orders/transition', { id, to_status: 'DELIVERED' }).expect(200); await drain();
+    expect((await prisma.unscoped.serviceOrder.findFirstOrThrow({ where: { id } })).status).toBe('DELIVERED');
+    const failed = (await list(id)).body.items[0]; expect(failed).toMatchObject({ kind: 'RATING', status: 'FAILED', attempts: 1 });
+    expect(JSON.stringify(failed)).not.toContain('timeout-private-key');
+    await drain(); expect(whatsapp.sendButtons).toHaveBeenCalledTimes(1);
+    await post('service-orders/status-notifications/retry', { id: failed.id, confirm_resend: true }).expect(200);
+    await drain(); expect(whatsapp.sendButtons).toHaveBeenCalledTimes(2);
+    expect(whatsapp.sendButtons.mock.calls[1][1]).toEqual(whatsapp.sendButtons.mock.calls[0][1]);
+    expect(await prisma.unscoped.customerMessage.count({ where: { serviceOrderId: id, purpose: 'RATING' } })).toBe(1);
+    expect((await list(id)).body.items[0]).toMatchObject({ id: failed.id, status: 'SENT', attempts: 2 });
+  });
+
+  it('skips expired ratings and rejects expired retries', async () => {
+    const id = await readyForDelivery(); await post('service-orders/transition', { id, to_status: 'DELIVERED' }).expect(200);
+    const message = await prisma.unscoped.customerMessage.findFirstOrThrow({ where: { serviceOrderId: id, purpose: 'RATING' } });
+    await prisma.unscoped.customerMessage.update({ where: { id: message.id }, data: { expiresAt: new Date(Date.now() - 1000) } });
+    await drain(); expect(whatsapp.sendButtons).not.toHaveBeenCalled();
+    const notice = (await list(id)).body.items[0]; expect(notice.status).toBe('SKIPPED');
+    expect(notice.failure_reason).toContain('sete dias');
+    await post('service-orders/status-notifications/retry', { id: notice.id, confirm_resend: true }).expect(400);
+  });
+
+  it('rolls back delivery and the rating request together if the durable token cannot be saved', async () => {
+    const id = await readyForDelivery();
+    const spy = jest.spyOn(app.get(SecretEncryptionService), 'encrypt').mockImplementationOnce(() => { throw new Error('simulated token storage failure'); });
+    await post('service-orders/transition', { id, to_status: 'DELIVERED' }).expect(500); spy.mockRestore();
+    expect((await prisma.unscoped.serviceOrder.findFirstOrThrow({ where: { id } })).status).toBe('COMPLETED');
+    expect(await prisma.unscoped.customerMessage.count({ where: { serviceOrderId: id } })).toBe(0);
+    expect((await list(id)).body.total).toBe(0);
   });
 });

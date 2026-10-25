@@ -1,8 +1,11 @@
-export const CUSTOMER_MESSAGE_PURPOSES = ['QUOTE', 'SCHEDULE', 'PICKUP', 'CUSTOM'] as const;
+export const CUSTOMER_MESSAGE_PURPOSES = ['QUOTE', 'SCHEDULE', 'PICKUP', 'CUSTOM', 'RATING'] as const;
 export type CustomerMessagePurpose = typeof CUSTOMER_MESSAGE_PURPOSES[number];
 
 export const QUOTE_APPROVAL_QUESTION = 'Você aprova este orçamento para realizarmos o serviço?';
 export const QUOTE_APPROVAL_OPTIONS = ['Aprovar orçamento', 'Não aprovar', 'Falar com a oficina'];
+
+export const SERVICE_RATING_QUESTION = 'Como você avalia o serviço realizado pela nossa oficina?';
+export const SERVICE_RATING_OPTIONS = ['⭐ 1 — Ruim', '⭐⭐ 2 — Regular', '⭐⭐⭐ 3 — Bom', '⭐⭐⭐⭐ 4 — Muito bom', '⭐⭐⭐⭐⭐ 5 — Ótimo'];
 
 export interface CustomerMessageQuote {
   orderNumber: number;

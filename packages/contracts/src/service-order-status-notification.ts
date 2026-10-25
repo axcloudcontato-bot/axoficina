@@ -4,6 +4,9 @@ import type { ServiceOrderStatus } from './response/service-order.response';
 export type ServiceOrderStatusNotificationStatus = 'PENDING' | 'SENDING' | 'SENT' | 'FAILED' | 'SKIPPED';
 export interface ServiceOrderStatusNotificationResponse {
   id: string;
+  kind?: 'STATUS' | 'RATING';
+  rating?: number;
+  answeredAt?: string;
   fromStatus?: ServiceOrderStatus;
   toStatus: ServiceOrderStatus;
   status: ServiceOrderStatusNotificationStatus;

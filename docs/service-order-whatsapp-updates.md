@@ -29,6 +29,8 @@ Para falar sobre o atendimento ou ajustar os avisos, entre em contato com a ofic
 
 ## Entrega e recuperação
 
+A [avaliação pós-entrega](service-ratings.md) é uma comunicação separada: ao registrar a OS como Entregue, o sistema solicita uma nota de 1 a 5 estrelas, independentemente da opção de avisos de status.
+
 O aviso é salvo na mesma transação do status e do histórico, com uma chave única por movimentação. O processamento em segundo plano consulta os pendentes a cada cinco segundos e faz o envio pelo WA-AKG. A disputa de envio é atômica e preserva a ordem de cada OS, inclusive com mais de uma instância da aplicação. Repetir a leitura da fila não reenvia avisos já confirmados.
 
 Antes de enviar, o sistema confere novamente cliente, oficina, OS, preferência e telefone. Desativar a opção interrompe avisos pendentes; eventos futuros não são criados. Se o telefone mudou, avisos preparados para o número anterior são ignorados. Um envio que já estava em andamento pode chegar antes da desativação ser processada.

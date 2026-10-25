@@ -104,3 +104,28 @@ test('the OS shows failures, a WhatsApp bold preview and an explicit retry that 
   await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await page.screenshot({ path: 'artifacts/service-order-status-notifications-mobile.png', fullPage: true });
 });
+
+test('a post-delivery rating updates from awaiting response to five stars on mobile', async ({ page }) => {
+  const state = await setup(page);
+  Object.assign(state.notice, { kind: 'RATING', status: 'SENT', to_status: 'DELIVERED', failure_reason: '', message: '*AVALIE NOSSO SERVIÇO*\n\n*OS:* #00004\n\nEscolha de *1 a 5 estrelas*.' });
+  await page.setViewportSize({ width: 390, height: 844 }); await page.goto('/service-orders/order-1');
+  const section = page.getByRole('region', { name: 'Avisos automáticos ao cliente' });
+  await expect(section.getByText('Avaliação pós-entrega enviada. Aguardando resposta do cliente.', { exact: true })).toBeVisible();
+  await section.getByRole('button', { name: /Ver avisos/ }).click();
+  await expect(section.getByText('Avaliação pós-entrega', { exact: true })).toBeVisible();
+  Object.assign(state.notice, { rating: 5, answered_at: '2026-10-25T15:01:00Z' });
+  await page.clock.fastForward(10_100);
+  await expect(section.getByRole('status')).toContainText('Avaliação do cliente: ⭐⭐⭐⭐⭐ (5/5)');
+  await expect(section.getByText('Respondida', { exact: true })).toBeVisible();
+  await expect(section.getByText('Avaliação pós-entrega enviada. Aguardando resposta do cliente.', { exact: true })).toHaveCount(0);
+  await expect(section.getByRole('button', { name: 'Reenviar aviso', exact: true })).toHaveCount(0);
+  for (const width of [320, 390, 1440]) {
+    await page.setViewportSize({ width, height: 900 });
+    await expect(page.locator('#main-content').locator('..')).toHaveCSS('padding-left', width >= 768 ? '256px' : '0px');
+    await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  }
+  await page.setViewportSize({ width: 390, height: 900 });
+  await expect(page.locator('#main-content').locator('..')).toHaveCSS('padding-left', '0px');
+  await section.scrollIntoViewIfNeeded();
+  await page.screenshot({ path: 'artifacts/service-rating-mobile.png' });
+});

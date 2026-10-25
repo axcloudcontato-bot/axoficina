@@ -1,5 +1,6 @@
 import { ConfigService } from '@nestjs/config';
 import { createHmac } from 'node:crypto';
+import { SERVICE_RATING_OPTIONS } from '@oficina/contracts';
 import { WaAkgService } from './wa-akg.service';
 import { SecretEncryptionService } from './secret-encryption.service';
 
@@ -45,6 +46,17 @@ describe('WA-AKG connection', () => {
     await expect(service.sendButtons(connection, { recipient: '5511999998888@s.whatsapp.net', message: 'Orçamento', question: 'Aprova?', options: ['Aprovar', 'Recusar'], token: 'a'.repeat(64) })).resolves.toEqual({ providerMessageId: 'provider-message' });
     expect(fetchMock.mock.calls[0][0]).toBe('https://chat.axcloud.com.br/api/messages/oficina/5511999998888%40s.whatsapp.net/interactive');
     expect(JSON.parse(fetchMock.mock.calls[0][1]!.body as string)).toMatchObject({ body: 'Orçamento\n\nAprova?', buttons: [{ type: 'quick_reply', displayText: 'Aprovar', id: `axm:${'a'.repeat(64)}:0` }, { type: 'quick_reply', displayText: 'Recusar', id: `axm:${'a'.repeat(64)}:1` }] });
+  });
+
+  it('sends all five rating options in one native selection list with distinct response ids', async () => {
+    const fetchMock = jest.spyOn(global, 'fetch').mockResolvedValue(new Response(JSON.stringify({ status: true, data: { key: { id: 'rating-message' } } }), { status: 200 }));
+    const { service } = setup();
+    const connection = (await service.getConnection('tenant-a'))!;
+    await service.sendButtons(connection, { recipient: '5511999998888@s.whatsapp.net', message: '*AVALIE NOSSO SERVIÇO*', question: 'Como você avalia nosso serviço?', options: [...SERVICE_RATING_OPTIONS], token: 'b'.repeat(64) });
+    const payload = JSON.parse(fetchMock.mock.calls[0][1]!.body as string);
+    expect(payload.buttons).toHaveLength(1);
+    expect(payload.buttons[0]).toMatchObject({ type: 'single_select', title: 'Avaliar serviço' });
+    expect(payload.buttons[0].sections[0].rows).toEqual(SERVICE_RATING_OPTIONS.map((title, index) => ({ title, id: `axm:${'b'.repeat(64)}:${index}` })));
   });
 
   it('verifies HMAC over the original bytes and rejects modified bodies or missing signatures', async () => {

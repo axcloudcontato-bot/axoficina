@@ -3,7 +3,7 @@ import { Transform } from 'class-transformer';
 import { CUSTOMER_MESSAGE_PURPOSES, type CreateCustomerMessageRequest } from '@oficina/contracts';
 
 export class CreateCustomerMessageDto implements CreateCustomerMessageRequest {
-  @IsOptional() @IsIn(CUSTOMER_MESSAGE_PURPOSES) purpose?: CreateCustomerMessageRequest['purpose'];
+  @IsOptional() @IsIn(CUSTOMER_MESSAGE_PURPOSES.filter(purpose => purpose !== 'RATING')) purpose?: CreateCustomerMessageRequest['purpose'];
   @IsOptional() @IsString() @Matches(/^[a-f0-9]{64}$/) expectedQuoteRevision?: string;
   @IsUUID() serviceOrderId!: string;
   @IsIn(['EMAIL', 'WHATSAPP']) channel!: 'EMAIL' | 'WHATSAPP';
@@ -20,7 +20,7 @@ export class CustomerMessageTokenDto {
 }
 
 export class AnswerCustomerMessageDto extends CustomerMessageTokenDto {
-  @IsInt() @Min(0) @Max(2) selectedOption!: number;
+  @IsInt() @Min(0) @Max(4) selectedOption!: number;
 }
 
 export class ListCustomerMessagesDto {
