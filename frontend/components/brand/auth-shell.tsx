@@ -5,11 +5,11 @@ import { OfixLogo } from './ofix-logo';
 export function AuthShell({ title, description, children, footer }: { title: string; description: string; children: ReactNode; footer: ReactNode }) {
   return (
     <main id="main-content" tabIndex={-1} className="grid min-h-screen bg-bg lg:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)]">
-      <section className="dark relative hidden overflow-hidden bg-background text-foreground lg:flex lg:flex-col lg:justify-center lg:px-16 xl:px-24">
-        <svg aria-hidden viewBox="0 0 400 800" preserveAspectRatio="xMaxYMid slice" className="pointer-events-none absolute inset-y-0 right-0 h-full w-36 xl:w-52">
-          <path d="M400 0H300L170 220 300 440 170 660 270 800H400Z" fill="#27323d" opacity="0.55" />
-          <path d="M400 80H350L250 260 350 440 250 620 300 700H400Z" fill="#ffbe00" />
-          <path d="M330 0L190 250 330 500 190 750" fill="none" stroke="#ffbe00" strokeWidth="1.5" opacity="0.7" />
+      <section className="dark relative hidden overflow-hidden bg-background text-foreground lg:flex lg:flex-col lg:justify-center lg:px-16 lg:[clip-path:polygon(0_0,calc(100%-120px)_0,100%_50%,calc(100%-120px)_100%,0_100%)] xl:px-24">
+        <svg aria-hidden viewBox="0 0 160 800" preserveAspectRatio="none" className="pointer-events-none absolute inset-y-0 right-0 h-full w-40 [mask-image:linear-gradient(to_right,transparent,black_45%)]">
+          <path d="M-70 0H-10L110 400-10 800H-70L50 400Z" transform="translate(50 0)" fill="#27323d" />
+          <path d="M22 0L142 400 22 800" fill="none" stroke="#ffbe00" strokeWidth="4" vectorEffect="non-scaling-stroke" />
+          <path d="M-8 0L112 400-8 800" fill="none" stroke="#ffbe00" strokeWidth="1.5" opacity="0.5" vectorEffect="non-scaling-stroke" />
         </svg>
         <div className="relative max-w-sm">
           <OfixLogo tagline className="w-full max-w-sm text-white" />
