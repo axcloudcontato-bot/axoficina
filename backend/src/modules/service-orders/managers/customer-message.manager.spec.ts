@@ -100,7 +100,7 @@ describe('Customer message replies', () => {
     await expect(manager.answerFromWhatsApp(user.tenantId, 'oficina', record.whatsappRecipient!, `axm:${token}:1`)).resolves.toMatchObject({ recorded: false });
     expect(messages.answer).toHaveBeenCalledTimes(1);
     expect(whatsapp.sendConfirmation).toHaveBeenCalledTimes(1);
-    expect(whatsapp.sendConfirmation).toHaveBeenCalledWith(expect.any(Object), record.whatsappRecipient, record.question, 'Sim');
+    expect(whatsapp.sendConfirmation).toHaveBeenCalledWith(expect.any(Object), record.whatsappRecipient, 'Sim');
   });
 
   it('preserves the choice and acknowledges the webhook when sending the confirmation fails', async () => {

@@ -175,7 +175,7 @@ export class CustomerMessageManager {
       try {
         const connection = await this.whatsapp.getConnection(tenantId);
         if (!connection || connection.sessionId !== sessionId) throw new Error('Session changed');
-        await this.whatsapp.sendConfirmation(connection, sender, message.question, message.options[Number(option)]);
+        await this.whatsapp.sendConfirmation(connection, sender, message.options[Number(option)]);
         return { received: true, recorded: true, confirmation: 'sent' };
       } catch {
         this.logger.warn(`Resposta registrada; confirmação WhatsApp não confirmada para mensagem ${message.id}.`);

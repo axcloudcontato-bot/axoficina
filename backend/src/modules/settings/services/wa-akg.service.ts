@@ -83,8 +83,8 @@ export class WaAkgService {
     return { providerMessageId: key && typeof key.id === 'string' ? key.id : undefined };
   }
 
-  async sendConfirmation(connection: WaAkgConnection, recipient: string, question: string, option: string) {
-    return this.sendNotice(connection, recipient, `Sua resposta foi registrada: ${option}.\n\nPergunta: ${question}\n\nA equipe da oficina recebeu sua escolha.`);
+  async sendConfirmation(connection: WaAkgConnection, recipient: string, option: string) {
+    return this.sendNotice(connection, recipient, `Sua resposta foi registrada: ${option}.\n\nA equipe da oficina recebeu sua escolha.`);
   }
 
   async sendNotice(connection: WaAkgConnection, recipient: string, text: string) {

@@ -1,5 +1,9 @@
 export const RELEASE_NOTES = [
   {
+    id: '2026-10-25-confirmacao-resposta', date: '2026-10-25', title: 'Confirmações do WhatsApp mais objetivas',
+    items: ['Após responder por um botão, o cliente recebe a confirmação da escolha sem repetir a pergunta original.'],
+  },
+  {
     id: '2026-10-25-largura-painel', date: '2026-10-25', title: 'Mais espaço para trabalhar no desktop',
     items: ['As telas do painel aproveitam toda a largura disponível, com margens laterais menores em monitores grandes.'],
   },
