@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import type { CustomerAddress } from '@oficina/contracts';
 import { Prisma } from '@oficina/database';
 import { PrismaService } from '../../../shared/prisma/prisma.service';
+import { TenantContextService } from '../../../shared/tenant-context/tenant-context.service';
 
 export interface CreateCustomerInput {
   // O Prisma Middleware sobrescreve isto com o tenant do contexto ativo em
@@ -49,7 +50,33 @@ export interface ListCustomersResult<T> {
 export class CustomerRepository {
   private readonly logger = new Logger(CustomerRepository.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService, private readonly tenantContext: TenantContextService) {}
+
+  private async searchFilter(search: string): Promise<Prisma.CustomerWhereInput> {
+    const term = search.trim();
+    const digits = term.replace(/\D/g, '');
+    const numeric = /^[\d\s()+./-]+$/.test(term) && Boolean(digits);
+    const OR: Prisma.CustomerWhereInput[] = [
+      { name: { contains: term, mode: 'insensitive' } },
+      { document: { contains: numeric ? digits : term } },
+      { email: { contains: term, mode: 'insensitive' } },
+      { phone: { contains: term } },
+    ];
+    if (numeric && digits.length >= 8) {
+      // Phone numbers are stored with different masks. Raw queries do not
+      // receive Prisma's tenant extension, so scope this lookup explicitly.
+      const tenantId = this.tenantContext.getStore()?.tenantId;
+      if (!tenantId) throw new Error('Busca de contatos exige contexto de oficina.');
+      const national = digits.startsWith('55') && [12, 13].includes(digits.length) ? digits.slice(2) : digits;
+      const matches = await this.prisma.client.$queryRaw<Array<{ id: string }>>(Prisma.sql`
+        SELECT id FROM customers WHERE tenant_id = ${tenantId}::uuid AND deleted_at IS NULL
+          AND regexp_replace(phone, '[^0-9]', '', 'g') LIKE ${`%${national}%`}
+        ORDER BY created_at DESC LIMIT 500`);
+      if (matches.length) OR.push({ id: { in: matches.map((item) => item.id) } });
+      if (matches.length === 500) this.logger.warn('Busca por telefone limitada a 500 cadastros.');
+    }
+    return { OR };
+  }
 
   // `this.prisma.client` (tenant-scoped): toda operação de Customer roda
   // dentro de uma requisição autenticada — o Prisma Middleware injeta
@@ -123,7 +150,7 @@ export class CustomerRepository {
     const customers = await this.prisma.client.customer.findMany({
       where: {
         deletedAt: null,
-        OR: [{ name: { contains: search, mode: 'insensitive' as const } }, { document: { contains: search } }],
+        ...await this.searchFilter(search),
       },
       select: { id: true },
       take: limit,
@@ -159,14 +186,7 @@ export class CustomerRepository {
   async listByTenant(offset: number, limit: number, search?: string) {
     const where = {
       deletedAt: null,
-      ...(search
-        ? {
-            OR: [
-              { name: { contains: search, mode: 'insensitive' as const } },
-              { document: { contains: search } },
-            ],
-          }
-        : {}),
+      ...(search ? await this.searchFilter(search) : {}),
     };
 
     const [items, total] = await Promise.all([

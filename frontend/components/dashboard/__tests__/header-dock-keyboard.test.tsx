@@ -16,7 +16,20 @@ vi.mock('@/features/service-orders/hooks/use-service-orders', () => ({ useDueSer
 describe('header keyboard navigation', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    localStorage.clear();
     useAuthStore.setState({ user: { id: 'u1', tenantId: 't1', name: 'Teste', email: 'test@example.invalid', role: 'ADMIN', permissions: [...PERMISSION_KEYS], status: 'active', createdAt: '2026-10-24T00:00:00Z' } });
+  });
+  it('keeps the search field exposed and shows the release history from the header', async () => {
+    const user = userEvent.setup(); render(<HeaderDock />);
+    expect(screen.getByRole('textbox', { name: 'Buscar páginas e ordens de serviço' })).toBeVisible();
+    const updates = screen.getByRole('button', { name: 'Novidades do sistema' });
+    await user.click(updates);
+    expect(screen.getByRole('dialog', { name: 'Novidades do sistema' })).toBeVisible();
+    expect(screen.getByRole('heading', { name: 'Envio de fotos pelo celular' })).toBeVisible();
+    expect(screen.queryByTestId('unread-updates-indicator')).not.toBeInTheDocument();
+    await user.keyboard('{Escape}');
+    await waitFor(() => expect(updates).toHaveFocus());
+    expect(screen.getByRole('textbox', { name: 'Buscar páginas e ordens de serviço' })).toBeVisible();
   });
   it('opens exactly one search input with Ctrl+K, navigates by arrow and restores the original input on Escape', async () => {
     const user = userEvent.setup();

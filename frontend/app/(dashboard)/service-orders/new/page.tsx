@@ -9,6 +9,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { CustomerFormModal } from '@/features/customers/components/CustomerFormModal';
 import { ServiceOrderFormModal } from '@/features/service-orders/components/ServiceOrderFormModal';
 import { VehicleFormModal } from '@/features/vehicles/components/VehicleFormModal';
+import { inferRegistrationField, registrationSeed, type RegistrationSeed } from '@/lib/registration-seed';
 
 type Step = 'customer' | 'vehicle' | 'order' | 'done';
 
@@ -20,9 +21,10 @@ const STEPS: Array<{ id: Exclude<Step, 'done'>; label: string; description: stri
 
 export default function NewServiceOrderPage() {
   const [step, setStep] = useState<Step>('customer');
-  const [customer, setCustomer] = useState<CustomerListItemResponse>();
+  const [customer, setCustomer] = useState<Pick<CustomerListItemResponse, 'id' | 'name'>>();
   const [vehicle, setVehicle] = useState<{ id: string; brand: string; model: string; plate: string; customerId: string; customerName: string }>();
   const [serviceOrder, setServiceOrder] = useState<ServiceOrderListItemResponse>();
+  const [seed, setSeed] = useState<RegistrationSeed>({ customer: {}, vehicle: {} });
   const advancing = useRef(false);
 
   function closeCurrentStep() {
@@ -64,9 +66,9 @@ export default function NewServiceOrderPage() {
         </Card>
       )}
 
-      <CustomerFormModal presentation="page" open={step === 'customer'} onOpenChange={(open) => !open && closeCurrentStep()} onCreated={(created) => { advancing.current = true; setCustomer(created); setStep('vehicle'); }} />
-      <VehicleFormModal presentation="page" open={step === 'vehicle'} onOpenChange={(open) => !open && closeCurrentStep()} initialCustomer={customer ? { id: customer.id, name: customer.name } : undefined} onCreated={(created) => { advancing.current = true; setVehicle(created); setStep('order'); }} />
-      <ServiceOrderFormModal presentation="page" open={step === 'order'} onOpenChange={(open) => !open && closeCurrentStep()} initialCustomer={customer ? { id: customer.id, name: customer.name } : undefined} initialVehicleId={vehicle?.id} initialVehicleLabel={vehicle ? `${vehicle.brand} ${vehicle.model} · ${vehicle.plate}` : undefined} onRequestNewCustomer={() => setStep('customer')} onRequestNewVehicle={() => setStep('vehicle')} onCreated={(created) => { advancing.current = true; setServiceOrder(created); setStep('done'); }} />
+      <CustomerFormModal presentation="page" open={step === 'customer'} initialValues={seed.customer} onOpenChange={(open) => !open && closeCurrentStep()} onCreated={(created) => { advancing.current = true; setCustomer(created); setStep('vehicle'); }} />
+      <VehicleFormModal presentation="page" open={step === 'vehicle'} initialValues={seed.vehicle} onOpenChange={(open) => !open && closeCurrentStep()} initialCustomer={customer ? { id: customer.id, name: customer.name } : undefined} onCreated={(created) => { advancing.current = true; setVehicle(created); setStep('order'); }} />
+      <ServiceOrderFormModal presentation="page" open={step === 'order'} onOpenChange={(open) => !open && closeCurrentStep()} initialCustomer={customer ? { id: customer.id, name: customer.name } : undefined} initialVehicleId={vehicle?.id} initialVehicleLabel={vehicle ? `${vehicle.brand} ${vehicle.model} · ${vehicle.plate}` : undefined} onRequestNewCustomer={(text) => { setSeed(registrationSeed(text, inferRegistrationField(text, 'customer'))); setCustomer(undefined); setVehicle(undefined); setStep('customer'); }} onRequestNewVehicle={(text, owner) => { setSeed(registrationSeed(text, inferRegistrationField(text, 'vehicle'))); if (owner) setCustomer(owner); setVehicle(undefined); setStep('vehicle'); }} onCreated={(created) => { advancing.current = true; setServiceOrder(created); setStep('done'); }} />
     </div>
   );
 }

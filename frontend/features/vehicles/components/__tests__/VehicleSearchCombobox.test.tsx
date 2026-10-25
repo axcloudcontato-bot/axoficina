@@ -57,7 +57,7 @@ describe('VehicleSearchCombobox', () => {
 
     await user.type(screen.getByRole('combobox'), 'Uno');
 
-    expect(await screen.findByRole('option', { name: /Fiat Uno · ABC1D23 — João da Silva/ })).toBeInTheDocument();
+    expect(await screen.findByRole('option', { name: /João da Silva.*Fiat Uno · ABC1D23/ })).toBeInTheDocument();
     expect(vehiclesApi.list).toHaveBeenCalledWith(expect.objectContaining({ search: 'Uno' }));
   });
 
@@ -136,7 +136,7 @@ describe('VehicleSearchCombobox', () => {
 
     await user.type(screen.getByRole('combobox'), 'Uno');
     await user.click(await screen.findByRole('option', { name: /Fiat Uno/ }));
-    expect(screen.getByRole('combobox')).toHaveValue('Fiat Uno · ABC1D23 — João da Silva');
+    expect(screen.getByRole('combobox')).toHaveValue('João da Silva — Fiat Uno · ABC1D23');
 
     await user.click(screen.getByRole('button', { name: /simular reabertura/i }));
 

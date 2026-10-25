@@ -392,7 +392,10 @@ export class ServiceOrderManager {
         this.customerRepository.searchIdsByNameOrDocument(trimmedSearch),
         this.vehicleRepository.searchIdsByPlateOrModel(trimmedSearch),
       ]);
-      search = { orderNumber: /^\d+$/.test(trimmedSearch) ? Number(trimmedSearch) : undefined, matchingCustomerIds, matchingVehicleIds };
+      const number = /^\d+$/.test(trimmedSearch) ? Number(trimmedSearch) : NaN;
+      // CPF/CNPJ and phone searches can exceed the PostgreSQL Int range.
+      const orderNumber = Number.isInteger(number) && number >= 0 && number <= 2_147_483_647 ? number : undefined;
+      search = { orderNumber, matchingCustomerIds, matchingVehicleIds };
     }
     const { items, total } = await this.serviceOrderRepository.listByTenant(
       request.offset,

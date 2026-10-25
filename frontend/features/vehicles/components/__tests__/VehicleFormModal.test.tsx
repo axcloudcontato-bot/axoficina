@@ -61,6 +61,15 @@ const editingVehicle: VehicleListItemResponse = {
 };
 
 describe('VehicleFormModal', () => {
+  it('keeps the searched plate and model when the first FIPE brand is selected', async () => {
+    const user = userEvent.setup();
+    renderWithClient(<VehicleFormModal open onOpenChange={() => {}} initialCustomer={customer} initialValues={{ plate: 'ABC1D23', model: 'Uno de teste' }} />);
+    expect(screen.getByLabelText(/placa/i)).toHaveValue('ABC1D23');
+    expect(screen.getByLabelText(/modelo/i)).toHaveValue('Uno de teste');
+    await user.click(screen.getByLabelText(/marca/i));
+    await user.click(await screen.findByRole('option', { name: 'Fiat' }));
+    expect(screen.getByLabelText(/modelo/i)).toHaveValue('Uno de teste');
+  });
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(customersApi.list).mockResolvedValue({ items: [customer], total: 1, offset: 0, limit: 100, hasMore: false });

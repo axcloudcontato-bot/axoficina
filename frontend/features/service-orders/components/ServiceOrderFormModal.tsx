@@ -1,7 +1,7 @@
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 import { z } from 'zod';
@@ -44,14 +44,17 @@ interface ServiceOrderFormModalProps {
   initialVehicleId?: string;
   initialVehicleLabel?: string;
   initialCustomer?: { id: string; name: string };
-  onRequestNewCustomer?: () => void;
-  onRequestNewVehicle?: () => void;
+  onRequestNewCustomer?: (query: string) => void;
+  onRequestNewVehicle?: (query: string, customer?: { id: string; name: string }) => void;
   onCreated?: (serviceOrder: ServiceOrderListItemResponse) => void;
   presentation?: 'modal' | 'page';
 }
 
 export function ServiceOrderFormModal({ open, onOpenChange, initialVehicleId, initialVehicleLabel, initialCustomer, onRequestNewCustomer, onRequestNewVehicle, onCreated, presentation = 'modal' }: ServiceOrderFormModalProps) {
   const create = useCreateServiceOrder();
+  const [customerQuery, setCustomerQuery] = useState('');
+  const [vehicleQuery, setVehicleQuery] = useState('');
+  const selectedCustomer = useRef(initialCustomer);
 
   const { data: usersData, isLoading: isLoadingTechnicians } = useUsersList({
     offset: 0,
@@ -66,6 +69,7 @@ export function ServiceOrderFormModal({ open, onOpenChange, initialVehicleId, in
 
   useEffect(() => {
     if (open) {
+      setCustomerQuery(''); setVehicleQuery(''); selectedCustomer.current = initialCustomer;
       form.reset({ ...EMPTY_VALUES, customerId: initialCustomer?.id ?? '', vehicleId: initialVehicleId ?? '' });
     }
   }, [open, initialVehicleId, initialCustomer, form]);
@@ -120,8 +124,8 @@ export function ServiceOrderFormModal({ open, onOpenChange, initialVehicleId, in
               name="customerId"
               render={({ field }) => (
                 <FormItem>
-                  <div className="flex items-center justify-between gap-3"><FormLabel>Cliente</FormLabel>{onRequestNewCustomer && <Button type="button" variant="ghost" size="sm" className="h-7 px-2 text-primary" onClick={onRequestNewCustomer}>Cadastrar novo cliente</Button>}</div>
-                  <FormControl><CustomerSearchCombobox value={field.value} initialLabel={initialCustomer?.name} onChange={field.onChange} placeholder="Buscar por nome, CPF ou CNPJ" /></FormControl>
+                  <div className="flex items-center justify-between gap-3"><FormLabel>Cliente</FormLabel>{onRequestNewCustomer && <Button type="button" variant="ghost" size="sm" className="h-7 px-2 text-primary" onClick={() => onRequestNewCustomer(field.value ? '' : customerQuery)}>Cadastrar novo cliente</Button>}</div>
+                  <FormControl><CustomerSearchCombobox value={field.value} initialLabel={initialCustomer?.name} onSearchChange={setCustomerQuery} onChange={(id, customer) => { selectedCustomer.current = customer ? { id: customer.id, name: customer.name } : undefined; field.onChange(id); }} placeholder="Buscar por nome, CPF ou CNPJ" /></FormControl>
                   <FormMessage />
                 </FormItem>
               )}
@@ -131,9 +135,9 @@ export function ServiceOrderFormModal({ open, onOpenChange, initialVehicleId, in
               name="vehicleId"
               render={({ field }) => (
                 <FormItem>
-                  <div className="flex items-center justify-between gap-3"><FormLabel>Veículo</FormLabel>{onRequestNewVehicle && form.watch('customerId') && <Button type="button" variant="ghost" size="sm" className="h-7 px-2 text-primary" onClick={onRequestNewVehicle}>Cadastrar novo veículo</Button>}</div>
+                  <div className="flex items-center justify-between gap-3"><FormLabel>Veículo</FormLabel>{onRequestNewVehicle && form.watch('customerId') && <Button type="button" variant="ghost" size="sm" className="h-7 px-2 text-primary" onClick={() => onRequestNewVehicle(field.value ? '' : vehicleQuery, selectedCustomer.current)}>Cadastrar novo veículo</Button>}</div>
                   <FormControl>
-                    <VehicleSearchCombobox value={field.value} customerId={form.watch('customerId')} initialLabel={initialVehicleLabel} onChange={field.onChange} />
+                    <VehicleSearchCombobox value={field.value} customerId={form.watch('customerId')} initialLabel={initialVehicleLabel} onChange={field.onChange} onSearchChange={setVehicleQuery} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

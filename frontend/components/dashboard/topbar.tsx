@@ -37,7 +37,7 @@ export function Topbar() {
   const Icon = meta?.icon;
 
   return (
-    <header className="flex min-h-16 shrink-0 items-center justify-between gap-4 border-b border-border bg-bg px-4 sm:px-6">
+    <header className="flex min-h-16 shrink-0 flex-col items-stretch justify-between gap-3 border-b border-border bg-bg px-4 py-3 sm:px-6 xl:flex-row xl:items-center">
       <div className="flex min-w-0 items-center gap-3">
         {Icon && (
           <span key={pathname} data-reveal className="flex size-9 shrink-0 items-center justify-center rounded-button bg-muted text-text-muted">

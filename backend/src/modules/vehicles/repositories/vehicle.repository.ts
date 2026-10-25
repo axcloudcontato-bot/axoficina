@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import type { Prisma } from '@oficina/database';
 import { PrismaService } from '../../../shared/prisma/prisma.service';
 
 export interface CreateVehicleInput {
@@ -118,16 +119,25 @@ export class VehicleRepository {
     const vehicles = await this.prisma.client.vehicle.findMany({
       where: {
         deletedAt: null,
-        OR: [
-          { plate: { contains: search, mode: 'insensitive' as const } },
-          { brand: { contains: search, mode: 'insensitive' as const } },
-          { model: { contains: search, mode: 'insensitive' as const } },
-        ],
+        OR: this.searchTerms(search),
       },
       select: { id: true },
       take: limit,
     });
     return vehicles.map((vehicle) => vehicle.id);
+  }
+
+  private searchTerms(search: string): Prisma.VehicleWhereInput[] {
+    const plate = search.replace(/[\s-]/g, '').toUpperCase();
+    const isPlate = /^[A-Z]{3}\d[A-Z\d]\d{2}$/.test(plate);
+    return [
+      { brand: { contains: search, mode: 'insensitive' } },
+      { model: { contains: search, mode: 'insensitive' } },
+      { plate: { contains: search, mode: 'insensitive' } },
+      { chassis: { contains: search, mode: 'insensitive' } },
+      ...(isPlate ? [plate, `${plate.slice(0, 3)}-${plate.slice(3)}`, `${plate.slice(0, 3)} ${plate.slice(3)}`].map((value): Prisma.VehicleWhereInput => ({ plate: { contains: value, mode: 'insensitive' } })) : []),
+      ...(/^(19|20)\d{2}$/.test(search) ? [{ year: Number(search) }] : []),
+    ];
   }
 
   // `matchingCustomerIds`: ids de clientes cujo nome/documento bateram com
@@ -141,9 +151,7 @@ export class VehicleRepository {
       ...(search
         ? {
             OR: [
-              { brand: { contains: search, mode: 'insensitive' as const } },
-              { model: { contains: search, mode: 'insensitive' as const } },
-              { plate: { contains: search, mode: 'insensitive' as const } },
+              ...this.searchTerms(search),
               ...(matchingCustomerIds && matchingCustomerIds.length > 0 ? [{ customerId: { in: matchingCustomerIds } }] : []),
             ],
           }

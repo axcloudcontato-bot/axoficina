@@ -12,9 +12,10 @@ interface CustomerSearchComboboxProps extends Omit<ComponentPropsWithoutRef<type
   value: string;
   onChange: (customerId: string, customer?: CustomerListItemResponse) => void;
   initialLabel?: string;
+  onSearchChange?: (query: string) => void;
 }
 
-export const CustomerSearchCombobox = forwardRef<HTMLInputElement, CustomerSearchComboboxProps>(function CustomerSearchCombobox({ value, onChange, placeholder, initialLabel, ...rest }, ref) {
+export const CustomerSearchCombobox = forwardRef<HTMLInputElement, CustomerSearchComboboxProps>(function CustomerSearchCombobox({ value, onChange, placeholder, initialLabel, onSearchChange, ...rest }, ref) {
   const listboxId = useId();
   const [query, setQuery] = useState('');
   const [confirmedLabel, setConfirmedLabel] = useState('');
@@ -36,12 +37,12 @@ export const CustomerSearchCombobox = forwardRef<HTMLInputElement, CustomerSearc
 
   function select(customer: CustomerListItemResponse) {
     if (value !== customer.id) internalChange.current = true;
-    setQuery(customer.name); setConfirmedLabel(customer.name); setIsOpen(false); onChange(customer.id, customer);
+    setQuery(customer.name); setConfirmedLabel(customer.name); setIsOpen(false); onSearchChange?.(''); onChange(customer.id, customer);
   }
   const { activeIndex, setActiveIndex, activeId, onKeyDown } = useComboboxKeyboard({ open: expanded, canOpen: canSearch, setOpen: setIsOpen, count: results.length, resetKey: debouncedQuery, listboxId, select: (index) => select(results[index]) });
 
   return <div className="relative">
-    <Input {...rest} ref={ref} role="combobox" data-keyboard-combobox aria-expanded={expanded} aria-controls={expanded ? listboxId : undefined} aria-autocomplete="list" aria-activedescendant={activeId} placeholder={placeholder ?? 'Buscar por nome, CPF ou CNPJ'} value={query} onChange={(event) => { setQuery(event.target.value); setIsOpen(true); if (event.target.value !== confirmedLabel) { if (value) internalChange.current = true; onChange(''); } }} onFocus={() => setIsOpen(true)} onBlur={() => setIsOpen(false)} onKeyDown={onKeyDown} />
+    <Input {...rest} ref={ref} role="combobox" data-keyboard-combobox aria-expanded={expanded} aria-controls={expanded ? listboxId : undefined} aria-autocomplete="list" aria-activedescendant={activeId} placeholder={placeholder ?? 'Buscar por nome, CPF ou CNPJ'} value={query} onChange={(event) => { setQuery(event.target.value); onSearchChange?.(event.target.value); setIsOpen(true); if (event.target.value !== confirmedLabel) { if (value) internalChange.current = true; onChange(''); } }} onFocus={() => setIsOpen(true)} onBlur={() => setIsOpen(false)} onKeyDown={onKeyDown} />
     {expanded && <ul id={listboxId} role="listbox" aria-label="Clientes encontrados" aria-busy={isFetching} className="absolute z-20 mt-1 max-h-60 w-full overflow-auto rounded-button border border-input bg-background shadow-md">
       {isFetching && <li role="presentation" className="px-3 py-2 text-sm text-muted-foreground">Buscando clientes...</li>}
       {!isFetching && !results.length && <li role="presentation" className="px-3 py-2 text-sm text-muted-foreground">Nenhum cliente encontrado</li>}

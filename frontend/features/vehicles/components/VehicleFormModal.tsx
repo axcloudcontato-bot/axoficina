@@ -16,6 +16,7 @@ import { useCustomersList } from '@/features/customers/hooks/use-customers';
 import { extractErrorMessage, extractFieldErrors } from '@/lib/api/client';
 import { useCreateVehicle, useUpdateVehicle } from '../hooks/use-vehicles';
 import { FipeBrandModelFields } from './FipeBrandModelFields';
+import type { VehicleRegistrationSeed } from '@/lib/registration-seed';
 
 // Sem lib de combobox nova nesta feature — o Select nativo populado com os
 // primeiros 100 clientes é uma limitação conhecida, aceita pro MVP (ver
@@ -64,9 +65,10 @@ interface VehicleFormModalProps {
   initialCustomer?: { id: string; name: string };
   onCreated?: (vehicle: VehicleListItemResponse) => void;
   presentation?: 'modal' | 'page';
+  initialValues?: VehicleRegistrationSeed;
 }
 
-export function VehicleFormModal({ open, onOpenChange, vehicle, initialCustomer, onCreated, presentation = 'modal' }: VehicleFormModalProps) {
+export function VehicleFormModal({ open, onOpenChange, vehicle, initialCustomer, onCreated, presentation = 'modal', initialValues }: VehicleFormModalProps) {
   const isEditing = Boolean(vehicle);
   const create = useCreateVehicle();
   const update = useUpdateVehicle();
@@ -98,9 +100,9 @@ export function VehicleFormModal({ open, onOpenChange, vehicle, initialCustomer,
             chassis: vehicle.chassis ?? '',
             mileage: vehicle.mileage?.toString() ?? '',
           }
-        : { ...EMPTY_VALUES, customerId: initialCustomer?.id ?? '' },
+        : { ...EMPTY_VALUES, ...initialValues, customerId: initialCustomer?.id ?? '' },
     );
-  }, [open, vehicle, initialCustomer, form]);
+  }, [open, vehicle, initialCustomer, initialValues, form]);
 
   function onSubmit(values: VehicleFormValues) {
     const onSuccess = (result?: { vehicle: VehicleListItemResponse }) => {
@@ -192,7 +194,7 @@ export function VehicleFormModal({ open, onOpenChange, vehicle, initialCustomer,
                 )}
               />
             )}
-            <FipeBrandModelFields form={form} isEditing={isEditing} />
+            <FipeBrandModelFields form={form} isEditing={isEditing} initialBrand={initialValues?.brand} initialModel={initialValues?.model} />
             <fieldset className="flex flex-col gap-4 rounded-card border border-border p-4">
               <legend className="px-1 text-sm font-semibold text-text">Identificação do veículo</legend>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">

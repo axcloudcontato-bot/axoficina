@@ -20,6 +20,7 @@ import { CustomerContactTab } from './tabs/CustomerContactTab';
 import { CustomerPreferencesTab } from './tabs/CustomerPreferencesTab';
 import { CustomerNotesTab } from './tabs/CustomerNotesTab';
 import { CustomerHistoryTab } from './tabs/CustomerHistoryTab';
+import type { CustomerRegistrationSeed } from '@/lib/registration-seed';
 
 const addressSchema = z.object({
   street: z.string().optional(),
@@ -107,9 +108,10 @@ interface CustomerFormModalProps {
   customer?: CustomerListItemResponse;
   onCreated?: (customer: CustomerListItemResponse) => void;
   presentation?: 'modal' | 'page';
+  initialValues?: CustomerRegistrationSeed;
 }
 
-export function CustomerFormModal({ open, onOpenChange, customer, onCreated, presentation = 'modal' }: CustomerFormModalProps) {
+export function CustomerFormModal({ open, onOpenChange, customer, onCreated, presentation = 'modal', initialValues }: CustomerFormModalProps) {
   const isEditing = Boolean(customer);
   const isGuidedCreate = presentation === 'page' && !isEditing;
   const [activeTab, setActiveTab] = useState('general');
@@ -145,9 +147,9 @@ export function CustomerFormModal({ open, onOpenChange, customer, onCreated, pre
             preferredContactChannel: customer.preferredContactChannel,
             preferredContactTime: customer.preferredContactTime,
           }
-        : EMPTY_VALUES,
+        : { ...EMPTY_VALUES, ...initialValues },
     );
-  }, [open, customer, form]);
+  }, [open, customer, initialValues, form]);
 
   function onSubmit(values: CustomerFormValues) {
     const onSuccess = (result?: { customer: CustomerListItemResponse }) => {

@@ -39,6 +39,12 @@ const editingCustomer: CustomerListItemResponse = {
 const editingCompanyCustomer: CustomerListItemResponse = { ...editingCustomer, id: 'c2', type: 'PJ', name: 'Oficina LTDA' };
 
 describe('CustomerFormModal', () => {
+  it('prefills a company document and type when opening a new registration', () => {
+    renderWithClient(<CustomerFormModal open onOpenChange={() => {}} initialValues={{ type: 'PJ', document: '12.345.678/0001-90', name: 'Empresa de teste' }} />);
+    expect(screen.getByLabelText(/cpf ou cnpj/i)).toHaveValue('12.345.678/0001-90');
+    expect(screen.getByRole('combobox', { name: 'Tipo' })).toHaveTextContent('Pessoa jurídica');
+    expect(screen.getByLabelText(/^nome$/i)).toHaveValue('Empresa de teste');
+  });
   beforeEach(() => {
     vi.clearAllMocks();
     vi.unstubAllGlobals();

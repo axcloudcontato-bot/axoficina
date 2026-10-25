@@ -15,10 +15,11 @@ interface VehicleSearchComboboxProps extends Omit<ComponentPropsWithoutRef<typeo
   onChange: (vehicleId: string) => void;
   customerId?: string;
   initialLabel?: string;
+  onSearchChange?: (query: string) => void;
 }
 
 function vehicleLabel(vehicle: VehicleListItemResponse): string {
-  return `${vehicle.brand} ${vehicle.model} · ${vehicle.plate} — ${vehicle.customerName}`;
+  return `${vehicle.customerName} — ${vehicle.brand} ${vehicle.model} · ${vehicle.plate}`;
 }
 
 // Sem lib de combobox nova (mesma restrição pragmática já aceita na Feature 4)
@@ -26,7 +27,7 @@ function vehicleLabel(vehicle: VehicleListItemResponse): string {
 // ...rest/ref pra funcionar dentro de <FormControl> (id/aria-describedby/
 // aria-invalid vêm do Slot do shadcn, mesmo padrão de FipeBrandModelFields).
 export const VehicleSearchCombobox = forwardRef<HTMLInputElement, VehicleSearchComboboxProps>(function VehicleSearchCombobox(
-  { value, onChange, placeholder, customerId, initialLabel, ...rest },
+  { value, onChange, placeholder, customerId, initialLabel, onSearchChange, ...rest },
   ref,
 ) {
   const listboxId = useId();
@@ -67,11 +68,12 @@ export const VehicleSearchCombobox = forwardRef<HTMLInputElement, VehicleSearchC
     if (previousCustomerId.current !== undefined && previousCustomerId.current !== customerId) {
       setQuery('');
       setConfirmedLabel('');
+      onSearchChange?.('');
       onChange('');
     }
     setIsOpen(true);
     previousCustomerId.current = customerId;
-  }, [customerId, onChange]);
+  }, [customerId, onChange, onSearchChange]);
 
   const isEditingAfterSelection = query !== confirmedLabel;
   const canSearch = debouncedQuery.length >= MIN_SEARCH_LENGTH && isEditingAfterSelection;
@@ -91,6 +93,7 @@ export const VehicleSearchCombobox = forwardRef<HTMLInputElement, VehicleSearchC
 
   function handleQueryChange(newQuery: string) {
     setQuery(newQuery);
+    onSearchChange?.(newQuery);
     setIsOpen(true);
     if (newQuery !== confirmedLabel) {
       if (value) internalChange.current = true;
@@ -104,6 +107,7 @@ export const VehicleSearchCombobox = forwardRef<HTMLInputElement, VehicleSearchC
     setQuery(label);
     setConfirmedLabel(label);
     setIsOpen(false);
+    onSearchChange?.('');
     onChange(vehicle.id);
   }
 
@@ -151,7 +155,8 @@ export const VehicleSearchCombobox = forwardRef<HTMLInputElement, VehicleSearchC
                   onMouseEnter={() => setActiveIndex(index)}
                   onClick={() => handleSelect(vehicle)}
                 >
-                  {vehicleLabel(vehicle)}
+                  <span className="block font-semibold">{vehicle.customerName}</span>
+                  <span className="mt-0.5 block text-xs text-text-muted">{vehicle.brand} {vehicle.model} · {vehicle.plate}</span>
                 </button>
               </li>
             ))}

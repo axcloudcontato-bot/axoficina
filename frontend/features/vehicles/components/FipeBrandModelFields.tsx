@@ -25,12 +25,14 @@ interface FipeBrandModelFieldsProps {
   // original, então a recepção só entra nos selects da FIPE se quiser
   // *trocar* marca/modelo. Criação: começa direto nos selects.
   isEditing: boolean;
+  initialBrand?: string;
+  initialModel?: string;
 }
 
-export function FipeBrandModelFields({ form, isEditing }: FipeBrandModelFieldsProps) {
+export function FipeBrandModelFields({ form, isEditing, initialBrand, initialModel }: FipeBrandModelFieldsProps) {
   const [category, setCategory] = useState<FipeCategory>('CAR');
-  const [brandMode, setBrandMode] = useState<'select' | 'manual'>(isEditing ? 'manual' : 'select');
-  const [modelMode, setModelMode] = useState<'select' | 'manual'>(isEditing ? 'manual' : 'select');
+  const [brandMode, setBrandMode] = useState<'select' | 'manual'>(isEditing || initialBrand ? 'manual' : 'select');
+  const [modelMode, setModelMode] = useState<'select' | 'manual'>(isEditing || initialBrand || initialModel ? 'manual' : 'select');
   const [selectedBrandId, setSelectedBrandId] = useState<string | undefined>(undefined);
   const [selectedModelId, setSelectedModelId] = useState<string | undefined>(undefined);
 
@@ -54,6 +56,7 @@ export function FipeBrandModelFields({ form, isEditing }: FipeBrandModelFieldsPr
   }
 
   function handleBrandChange(value: string) {
+    const keepInitialModel = !isEditing && !selectedBrandId && Boolean(initialModel) && form.getValues('model') === initialModel;
     if (value === OTHER_OPTION_VALUE) {
       setBrandMode('manual');
       setSelectedBrandId(undefined);
@@ -64,9 +67,11 @@ export function FipeBrandModelFields({ form, isEditing }: FipeBrandModelFieldsPr
       form.setValue('brand', brand?.name ?? '');
     }
     // Trocar de marca invalida o modelo escolhido antes.
-    setModelMode('select');
-    setSelectedModelId(undefined);
-    form.setValue('model', '');
+    if (!keepInitialModel) {
+      setModelMode(value === OTHER_OPTION_VALUE ? 'manual' : 'select');
+      setSelectedModelId(undefined);
+      form.setValue('model', '');
+    }
   }
 
   function handleModelChange(value: string) {
