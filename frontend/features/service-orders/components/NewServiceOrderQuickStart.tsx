@@ -141,7 +141,7 @@ export function NewServiceOrderQuickStart({ className, size = 'default', label =
 
     <CustomerFormModal open={open && stage === 'customer'} initialValues={seed.customer} onOpenChange={handleChildOpenChange} onCreated={(created) => { advancing.current = true; setCustomer(created); setStage('vehicle'); }} />
     <VehicleFormModal open={open && stage === 'vehicle'} initialValues={seed.vehicle} onOpenChange={handleChildOpenChange} initialCustomer={customer ? { id: customer.id, name: customer.name } : undefined} onCreated={(created) => { advancing.current = true; setVehicle(created); setStage('order'); }} />
-    <ServiceOrderFormModal open={open && stage === 'order'} onOpenChange={handleChildOpenChange} initialCustomer={customer ? { id: customer.id, name: customer.name } : undefined} initialVehicleId={vehicle?.id} initialVehicleLabel={vehicle ? `${vehicle.brand} ${vehicle.model} · ${vehicle.plate}` : undefined} onRequestNewCustomer={(text) => addNewCustomer(text, inferRegistrationField(text, 'customer'))} onRequestNewVehicle={addNewVehicle} onCreated={(created) => { advancing.current = true; resetAndClose(); router.push(`/service-orders/${created.id}`); }} />
+    <ServiceOrderFormModal open={open && stage === 'order'} onOpenChange={handleChildOpenChange} initialCustomer={customer ? { id: customer.id, name: customer.name } : undefined} initialVehicleId={vehicle?.id} initialVehicleLabel={vehicle ? `${vehicle.brand} ${vehicle.model} · ${vehicle.plate}` : undefined} onRequestNewCustomer={(text) => addNewCustomer(text, inferRegistrationField(text, 'customer'))} onRequestNewVehicle={addNewVehicle} onCreated={(created) => { advancing.current = true; resetAndClose(); router.push(`/ordens-de-servico/${created.id}`); }} />
   </>;
 }
 

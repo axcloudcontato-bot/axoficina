@@ -52,7 +52,7 @@ function step(page: Page, name: string) { return page.getByRole('navigation', { 
 
 test('a complete service order keeps approval, execution, payment and delivery as explicit actions', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  const state = await workshop(page); await page.goto('/service-orders/order-1');
+  const state = await workshop(page); await page.goto('/ordens-de-servico/order-1');
   await expect(step(page, 'Entrada')).toHaveAttribute('aria-current', 'step');
   await page.getByLabel('Solicitação do cliente', { exact: true }).fill('Ruído ao frear');
   await page.getByRole('button', { name: 'Preparar orçamento', exact: true }).click();
@@ -96,7 +96,7 @@ test('a complete service order keeps approval, execution, payment and delivery a
 });
 
 test('background refresh preserves unsaved fields and navigation never pretends an operational step is complete', async ({ page }) => {
-  const state = await workshop(page); await page.goto('/service-orders/order-1');
+  const state = await workshop(page); await page.goto('/ordens-de-servico/order-1');
   await page.getByLabel('Solicitação do cliente', { exact: true }).fill('Não perder este texto');
   state.order.technician_name = 'Técnico B'; await page.clock.fastForward(10_100);
   await expect(page.getByLabel('Solicitação do cliente', { exact: true })).toHaveValue('Não perder este texto');
@@ -107,7 +107,7 @@ test('background refresh preserves unsaved fields and navigation never pretends 
 });
 
 test('approval requirements are visible before sending and the flow fits a mobile screen', async ({ page }) => {
-  await workshop(page, { emptyPhotos: true }); await page.goto('/service-orders/order-1?step=approval');
+  await workshop(page, { emptyPhotos: true }); await page.goto('/ordens-de-servico/order-1?step=approval');
   await expect(step(page, 'Aprovação')).toHaveAttribute('aria-current', 'step');
   await expect(page.getByRole('button', { name: 'Revisar e enviar ao cliente', exact: true })).toBeDisabled();
   await expect(page.getByText('Complete as fotos de entrada antes de enviar.', { exact: false })).toBeVisible();
@@ -149,7 +149,7 @@ test('the customer sees the sent quote, explicitly confirms a choice and cannot 
 
 test('all five stages keep their content within narrow and desktop layouts in the dark theme', async ({ page }) => {
   await page.emulateMedia({ colorScheme: 'dark' });
-  await workshop(page, { status: 'COMPLETED' }); await page.goto('/service-orders/order-1');
+  await workshop(page, { status: 'COMPLETED' }); await page.goto('/ordens-de-servico/order-1');
   await expect(page.locator('html')).toHaveClass(/dark/);
   for (const width of [320, 390, 768, 1440]) {
     await page.setViewportSize({ width, height: 844 });

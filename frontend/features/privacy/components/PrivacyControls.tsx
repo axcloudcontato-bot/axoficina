@@ -14,7 +14,7 @@ export function PrivacyControls() {
   const [open, setOpen] = useState(false);
   const [storageError, setStorageError] = useState(false);
   useEffect(() => { setNotice(!readPrivacyChoice()); }, []);
-  if (pathname?.includes('/print')) return null;
+  if (pathname?.includes('/imprimir')) return null;
   function necessaryOnly() {
     setStorageError(!savePrivacyChoice());
     setNotice(false);
@@ -23,7 +23,7 @@ export function PrivacyControls() {
   return <>
     <footer className="border-t border-border bg-surface px-4 py-5 text-xs text-text-muted print:hidden">
       <nav aria-label="Políticas e privacidade" className="mx-auto flex max-w-4xl flex-wrap justify-center gap-x-5 gap-y-3">
-        <Link href="/privacidade" className="hover:underline">Privacidade</Link><Link href="/termos" className="hover:underline">Termos de uso</Link><Link href="/reembolso" className="hover:underline">Cancelamento e reembolso</Link><Link href="/cookies" className="hover:underline">Cookies</Link><Link href="/settings/privacy" className="hover:underline">Meus dados e solicitações</Link>
+        <Link href="/privacidade" className="hover:underline">Privacidade</Link><Link href="/termos" className="hover:underline">Termos de uso</Link><Link href="/reembolso" className="hover:underline">Cancelamento e reembolso</Link><Link href="/cookies" className="hover:underline">Cookies</Link><Link href="/configuracoes/privacidade" className="hover:underline">Meus dados e solicitações</Link>
         <button type="button" onClick={() => setOpen(true)} className="text-primary hover:underline">Preferências de cookies</button>
       </nav>
       {storageError && <p role="status" className="mt-3 text-center">Seu navegador não permitiu salvar a escolha. Apenas armazenamento necessário continua em uso.</p>}

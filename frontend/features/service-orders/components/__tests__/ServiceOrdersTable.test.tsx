@@ -62,6 +62,6 @@ describe('ServiceOrdersTable', () => {
   it('links each row to its detail page', () => {
     render(<ServiceOrdersTable items={[serviceOrder]} isLoading={false} isError={false} onRetry={noop} />);
 
-    expect(screen.getByRole('link', { name: /Fiat Uno ABC1D23/ })).toHaveAttribute('href', '/service-orders/so1');
+    expect(screen.getByRole('link', { name: /Fiat Uno ABC1D23/ })).toHaveAttribute('href', '/ordens-de-servico/so1');
   });
 });

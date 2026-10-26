@@ -38,7 +38,7 @@ export function AppointmentDetails({ appointment, open, onOpenChange, onEdit }: 
     try {
       const result = await start.mutateAsync({ id: appointment!.id }) as { serviceOrder: { id: string } };
       onOpenChange(false);
-      router.push(`/service-orders/${result.serviceOrder.id}`);
+      router.push(`/ordens-de-servico/${result.serviceOrder.id}`);
     } catch (error) { toast.error(extractErrorMessage(error)); }
   }
 

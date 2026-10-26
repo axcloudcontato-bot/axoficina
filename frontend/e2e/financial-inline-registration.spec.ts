@@ -131,7 +131,7 @@ test('inline customer creation respects the existing customer registration permi
 });
 
 test('the shared supplier form still creates and edits suppliers from their management screen', async ({ page }) => {
-  const state = await setup(page); await page.goto('/financial/suppliers');
+  const state = await setup(page); await page.goto('/financeiro/fornecedores');
   await page.getByRole('button', { name: 'Novo fornecedor', exact: true }).click();
   let supplier = page.getByRole('dialog', { name: 'Novo fornecedor', exact: true });
   await supplier.getByLabel('Nome ou razão social', { exact: true }).fill('Fornecedor do painel');

@@ -25,18 +25,18 @@ interface NavItem {
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { href: '/dashboard', label: 'Visão da oficina', shortLabel: 'Visão', icon: SquaresFour, permission: 'dashboard.view', group: 'Operação' },
-  { href: '/service-orders', label: 'Ordens de serviço', shortLabel: 'OS', icon: ClipboardText, permission: 'service_orders.view', group: 'Operação' },
-  { href: '/appointments', label: 'Agenda', shortLabel: 'Agenda', icon: CalendarBlank, permission: 'appointments.view', group: 'Operação' },
-  { href: '/customers', label: 'Clientes', shortLabel: 'Clientes', icon: Users, permission: 'customers.view', group: 'Relacionamento' },
-  { href: '/vehicles', label: 'Veículos', shortLabel: 'Veículos', icon: Car, permission: 'vehicles.view', group: 'Relacionamento' },
-  { href: '/maintenance-alerts', label: 'Alertas de manutenção', shortLabel: 'Alertas', icon: Bell, permission: 'alerts.view', group: 'Relacionamento' },
-  { href: '/financial', label: 'Financeiro', shortLabel: 'Financeiro', icon: ChartLine, permission: 'finance.view', group: 'Gestão' },
-  { href: '/productivity', label: 'Produtividade', shortLabel: 'Produtiv.', icon: ChartBar, permission: 'service_orders.prices', group: 'Gestão' },
-  { href: '/settings', label: 'Configurações', shortLabel: 'Config.', icon: Gear, permission: 'team.view', group: 'Gestão', children: [
-    { href: '/settings/company', label: 'Empresa e marca', icon: Buildings, permission: 'settings.view' },
-    { href: '/settings/email', label: 'E-mail', icon: Envelope, permission: 'settings.view' },
-    { href: '/settings/team', label: 'Equipe e acesso', icon: UsersThree, permission: 'team.view' },
+  { href: '/painel', label: 'Visão da oficina', shortLabel: 'Visão', icon: SquaresFour, permission: 'dashboard.view', group: 'Operação' },
+  { href: '/ordens-de-servico', label: 'Ordens de serviço', shortLabel: 'OS', icon: ClipboardText, permission: 'service_orders.view', group: 'Operação' },
+  { href: '/agenda', label: 'Agenda', shortLabel: 'Agenda', icon: CalendarBlank, permission: 'appointments.view', group: 'Operação' },
+  { href: '/clientes', label: 'Clientes', shortLabel: 'Clientes', icon: Users, permission: 'customers.view', group: 'Relacionamento' },
+  { href: '/veiculos', label: 'Veículos', shortLabel: 'Veículos', icon: Car, permission: 'vehicles.view', group: 'Relacionamento' },
+  { href: '/alertas-de-manutencao', label: 'Alertas de manutenção', shortLabel: 'Alertas', icon: Bell, permission: 'alerts.view', group: 'Relacionamento' },
+  { href: '/financeiro', label: 'Financeiro', shortLabel: 'Financeiro', icon: ChartLine, permission: 'finance.view', group: 'Gestão' },
+  { href: '/produtividade', label: 'Produtividade', shortLabel: 'Produtiv.', icon: ChartBar, permission: 'service_orders.prices', group: 'Gestão' },
+  { href: '/configuracoes', label: 'Configurações', shortLabel: 'Config.', icon: Gear, permission: 'team.view', group: 'Gestão', children: [
+    { href: '/configuracoes/empresa', label: 'Empresa e marca', icon: Buildings, permission: 'settings.view' },
+    { href: '/configuracoes/email', label: 'E-mail', icon: Envelope, permission: 'settings.view' },
+    { href: '/configuracoes/equipe', label: 'Equipe e acesso', icon: UsersThree, permission: 'team.view' },
   ] },
 ];
 const ROLE_LABELS: Record<string, string> = { ADMIN: 'Administrador', MANAGER: 'Gestor', MECHANIC: 'Mecânico', FRONT_DESK: 'Recepção' };
@@ -87,7 +87,7 @@ export function Sidebar() {
         {!collapsed && <button type="button" ref={toggleRef} aria-expanded={!collapsed} aria-controls={navigationId} onClick={toggleSidebar} aria-label="Recolher menu lateral" className="group flex size-8 items-center justify-center rounded-button text-text-muted hover:bg-muted hover:text-text"><AnimatedIcon icon={SidebarSimple} className="size-4" /></button>}
       </div>
       <nav id={navigationId} aria-label="Navegação principal" className="flex-1 space-y-1 overflow-y-auto px-3 py-2">
-        {saasAccess.data?.allowed && <Link href="/admin/subscriptions" aria-current={isActive(pathname, '/admin/subscriptions') ? 'page' : undefined} title={collapsed ? 'Assinaturas do SaaS' : undefined} className={cn('mb-3 flex min-h-10 items-center rounded-button text-sm font-semibold', collapsed ? 'justify-center' : 'gap-3 px-3', isActive(pathname, '/admin/subscriptions') ? 'bg-primary text-primary-foreground' : 'text-text-muted hover:bg-muted hover:text-text')}><Buildings className="size-[18px] shrink-0" aria-hidden="true" />{!collapsed && 'Assinaturas do SaaS'}</Link>}
+        {saasAccess.data?.allowed && <Link href="/admin/assinaturas" aria-current={isActive(pathname, '/admin/assinaturas') ? 'page' : undefined} title={collapsed ? 'Assinaturas do SaaS' : undefined} className={cn('mb-3 flex min-h-10 items-center rounded-button text-sm font-semibold', collapsed ? 'justify-center' : 'gap-3 px-3', isActive(pathname, '/admin/assinaturas') ? 'bg-primary text-primary-foreground' : 'text-text-muted hover:bg-muted hover:text-text')}><Buildings className="size-[18px] shrink-0" aria-hidden="true" />{!collapsed && 'Assinaturas do SaaS'}</Link>}
         {groups.map((group) => {
           const items = visibleItems.filter((item) => item.group === group);
           return items.length ? <div key={group}>{!collapsed && <p className="px-3 pb-2 pt-4 text-[11px] font-bold uppercase tracking-wider text-text-muted">{group}</p>}{items.map((item) => <DesktopNavItem key={item.href} item={item} active={isActive(pathname, item.href)} collapsed={collapsed} />)}</div> : null;
@@ -96,7 +96,7 @@ export function Sidebar() {
       {user && <div className={cn('flex items-center border-t border-border py-4', collapsed ? 'justify-center px-3' : 'gap-2.5 px-4')}><div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">{initials(user.name)}</div>{!collapsed && <div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold">{user.name}</p><p className="text-xs text-text-muted">{ROLE_LABELS[user.profileName ?? ''] ?? user.profileName ?? ROLE_LABELS[user.role] ?? user.role}</p></div>}<button type="button" aria-label="Sair" onClick={() => logout.mutate()} className="group flex size-9 items-center justify-center rounded-button text-text-muted hover:text-danger"><AnimatedIcon icon={SignOut} className="size-[18px]" /></button></div>}
       {collapsed && <button type="button" ref={toggleRef} aria-expanded={!collapsed} aria-controls={navigationId} onClick={toggleSidebar} aria-label="Expandir menu lateral" className="group absolute right-[-14px] top-5 flex size-7 items-center justify-center rounded-full border border-border bg-background text-text-muted hover:text-text"><AnimatedIcon icon={SidebarSimple} className="size-3.5" /></button>}
     </aside>
-    <nav aria-label="Navegação móvel" className="fixed inset-x-0 bottom-0 z-40 grid h-16 grid-cols-5 border-t border-border bg-background px-2 md:hidden">{visibleItems.slice(0, saasAccess.data?.allowed ? 4 : 5).map((item) => { const active = isActive(pathname, item.href); return <Link key={item.href} href={item.href} aria-current={active ? 'page' : undefined} className={cn('group flex min-w-0 flex-col items-center justify-center gap-1 text-[10px] font-semibold', active ? 'text-primary' : 'text-text-muted')}><AnimatedIcon icon={item.icon} active={active} className="size-[18px]" /><span className="truncate">{item.shortLabel}</span></Link>; })}{saasAccess.data?.allowed && <Link href="/admin/subscriptions" aria-current={isActive(pathname, '/admin/subscriptions') ? 'page' : undefined} className={cn('flex min-w-0 flex-col items-center justify-center gap-1 text-[10px] font-semibold', isActive(pathname, '/admin/subscriptions') ? 'text-primary' : 'text-text-muted')}><Buildings className="size-[18px]" aria-hidden="true" /><span>Assinaturas</span></Link>}</nav>
+    <nav aria-label="Navegação móvel" className="fixed inset-x-0 bottom-0 z-40 grid h-16 grid-cols-5 border-t border-border bg-background px-2 md:hidden">{visibleItems.slice(0, saasAccess.data?.allowed ? 4 : 5).map((item) => { const active = isActive(pathname, item.href); return <Link key={item.href} href={item.href} aria-current={active ? 'page' : undefined} className={cn('group flex min-w-0 flex-col items-center justify-center gap-1 text-[10px] font-semibold', active ? 'text-primary' : 'text-text-muted')}><AnimatedIcon icon={item.icon} active={active} className="size-[18px]" /><span className="truncate">{item.shortLabel}</span></Link>; })}{saasAccess.data?.allowed && <Link href="/admin/assinaturas" aria-current={isActive(pathname, '/admin/assinaturas') ? 'page' : undefined} className={cn('flex min-w-0 flex-col items-center justify-center gap-1 text-[10px] font-semibold', isActive(pathname, '/admin/assinaturas') ? 'text-primary' : 'text-text-muted')}><Buildings className="size-[18px]" aria-hidden="true" /><span>Assinaturas</span></Link>}</nav>
   </>;
 }
 

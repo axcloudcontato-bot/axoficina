@@ -9,7 +9,7 @@ test.describe('IAM flow', () => {
     const adminEmail = `admin-${suffix}@e2e-test.com`;
     const mechanicEmail = `mechanic-${suffix}@e2e-test.com`;
 
-    await page.goto('/signup');
+    await page.goto('/cadastro');
     await page.getByLabel('Nome da oficina').fill(`Oficina E2E ${suffix}`);
     await page.getByLabel('CPF ou CNPJ').fill('11444777000161');
     await page.getByLabel('Seu nome').fill('Admin E2E');
@@ -33,7 +33,7 @@ test.describe('IAM flow', () => {
     expect(inviteUrl).toBeTruthy();
     const inviteToken = inviteUrl!.split('/invite/')[1];
 
-    await page.goto(`/invite/${inviteToken}`);
+    await page.goto(`/convite/${inviteToken}`);
     await page.getByLabel('Crie sua senha').fill('supersecret1');
     await page.getByRole('checkbox').check();
     await page.getByRole('button', { name: 'Ativar minha conta' }).click();
@@ -42,7 +42,7 @@ test.describe('IAM flow', () => {
     // "Desloga" limpando o storage e loga como o mecânico convidado.
     await context.clearCookies();
     await page.evaluate(() => window.localStorage.clear());
-    await page.goto('/login');
+    await page.goto('/entrar');
     await page.getByLabel('E-mail').fill(mechanicEmail);
     await page.getByLabel('Senha').fill('supersecret1');
     await page.getByRole('button', { name: 'Entrar' }).click();

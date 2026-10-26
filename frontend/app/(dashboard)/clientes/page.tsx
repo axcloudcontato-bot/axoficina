@@ -31,7 +31,7 @@ export default function CustomersPage() {
   const { data, isLoading, isError, refetch } = useCustomersList({ offset, limit: PAGE_SIZE, search: search || undefined });
 
   function openCreateModal() {
-    router.push('/service-orders/new');
+    router.push('/ordens-de-servico/nova');
   }
 
   function openEditModal(customer: CustomerListItemResponse) {

@@ -37,7 +37,7 @@ export default function NewServiceOrderPage() {
 
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-4">
-      <Link href="/service-orders" className="inline-flex w-fit items-center gap-2 text-sm font-semibold text-text-muted transition-colors hover:text-text">
+      <Link href="/ordens-de-servico" className="inline-flex w-fit items-center gap-2 text-sm font-semibold text-text-muted transition-colors hover:text-text">
         <ArrowLeft className="size-4" aria-hidden="true" /> Voltar para ordens de serviço
       </Link>
 
@@ -62,7 +62,7 @@ export default function NewServiceOrderPage() {
 
       {step === 'done' && serviceOrder && (
         <Card className="border-success/30 bg-success-subtle">
-          <CardContent className="flex flex-col items-start gap-4 p-6 sm:flex-row sm:items-center sm:justify-between"><div><div className="flex items-center gap-2 text-success-strong"><Check className="size-5" aria-hidden="true" /><p className="font-bold">Atendimento iniciado com sucesso</p></div><p className="mt-2 text-sm text-text-muted">A OS de {serviceOrder.vehicleBrand} {serviceOrder.vehicleModel} já está disponível para sua equipe.</p></div><Button asChild><Link href={`/service-orders/${serviceOrder.id}`}>Abrir OS <ArrowRight className="size-4" aria-hidden="true" /></Link></Button></CardContent>
+          <CardContent className="flex flex-col items-start gap-4 p-6 sm:flex-row sm:items-center sm:justify-between"><div><div className="flex items-center gap-2 text-success-strong"><Check className="size-5" aria-hidden="true" /><p className="font-bold">Atendimento iniciado com sucesso</p></div><p className="mt-2 text-sm text-text-muted">A OS de {serviceOrder.vehicleBrand} {serviceOrder.vehicleModel} já está disponível para sua equipe.</p></div><Button asChild><Link href={`/ordens-de-servico/${serviceOrder.id}`}>Abrir OS <ArrowRight className="size-4" aria-hidden="true" /></Link></Button></CardContent>
         </Card>
       )}
 

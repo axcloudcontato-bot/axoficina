@@ -48,7 +48,7 @@ export function summarizeReport(entries: FinancialEntryResponse[]) {
   return { income, expense, pendingIncome, pendingExpense, balance: income - expense, projectedBalance: income - expense + pendingIncome - pendingExpense, totalIncome: income + pendingIncome, totalExpense: expense + pendingExpense, count: entries.length };
 }
 export function reportPrintUrl(filters: FinancialReportFilters) {
-  return `/financial/print?${new URLSearchParams({ mode: 'analytical', ...filters })}`;
+  return `/financeiro/imprimir?${new URLSearchParams({ mode: 'analytical', ...filters })}`;
 }
 export function reportFiltersFromParams(params: Pick<URLSearchParams, 'get'>): FinancialReportFilters {
   const defaults = defaultReportFilters(params.get('month') ?? undefined);

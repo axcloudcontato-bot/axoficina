@@ -29,7 +29,7 @@ export function LoginForm() {
   function onSubmit(values: LoginFormValues) {
     login.mutate(values, {
       onSuccess: () => {
-        router.push('/dashboard');
+        router.push('/painel');
       },
       onError: (error) => {
         toast.error(extractErrorMessage(error, 'E-mail ou senha inválidos.'));

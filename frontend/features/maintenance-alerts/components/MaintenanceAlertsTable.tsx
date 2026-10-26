@@ -79,7 +79,7 @@ export function MaintenanceAlertsTable({ items, isLoading, isError, onRetry }: M
                 {alert.vehicleBrand} {alert.vehicleModel} · {alert.vehiclePlate}
               </TableCell>
               <TableCell className="text-text-muted">
-                <Link href="/customers" className="hover:underline">
+                <Link href="/clientes" className="hover:underline">
                   {alert.customerName}
                 </Link>
               </TableCell>

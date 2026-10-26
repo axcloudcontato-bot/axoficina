@@ -94,7 +94,7 @@ describe('SignupForm', () => {
     expect(await screen.findByRole('button', { name: /criando oficina/i })).toBeDisabled();
 
     resolveSignup({ accessToken: 'access', refreshToken: 'refresh', user: validUser, tenant: validTenant });
-    await waitFor(() => expect(pushMock).toHaveBeenCalledWith('/users'));
+    await waitFor(() => expect(pushMock).toHaveBeenCalledWith('/usuarios'));
   });
 
   it('redirects and shows a success toast', async () => {
@@ -111,7 +111,7 @@ describe('SignupForm', () => {
 
     await user.click(screen.getByRole('button', { name: /criar minha oficina/i }));
 
-    await waitFor(() => expect(pushMock).toHaveBeenCalledWith('/users'));
+    await waitFor(() => expect(pushMock).toHaveBeenCalledWith('/usuarios'));
     expect(toastMock.success).toHaveBeenCalled();
   });
 

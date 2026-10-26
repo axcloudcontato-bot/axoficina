@@ -29,7 +29,7 @@ test.beforeEach(async ({ page }) => {
 });
 
 test('skip link and command navigation work without a mouse and focus the destination content', async ({ page }) => {
-  await page.goto('/customers');
+  await page.goto('/clientes');
   await expect(page.getByRole('heading', { name: 'Clientes', exact: true }).first()).toBeVisible();
   await page.keyboard.press('Tab');
   const skip = page.getByRole('link', { name: 'Pular para o conteúdo principal' });
@@ -45,7 +45,7 @@ test('skip link and command navigation work without a mouse and focus the destin
 });
 
 test('header menus handle arrows, Escape, Tab and sidebar collapse retains focus', async ({ page }) => {
-  await page.goto('/customers');
+  await page.goto('/clientes');
   const theme = page.getByRole('button', { name: 'Tema', exact: true });
   await tabTo(page, theme); await page.keyboard.press('ArrowDown');
   await expect(page.getByRole('button', { name: 'Claro', exact: true })).toBeFocused();
@@ -61,7 +61,7 @@ test('header menus handle arrows, Escape, Tab and sidebar collapse retains focus
 });
 
 test('forms keep focus inside dialogs and restore it on cancellation or successful submission', async ({ page }) => {
-  await page.goto('/customers');
+  await page.goto('/clientes');
   const create = page.getByRole('button', { name: 'Editar', exact: true }).first();
   await tabTo(page, create); await page.keyboard.press('Enter');
   const dialog = page.getByRole('dialog', { name: 'Editar cliente' }); await expect(dialog).toBeVisible();
@@ -76,7 +76,7 @@ test('forms keep focus inside dialogs and restore it on cancellation or successf
 });
 
 test('Escape closes customer suggestions before the order form and Tab skips options', async ({ page }) => {
-  await page.goto('/service-orders');
+  await page.goto('/ordens-de-servico');
   const create = page.getByRole('button', { name: 'Novo atendimento', exact: true });
   await tabTo(page, create); await page.keyboard.press('Enter');
   await expect(page.getByRole('textbox', { name: 'Pesquisar cliente ou veículo' })).toBeFocused();
@@ -97,7 +97,7 @@ test('Escape closes customer suggestions before the order form and Tab skips opt
 });
 
 test('calendar dates work with arrows and a new appointment can be cancelled back to the focused date', async ({ page }) => {
-  await page.goto('/appointments');
+  await page.goto('/agenda');
   const day = page.locator('[data-calendar-day][tabindex="0"]'); await expect(day).toBeVisible();
   await tabTo(page, day);
   await page.keyboard.press('Home'); await page.keyboard.press('ArrowRight');
@@ -110,7 +110,7 @@ test('calendar dates work with arrows and a new appointment can be cancelled bac
 });
 
 test('keyboard navigation is also available on a narrow viewport', async ({ page }) => {
-  await page.setViewportSize({ width: 390, height: 844 }); await page.goto('/customers');
+  await page.setViewportSize({ width: 390, height: 844 }); await page.goto('/clientes');
   await page.keyboard.press('Control+k');
   const search = page.getByRole('textbox', { name: 'Buscar páginas e ordens de serviço' }); await expect(search).toBeFocused();
   await page.keyboard.type('privacidade'); await page.keyboard.press('ArrowDown'); await page.keyboard.press('Enter');

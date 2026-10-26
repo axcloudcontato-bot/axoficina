@@ -4,7 +4,7 @@ import { Topbar } from '../topbar';
 
 const useMaintenanceAlertsList = vi.fn();
 
-vi.mock('next/navigation', () => ({ usePathname: () => '/dashboard' }));
+vi.mock('next/navigation', () => ({ usePathname: () => '/painel' }));
 vi.mock('@/features/maintenance-alerts/hooks/use-maintenance-alerts', () => ({
   useMaintenanceAlertsList: (...args: unknown[]) => useMaintenanceAlertsList(...args),
 }));

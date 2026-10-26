@@ -21,7 +21,7 @@ async function setup(page: Page) {
     }
     await route.fulfill({ json, headers: { 'access-control-allow-origin': '*' } });
   });
-  await page.goto('/service-orders');
+  await page.goto('/ordens-de-servico');
   return bodies;
 }
 

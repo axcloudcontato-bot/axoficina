@@ -7,7 +7,7 @@ export default function LoginPage() {
     <AuthShell
       title="Acesse o sistema"
       description="Entre com suas credenciais para continuar."
-      footer={<>Ainda não tem uma oficina cadastrada?{' '}<Link href="/signup" className="font-semibold text-primary hover:underline">Criar conta</Link></>}
+      footer={<>Ainda não tem uma oficina cadastrada?{' '}<Link href="/cadastro" className="font-semibold text-primary hover:underline">Criar conta</Link></>}
     >
       <LoginForm />
     </AuthShell>

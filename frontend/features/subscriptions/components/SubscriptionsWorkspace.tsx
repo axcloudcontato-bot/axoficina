@@ -33,12 +33,12 @@ export function SubscriptionsWorkspace() {
 
   if (access.isPending) return <p role="status" className="py-16 text-center text-sm text-text-muted">Verificando acesso à administração...</p>;
   if (access.isError) return <div role="alert" className="space-y-3 rounded-card border border-border bg-card p-6"><p>Não foi possível verificar seu acesso.</p><Button variant="outline" onClick={() => access.refetch()}>Tentar novamente</Button></div>;
-  if (!access.data?.allowed) return <div className="mx-auto max-w-lg space-y-4 rounded-card border border-border bg-card p-8 text-center"><ShieldCheck className="mx-auto size-8 text-text-muted" aria-hidden="true" /><h2 className="text-xl font-bold">Acesso restrito</h2><p className="text-sm text-text-muted">Esta área é exclusiva para as contas autorizadas a administrar o SaaS.</p><Button variant="outline" asChild><Link href="/dashboard">Voltar para a oficina</Link></Button></div>;
+  if (!access.data?.allowed) return <div className="mx-auto max-w-lg space-y-4 rounded-card border border-border bg-card p-8 text-center"><ShieldCheck className="mx-auto size-8 text-text-muted" aria-hidden="true" /><h2 className="text-xl font-bold">Acesso restrito</h2><p className="text-sm text-text-muted">Esta área é exclusiva para as contas autorizadas a administrar o SaaS.</p><Button variant="outline" asChild><Link href="/painel">Voltar para a oficina</Link></Button></div>;
 
   return <div className="mx-auto max-w-[1440px] space-y-6">
     <div className="flex flex-wrap items-center justify-between gap-4">
       <div><div className="mb-2 flex items-center gap-2 text-xs font-semibold text-text-muted"><ShieldCheck className="size-4" aria-hidden="true" />Administração do SaaS<Badge variant="outline">Todas as oficinas</Badge></div><h2 className="text-2xl font-bold tracking-tight text-text">Assinaturas</h2><p className="mt-1 text-sm text-text-muted">Acompanhe os planos, os vencimentos e a situação de cada oficina.</p></div>
-      <div className="flex gap-2"><Button asChild variant="ghost" size="sm"><Link href="/dashboard"><ArrowLeft className="mr-2 size-4" aria-hidden="true" />Minha oficina</Link></Button><Button variant="outline" size="sm" disabled={subscriptions.isFetching} onClick={() => subscriptions.refetch()}><ArrowClockwise className="mr-2 size-4" aria-hidden="true" />{subscriptions.isFetching ? 'Atualizando...' : 'Atualizar'}</Button></div>
+      <div className="flex gap-2"><Button asChild variant="ghost" size="sm"><Link href="/painel"><ArrowLeft className="mr-2 size-4" aria-hidden="true" />Minha oficina</Link></Button><Button variant="outline" size="sm" disabled={subscriptions.isFetching} onClick={() => subscriptions.refetch()}><ArrowClockwise className="mr-2 size-4" aria-hidden="true" />{subscriptions.isFetching ? 'Atualizando...' : 'Atualizar'}</Button></div>
     </div>
 
     <section aria-label="Indicadores de todas as oficinas" className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">

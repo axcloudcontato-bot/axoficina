@@ -71,16 +71,16 @@ export function ServiceOrdersTable({
         <TableBody>
           {items.map((serviceOrder) => (
             <TableRow key={serviceOrder.id}>
-              <LinkedCell href={`/service-orders/${serviceOrder.id}`} className="font-bold text-primary">#{serviceOrder.orderNumber}</LinkedCell>
-              <LinkedCell href={`/service-orders/${serviceOrder.id}`} className="min-w-48 font-medium text-text">{serviceOrder.vehicleBrand} {serviceOrder.vehicleModel}<span className="mt-0.5 block font-mono text-[11px] text-text-muted">{serviceOrder.vehiclePlate}</span></LinkedCell>
-              <LinkedCell href={`/service-orders/${serviceOrder.id}`}>{serviceOrder.customerName}</LinkedCell>
-              <LinkedCell href={`/service-orders/${serviceOrder.id}`}>{serviceOrder.technicianName ?? 'Sem técnico'}</LinkedCell>
-              <LinkedCell href={`/service-orders/${serviceOrder.id}`}><StatusBadge status={serviceOrder.status} /></LinkedCell>
-              <LinkedCell href={`/service-orders/${serviceOrder.id}`}>{formatHistoryDate(serviceOrder.openedAt)}</LinkedCell>
-              <LinkedCell href={`/service-orders/${serviceOrder.id}`}>{formatHistoryDate(serviceOrder.closedAt)}</LinkedCell>
-              <LinkedCell href={`/service-orders/${serviceOrder.id}`} className={serviceOrder.expectedDeliveryAt && new Date(serviceOrder.expectedDeliveryAt) < new Date() && !['DELIVERED', 'CANCELLED'].includes(serviceOrder.status) ? 'font-semibold text-danger' : undefined}>{serviceOrder.expectedDeliveryAt ? new Date(serviceOrder.expectedDeliveryAt).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : 'Sem previsão'}</LinkedCell>
-              {canViewPrices && <LinkedCell href={`/service-orders/${serviceOrder.id}`}><span className={serviceOrder.paymentStatus === 'PAID' ? 'text-success' : 'text-warning'}>{serviceOrder.paymentStatus === 'PAID' ? 'Pago' : serviceOrder.paymentStatus === 'PARTIALLY_PAID' ? 'Parcial' : 'Pendente'}</span></LinkedCell>}
-              {canViewPrices && <LinkedCell href={`/service-orders/${serviceOrder.id}`} className="text-right font-semibold text-text">{formatCurrencyBRL(serviceOrder.totalAmountCents)}</LinkedCell>}
+              <LinkedCell href={`/ordens-de-servico/${serviceOrder.id}`} className="font-bold text-primary">#{serviceOrder.orderNumber}</LinkedCell>
+              <LinkedCell href={`/ordens-de-servico/${serviceOrder.id}`} className="min-w-48 font-medium text-text">{serviceOrder.vehicleBrand} {serviceOrder.vehicleModel}<span className="mt-0.5 block font-mono text-[11px] text-text-muted">{serviceOrder.vehiclePlate}</span></LinkedCell>
+              <LinkedCell href={`/ordens-de-servico/${serviceOrder.id}`}>{serviceOrder.customerName}</LinkedCell>
+              <LinkedCell href={`/ordens-de-servico/${serviceOrder.id}`}>{serviceOrder.technicianName ?? 'Sem técnico'}</LinkedCell>
+              <LinkedCell href={`/ordens-de-servico/${serviceOrder.id}`}><StatusBadge status={serviceOrder.status} /></LinkedCell>
+              <LinkedCell href={`/ordens-de-servico/${serviceOrder.id}`}>{formatHistoryDate(serviceOrder.openedAt)}</LinkedCell>
+              <LinkedCell href={`/ordens-de-servico/${serviceOrder.id}`}>{formatHistoryDate(serviceOrder.closedAt)}</LinkedCell>
+              <LinkedCell href={`/ordens-de-servico/${serviceOrder.id}`} className={serviceOrder.expectedDeliveryAt && new Date(serviceOrder.expectedDeliveryAt) < new Date() && !['DELIVERED', 'CANCELLED'].includes(serviceOrder.status) ? 'font-semibold text-danger' : undefined}>{serviceOrder.expectedDeliveryAt ? new Date(serviceOrder.expectedDeliveryAt).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : 'Sem previsão'}</LinkedCell>
+              {canViewPrices && <LinkedCell href={`/ordens-de-servico/${serviceOrder.id}`}><span className={serviceOrder.paymentStatus === 'PAID' ? 'text-success' : 'text-warning'}>{serviceOrder.paymentStatus === 'PAID' ? 'Pago' : serviceOrder.paymentStatus === 'PARTIALLY_PAID' ? 'Parcial' : 'Pendente'}</span></LinkedCell>}
+              {canViewPrices && <LinkedCell href={`/ordens-de-servico/${serviceOrder.id}`} className="text-right font-semibold text-text">{formatCurrencyBRL(serviceOrder.totalAmountCents)}</LinkedCell>}
             </TableRow>
           ))}
         </TableBody>

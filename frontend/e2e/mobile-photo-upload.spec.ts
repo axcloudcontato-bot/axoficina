@@ -91,7 +91,7 @@ async function cameraJpeg(page: Page) {
 for (const fallback of [false, true]) test(`camera photo is normalized and saved on mobile ${fallback ? 'with the image-element fallback' : 'with ImageBitmap'}`, async ({ page }) => {
   if (fallback) await page.addInitScript(() => Object.defineProperty(window, 'createImageBitmap', { value: undefined, configurable: true }));
   const uploaded = await mockOrder(page);
-  await page.goto('/service-orders/order-1');
+  await page.goto('/ordens-de-servico/order-1');
   const file = await cameraJpeg(page);
   const slot = page.getByRole('group', { name: 'Foto: Frente', exact: true });
   const chooser = page.waitForEvent('filechooser');
@@ -124,7 +124,7 @@ for (const fallback of [false, true]) test(`camera photo is normalized and saved
 
 test('unsupported HEIC shows an actionable error before uploading', async ({ page }) => {
   const uploaded = await mockOrder(page);
-  await page.goto('/service-orders/order-1');
+  await page.goto('/ordens-de-servico/order-1');
   const slot = page.getByRole('group', { name: 'Foto: Frente', exact: true });
   await slot.locator('input[capture]').setInputFiles({ name: 'camera.heic', mimeType: 'image/heic', buffer: Buffer.from('unsupported-heic-fixture') });
   await expect(slot.getByRole('alert')).toContainText('Selecione uma cópia em JPEG');
@@ -134,7 +134,7 @@ test('unsupported HEIC shows an actionable error before uploading', async ({ pag
 
 test('a refused upload can retry the prepared photo without opening the camera again', async ({ page }) => {
   const uploaded = await mockOrder(page, 1);
-  await page.goto('/service-orders/order-1');
+  await page.goto('/ordens-de-servico/order-1');
   const slot = page.getByRole('group', { name: 'Foto: Frente', exact: true });
   await slot.locator('input[capture]').setInputFiles({ name: 'camera.jpg', mimeType: 'image/jpeg', buffer: await cameraJpeg(page) });
   await expect(slot.getByRole('alert')).toHaveText('O servidor não conseguiu salvar a foto. Tente novamente.');
@@ -148,7 +148,7 @@ test('the saved photo appears without waiting for a slow gallery refresh', async
   let releaseRefresh!: () => void;
   const gate = new Promise<void>((resolve) => { releaseRefresh = resolve; });
   await mockOrder(page, 0, gate);
-  await page.goto('/service-orders/order-1');
+  await page.goto('/ordens-de-servico/order-1');
   const slot = page.getByRole('group', { name: 'Foto: Frente', exact: true });
   try {
     await slot.locator('input[capture]').setInputFiles({ name: 'camera.jpg', mimeType: 'image/jpeg', buffer: await cameraJpeg(page) });

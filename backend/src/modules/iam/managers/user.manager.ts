@@ -75,7 +75,7 @@ export class UserManager {
     });
 
     const frontendUrl = this.config.get<string>('FRONTEND_URL', DEFAULT_FRONTEND_URL);
-    const inviteLink = `${frontendUrl}/invite/${opaque.token}`;
+    const inviteLink = `${frontendUrl}/convite/${opaque.token}`;
 
     const emailSent = await this.sendInviteEmail(actingUser.tenantId, user, inviteLink);
 

@@ -26,7 +26,7 @@ test.describe('Public privacy information', () => {
     expect(choice.analytics).toBe(false); expect(choice.marketing).toBe(false);
   });
   test('signup starts without acceptance and provides policy links', async ({ page }) => {
-    await page.goto('/signup');
+    await page.goto('/cadastro');
     await page.getByRole('button', { name: 'Somente necessários', exact: true }).click();
     await expect(page.getByRole('checkbox')).not.toBeChecked();
     await expect(page.getByRole('link', { name: 'Termos de uso', exact: true }).first()).toHaveAttribute('href', '/termos');
@@ -56,7 +56,7 @@ test.describe('Public privacy information', () => {
       else if (url.endsWith('/settings/branding')) json = { company: { name: 'Oficina de teste' } };
       await route.fulfill({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*', 'access-control-allow-headers': '*', 'access-control-allow-methods': 'GET, POST, OPTIONS' }, body: JSON.stringify(json) });
     });
-    await page.goto('/settings/privacy');
+    await page.goto('/configuracoes/privacidade');
     await page.getByRole('button', { name: 'Somente necessários', exact: true }).click();
     await page.getByLabel('Tipo de solicitação').selectOption('DELETION');
     await page.getByRole('button', { name: 'Registrar solicitação', exact: true }).click();

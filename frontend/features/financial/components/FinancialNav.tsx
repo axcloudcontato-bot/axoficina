@@ -6,14 +6,14 @@ import { ArrowLineDown, ArrowLineUp, ChartBar, BookOpen, Factory, TreeStructure,
 import { cn } from '@/lib/utils';
 
 const ITEMS = [
-  { href: '/financial', label: 'Visão geral', icon: SquaresFour },
-  { href: '/financial/payables', label: 'Contas a pagar', icon: ArrowLineUp },
-  { href: '/financial/receivables', label: 'Contas a receber', icon: ArrowLineDown },
-  { href: '/financial/cash-flow', label: 'Fluxo de caixa', icon: ChartBar },
-  { href: '/financial/transactions', label: 'Movimentações', icon: Receipt },
-  { href: '/financial/categories', label: 'Categorias', icon: TreeStructure },
-  { href: '/financial/suppliers', label: 'Fornecedores', icon: Factory },
-  { href: '/financial/reports', label: 'Relatórios', icon: BookOpen },
+  { href: '/financeiro', label: 'Visão geral', icon: SquaresFour },
+  { href: '/financeiro/contas-a-pagar', label: 'Contas a pagar', icon: ArrowLineUp },
+  { href: '/financeiro/contas-a-receber', label: 'Contas a receber', icon: ArrowLineDown },
+  { href: '/financeiro/fluxo-de-caixa', label: 'Fluxo de caixa', icon: ChartBar },
+  { href: '/financeiro/movimentacoes', label: 'Movimentações', icon: Receipt },
+  { href: '/financeiro/categorias', label: 'Categorias', icon: TreeStructure },
+  { href: '/financeiro/fornecedores', label: 'Fornecedores', icon: Factory },
+  { href: '/financeiro/relatorios', label: 'Relatórios', icon: BookOpen },
 ];
 
 export function FinancialNav() {

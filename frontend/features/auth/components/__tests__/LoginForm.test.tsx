@@ -70,7 +70,7 @@ describe('LoginForm', () => {
     expect(await screen.findByRole('button', { name: /entrando/i })).toBeDisabled();
 
     resolveLogin(validLoginResponse);
-    await waitFor(() => expect(pushMock).toHaveBeenCalledWith('/dashboard'));
+    await waitFor(() => expect(pushMock).toHaveBeenCalledWith('/painel'));
   });
 
   it('redirects on success', async () => {
@@ -83,7 +83,7 @@ describe('LoginForm', () => {
     await user.type(screen.getByLabelText(/senha/i), 'supersecret1');
     await user.click(screen.getByRole('button', { name: /^entrar$/i }));
 
-    await waitFor(() => expect(pushMock).toHaveBeenCalledWith('/dashboard'));
+    await waitFor(() => expect(pushMock).toHaveBeenCalledWith('/painel'));
   });
 
   it('shows a generic error toast for invalid credentials', async () => {

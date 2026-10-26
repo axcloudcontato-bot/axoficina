@@ -35,7 +35,7 @@ async function mockReception(page: Page) {
 
 test('search text prefills CPF, name, email and the chosen destination without creating records', async ({ page }) => {
   await mockReception(page);
-  await page.goto('/service-orders');
+  await page.goto('/ordens-de-servico');
   for (const [text, field, expected] of [['11144477735', 'CPF ou CNPJ (opcional)', '111.444.777-35'], ['Maria Nova', 'Nome', 'Maria Nova'], ['nova@example.invalid', 'E-mail (opcional)', 'nova@example.invalid']]) {
     await page.getByRole('button', { name: 'Novo atendimento', exact: true }).click();
     await page.getByRole('textbox', { name: 'Pesquisar cliente ou veículo' }).fill(text);
@@ -53,7 +53,7 @@ test('search text prefills CPF, name, email and the chosen destination without c
 
 test('a searched plate survives customer creation and prefills the vehicle registration', async ({ page }) => {
   const api = await mockReception(page);
-  await page.goto('/service-orders');
+  await page.goto('/ordens-de-servico');
   await page.getByRole('button', { name: 'Novo atendimento', exact: true }).click();
   await page.getByRole('textbox', { name: 'Pesquisar cliente ou veículo' }).fill('xyz-9876');
   await page.getByRole('button', { name: 'Adicionar novo', exact: true }).click();
@@ -76,7 +76,7 @@ test('a searched plate survives customer creation and prefills the vehicle regis
 });
 
 test('customers lead search results and the fixed header search shows the owner above the vehicle', async ({ page }) => {
-  await mockReception(page); await page.goto('/service-orders');
+  await mockReception(page); await page.goto('/ordens-de-servico');
   const search = page.getByRole('textbox', { name: 'Buscar páginas e ordens de serviço' });
   await expect(search).toBeVisible(); await expect(page.getByRole('dialog')).toHaveCount(0);
   await search.fill('Sergio');
@@ -92,7 +92,7 @@ test('customers lead search results and the fixed header search shows the owner 
 });
 
 test('header search stays exposed on narrow screens and the release icon retains the history', async ({ page }) => {
-  await mockReception(page); await page.goto('/customers');
+  await mockReception(page); await page.goto('/clientes');
   for (const width of [320, 390, 768, 1440]) {
     await page.setViewportSize({ width, height: 844 });
     await expect(page.locator('#main-content').locator('..')).toHaveCSS('padding-left', width >= 768 ? '256px' : '0px');

@@ -34,7 +34,7 @@ export function AcceptInviteForm({ inviteToken }: { inviteToken: string }) {
       {
         onSuccess: () => {
           toast.success('Conta ativada! Bem-vindo(a).');
-          router.push('/users');
+          router.push('/usuarios');
         },
         onError: (error) => {
           toast.error(extractErrorMessage(error, 'Não foi possível aceitar o convite.'));

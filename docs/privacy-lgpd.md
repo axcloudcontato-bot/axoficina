@@ -10,7 +10,7 @@ Revisão do código: 24/10/2026. Versão dos documentos: `2026-10-24`.
 | Termos de uso | `/termos` |
 | Cookies e armazenamento local | `/cookies` e preferências no rodapé |
 | Cancelamento e reembolso | `/reembolso` |
-| Central do titular e atendimento | `/settings/privacy` |
+| Central do titular e atendimento | `/configuracoes/privacidade` |
 | Textos das políticas | `frontend/features/privacy/legal-content.ts` |
 | Registro de aceite | `users.legal_version`, `users.legal_accepted_at` |
 | Protocolos | `privacy_requests` |

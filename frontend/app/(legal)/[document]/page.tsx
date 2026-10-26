@@ -14,7 +14,7 @@ export default async function LegalPage({ params }: { params: Promise<{ document
   const document = getDocument((await params).document);
   if (!document) notFound();
   return <main id="main-content" tabIndex={-1} className="mx-auto min-h-screen max-w-4xl px-5 py-12 text-text sm:px-8">
-    <Link href="/login" className="text-sm font-semibold text-primary hover:underline">Ofix · Acessar sistema</Link>
+    <Link href="/entrar" className="text-sm font-semibold text-primary hover:underline">Ofix · Acessar sistema</Link>
     <header className="mb-8 mt-8 border-b border-border pb-6">
       <p className="text-xs font-bold uppercase tracking-widest text-primary">Transparência e privacidade</p>
       <h1 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">{document.title}</h1>
@@ -28,7 +28,7 @@ export default async function LegalPage({ params }: { params: Promise<{ document
       {legalIdentity.address && <p>{legalIdentity.address}</p>}
       {legalIdentity.email && <p className="mt-2">Privacidade, suporte e cancelamento: <a className="text-primary underline" href={`mailto:${legalIdentity.email}`}>{legalIdentity.email}</a></p>}
       {(!legalIdentity.name || !legalIdentity.document || !legalIdentity.address || !legalIdentity.email) && <p className="mt-2 text-warning-strong" role="note">A identificação e o contato do fornecedor ainda precisam ser completados para publicação. Este documento é uma minuta de implantação enquanto esses dados estiverem pendentes.</p>}
-      <Link className="mt-3 inline-block text-primary underline" href="/settings/privacy">Abrir Central de privacidade e solicitações</Link>
+      <Link className="mt-3 inline-block text-primary underline" href="/configuracoes/privacidade">Abrir Central de privacidade e solicitações</Link>
       <p className="mt-2 text-text-muted">Clientes da oficina sem conta no sistema podem exercer seus direitos diretamente com a oficina responsável pelo atendimento.</p>
     </aside>
     <nav aria-label="Conteúdo do documento" className="mb-10 rounded-card bg-muted p-5">

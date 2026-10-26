@@ -83,10 +83,10 @@ function UsersPageContent() {
 export default function UsersPage() {
   // Restrição de papel específica desta página — o AuthGuard do layout
   // (app/(dashboard)/layout.tsx) só garante "está logado", não papéis.
-  // Redireciona pra /customers (não pro default '/users' do AuthGuard,
+  // Redireciona pra /customers (não pro default '/usuarios' do AuthGuard,
   // que aqui seria um loop) quando o papel não tem acesso.
   return (
-    <AuthGuard allowedRoles={['ADMIN', 'MANAGER']} redirectOnForbiddenTo="/customers">
+    <AuthGuard allowedRoles={['ADMIN', 'MANAGER']} redirectOnForbiddenTo="/clientes">
       <UsersPageContent />
     </AuthGuard>
   );

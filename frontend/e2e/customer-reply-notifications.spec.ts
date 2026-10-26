@@ -23,7 +23,7 @@ test('new customer reply shows a toast, stays in the bell and persists the read 
     if (path.endsWith('/settings/branding')) json = { company: { name: 'AX Oficina' } };
     await route.fulfill({ json, headers: { 'access-control-allow-origin': '*' } });
   });
-  await page.goto('/customers');
+  await page.goto('/clientes');
   await expect(page.getByRole('heading', { name: 'Clientes', exact: true }).first()).toBeVisible();
   await expect(page.getByTestId('open-alert-indicator')).toHaveCount(0);
   // Confirm the initial empty response was consumed before the arrival.
@@ -67,7 +67,7 @@ test('unread replies are announced on login and a failed read stays pending', as
     if (path.endsWith('/customer-reply-notifications/reply-1/read')) { status = 500; json = { error: { message: 'Não foi possível salvar a leitura.' } }; }
     await route.fulfill({ status, json, headers: { 'access-control-allow-origin': '*', 'access-control-allow-headers': '*', 'access-control-allow-methods': 'GET,POST,OPTIONS' } });
   });
-  await page.goto('/customers');
+  await page.goto('/clientes');
   await expect(page.getByText('Você tem 1 resposta de cliente não lida.', { exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Ver notificações', exact: true }).click();
   await page.getByRole('button', { name: 'Marcar resposta da OS #00004 como lida', exact: true }).click();
@@ -86,7 +86,7 @@ test('users without access to quote responses never request the notification fee
     const json = path.endsWith('/settings/branding') ? { company: { name: 'AX Oficina' } } : { items: [], total: 0 };
     await route.fulfill({ json, headers: { 'access-control-allow-origin': '*', 'access-control-allow-headers': '*', 'access-control-allow-methods': 'GET,POST,OPTIONS' } });
   });
-  await page.goto('/customers');
+  await page.goto('/clientes');
   await page.getByRole('button', { name: 'Alertas', exact: true }).click();
   await expect(page.getByRole('region', { name: 'Respostas dos clientes', exact: true })).toHaveCount(0);
   expect(feedRequests).toBe(0);

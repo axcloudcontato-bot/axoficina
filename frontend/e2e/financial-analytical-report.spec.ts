@@ -40,7 +40,7 @@ async function setup(page: Page, canView = true) {
 }
 
 test('the analytical report paginates its preview and carries the exact filters into the full print view', async ({ page }) => {
-  await setup(page); await page.goto('/financial/reports');
+  await setup(page); await page.goto('/financeiro/relatorios');
   await expect(page.getByRole('heading', { name: 'Relatório financeiro analítico', exact: true })).toBeVisible();
   const table = page.getByRole('table', { name: 'Detalhamento de receitas e despesas' });
   await expect(table.getByRole('row')).toHaveCount(52);
@@ -64,7 +64,7 @@ test('the analytical report paginates its preview and carries the exact filters 
 });
 
 test('date basis is explicit, invalid periods cannot print and the filters fit mobile screens', async ({ page }) => {
-  const state = await setup(page); await page.goto('/financial/reports');
+  const state = await setup(page); await page.goto('/financeiro/relatorios');
   await page.getByRole('combobox', { name: 'Consultar pela data de', exact: true }).click();
   await page.getByRole('option', { name: 'Pagamento / recebimento', exact: true }).click();
   await expect.poll(() => state.requests.at(-1)).toMatchObject({ date_field: 'PAID', status: 'PAID', start_at: '2026-10-01T03:00:00.000Z', end_at: '2026-11-01T03:00:00.000Z' });
@@ -83,23 +83,23 @@ test('date basis is explicit, invalid periods cannot print and the filters fit m
 });
 
 test('the print route does not request financial information for a user without financial permission', async ({ page }) => {
-  const state = await setup(page, false); await page.goto('/financial/print?mode=analytical&month=2026-10');
+  const state = await setup(page, false); await page.goto('/financeiro/imprimir?mode=analytical&month=2026-10');
   await expect(page.getByRole('alert').filter({ hasText: 'não possui acesso às informações financeiras' })).toBeVisible();
   expect(state.requests).toHaveLength(0);
   await expect(page.getByRole('table')).toHaveCount(0);
 });
 
 test('prints every filtered entry to PDF, including multiple pages, an empty result and a legacy portrait document', async ({ page }) => {
-  await setup(page); await page.goto('/financial/print?mode=analytical&month=2026-10');
+  await setup(page); await page.goto('/financeiro/imprimir?mode=analytical&month=2026-10');
   await expect(page.getByRole('table').getByRole('row')).toHaveCount(110);
   await expect(page.getByText('ÚLTIMO LANÇAMENTO ANALÍTICO', { exact: true })).toBeVisible();
   await page.evaluate(() => document.fonts.ready);
   await page.pdf({ path: 'artifacts/financial-analytical-landscape.pdf', printBackground: true, preferCSSPageSize: true });
-  await page.goto('/financial/print?mode=analytical&month=2026-10&search=SEM-RESULTADO');
+  await page.goto('/financeiro/imprimir?mode=analytical&month=2026-10&search=SEM-RESULTADO');
   await expect(page.getByRole('table').getByText('Nenhum lançamento encontrado para os filtros selecionados.', { exact: true })).toBeVisible();
   await page.evaluate(() => document.fonts.ready);
   await page.pdf({ path: 'artifacts/financial-analytical-empty.pdf', printBackground: true, preferCSSPageSize: true });
-  await page.goto('/financial/print?mode=transactions&month=2026-10');
+  await page.goto('/financeiro/imprimir?mode=transactions&month=2026-10');
   await expect(page.getByRole('heading', { name: 'Movimentações financeiras', exact: true })).toBeVisible();
   await page.evaluate(() => document.fonts.ready);
   await page.pdf({ path: 'artifacts/financial-transactions-portrait.pdf', printBackground: true, preferCSSPageSize: true });

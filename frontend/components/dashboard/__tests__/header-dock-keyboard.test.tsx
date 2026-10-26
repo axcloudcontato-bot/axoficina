@@ -6,7 +6,7 @@ import { HeaderDock } from '../header-dock';
 import { useAuthStore } from '@/stores/auth-store';
 
 const { setTheme } = vi.hoisted(() => ({ setTheme: vi.fn() }));
-vi.mock('next/navigation', () => ({ usePathname: () => '/customers' }));
+vi.mock('next/navigation', () => ({ usePathname: () => '/clientes' }));
 vi.mock('next-themes', () => ({ useTheme: () => ({ theme: 'light', resolvedTheme: 'light', setTheme }) }));
 vi.mock('@/features/auth/hooks/use-auth', () => ({ useLogout: () => ({ mutate: vi.fn() }) }));
 vi.mock('@/features/notifications/hooks/use-customer-reply-notifications', () => ({ useCustomerReplyNotifications: () => ({ enabled: false, unreadCount: 0 }) }));

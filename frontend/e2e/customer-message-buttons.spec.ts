@@ -51,7 +51,7 @@ for (const integrated of [false, true]) test(`workshop customizes a question and
     }
     await route.fulfill({ json, headers: { 'access-control-allow-origin': '*', 'access-control-allow-headers': '*', 'access-control-allow-methods': 'GET,POST,OPTIONS' } });
   });
-  await page.goto('/service-orders/order-1');
+  await page.goto('/ordens-de-servico/order-1');
   const section = page.getByRole('region', { name: 'Orçamento', exact: true });
   await expect(section.getByLabel('Solicitar resposta por botões')).toBeChecked();
   await section.getByLabel('Tipo de pergunta').selectOption('PICKUP');
@@ -90,7 +90,7 @@ test('workshop configures WA-AKG without exposing saved secrets and verifies the
     }
     await route.fulfill({ status, json, headers: { 'access-control-allow-origin': '*', 'access-control-allow-headers': '*', 'access-control-allow-methods': 'GET,POST,OPTIONS' } });
   });
-  await page.goto('/settings/whatsapp');
+  await page.goto('/configuracoes/whatsapp');
   await page.getByLabel('Chave de API', { exact: true }).fill('private-test-key');
   await page.getByLabel('Segredo do webhook', { exact: true }).fill('private-webhook-secret-'.repeat(3));
   await page.getByLabel('Ativar envio de botões pelo WA-AKG').check();

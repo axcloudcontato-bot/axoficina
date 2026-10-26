@@ -18,7 +18,7 @@ export function CustomerReplyNotifications({ notifications, onOpen }: Props) {
     {!notifications.isPending && !notifications.isError && !notifications.items.length && <p className="px-3 py-2 text-sm text-text-muted">Nenhuma resposta de cliente recebida.</p>}
     <ul className="space-y-1">
       {notifications.items.map((item) => <li key={item.id} className={cn('rounded-button px-3 py-2', !item.readAt ? 'bg-primary-subtle' : 'bg-muted/30')}>
-        <Link href={`/service-orders/${item.serviceOrderId}#customer-message-history`} onClick={() => { if (!item.readAt) notifications.markRead(item.id); onOpen(); }} className="block rounded-sm text-sm hover:underline">
+        <Link href={`/ordens-de-servico/${item.serviceOrderId}#customer-message-history`} onClick={() => { if (!item.readAt) notifications.markRead(item.id); onOpen(); }} className="block rounded-sm text-sm hover:underline">
           <span className="flex items-start justify-between gap-2"><span className="min-w-0 break-words font-bold text-text">{item.customerName} respondeu</span>{!item.readAt && <span className="shrink-0 rounded-pill bg-primary px-1.5 py-0.5 text-[10px] font-bold text-primary-foreground">Nova</span>}</span>
           <span className="mt-1 block text-xs text-text-muted">OS #{String(item.orderNumber).padStart(5, '0')} · {item.channel === 'WHATSAPP' ? 'WhatsApp' : 'E-mail'}</span>
           <span className="mt-1 block break-words text-text-muted">{item.question}</span>

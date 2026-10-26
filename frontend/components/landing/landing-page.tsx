@@ -9,7 +9,7 @@ import { DashboardMock, QuoteChatMock, StatusFlowMock } from './product-mock';
 
 type IconType = ComponentType<{ weight?: 'duotone' | 'bold'; className?: string }>;
 
-const SIGNUP = '/signup';
+const SIGNUP = '/cadastro';
 const Y = 'text-[#ffbe00]';
 
 function Section({ id, dark = false, className = '', children }: { id?: string; dark?: boolean; className?: string; children: ReactNode }) {
@@ -114,7 +114,7 @@ export function LandingPage() {
             <a href="#duvidas" className="hover:text-white">Dúvidas</a>
           </nav>
           <div className="flex items-center gap-2">
-            <Link href="/login" className="rounded-button px-3 py-2 text-sm font-semibold text-white/80 hover:text-white">Entrar</Link>
+            <Link href="/entrar" className="rounded-button px-3 py-2 text-sm font-semibold text-white/80 hover:text-white">Entrar</Link>
             <Link href={SIGNUP} className="hidden h-10 items-center rounded-button bg-[#ffbe00] px-4 text-sm font-bold text-[#0f171f] hover:bg-[#ffd033] sm:inline-flex">Cadastrar oficina</Link>
           </div>
         </div>
@@ -296,7 +296,7 @@ export function LandingPage() {
             <Link href="/termos" className="hover:text-white">Termos de uso</Link>
             <Link href="/cookies" className="hover:text-white">Cookies</Link>
             <Link href="/reembolso" className="hover:text-white">Reembolso</Link>
-            <Link href="/login" className="hover:text-white">Entrar</Link>
+            <Link href="/entrar" className="hover:text-white">Entrar</Link>
             <Link href={SIGNUP} className="hover:text-white">Criar conta</Link>
           </nav>
         </div>

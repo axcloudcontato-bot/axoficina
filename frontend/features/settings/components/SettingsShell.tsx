@@ -8,10 +8,10 @@ import { hasPermission } from '@/features/auth/permissions';
 import { useAuthStore } from '@/stores/auth-store';
 
 const items = [
-  { href: '/settings/company', label: 'Empresa e marca', description: 'Identidade e documentos', icon: Buildings, permission: 'settings.view' as const },
-  { href: '/settings/email', label: 'E-mail', description: 'Servidor e remetente', icon: Envelope, permission: 'settings.view' as const },
-  { href: '/settings/whatsapp', label: 'WhatsApp', description: 'Conexão com WA-AKG', icon: WhatsappLogo, permission: 'settings.view' as const },
-  { href: '/settings/team', label: 'Equipe e acesso', description: 'Usuários e permissões', icon: UsersThree, permission: 'team.view' as const },
+  { href: '/configuracoes/empresa', label: 'Empresa e marca', description: 'Identidade e documentos', icon: Buildings, permission: 'settings.view' as const },
+  { href: '/configuracoes/email', label: 'E-mail', description: 'Servidor e remetente', icon: Envelope, permission: 'settings.view' as const },
+  { href: '/configuracoes/whatsapp', label: 'WhatsApp', description: 'Conexão com WA-AKG', icon: WhatsappLogo, permission: 'settings.view' as const },
+  { href: '/configuracoes/equipe', label: 'Equipe e acesso', description: 'Usuários e permissões', icon: UsersThree, permission: 'team.view' as const },
 ];
 
 export function SettingsShell({ children }: { children: React.ReactNode }) {
@@ -25,7 +25,7 @@ export function SettingsShell({ children }: { children: React.ReactNode }) {
     </header>
     <div className="grid items-start gap-6 lg:grid-cols-[240px_minmax(0,1fr)]">
       <nav aria-label="Seções das configurações" className="flex gap-2 overflow-x-auto lg:sticky lg:top-24 lg:flex-col">
-        <Link href="/settings/privacy" className={cn('flex min-w-[190px] items-center gap-3 rounded-button border px-3 py-3 lg:min-w-0', pathname === '/settings/privacy' ? 'border-primary/30 bg-primary-subtle text-primary-strong' : 'border-transparent text-text-muted hover:border-border hover:bg-muted')}><ShieldCheck className="size-5 shrink-0" aria-hidden="true" /><span><span className="block text-sm font-bold">Privacidade e solicitações</span><span className="block text-[11px]">Seus dados e direitos</span></span></Link>
+        <Link href="/configuracoes/privacidade" className={cn('flex min-w-[190px] items-center gap-3 rounded-button border px-3 py-3 lg:min-w-0', pathname === '/configuracoes/privacidade' ? 'border-primary/30 bg-primary-subtle text-primary-strong' : 'border-transparent text-text-muted hover:border-border hover:bg-muted')}><ShieldCheck className="size-5 shrink-0" aria-hidden="true" /><span><span className="block text-sm font-bold">Privacidade e solicitações</span><span className="block text-[11px]">Seus dados e direitos</span></span></Link>
         {items.filter((item) => hasPermission(user, item.permission)).map(({ href, label, description, icon: Icon }) => {
           const active = pathname === href;
           return <Link key={href} href={href} className={cn('flex min-w-[190px] items-center gap-3 rounded-button border px-3 py-3 transition-colors lg:min-w-0', active ? 'border-primary/30 bg-primary-subtle text-primary-strong' : 'border-transparent text-text-muted hover:border-border hover:bg-muted')}>

@@ -8,22 +8,22 @@ import { HeaderDock } from '@/components/dashboard/header-dock';
 interface PageMeta { title: string; description: string; icon: PhosphorIcon }
 
 const PAGE_META: Record<string, PageMeta> = {
-  '/admin/subscriptions': { title: 'Administração do SaaS', description: 'Gestão global das assinaturas de todas as oficinas.', icon: ShieldCheck },
-  '/dashboard': { title: 'Visão da oficina', description: 'O que precisa da sua atenção hoje.', icon: SquaresFour },
-  '/financial': { title: 'Financeiro', description: 'Indicadores financeiros e desempenho da oficina.', icon: ChartLine },
-  '/appointments': { title: 'Agenda', description: 'Organize os atendimentos da oficina.', icon: CalendarBlank },
-  '/customers': { title: 'Clientes', description: 'Gerencie os clientes da sua oficina.', icon: Users },
-  '/vehicles': { title: 'Veículos', description: 'Gerencie os veículos cadastrados da sua oficina.', icon: Car },
-  '/service-orders': { title: 'Ordens de Serviço', description: 'Acompanhe o atendimento dos veículos da sua oficina.', icon: ClipboardText },
-  '/productivity': { title: 'Produtividade', description: 'OS entregues, mão de obra gerada e carga por técnico.', icon: ChartBar },
-  '/maintenance-alerts': { title: 'Alertas de manutenção', description: 'Acompanhe os contatos preventivos pendentes.', icon: Bell },
-  '/users': { title: 'Equipe e acesso', description: 'Gerencie usuários, perfis e permissões.', icon: UsersThree },
-  '/settings/privacy': { title: 'Privacidade e solicitações', description: 'Seus dados, direitos e protocolos de atendimento.', icon: ShieldCheck },
+  '/admin/assinaturas': { title: 'Administração do SaaS', description: 'Gestão global das assinaturas de todas as oficinas.', icon: ShieldCheck },
+  '/painel': { title: 'Visão da oficina', description: 'O que precisa da sua atenção hoje.', icon: SquaresFour },
+  '/financeiro': { title: 'Financeiro', description: 'Indicadores financeiros e desempenho da oficina.', icon: ChartLine },
+  '/agenda': { title: 'Agenda', description: 'Organize os atendimentos da oficina.', icon: CalendarBlank },
+  '/clientes': { title: 'Clientes', description: 'Gerencie os clientes da sua oficina.', icon: Users },
+  '/veiculos': { title: 'Veículos', description: 'Gerencie os veículos cadastrados da sua oficina.', icon: Car },
+  '/ordens-de-servico': { title: 'Ordens de Serviço', description: 'Acompanhe o atendimento dos veículos da sua oficina.', icon: ClipboardText },
+  '/produtividade': { title: 'Produtividade', description: 'OS entregues, mão de obra gerada e carga por técnico.', icon: ChartBar },
+  '/alertas-de-manutencao': { title: 'Alertas de manutenção', description: 'Acompanhe os contatos preventivos pendentes.', icon: Bell },
+  '/usuarios': { title: 'Equipe e acesso', description: 'Gerencie usuários, perfis e permissões.', icon: UsersThree },
+  '/configuracoes/privacidade': { title: 'Privacidade e solicitações', description: 'Seus dados, direitos e protocolos de atendimento.', icon: ShieldCheck },
 };
 
 const PREFIX_PAGE_META: Array<{ prefix: string } & PageMeta> = [
-  { prefix: '/financial/', title: 'Financeiro', description: 'Fluxo de caixa, lançamentos, categorias e relatórios.', icon: ChartLine },
-  { prefix: '/service-orders/', title: 'Ordem de Serviço', description: 'Detalhes, status e histórico desta ordem de serviço.', icon: ClipboardText },
+  { prefix: '/financeiro/', title: 'Financeiro', description: 'Fluxo de caixa, lançamentos, categorias e relatórios.', icon: ChartLine },
+  { prefix: '/ordens-de-servico/', title: 'Ordem de Serviço', description: 'Detalhes, status e histórico desta ordem de serviço.', icon: ClipboardText },
 ];
 
 function resolveMeta(pathname: string | null): PageMeta | null {

@@ -47,7 +47,7 @@ async function setup(page: Page) {
 }
 
 test('the customer opt-in defaults off, saves true and false and survives reopening on mobile', async ({ page }) => {
-  const state = await setup(page); await page.setViewportSize({ width: 390, height: 844 }); await page.goto('/customers');
+  const state = await setup(page); await page.setViewportSize({ width: 390, height: 844 }); await page.goto('/clientes');
   await page.getByRole('button', { name: 'Novo cliente', exact: true }).click();
   const form = page.getByRole('dialog', { name: 'Novo cliente', exact: true });
   await form.getByLabel('Nome', { exact: true }).fill('Sergio Oliveira');
@@ -59,7 +59,7 @@ test('the customer opt-in defaults off, saves true and false and survives reopen
   await page.screenshot({ path: 'artifacts/customer-whatsapp-status-preference.png', fullPage: true });
   await finishCreate(page);
   await expect(form).toHaveCount(0); expect(state.writes[0].notify_service_order_updates).toBe(true);
-  await page.goto('/customers');
+  await page.goto('/clientes');
   await page.getByRole('button', { name: 'Editar', exact: true }).click();
   const edit = page.getByRole('dialog', { name: 'Editar cliente', exact: true });
   await edit.getByRole('tab', { name: 'Preferências', exact: true }).click();
@@ -73,7 +73,7 @@ test('the customer opt-in defaults off, saves true and false and survives reopen
 });
 
 test('opt-in requires a complete phone and brings the employee back to the field that needs correction', async ({ page }) => {
-  const state = await setup(page); await page.goto('/customers'); await page.getByRole('button', { name: 'Novo cliente', exact: true }).click();
+  const state = await setup(page); await page.goto('/clientes'); await page.getByRole('button', { name: 'Novo cliente', exact: true }).click();
   const form = page.getByRole('dialog', { name: 'Novo cliente', exact: true });
   await form.getByLabel('Nome', { exact: true }).fill('Cliente'); await form.getByLabel('Telefone', { exact: true }).fill('123');
   await preferencesInCreate(page);
@@ -84,7 +84,7 @@ test('opt-in requires a complete phone and brings the employee back to the field
 });
 
 test('the OS shows failures, a WhatsApp bold preview and an explicit retry that can later become sent', async ({ page }) => {
-  const state = await setup(page); await page.setViewportSize({ width: 390, height: 844 }); await page.goto('/service-orders/order-1');
+  const state = await setup(page); await page.setViewportSize({ width: 390, height: 844 }); await page.goto('/ordens-de-servico/order-1');
   const section = page.getByRole('region', { name: 'Avisos automáticos ao cliente' });
   await expect(section.getByRole('status')).toContainText('Há avisos com envio não confirmado');
   await section.getByRole('button', { name: /Ver avisos/ }).click();
@@ -108,7 +108,7 @@ test('the OS shows failures, a WhatsApp bold preview and an explicit retry that 
 test('a post-delivery rating updates from awaiting response to five stars on mobile', async ({ page }) => {
   const state = await setup(page);
   Object.assign(state.notice, { kind: 'RATING', status: 'SENT', to_status: 'DELIVERED', failure_reason: '', message: '*AVALIE NOSSO SERVIÇO*\n\n*OS:* #00004\n\nEscolha de *1 a 5 estrelas*.' });
-  await page.setViewportSize({ width: 390, height: 844 }); await page.goto('/service-orders/order-1');
+  await page.setViewportSize({ width: 390, height: 844 }); await page.goto('/ordens-de-servico/order-1');
   const section = page.getByRole('region', { name: 'Avisos automáticos ao cliente' });
   await expect(section.getByText('Avaliação pós-entrega enviada. Aguardando resposta do cliente.', { exact: true })).toBeVisible();
   await section.getByRole('button', { name: /Ver avisos/ }).click();

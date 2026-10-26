@@ -7,7 +7,7 @@ export default function SignupPage() {
     <AuthShell
       title="Cadastre sua oficina"
       description="Crie sua conta e comece a gerenciar clientes, veículos e ordens de serviço."
-      footer={<>Já tem uma conta?{' '}<Link href="/login" className="font-semibold text-primary hover:underline">Entrar</Link></>}
+      footer={<>Já tem uma conta?{' '}<Link href="/entrar" className="font-semibold text-primary hover:underline">Entrar</Link></>}
     >
       <SignupForm />
     </AuthShell>
