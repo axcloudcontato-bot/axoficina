@@ -1,4 +1,4 @@
-import { COMPANY, COMPANY_POSTAL_ADDRESS, SAME_AS, SITE_DESCRIPTION, SITE_NAME, SITE_URL } from '@/lib/site';
+import { COMPANY, COMPANY_POSTAL_ADDRESS, PARENT_SITE, SAME_AS, SITE_DESCRIPTION, SITE_NAME, SITE_URL } from '@/lib/site';
 import { FAQ } from '@/components/landing/faq';
 import { STEPS } from '@/components/landing/steps';
 import { SPEC } from '@/components/landing/facts';
@@ -24,6 +24,7 @@ export function HomeJsonLd() {
         logo: { '@type': 'ImageObject', url: `${SITE_URL}/brand/ofix-logo-dark.svg` },
         description: SITE_DESCRIPTION,
         legalName: COMPANY.name,
+        parentOrganization: { '@type': 'Organization', name: COMPANY.name, url: PARENT_SITE },
         taxID: COMPANY.document,
         email: COMPANY.email,
         ...(COMPANY_POSTAL_ADDRESS

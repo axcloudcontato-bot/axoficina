@@ -24,6 +24,12 @@ export const COMPANY = {
   email: process.env.NEXT_PUBLIC_PRIVACY_EMAIL?.trim() || 'contato@axcloud.com.br',
 };
 
+/** Site da empresa e outros produtos, usados em links de rodapé e no schema (parentOrganization). */
+export const PARENT_SITE = 'https://axcloud.com.br';
+export const SISTER_PRODUCTS: Array<{ name: string; url: string }> = [
+  { name: 'Openfix (gestão financeira)', url: 'https://openfix.axcloud.com.br' },
+];
+
 // Perfis oficiais (LinkedIn, Instagram, etc.) usados em `sameAs` do Organization.
 // Preencha quando existirem; enquanto vazio, o campo é omitido do JSON-LD.
 export const SAME_AS: string[] = [

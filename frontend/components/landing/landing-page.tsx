@@ -10,7 +10,7 @@ import { FAQ } from './faq';
 import { STEPS } from './steps';
 import { SPEC, STATS } from './facts';
 import { SiteFooter } from './site-footer';
-import { COMPANY } from '@/lib/site';
+import { COMPANY, PARENT_SITE } from '@/lib/site';
 
 type IconType = ComponentType<{ weight?: 'duotone' | 'bold'; className?: string }>;
 
@@ -303,7 +303,7 @@ export function LandingPage() {
           <Heading sub="Quem está por trás do sistema e como falar com a gente.">Sobre o Ofix</Heading>
           <div className="mt-12 grid gap-8 lg:grid-cols-[1.3fr_1fr]">
             <div className="space-y-4 text-base leading-relaxed text-muted-foreground">
-              <p>O Ofix é um sistema de gestão para oficinas mecânicas, desenvolvido e mantido pela {COMPANY.name}. Ele organiza o atendimento da recepção ao financeiro: ordens de serviço, orçamentos aprovados pelo WhatsApp, agenda, histórico de cada veículo e alertas de manutenção.</p>
+              <p>O Ofix é um sistema de gestão para oficinas mecânicas, desenvolvido e mantido pela <a href={PARENT_SITE} className="font-semibold text-primary underline">{COMPANY.name}</a>. Ele organiza o atendimento da recepção ao financeiro: ordens de serviço, orçamentos aprovados pelo WhatsApp, agenda, histórico de cada veículo e alertas de manutenção.</p>
               <p>Cada oficina tem um ambiente isolado, com usuários e permissões próprios, e os documentos de privacidade, termos de uso, cookies e reembolso são públicos e estão no rodapé.</p>
             </div>
             <dl className="divide-y divide-border rounded-card border border-border bg-card p-6 text-sm shadow-card">

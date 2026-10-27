@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { OfixLogo } from '@/components/brand/ofix-logo';
-import { COMPANY, SAME_AS } from '@/lib/site';
+import { COMPANY, PARENT_SITE, SAME_AS, SISTER_PRODUCTS } from '@/lib/site';
 import { CONTENT_PAGES } from './content-pages';
 
 export function SiteFooter() {
@@ -9,9 +9,12 @@ export function SiteFooter() {
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-10 px-5 py-12 sm:px-8 md:flex-row md:items-start md:justify-between">
         <div>
           <OfixLogo tagline className="w-48 text-white" />
-          <p className="mt-4 text-sm text-white/50">Um produto {COMPANY.name}.</p>
+          <p className="mt-4 text-sm text-white/50">Um produto <a href={PARENT_SITE} className="underline hover:text-white">{COMPANY.name}</a>.</p>
           <p className="mt-1 text-sm text-white/50">CNPJ {COMPANY.document}</p>
           <p className="mt-1 text-sm text-white/50"><a href={`mailto:${COMPANY.email}`} className="hover:text-white">{COMPANY.email}</a></p>
+          <p className="mt-3 text-sm text-white/50">
+            Outros produtos: {SISTER_PRODUCTS.map((p, i) => <span key={p.url}>{i > 0 && ', '}<a href={p.url} className="underline hover:text-white">{p.name}</a></span>)}
+          </p>
           <p className="mt-3 flex gap-4 text-sm text-white/70">
             {SAME_AS.map((url) => <a key={url} href={url} rel="me noopener" target="_blank" className="hover:text-white">{url.includes('instagram') ? 'Instagram' : url.includes('tiktok') ? 'TikTok' : new URL(url).hostname}</a>)}
           </p>
