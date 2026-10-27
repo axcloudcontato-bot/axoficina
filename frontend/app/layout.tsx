@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 // Auto-hospedada (bundlada no build) em vez de next/font/google: esse loader
 // busca o CSS da fonte no Google ao vivo durante `next build`, e esse fetch
 // falhou de forma intermitente em CI (`next/font` loader.js: "Cannot read
@@ -8,6 +8,8 @@ import { ThemeProvider } from '@/components/theme-provider';
 import { Providers } from '@/components/providers';
 import { SITE_DESCRIPTION, SITE_NAME, SITE_URL } from '@/lib/site';
 import './globals.css';
+
+export const viewport: Viewport = { themeColor: '#0F171F' };
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),

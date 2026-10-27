@@ -3,6 +3,11 @@
 :80 {
 	encode zstd gzip
 
+	# www → domínio principal. Requer o hostname www no Cloudflare Tunnel e um
+	# CNAME www apontando para o mesmo túnel.
+	@www host www.ofix.axcloud.com.br
+	redir @www https://ofix.axcloud.com.br{uri} permanent
+
 	@api path /api/*
 	handle @api {
 		reverse_proxy backend:3001

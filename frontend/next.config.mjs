@@ -45,14 +45,22 @@ const NOINDEX_PREFIXES = [
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  async redirects() {
+    // www → domínio principal (canônico). Só age se o host www chegar até o Next.
+    const host = new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://ofix.axcloud.com.br').host;
+    const www = {
+      source: '/:path*',
+      has: [{ type: 'host', value: `www.${host}` }],
+      destination: `https://${host}/:path*`,
+      permanent: true,
+    };
+    return [www, ...LEGACY_ROUTES.map(([source, destination]) => ({ source, destination, permanent: true }))];
+  },
   async headers() {
     return NOINDEX_PREFIXES.map((prefix) => ({
       source: `/${prefix}/:path*`,
       headers: [{ key: 'X-Robots-Tag', value: 'noindex, nofollow' }],
     }));
-  },
-  async redirects() {
-    return LEGACY_ROUTES.map(([source, destination]) => ({ source, destination, permanent: true }));
   },
   // NOT using output: 'standalone' here — its file tracer creates real
   // symlinks (fs.symlink), which requires SeCreateSymbolicLinkPrivilege on

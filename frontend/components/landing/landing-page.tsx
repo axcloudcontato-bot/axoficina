@@ -7,6 +7,8 @@ import {
 import { OfixLogo } from '@/components/brand/ofix-logo';
 import { DashboardMock, QuoteChatMock, StatusFlowMock } from './product-mock';
 import { FAQ } from './faq';
+import { STEPS } from './steps';
+import { SiteFooter } from './site-footer';
 import { COMPANY } from '@/lib/site';
 
 type IconType = ComponentType<{ weight?: 'duotone' | 'bold'; className?: string }>;
@@ -57,13 +59,6 @@ const FEATURES: Array<{ icon: IconType; title: string; text: string; span?: stri
   { icon: Gauge, title: 'Produtividade da equipe', text: 'Veja o que cada ordem rende e onde o trabalho está parado para decidir com dados.' },
   { icon: Star, title: 'Avaliação depois da entrega', text: 'Peça a nota de cinco estrelas ao cliente quando o carro sai e construa reputação com fatos.' },
 ];
-
-const STEPS = [
-  ['01', 'Cliente chega', 'Cadastre cliente e veículo em segundos, com dados da FIPE.'],
-  ['02', 'Abre a OS', 'Registre o problema, adicione itens e fotos, e envie o orçamento.'],
-  ['03', 'Cliente aprova', 'A aprovação chega pelo WhatsApp e fica registrada na ordem.'],
-  ['04', 'Entrega e cobra', 'Finalize, gere parcelas e recibo, e peça a avaliação.'],
-] as const;
 
 const ROLES: Array<[IconType, string, string]> = [
   [ClipboardText, 'Recepção', 'Abre ordens, agenda horários e responde ao cliente com o status em mãos.'],
@@ -220,16 +215,23 @@ export function LandingPage() {
             Antes do Ofix e <span className="rounded-md bg-[#ffbe00] px-2 text-[#0f171f] [box-decoration-break:clone]">depois.</span>
           </Heading>
           <div className="mx-auto mt-14 max-w-4xl overflow-hidden rounded-card border border-border bg-card shadow-card">
-            <div className="grid grid-cols-2 border-b border-border bg-muted text-xs font-bold uppercase tracking-wider">
-              <p className="p-4 text-muted-foreground sm:px-6">Sem sistema</p>
-              <p className="flex items-center gap-2 bg-[#ffbe00] p-4 text-[#0f171f] sm:px-6"><Check weight="bold" className="size-4" />Com Ofix</p>
-            </div>
-            {COMPARE.map(([before, after]) => (
-              <div key={before} className="grid grid-cols-2 border-b border-border last:border-0">
-                <p className="flex gap-3 p-4 text-sm text-muted-foreground sm:px-6"><X weight="bold" className="mt-0.5 size-4 shrink-0 text-danger" />{before}</p>
-                <p className="flex gap-3 p-4 text-sm font-semibold sm:px-6"><Check weight="bold" className="mt-0.5 size-4 shrink-0 text-success" />{after}</p>
-              </div>
-            ))}
+            <table className="w-full table-fixed border-collapse text-left">
+              <caption className="sr-only">Comparação entre a rotina da oficina sem sistema e com o Ofix</caption>
+              <thead>
+                <tr className="border-b border-border bg-muted text-xs font-bold uppercase tracking-wider">
+                  <th scope="col" className="p-4 text-muted-foreground sm:px-6">Sem sistema</th>
+                  <th scope="col" className="bg-[#ffbe00] p-4 text-[#0f171f] sm:px-6"><span className="flex items-center gap-2"><Check weight="bold" className="size-4" />Com Ofix</span></th>
+                </tr>
+              </thead>
+              <tbody>
+                {COMPARE.map(([before, after]) => (
+                  <tr key={before} className="border-b border-border align-top last:border-0">
+                    <td className="p-4 text-sm text-muted-foreground sm:px-6"><span className="flex gap-3"><X weight="bold" aria-hidden className="mt-0.5 size-4 shrink-0 text-danger" />{before}</span></td>
+                    <td className="p-4 text-sm font-semibold sm:px-6"><span className="flex gap-3"><Check weight="bold" aria-hidden className="mt-0.5 size-4 shrink-0 text-success" />{after}</span></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </Section>
 
@@ -295,25 +297,7 @@ export function LandingPage() {
         </section>
       </main>
 
-      <footer className="dark bg-[#0b1218] text-foreground">
-        <div className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-5 py-12 sm:px-8 md:flex-row md:items-start md:justify-between">
-          <div>
-            <OfixLogo tagline className="w-48 text-white" />
-            <p className="mt-4 text-sm text-white/50">Um produto {COMPANY.name}.</p>
-            <p className="mt-1 text-sm text-white/50">CNPJ {COMPANY.document}</p>
-            <p className="mt-1 text-sm text-white/50"><a href={`mailto:${COMPANY.email}`} className="hover:text-white">{COMPANY.email}</a></p>
-          </div>
-          <nav aria-label="Documentos legais" className="grid grid-cols-2 gap-x-12 gap-y-2 text-sm text-white/70">
-            <Link href="/privacidade" className="hover:text-white">Privacidade</Link>
-            <Link href="/termos" className="hover:text-white">Termos de uso</Link>
-            <Link href="/cookies" className="hover:text-white">Cookies</Link>
-            <Link href="/reembolso" className="hover:text-white">Reembolso</Link>
-            <Link href="/entrar" className="hover:text-white">Entrar</Link>
-            <Link href={SIGNUP} className="hover:text-white">Criar conta</Link>
-          </nav>
-        </div>
-        <p className="border-t border-white/10 py-5 text-center text-xs text-white/40">© {new Date().getFullYear()} Ofix. Todos os direitos reservados.</p>
-      </footer>
+      <SiteFooter />
     </div>
   );
 }
