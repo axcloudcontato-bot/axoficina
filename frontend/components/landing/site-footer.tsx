@@ -1,7 +1,14 @@
 import Link from 'next/link';
+import { InstagramLogo, TiktokLogo } from '@phosphor-icons/react/dist/ssr';
 import { OfixLogo } from '@/components/brand/ofix-logo';
 import { COMPANY, PARENT_SITE, SAME_AS, SISTER_PRODUCTS } from '@/lib/site';
 import { CONTENT_PAGES } from './content-pages';
+
+// Ícones de linha (weight regular): contorno, sem preenchimento.
+const SOCIALS = [
+  { match: 'instagram.com', label: 'Instagram do Ofix', icon: InstagramLogo },
+  { match: 'tiktok.com', label: 'TikTok do Ofix', icon: TiktokLogo },
+];
 
 export function SiteFooter() {
   return (
@@ -15,9 +22,20 @@ export function SiteFooter() {
           <p className="mt-3 text-sm text-white/50">
             Outros produtos: {SISTER_PRODUCTS.map((p, i) => <span key={p.url}>{i > 0 && ', '}<a href={p.url} className="underline hover:text-white">{p.name}</a></span>)}
           </p>
-          <p className="mt-3 flex gap-4 text-sm text-white/70">
-            {SAME_AS.map((url) => <a key={url} href={url} rel="me noopener" target="_blank" className="hover:text-white">{url.includes('instagram') ? 'Instagram' : url.includes('tiktok') ? 'TikTok' : new URL(url).hostname}</a>)}
-          </p>
+          <ul className="mt-4 flex gap-3" aria-label="Redes sociais">
+            {SAME_AS.map((url) => {
+              const social = SOCIALS.find((item) => url.includes(item.match));
+              if (!social) return null;
+              const Icon = social.icon;
+              return (
+                <li key={url}>
+                  <a href={url} rel="me noopener" target="_blank" aria-label={social.label} title={social.label} className="flex size-10 items-center justify-center rounded-full border border-white/20 text-white/70 transition-colors hover:border-[#ffbe00] hover:text-[#ffbe00] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#ffbe00]">
+                    <Icon weight="regular" aria-hidden className="size-5" />
+                  </a>
+                </li>
+              );
+            })}
+          </ul>
         </div>
         <nav aria-label="Guias" className="text-sm text-white/70">
           <p className="mb-3 text-xs font-bold uppercase tracking-widest text-white/40">Guias</p>
