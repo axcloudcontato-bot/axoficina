@@ -1,4 +1,4 @@
-import { COMPANY, SAME_AS, SITE_DESCRIPTION, SITE_NAME, SITE_URL } from '@/lib/site';
+import { COMPANY, COMPANY_POSTAL_ADDRESS, SAME_AS, SITE_DESCRIPTION, SITE_NAME, SITE_URL } from '@/lib/site';
 import { FAQ } from '@/components/landing/faq';
 import { STEPS } from '@/components/landing/steps';
 import { SPEC } from '@/components/landing/facts';
@@ -26,6 +26,18 @@ export function HomeJsonLd() {
         legalName: COMPANY.name,
         taxID: COMPANY.document,
         email: COMPANY.email,
+        ...(COMPANY_POSTAL_ADDRESS
+          ? {
+              address: {
+                '@type': 'PostalAddress',
+                streetAddress: COMPANY_POSTAL_ADDRESS.street,
+                addressLocality: COMPANY_POSTAL_ADDRESS.city,
+                addressRegion: COMPANY_POSTAL_ADDRESS.region,
+                postalCode: COMPANY_POSTAL_ADDRESS.postalCode,
+                addressCountry: 'BR',
+              },
+            }
+          : {}),
         contactPoint: { '@type': 'ContactPoint', contactType: 'customer support', email: COMPANY.email, availableLanguage: 'pt-BR' },
         ...(SAME_AS.length ? { sameAs: SAME_AS } : {}),
       },

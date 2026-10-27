@@ -5,10 +5,22 @@ export const SITE_DESCRIPTION =
   'Ordens de serviço, orçamento aprovado pelo WhatsApp, agenda, alertas de manutenção e financeiro em um só sistema para oficinas mecânicas.';
 
 /** Identidade da empresa responsável. As variáveis NEXT_PUBLIC_LEGAL_* / NEXT_PUBLIC_PRIVACY_EMAIL sobrescrevem. */
+const DEFAULT_ADDRESS = {
+  street: 'Av. Cassiano Ricardo, 601',
+  neighborhood: 'Jardim Aquarius',
+  city: 'São José dos Campos',
+  region: 'SP',
+  postalCode: '12246-870',
+};
+const ENV_ADDRESS = process.env.NEXT_PUBLIC_LEGAL_COMPANY_ADDRESS?.trim();
+
+/** Endereço estruturado (para o schema); só existe quando vale o endereço padrão, não o texto livre da variável. */
+export const COMPANY_POSTAL_ADDRESS = ENV_ADDRESS ? null : DEFAULT_ADDRESS;
+
 export const COMPANY = {
   name: process.env.NEXT_PUBLIC_LEGAL_COMPANY_NAME?.trim() || 'Ax Cloud',
   document: process.env.NEXT_PUBLIC_LEGAL_COMPANY_DOCUMENT?.trim() || '66.475.844/0001-05',
-  address: process.env.NEXT_PUBLIC_LEGAL_COMPANY_ADDRESS?.trim() || '',
+  address: ENV_ADDRESS || `${DEFAULT_ADDRESS.street} - ${DEFAULT_ADDRESS.neighborhood}, ${DEFAULT_ADDRESS.city} - ${DEFAULT_ADDRESS.region}, ${DEFAULT_ADDRESS.postalCode}`,
   email: process.env.NEXT_PUBLIC_PRIVACY_EMAIL?.trim() || 'contato@axcloud.com.br',
 };
 
