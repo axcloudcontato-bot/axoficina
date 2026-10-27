@@ -55,7 +55,7 @@ describe('Users (e2e)', () => {
       .send({ email: `mechanic-${Date.now()}@e2e-test.com`, name: 'Mecânico', role: 'MECHANIC' });
 
     expect(response.status).toBe(201);
-    expect(response.body.invite_link).toContain('/invite/');
+    expect(response.body.invite_link).toContain('/convite/');
     expect(response.body.user.status).toBe('invited');
   });
 
@@ -76,7 +76,7 @@ describe('Users (e2e)', () => {
       .set('Authorization', `Bearer ${admin.access_token}`)
       .send({ email: mechanicEmail, name: 'Mecânico Flow', role: 'MECHANIC' });
 
-    const inviteToken = invite.body.invite_link.split('/invite/')[1];
+    const inviteToken = invite.body.invite_link.split('/convite/')[1];
 
     const accept = await request(app.getHttpServer())
       .post('/api/v1/users/accept-invite')

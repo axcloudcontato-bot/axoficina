@@ -67,7 +67,7 @@ describe('Fipe (e2e)', () => {
       .post('/api/v1/users/invite')
       .set('Authorization', `Bearer ${adminToken}`)
       .send({ email: `frontdesk-fipe-${suffix}@e2e-test.com`, name: 'Recepção', role: 'FRONT_DESK' });
-    const inviteToken = invite.body.invite_link.split('/invite/')[1];
+    const inviteToken = invite.body.invite_link.split('/convite/')[1];
 
     const accept = await request(app.getHttpServer())
       .post('/api/v1/users/accept-invite')

@@ -18,7 +18,7 @@ test.describe('IAM flow', () => {
     await page.getByRole('checkbox').check();
     await page.getByRole('button', { name: 'Criar minha oficina' }).click();
 
-    await expect(page).toHaveURL(/\/users$/);
+    await expect(page).toHaveURL(/\/usuarios$/);
     await expect(page.getByRole('heading', { name: 'Usuários' })).toBeVisible();
 
     await page.getByRole('button', { name: 'Convidar usuário' }).click();
@@ -26,18 +26,18 @@ test.describe('IAM flow', () => {
     await page.getByLabel('E-mail').fill(mechanicEmail);
     await page.getByRole('button', { name: 'Enviar convite' }).click();
 
-    const toastLocator = page.getByText(/\/invite\//);
+    const toastLocator = page.getByText(/\/convite\//);
     await expect(toastLocator).toBeVisible({ timeout: 10_000 });
     const toastText = await toastLocator.textContent();
-    const inviteUrl = toastText?.match(/https?:\/\/\S+\/invite\/\S+/)?.[0];
+    const inviteUrl = toastText?.match(/https?:\/\/\S+\/convite\/\S+/)?.[0];
     expect(inviteUrl).toBeTruthy();
-    const inviteToken = inviteUrl!.split('/invite/')[1];
+    const inviteToken = inviteUrl!.split('/convite/')[1];
 
     await page.goto(`/convite/${inviteToken}`);
     await page.getByLabel('Crie sua senha').fill('supersecret1');
     await page.getByRole('checkbox').check();
     await page.getByRole('button', { name: 'Ativar minha conta' }).click();
-    await expect(page).toHaveURL(/\/users$/);
+    await expect(page).toHaveURL(/\/usuarios$/);
 
     // "Desloga" limpando o storage e loga como o mecânico convidado.
     await context.clearCookies();
@@ -47,7 +47,7 @@ test.describe('IAM flow', () => {
     await page.getByLabel('Senha').fill('supersecret1');
     await page.getByRole('button', { name: 'Entrar' }).click();
 
-    // Mecânico não é ADMIN/MANAGER — RBAC bloqueia o acesso a /users.
+    // Mecânico não é ADMIN/MANAGER — RBAC bloqueia o acesso a /usuarios.
     await expect(page.getByText('Você não tem permissão para acessar esta página.')).toBeVisible();
   });
 });
