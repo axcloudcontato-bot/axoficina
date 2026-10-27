@@ -1,4 +1,4 @@
-import { SAME_AS, SITE_DESCRIPTION, SITE_NAME, SITE_URL } from '@/lib/site';
+import { COMPANY, SAME_AS, SITE_DESCRIPTION, SITE_NAME, SITE_URL } from '@/lib/site';
 import { FAQ } from '@/components/landing/faq';
 
 export function JsonLd({ data }: { data: Record<string, unknown> }) {
@@ -20,7 +20,10 @@ export function HomeJsonLd() {
         url: SITE_URL,
         logo: { '@type': 'ImageObject', url: `${SITE_URL}/brand/ofix-logo-dark.svg` },
         description: SITE_DESCRIPTION,
-        parentOrganization: { '@type': 'Organization', name: 'Ax Cloud' },
+        legalName: COMPANY.name,
+        taxID: COMPANY.document,
+        email: COMPANY.email,
+        contactPoint: { '@type': 'ContactPoint', contactType: 'customer support', email: COMPANY.email, availableLanguage: 'pt-BR' },
         ...(SAME_AS.length ? { sameAs: SAME_AS } : {}),
       },
       {

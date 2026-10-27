@@ -1,25 +1,13 @@
-'use client';
-
-import { Sidebar } from '@/components/dashboard/sidebar';
-import { Topbar } from '@/components/dashboard/topbar';
-import { AuthGuard } from '@/features/auth/components/AuthGuard';
+import type { Metadata } from 'next';
+import { DashboardShell } from './dashboard-shell';
 
 // Depende de estado client-only (zustand persist lendo localStorage via
 // AuthGuard) — nunca deve ser pré-renderizado estaticamente no build.
 export const dynamic = 'force-dynamic';
 
+// Área logada: nunca deve aparecer em buscadores.
+export const metadata: Metadata = { robots: { index: false, follow: false } };
+
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
-  return (
-    <AuthGuard>
-      <div className="min-h-screen bg-bg">
-        <Sidebar />
-        <div className="min-h-screen min-w-0 transition-[padding] duration-normal md:pl-[var(--sidebar-width)]">
-          <Topbar />
-          <main id="main-content" tabIndex={-1} className="flex-1 overflow-y-auto px-4 pb-24 pt-5 sm:px-6 sm:py-6 md:pb-6">
-            <div className="w-full min-w-0">{children}</div>
-          </main>
-        </div>
-      </div>
-    </AuthGuard>
-  );
+  return <DashboardShell>{children}</DashboardShell>;
 }

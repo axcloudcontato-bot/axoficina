@@ -34,9 +34,23 @@ const LEGACY_ROUTES = [
   ['/invite/:token', '/convite/:token'],
 ];
 
+// Áreas que nunca devem ser indexadas (espelha PRIVATE_PATHS em lib/site.ts);
+// o X-Robots-Tag cobre também as páginas com token e as de impressão.
+const NOINDEX_PREFIXES = [
+  'painel', 'ordens-de-servico', 'agenda', 'clientes', 'veiculos', 'alertas-de-manutencao', 'financeiro',
+  'produtividade', 'relacionamento', 'usuarios', 'configuracoes', 'admin', 'convite', 'responder',
+  'preferencias-de-contato',
+];
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  async headers() {
+    return NOINDEX_PREFIXES.map((prefix) => ({
+      source: `/${prefix}/:path*`,
+      headers: [{ key: 'X-Robots-Tag', value: 'noindex, nofollow' }],
+    }));
+  },
   async redirects() {
     return LEGACY_ROUTES.map(([source, destination]) => ({ source, destination, permanent: true }));
   },

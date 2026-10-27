@@ -1,9 +1,6 @@
-export const legalIdentity = {
-  name: process.env.NEXT_PUBLIC_LEGAL_COMPANY_NAME?.trim() || '',
-  document: process.env.NEXT_PUBLIC_LEGAL_COMPANY_DOCUMENT?.trim() || '',
-  address: process.env.NEXT_PUBLIC_LEGAL_COMPANY_ADDRESS?.trim() || '',
-  email: process.env.NEXT_PUBLIC_PRIVACY_EMAIL?.trim() || '',
-};
+import { COMPANY } from '@/lib/site';
+
+export const legalIdentity = COMPANY;
 
 export const legalDocuments = {
   privacidade: {

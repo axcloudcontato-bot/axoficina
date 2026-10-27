@@ -4,6 +4,14 @@ export const SITE_TAGLINE = 'Mais controle para sua oficina';
 export const SITE_DESCRIPTION =
   'Ordens de serviço, orçamento aprovado pelo WhatsApp, agenda, alertas de manutenção e financeiro em um só sistema para oficinas mecânicas.';
 
+/** Identidade da empresa responsável. As variáveis NEXT_PUBLIC_LEGAL_* / NEXT_PUBLIC_PRIVACY_EMAIL sobrescrevem. */
+export const COMPANY = {
+  name: process.env.NEXT_PUBLIC_LEGAL_COMPANY_NAME?.trim() || 'Ax Cloud',
+  document: process.env.NEXT_PUBLIC_LEGAL_COMPANY_DOCUMENT?.trim() || '66.475.844/0001-05',
+  address: process.env.NEXT_PUBLIC_LEGAL_COMPANY_ADDRESS?.trim() || '',
+  email: process.env.NEXT_PUBLIC_PRIVACY_EMAIL?.trim() || 'contato@axcloud.com.br',
+};
+
 // Perfis oficiais (LinkedIn, Instagram, etc.) usados em `sameAs` do Organization.
 // Preencha quando existirem; enquanto vazio, o campo é omitido do JSON-LD.
 export const SAME_AS: string[] = [];

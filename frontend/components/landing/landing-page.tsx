@@ -7,6 +7,7 @@ import {
 import { OfixLogo } from '@/components/brand/ofix-logo';
 import { DashboardMock, QuoteChatMock, StatusFlowMock } from './product-mock';
 import { FAQ } from './faq';
+import { COMPANY } from '@/lib/site';
 
 type IconType = ComponentType<{ weight?: 'duotone' | 'bold'; className?: string }>;
 
@@ -104,6 +105,7 @@ export function LandingPage() {
             <a href="#como-funciona" className="hover:text-white">Como funciona</a>
             <a href="#equipe" className="hover:text-white">Para sua equipe</a>
             <a href="#duvidas" className="hover:text-white">Dúvidas</a>
+            <a href="#sobre" className="hover:text-white">Sobre</a>
           </nav>
           <div className="flex items-center gap-2">
             <Link href="/entrar" className="rounded-button px-3 py-2 text-sm font-semibold text-white/80 hover:text-white">Entrar</Link>
@@ -125,7 +127,7 @@ export function LandingPage() {
                 Mais controle<br />para <span className={Y}>sua oficina.</span>
               </h1>
               <p className="mt-6 max-w-xl text-lg leading-relaxed text-white/70">
-                Ordens de serviço, orçamento pelo WhatsApp, agenda e financeiro em um sistema simples e rápido, feito para quem vive o dia a dia do pátio. Mais tempo para o que importa: consertar carros e fazer a oficina crescer.
+                <strong className="font-semibold text-white">O Ofix é um sistema de gestão para oficinas mecânicas que reúne</strong> ordens de serviço, orçamento aprovado pelo WhatsApp, agenda, clientes, veículos e financeiro em um só lugar, simples e rápido, feito para quem vive o dia a dia do pátio.
               </p>
               <div className="mt-9 flex flex-col gap-3 sm:flex-row sm:items-center">
                 <CtaButton />
@@ -265,6 +267,22 @@ export function LandingPage() {
           </div>
         </Section>
 
+        <Section id="sobre">
+          <Heading sub="Quem está por trás do sistema e como falar com a gente.">Sobre o Ofix</Heading>
+          <div className="mt-12 grid gap-8 lg:grid-cols-[1.3fr_1fr]">
+            <div className="space-y-4 text-base leading-relaxed text-muted-foreground">
+              <p>O Ofix é um sistema de gestão para oficinas mecânicas, desenvolvido e mantido pela {COMPANY.name}. Ele organiza o atendimento da recepção ao financeiro: ordens de serviço, orçamentos aprovados pelo WhatsApp, agenda, histórico de cada veículo e alertas de manutenção.</p>
+              <p>Cada oficina tem um ambiente isolado, com usuários e permissões próprios, e os documentos de privacidade, termos de uso, cookies e reembolso são públicos e estão no rodapé.</p>
+            </div>
+            <dl className="divide-y divide-border rounded-card border border-border bg-card p-6 text-sm shadow-card">
+              <div className="pb-3"><dt className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Razão social</dt><dd className="mt-1 font-semibold">{COMPANY.name}</dd></div>
+              <div className="py-3"><dt className="text-xs font-bold uppercase tracking-widest text-muted-foreground">CNPJ</dt><dd className="mt-1 font-semibold">{COMPANY.document}</dd></div>
+              {COMPANY.address && <div className="py-3"><dt className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Endereço</dt><dd className="mt-1 font-semibold">{COMPANY.address}</dd></div>}
+              <div className="pt-3"><dt className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Contato</dt><dd className="mt-1 font-semibold"><a className="text-primary underline" href={`mailto:${COMPANY.email}`}>{COMPANY.email}</a></dd></div>
+            </dl>
+          </div>
+        </Section>
+
         <section className="relative overflow-hidden bg-[#ffbe00] text-[#0f171f]">
           <svg aria-hidden viewBox="0 0 400 300" className="pointer-events-none absolute -right-10 inset-y-0 h-full opacity-15" preserveAspectRatio="xMaxYMid slice"><path d="M120 0H220L400 150 220 300H120L300 150Z" fill="#0f171f" /></svg>
           <div className="relative mx-auto flex w-full max-w-6xl flex-col items-start gap-8 px-5 py-20 sm:px-8 md:flex-row md:items-center md:justify-between">
@@ -281,7 +299,9 @@ export function LandingPage() {
         <div className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-5 py-12 sm:px-8 md:flex-row md:items-start md:justify-between">
           <div>
             <OfixLogo tagline className="w-48 text-white" />
-            <p className="mt-4 text-sm text-white/50">Um produto Ax Cloud.</p>
+            <p className="mt-4 text-sm text-white/50">Um produto {COMPANY.name}.</p>
+            <p className="mt-1 text-sm text-white/50">CNPJ {COMPANY.document}</p>
+            <p className="mt-1 text-sm text-white/50"><a href={`mailto:${COMPANY.email}`} className="hover:text-white">{COMPANY.email}</a></p>
           </div>
           <nav aria-label="Documentos legais" className="grid grid-cols-2 gap-x-12 gap-y-2 text-sm text-white/70">
             <Link href="/privacidade" className="hover:text-white">Privacidade</Link>
