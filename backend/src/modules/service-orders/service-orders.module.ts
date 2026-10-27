@@ -17,6 +17,7 @@ import { ServiceOrderPhotoRepository } from './repositories/service-order-photo.
 import { ServiceOrderPhotoManager } from './managers/service-order-photo.manager';
 import { ServiceOrderPhotoStorageService } from './services/service-order-photo-storage.service';
 import { SettingsModule } from '../settings/settings.module';
+import { CustomerCareModule } from '../customer-care/customer-care.module';
 import { CustomerMessagesController } from './controllers/customer-messages.controller';
 import { CustomerMessageManager } from './managers/customer-message.manager';
 import { CustomerMessageRepository } from './repositories/customer-message.repository';
@@ -34,7 +35,7 @@ import { CustomerReplyNotificationRepository } from './repositories/customer-rep
 // (pra usar ServiceOrderRepository.lastDeliveredClosedAtUnscoped no job) —
 // ver comentário em maintenance-alerts.module.ts.
 @Module({
-  imports: [VehiclesModule, CustomersModule, IamModule, SettingsModule, forwardRef(() => MaintenanceAlertsModule)],
+  imports: [VehiclesModule, CustomersModule, IamModule, SettingsModule, CustomerCareModule, forwardRef(() => MaintenanceAlertsModule)],
   controllers: [ServiceOrderStatusNotificationsController, ServiceOrdersController, CustomerMessagesController, WaAkgWebhookController, CustomerReplyNotificationsController],
   providers: [ServiceOrderStatusNotificationRepository, ServiceOrderStatusNotificationService, ServiceOrderStatusNotificationProcessor, CustomerReplyNotificationRepository, CustomerMessageManager, CustomerMessageRepository, ServiceOrderManager, ServiceOrderPhotoManager, ServiceOrderPhotoStorageService, ServiceOrderRepository, ServiceOrderStatusHistoryRepository, ServiceOrderItemRepository, ServiceOrderReceiptRepository, ServiceOrderPhotoRepository],
   // MaintenanceAlertsModule (Feature Motor de Manutenção Preventiva) importa

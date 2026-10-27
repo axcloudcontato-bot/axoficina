@@ -1,0 +1,13 @@
+'use client';
+import { useMutation, useQuery } from '@tanstack/react-query';
+import { Heart, CheckCircle } from '@phosphor-icons/react';
+import { Button } from '@/components/ui/button';
+import { apiClient } from '@/lib/api/client';
+import { OfixLogo } from '@/components/brand/ofix-logo';
+
+export function ContactPreferences({ token }: { token: string }) {
+  const lookup = useQuery({ queryKey: ['care-preferences', token], queryFn: async () => (await apiClient.post<{ workshopName: string; enabled: boolean }>('/api/v1/customer-care/preferences/lookup', { token })).data, retry: false });
+  const pause = useMutation({ mutationFn: () => apiClient.post('/api/v1/customer-care/preferences/pause', { token }) });
+  const paused = pause.isSuccess || lookup.data?.enabled === false;
+  return <main className="flex min-h-screen items-center justify-center bg-background px-4 py-12"><div className="w-full max-w-lg"><OfixLogo className="mx-auto mb-8 w-28 text-foreground" /><section className="rounded-card border border-border bg-card p-6 text-center shadow-card sm:p-9"><div className="mx-auto flex size-14 items-center justify-center rounded-full bg-selection text-primary">{paused ? <CheckCircle className="size-8" aria-hidden="true" /> : <Heart className="size-8" aria-hidden="true" />}</div><h1 className="mt-5 text-2xl font-bold">Seu cuidado, no seu ritmo.</h1>{lookup.isPending ? <p className="mt-4 text-sm text-muted-foreground" role="status">Carregando suas preferências…</p> : lookup.isError ? <p className="mt-4 text-sm leading-7 text-muted-foreground">Este link não está disponível. Fale com a oficina para ajustar suas preferências.</p> : <><p className="mt-4 text-sm leading-7 text-muted-foreground">{lookup.data.workshopName}</p>{paused ? <div role="status"><h2 className="mt-5 font-bold">Lembretes pausados. Tudo certo! 💛</h2><p className="mt-3 text-sm leading-7 text-muted-foreground">Você não receberá mais mensagens automáticas de aniversário e manutenção. Quando quiser voltar, é só conversar com a equipe da oficina.</p></div> : <><p className="mt-4 text-sm leading-7 text-muted-foreground">Você decide se quer receber mensagens de aniversário e lembretes para cuidar do carro. Pode pausar agora, sem precisar entrar em uma conta.</p><Button className="mt-6 w-full" disabled={pause.isPending} onClick={() => pause.mutate()}>{pause.isPending ? 'Pausando…' : 'Pausar meus lembretes'}</Button>{pause.isError && <p role="alert" className="mt-3 text-sm text-danger-strong">Não foi possível pausar agora. Tente novamente.</p>}</>}</>}<p className="mt-7 border-t border-border pt-5 text-xs leading-6 text-muted-foreground">Atenção também é respeitar a sua escolha.</p></section></div></main>;
+}

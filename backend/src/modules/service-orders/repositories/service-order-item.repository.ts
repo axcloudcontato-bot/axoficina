@@ -1,9 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import type { PrismaClient, ServiceOrderItem } from '@oficina/database';
-import type { ServiceOrderItemType } from '@oficina/contracts';
+import type { CreateServiceOrderItemRequest, ServiceOrderItemType } from '@oficina/contracts';
 import { PrismaService } from '../../../shared/prisma/prisma.service';
 
 export interface CreateServiceOrderItemInput {
+  careServiceKey?: CreateServiceOrderItemRequest['careServiceKey'];
   serviceOrderId: string;
   type: ServiceOrderItemType;
   description: string;
@@ -12,6 +13,7 @@ export interface CreateServiceOrderItemInput {
 }
 
 export interface UpdateServiceOrderItemInput {
+  careServiceKey?: CreateServiceOrderItemRequest['careServiceKey'] | null;
   type?: ServiceOrderItemType;
   description?: string;
   quantity?: number;
@@ -32,6 +34,7 @@ export class ServiceOrderItemRepository {
         serviceOrderId: input.serviceOrderId,
         type: input.type,
         description: input.description,
+        careServiceKey: input.careServiceKey,
         quantity: input.quantity,
         unitPriceCents: input.unitPriceCents,
       },

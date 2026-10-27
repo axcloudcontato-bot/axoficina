@@ -27,6 +27,67 @@ datasource db {
 // mesmo e-mail pudesse existir em tenants diferentes, o login seria
 // ambíguo. Uma pessoa que trabalha em duas oficinas precisa de e-mails
 // diferentes nesta versão do produto.
+model CustomerCareSettings {
+  tenantId     String   @id @map("tenant_id") @db.Uuid
+  enabled      Boolean  @default(false)
+  channel      String   @default("WHATSAPP")
+  timeZone     String   @default("America/Sao_Paulo") @map("time_zone")
+  sendHour     Int      @default(9) @map("send_hour")
+  weekdaysOnly Boolean  @default(true) @map("weekdays_only")
+  minGapDays   Int      @default(7) @map("min_gap_days")
+  dailyLimit   Int      @default(50) @map("daily_limit")
+  campaigns    Json
+  updatedBy    String?  @map("updated_by") @db.Uuid
+  updatedAt    DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  @@map("customer_care_settings")
+}
+
+model CustomerCarePlan {
+  id             String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  tenantId       String   @map("tenant_id") @db.Uuid
+  customerId     String   @map("customer_id") @db.Uuid
+  vehicleId      String   @map("vehicle_id") @db.Uuid
+  serviceKey     String   @map("service_key")
+  completedAt    DateTime @map("completed_at") @db.Timestamptz
+  mileage        Int?
+  intervalMonths Int?     @map("interval_months")
+  intervalKm     Int?     @map("interval_km")
+  sourceOrderId  String?  @map("source_order_id") @db.Uuid
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  @@unique([tenantId, vehicleId, serviceKey], map: "care_plans_tenant_vehicle_service_key")
+  @@index([tenantId, customerId], map: "care_plans_tenant_customer_idx")
+  @@map("customer_care_plans")
+}
+
+model CustomerCareDelivery {
+  id              String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  tenantId        String    @map("tenant_id") @db.Uuid
+  customerId      String    @map("customer_id") @db.Uuid
+  customerName    String    @map("customer_name")
+  campaignKeys    String[]  @map("campaign_keys")
+  eventKeys       String[]  @map("event_keys")
+  events          Json
+  dedupeKey       String    @map("dedupe_key")
+  channel         String
+  recipient       String
+  message         String
+  subject         String
+  status          String    @default("PENDING")
+  reason          String?
+  unsubscribeHash String    @unique @map("unsubscribe_hash")
+  unsubscribeToken String   @map("unsubscribe_token")
+  scheduledAt     DateTime  @map("scheduled_at") @db.Timestamptz
+  attemptedAt     DateTime? @map("attempted_at") @db.Timestamptz
+  sentAt          DateTime? @map("sent_at") @db.Timestamptz
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  @@unique([tenantId, dedupeKey], map: "care_deliveries_tenant_dedupe_key")
+  @@index([tenantId, customerId, createdAt], map: "care_deliveries_tenant_customer_idx")
+  @@index([status, scheduledAt], map: "care_deliveries_status_scheduled_idx")
+  @@index([eventKeys], type: Gin, map: "care_deliveries_events_idx")
+  @@map("customer_care_deliveries")
+}
+
 model Tenant {
   id                  String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
   name                String
@@ -208,6 +269,9 @@ model Customer {
   preferredContactChannel   String?   @map("preferred_contact_channel")
   preferredContactTime      String?   @map("preferred_contact_time")
   notifyServiceOrderUpdates Boolean   @default(false) @map("notify_service_order_updates")
+  birthDate                 DateTime? @map("birth_date") @db.Date
+  careMessagesEnabled       Boolean   @default(false) @map("care_messages_enabled")
+  careConsentAt             DateTime? @map("care_consent_at") @db.Timestamptz
 
   createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz
   updatedAt DateTime? @updatedAt @map("updated_at") @db.Timestamptz
@@ -339,6 +403,7 @@ model ServiceOrderItem {
   serviceOrderId String    @map("service_order_id") @db.Uuid
   type           String
   description    String
+  careServiceKey String?  @map("care_service_key")
   quantity       Decimal   @db.Decimal(10, 2)
   unitPriceCents Int       @map("unit_price_cents")
   createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz

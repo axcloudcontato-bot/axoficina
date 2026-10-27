@@ -2,12 +2,13 @@
 
 import { usePathname } from 'next/navigation';
 import type { Icon as PhosphorIcon } from '@phosphor-icons/react';
-import { Bell, Car, CalendarBlank, ChartBar, ChartLine, ClipboardText, ShieldCheck, SquaresFour, Users, UsersThree } from '@phosphor-icons/react';
+import { Bell, Car, CalendarBlank, ChartBar, ChartLine, ClipboardText, Heart, ShieldCheck, SquaresFour, Users, UsersThree } from '@phosphor-icons/react';
 import { HeaderDock } from '@/components/dashboard/header-dock';
 
 interface PageMeta { title: string; description: string; icon: PhosphorIcon }
 
 const PAGE_META: Record<string, PageMeta> = {
+  '/relacionamento': { title: 'Cuidado com o cliente', description: 'Presença, prevenção e carinho em cada retorno.', icon: Heart },
   '/admin/assinaturas': { title: 'Administração do SaaS', description: 'Gestão global das assinaturas de todas as oficinas.', icon: ShieldCheck },
   '/painel': { title: 'Visão da oficina', description: 'O que precisa da sua atenção hoje.', icon: SquaresFour },
   '/financeiro': { title: 'Financeiro', description: 'Indicadores financeiros e desempenho da oficina.', icon: ChartLine },

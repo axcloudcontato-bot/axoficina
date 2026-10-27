@@ -139,6 +139,7 @@ export function CustomerGeneralTab({ form, isEditing }: CustomerGeneralTabProps)
             )}
           />
         )}
+        {type === 'PF' && <FormField control={form.control} name="birthDate" render={({ field }) => <FormItem><FormLabel>Data de nascimento (opcional)</FormLabel><FormControl><Input type="date" max={new Date().toISOString().slice(0, 10)} {...field} /></FormControl><p className="text-xs text-muted-foreground">Usada para a mensagem de aniversário, quando o cliente autorizar.</p><FormMessage /></FormItem>} />}
         {type === 'PJ' && (
           <FormField
             control={form.control}

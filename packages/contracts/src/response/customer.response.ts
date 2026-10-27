@@ -18,6 +18,9 @@ export interface CustomerAddress {
 }
 
 export interface CustomerResponse {
+  birthDate?: string;
+  careMessagesEnabled?: boolean;
+  careConsentAt?: string;
   notifyServiceOrderUpdates?: boolean;
   id: string;
   tenantId: string;

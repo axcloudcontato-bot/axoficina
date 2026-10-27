@@ -26,6 +26,7 @@ export class CustomerManager {
   ) {}
 
   async create(actingUser: AuthenticatedUser, request: CreateCustomerRequest): Promise<{ customer: CustomerResponse }> {
+    const birthDate = this.birthDate(request.birthDate, request.type);
     this.validateNotificationPhone(request.notifyServiceOrderUpdates, request.phone);
     const documentCheck = request.document?.trim()
       ? this.documentValidator.validate(request.document)
@@ -55,6 +56,9 @@ export class CustomerManager {
         document: documentCheck.normalized,
         name: request.name,
         phone: request.phone,
+        birthDate,
+        careMessagesEnabled: request.careMessagesEnabled,
+        careConsentAt: request.careMessagesEnabled ? new Date() : undefined,
         email: request.email,
         address: request.address,
         notes: request.notes,
@@ -84,7 +88,7 @@ export class CustomerManager {
       action: 'customer.created',
       entity: 'customer',
       entityId: customer.id,
-      metadata: request.notifyServiceOrderUpdates === undefined ? {} : { notifyServiceOrderUpdates: request.notifyServiceOrderUpdates },
+      metadata: { ...(request.notifyServiceOrderUpdates === undefined ? {} : { notifyServiceOrderUpdates: request.notifyServiceOrderUpdates }), ...(request.careMessagesEnabled === undefined ? {} : { careMessagesEnabled: request.careMessagesEnabled }) },
     });
 
     return { customer: this.toResponse(customer) };
@@ -96,6 +100,7 @@ export class CustomerManager {
       throw new AppException(AppErrorCode.CUSTOMER_NOT_FOUND, 'Cliente não encontrado.', HttpStatus.NOT_FOUND);
     }
     this.validateNotificationPhone(request.notifyServiceOrderUpdates ?? existing.notifyServiceOrderUpdates, request.phone ?? existing.phone);
+    const birthDate = request.birthDate === undefined ? undefined : request.birthDate === null ? null : this.birthDate(request.birthDate, existing.type);
 
     let document: string | undefined;
     if (request.document !== undefined) {
@@ -111,6 +116,9 @@ export class CustomerManager {
         document,
         name: request.name,
         phone: request.phone,
+        birthDate,
+        careMessagesEnabled: request.careMessagesEnabled,
+        careConsentAt: request.careMessagesEnabled && !existing.careMessagesEnabled ? new Date() : undefined,
         email: request.email,
         address: request.address,
         notes: request.notes,
@@ -139,7 +147,7 @@ export class CustomerManager {
       action: 'customer.updated',
       entity: 'customer',
       entityId: updated.id,
-      metadata: request.notifyServiceOrderUpdates === undefined ? {} : { notifyServiceOrderUpdates: request.notifyServiceOrderUpdates },
+      metadata: { ...(request.notifyServiceOrderUpdates === undefined ? {} : { notifyServiceOrderUpdates: request.notifyServiceOrderUpdates }), ...(request.careMessagesEnabled === undefined ? {} : { careMessagesEnabled: request.careMessagesEnabled }) },
     });
 
     return { customer: this.toResponse(updated) };
@@ -200,6 +208,9 @@ export class CustomerManager {
       name: customer.name,
       email: customer.email ?? undefined,
       phone: customer.phone,
+      birthDate: customer.birthDate?.toISOString().slice(0, 10),
+      careMessagesEnabled: customer.careMessagesEnabled ?? false,
+      careConsentAt: customer.careConsentAt?.toISOString(),
       notifyServiceOrderUpdates: customer.notifyServiceOrderUpdates ?? false,
       address: (customer.address as CustomerResponse['address']) ?? undefined,
       notes: customer.notes ?? undefined,
@@ -216,5 +227,14 @@ export class CustomerManager {
 
   private validateNotificationPhone(enabled: boolean | undefined, phone: string) {
     if (enabled && !whatsappRecipient(phone)) throw new AppException(AppErrorCode.VALIDATION_ERROR, 'Informe um telefone com DDD válido para ativar os avisos da OS pelo WhatsApp.', HttpStatus.BAD_REQUEST, [{ field: 'phone', message: 'Informe um telefone com DDD válido para WhatsApp.' }]);
+  }
+
+  private birthDate(value: string | undefined, type: string): Date | undefined {
+    if (!value) return undefined;
+    const date = new Date(`${value}T00:00:00Z`);
+    if (type !== 'PF' || !/^\d{4}-\d{2}-\d{2}$/.test(value) || !Number.isFinite(date.getTime()) || date.toISOString().slice(0, 10) !== value || date > new Date() || date.getUTCFullYear() < new Date().getUTCFullYear() - 120) {
+      throw new AppException(AppErrorCode.VALIDATION_ERROR, 'Informe uma data de nascimento válida para uma pessoa física.');
+    }
+    return date;
   }
 }

@@ -5,6 +5,9 @@ import { PrismaService } from '../../../shared/prisma/prisma.service';
 import { TenantContextService } from '../../../shared/tenant-context/tenant-context.service';
 
 export interface CreateCustomerInput {
+  birthDate?: Date;
+  careMessagesEnabled?: boolean;
+  careConsentAt?: Date;
   notifyServiceOrderUpdates?: boolean;
   // O Prisma Middleware sobrescreve isto com o tenant do contexto ativo em
   // runtime (ver CREATE_OPERATIONS em tenant-isolation.middleware.ts) — só
@@ -27,6 +30,9 @@ export interface CreateCustomerInput {
 }
 
 export interface UpdateCustomerInput {
+  birthDate?: Date | null;
+  careMessagesEnabled?: boolean;
+  careConsentAt?: Date;
   notifyServiceOrderUpdates?: boolean;
   document?: string;
   name?: string;
@@ -92,6 +98,9 @@ export class CustomerRepository {
         document: input.document,
         name: input.name,
         phone: input.phone,
+        birthDate: input.birthDate,
+        careMessagesEnabled: input.careMessagesEnabled,
+        careConsentAt: input.careConsentAt,
         email: input.email,
         address: input.address as Prisma.InputJsonValue | undefined,
         notes: input.notes,

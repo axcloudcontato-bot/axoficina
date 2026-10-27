@@ -6,6 +6,7 @@ export const AUDIT_LOG_QUEUE = 'audit-log';
 export const FIPE_SYNC_QUEUE = 'fipe-sync';
 export const MAINTENANCE_ALERTS_QUEUE = 'maintenance-alerts-scan';
 export const SERVICE_ORDER_STATUS_QUEUE = 'service-order-status-notifications';
+export const CUSTOMER_CARE_QUEUE = 'customer-care';
 
 @Global()
 @Module({
@@ -28,6 +29,7 @@ export const SERVICE_ORDER_STATUS_QUEUE = 'service-order-status-notifications';
     BullModule.registerQueue({ name: FIPE_SYNC_QUEUE }),
     BullModule.registerQueue({ name: MAINTENANCE_ALERTS_QUEUE }),
     BullModule.registerQueue({ name: SERVICE_ORDER_STATUS_QUEUE }),
+    BullModule.registerQueue({ name: CUSTOMER_CARE_QUEUE }),
   ],
   exports: [BullModule],
 })

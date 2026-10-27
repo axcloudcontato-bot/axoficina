@@ -56,6 +56,7 @@ import { quoteRevision, quoteSnapshot, quotesMatch } from '../services/customer-
 import type { CustomerMessageQuote } from '@oficina/contracts';
 import { CustomerMessageRepository } from '../repositories/customer-message.repository';
 import { ServiceOrderStatusNotificationRepository } from '../repositories/service-order-status-notification.repository';
+import { CustomerCarePlansService } from '../../customer-care/customer-care-plans.service';
 
 const PHOTO_ANGLE_LABELS: Record<ServiceOrderPhotoAngle, string> = {
   FRONT: 'frente',
@@ -82,6 +83,7 @@ export class ServiceOrderManager {
     private readonly photoRepository: ServiceOrderPhotoRepository,
     private readonly customerMessageRepository?: CustomerMessageRepository,
     private readonly statusNotifications?: ServiceOrderStatusNotificationRepository,
+    private readonly carePlans?: CustomerCarePlansService,
   ) {}
 
   async create(actingUser: AuthenticatedUser, request: CreateServiceOrderRequest): Promise<{ serviceOrder: ServiceOrderResponse }> {
@@ -306,6 +308,7 @@ export class ServiceOrderManager {
       // a mudança de status (TRANSACTIONS.md), não via fila assíncrona.
       if (request.toStatus === 'DELIVERED') {
         await this.maintenanceAlertRepository.resolveOpenByVehicleId(tx, existing.vehicleId, changedAt);
+        await this.carePlans?.recordDelivered(tx, existing, changedAt);
       }
     });
 
@@ -619,12 +622,14 @@ export class ServiceOrderManager {
       throw new AppException(AppErrorCode.SERVICE_ORDER_NOT_FOUND, 'Ordem de serviço não encontrada.', HttpStatus.NOT_FOUND);
     }
 
+    if (request.careServiceKey && ['DELIVERED', 'CANCELLED'].includes(serviceOrder.status)) throw new AppException(AppErrorCode.VALIDATION_ERROR, 'Para uma OS encerrada, registre o cuidado na central de relacionamento.');
     const created = await this.itemRepository.insert({
       serviceOrderId: request.serviceOrderId,
       type: request.type,
       description: request.description,
       quantity: request.quantity,
       unitPriceCents: request.unitPriceCents,
+      careServiceKey: request.careServiceKey,
     });
 
     return { item: this.toItemResponse(created) };
@@ -644,11 +649,13 @@ export class ServiceOrderManager {
       throw new AppException(AppErrorCode.SERVICE_ORDER_ITEM_NOT_FOUND, 'Item da OS não encontrado.', HttpStatus.NOT_FOUND);
     }
 
+    if (request.careServiceKey !== undefined && request.careServiceKey !== existing.careServiceKey && ['DELIVERED', 'CANCELLED'].includes(owningOrder.status)) throw new AppException(AppErrorCode.VALIDATION_ERROR, 'Para uma OS encerrada, registre o cuidado na central de relacionamento.');
     await this.itemRepository.update(request.id, {
       type: request.type,
       description: request.description,
       quantity: request.quantity,
       unitPriceCents: request.unitPriceCents,
+      careServiceKey: request.careServiceKey,
     });
 
     const updated = await this.itemRepository.byId(request.id);
@@ -857,6 +864,7 @@ export class ServiceOrderManager {
       quantity,
       unitPriceCents: item.unitPriceCents,
       lineTotalCents: Math.round(quantity * item.unitPriceCents),
+      careServiceKey: item.careServiceKey as ServiceOrderItemResponse['careServiceKey'] ?? undefined,
       createdAt: item.createdAt.toISOString(),
     };
   }

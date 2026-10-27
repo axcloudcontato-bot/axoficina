@@ -1,6 +1,7 @@
 import type { PermissionKey } from '@oficina/contracts';
 
 export const NAVIGATION_DESTINATIONS: Array<{ href: string; label: string; permission?: PermissionKey }> = [
+  { href: '/relacionamento', label: 'Cuidado com o cliente: aniversários e lembretes', permission: 'alerts.view' },
   { href: '/painel', label: 'Visão da oficina', permission: 'dashboard.view' },
   { href: '/ordens-de-servico', label: 'Ordens de serviço', permission: 'service_orders.view' },
   { href: '/agenda', label: 'Agenda', permission: 'appointments.view' },

@@ -7,7 +7,7 @@ import { TenantContextService } from '../tenant-context/tenant-context.service';
 // passou por um lookup tenant-scoped em ServiceOrder antes de chegar aqui);
 // adicioná-la faria a extensão quebrar em runtime tentando injetar
 // tenant_id numa tabela sem essa coluna. Ver plano ordem-de-servico.md.
-const TENANT_SCOPED_MODELS = new Set(['ServiceOrderStatusNotification', 'CustomerReplyRead', 'CustomerMessage', 'PrivacyRequest', 'User', 'AuditLog', 'Customer', 'Vehicle', 'ServiceOrder', 'ServiceOrderPhoto', 'ServiceOrderReceipt', 'ServiceOrderInstallment', 'FinancialCategory', 'FinancialEntry', 'Supplier', 'MaintenanceAlert', 'Appointment']);
+const TENANT_SCOPED_MODELS = new Set(['CustomerCareSettings', 'CustomerCarePlan', 'CustomerCareDelivery', 'ServiceOrderStatusNotification', 'CustomerReplyRead', 'CustomerMessage', 'PrivacyRequest', 'User', 'AuditLog', 'Customer', 'Vehicle', 'ServiceOrder', 'ServiceOrderPhoto', 'ServiceOrderReceipt', 'ServiceOrderInstallment', 'FinancialCategory', 'FinancialEntry', 'Supplier', 'MaintenanceAlert', 'Appointment']);
 
 // findFirst busca uma linha específica (normalmente por id/token hash) e é
 // usada de propósito em fluxos sem autenticação ainda (refresh, logout —

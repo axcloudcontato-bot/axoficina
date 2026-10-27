@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { toast } from 'sonner';
-import type { ServiceOrderItemResponse, ServiceOrderItemType, ServiceOrderResponse } from '@oficina/contracts';
+import { DEFAULT_CARE_CAMPAIGNS, type CareServiceKey, type ServiceOrderItemResponse, type ServiceOrderItemType, type ServiceOrderResponse } from '@oficina/contracts';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -21,16 +21,18 @@ interface ServiceOrderItemsSectionProps {
 }
 
 interface ItemForm {
+  careServiceKey: CareServiceKey | '';
   type: ServiceOrderItemType;
   description: string;
   quantity: string;
   unitPrice: string;
 }
 
-const EMPTY_FORM: ItemForm = { type: 'PART', description: '', quantity: '1', unitPrice: '' };
+const EMPTY_FORM: ItemForm = { type: 'PART', description: '', quantity: '1', unitPrice: '', careServiceKey: '' };
 
 function toEditForm(item: ServiceOrderItemResponse): ItemForm {
   return {
+    careServiceKey: item.careServiceKey ?? '',
     type: item.type,
     description: item.description,
     quantity: String(item.quantity),
@@ -64,6 +66,7 @@ export function ServiceOrderItemsSection({ serviceOrder, readOnly = false }: Ser
   const deleteItem = useDeleteServiceOrderItem(serviceOrder.id);
 
   const items = serviceOrder.items ?? [];
+  const careLocked = ['DELIVERED', 'CANCELLED'].includes(serviceOrder.status);
 
   function handleAdd() {
     if (!isValidForm(form)) {
@@ -73,7 +76,7 @@ export function ServiceOrderItemsSection({ serviceOrder, readOnly = false }: Ser
     const quantity = Number(form.quantity.replace(',', '.'));
     const unitPriceCents = parseUnitPriceCents(form.unitPrice);
     addItem.mutate(
-      { serviceOrderId: serviceOrder.id, type: form.type, description: form.description.trim(), quantity, unitPriceCents },
+      { serviceOrderId: serviceOrder.id, type: form.type, description: form.description.trim(), quantity, unitPriceCents, ...(!careLocked && form.careServiceKey ? { careServiceKey: form.careServiceKey } : {}) },
       {
         onSuccess: () => {
           setForm(EMPTY_FORM);
@@ -102,7 +105,7 @@ export function ServiceOrderItemsSection({ serviceOrder, readOnly = false }: Ser
     const quantity = Number(editForm.quantity.replace(',', '.'));
     const unitPriceCents = parseUnitPriceCents(editForm.unitPrice);
     updateItem.mutate(
-      { id: editingId, type: editForm.type, description: editForm.description.trim(), quantity, unitPriceCents },
+      { id: editingId, type: editForm.type, description: editForm.description.trim(), quantity, unitPriceCents, ...(!careLocked && editForm.careServiceKey !== (items.find(item => item.id === editingId)?.careServiceKey ?? '') ? { careServiceKey: editForm.careServiceKey || null } : {}) },
       {
         onSuccess: () => {
           cancelEdit();
@@ -169,6 +172,7 @@ export function ServiceOrderItemsSection({ serviceOrder, readOnly = false }: Ser
                         value={editForm.description}
                         onChange={(event) => setEditForm((prev) => ({ ...prev, description: event.target.value }))}
                       />
+                      <label className="mt-2 block text-xs text-muted-foreground">Próximo cuidado<select className="mt-1 h-9 w-full rounded-button border border-input bg-background px-2 text-xs" disabled={careLocked} value={editForm.careServiceKey} onChange={event => setEditForm(prev => ({ ...prev, careServiceKey: event.target.value as CareServiceKey | '' }))}><option value="">Sem vínculo de manutenção</option>{DEFAULT_CARE_CAMPAIGNS.filter(item => item.key !== 'BIRTHDAY').map(item => <option key={item.key} value={item.key}>{item.name}</option>)}</select></label>
                     </td>
                     <td className="py-2 pr-2 text-right">
                       <Input
@@ -199,7 +203,7 @@ export function ServiceOrderItemsSection({ serviceOrder, readOnly = false }: Ser
                 ) : (
                   <tr key={item.id} className="border-b border-border last:border-0">
                     <td className="py-2 pr-2">{ITEM_TYPE_LABELS[item.type]}</td>
-                    <td className="py-2 pr-2">{item.description}</td>
+                    <td className="py-2 pr-2">{item.description}{item.careServiceKey && <span className="mt-1 block text-xs font-semibold text-primary">💛 {DEFAULT_CARE_CAMPAIGNS.find(campaign => campaign.key === item.careServiceKey)?.name}</span>}</td>
                     <td className="py-2 pr-2 text-right">{item.quantity}</td>
                     <td className="py-2 pr-2 text-right">{formatCurrencyBRL(item.unitPriceCents)}</td>
                     <td className="py-2 pr-2 text-right font-semibold">{formatCurrencyBRL(item.lineTotalCents)}</td>
@@ -242,7 +246,8 @@ export function ServiceOrderItemsSection({ serviceOrder, readOnly = false }: Ser
           onChange={(event) => setForm((prev) => ({ ...prev, unitPrice: event.target.value }))}
         /></label>
       </div>
-      <div className="mt-3 flex justify-end">
+      <div className="mt-3 flex flex-wrap items-end justify-between gap-3">
+        {!careLocked && <label className="max-w-md flex-1 space-y-1.5 text-xs font-semibold text-muted-foreground"><span>Programar próximo cuidado ao entregar esta OS (opcional)</span><select className="h-10 w-full rounded-button border border-input bg-background px-3 text-sm text-foreground" value={form.careServiceKey} onChange={event => setForm(prev => ({ ...prev, careServiceKey: event.target.value as CareServiceKey | '' }))}><option value="">Sem vínculo de manutenção</option>{DEFAULT_CARE_CAMPAIGNS.filter(item => item.key !== 'BIRTHDAY').map(item => <option key={item.key} value={item.key}>{item.emoji} {item.name}</option>)}</select></label>}
         <Button onClick={handleAdd} disabled={addItem.isPending}>
           {addItem.isPending ? 'Adicionando...' : 'Adicionar item'}
         </Button>

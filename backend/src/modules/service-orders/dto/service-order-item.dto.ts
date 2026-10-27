@@ -1,5 +1,5 @@
 import { IsIn, IsInt, IsNotEmpty, IsNumber, IsOptional, IsUUID, Min } from 'class-validator';
-import { SERVICE_ORDER_ITEM_TYPES } from '@oficina/contracts';
+import { CARE_SERVICE_KEYS, SERVICE_ORDER_ITEM_TYPES } from '@oficina/contracts';
 import type {
   CreateServiceOrderItemRequest,
   DeleteServiceOrderItemRequest,
@@ -9,6 +9,8 @@ import type {
 const MIN_QUANTITY = 0.01;
 
 export class CreateServiceOrderItemDto implements CreateServiceOrderItemRequest {
+  @IsOptional() @IsIn(CARE_SERVICE_KEYS)
+  careServiceKey?: CreateServiceOrderItemRequest['careServiceKey'];
   @IsUUID('4', { message: 'service_order_id must be a valid id' })
   serviceOrderId!: string;
 
@@ -33,6 +35,8 @@ export class CreateServiceOrderItemDto implements CreateServiceOrderItemRequest 
 }
 
 export class UpdateServiceOrderItemDto implements UpdateServiceOrderItemRequest {
+  @IsOptional() @IsIn(CARE_SERVICE_KEYS)
+  careServiceKey?: UpdateServiceOrderItemRequest['careServiceKey'];
   @IsNotEmpty({ message: 'id is required' })
   @IsUUID('4', { message: 'id must be a valid id' })
   id!: string;

@@ -26,6 +26,9 @@ interface CustomerPreferencesTabProps {
 export function CustomerPreferencesTab({ form }: CustomerPreferencesTabProps) {
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <FormField control={form.control} name="careMessagesEnabled" render={({ field }) => (
+        <FormItem className="rounded-card border border-border bg-selection p-4 sm:col-span-2"><div className="flex items-start gap-3"><FormControl><input type="checkbox" checked={field.value} onChange={event => field.onChange(event.target.checked)} onBlur={field.onBlur} ref={field.ref} name={field.name} className="mt-0.5 size-4 shrink-0 accent-primary" /></FormControl><div><FormLabel className="cursor-pointer text-sm font-semibold">O cliente autorizou os lembretes de cuidado e a mensagem de aniversário.</FormLabel><p className="mt-1 text-xs leading-5 text-muted-foreground">Marque após confirmar com o cliente. Respeita o canal e o horário preferidos. Cada mensagem inclui um link para pausar; os avisos de OS são uma preferência separada.</p></div></div><FormMessage /></FormItem>
+      )} />
       <FormField control={form.control} name="notifyServiceOrderUpdates" render={({ field }) => (
         <FormItem className="rounded-card border border-border p-4 sm:col-span-2">
           <div className="flex items-start gap-3">

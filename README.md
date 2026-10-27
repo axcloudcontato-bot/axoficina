@@ -8,6 +8,8 @@ Políticas de privacidade, termos, cookies, reembolso e procedimentos LGPD: [doc
 
 Navegação por teclado e atalhos: [guia de uso e implementação](docs/keyboard-navigation.md).
 
+Aniversários, lembretes e planos de manutenção por veículo: [central de cuidado com o cliente](docs/customer-care.md).
+
 ERP SaaS multi-tenant para oficinas mecânicas.
 
 ## Stack

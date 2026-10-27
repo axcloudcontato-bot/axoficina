@@ -33,6 +33,8 @@ const addressSchema = z.object({
 });
 
 export const customerSchema = z.object({
+  birthDate: z.string().optional(),
+  careMessagesEnabled: z.boolean().default(false),
   notifyServiceOrderUpdates: z.boolean().default(false),
   type: z.enum(['PF', 'PJ']),
   document: z.string().max(24, 'Documento muito longo'),
@@ -67,6 +69,8 @@ const EMPTY_ADDRESS: NonNullable<CustomerFormValues['address']> = {
 };
 
 const EMPTY_VALUES: CustomerFormValues = {
+  birthDate: '',
+  careMessagesEnabled: false,
   notifyServiceOrderUpdates: false,
   type: 'PF',
   document: '',
@@ -85,10 +89,10 @@ const EMPTY_VALUES: CustomerFormValues = {
 };
 
 const GUIDED_STEPS = [
-  { id: 'general', label: 'Dados gerais', fields: ['type', 'document', 'name', 'phone', 'email', 'rg', 'stateRegistration'] },
+  { id: 'general', label: 'Dados gerais', fields: ['type', 'document', 'name', 'phone', 'email', 'rg', 'stateRegistration', 'birthDate'] },
   { id: 'address', label: 'Endereço', fields: ['address'] },
   { id: 'contact', label: 'Contato', fields: ['secondaryContactName', 'secondaryContactPhone', 'secondaryContactRelation'] },
-  { id: 'preferences', label: 'Preferências', fields: ['preferredContactChannel', 'preferredContactTime', 'notifyServiceOrderUpdates'] },
+  { id: 'preferences', label: 'Preferências', fields: ['preferredContactChannel', 'preferredContactTime', 'notifyServiceOrderUpdates', 'careMessagesEnabled'] },
   { id: 'notes', label: 'Observações', fields: ['notes'] },
 ] as const;
 
@@ -152,6 +156,8 @@ export function CustomerFormModal({ open, onOpenChange, customer, onCreated, pre
             preferredContactChannel: customer.preferredContactChannel,
             preferredContactTime: customer.preferredContactTime,
             notifyServiceOrderUpdates: customer.notifyServiceOrderUpdates ?? false,
+            birthDate: customer.birthDate ?? '',
+            careMessagesEnabled: customer.careMessagesEnabled ?? false,
           }
         : { ...EMPTY_VALUES, ...initialValues },
     );
@@ -175,6 +181,7 @@ export function CustomerFormModal({ open, onOpenChange, customer, onCreated, pre
     };
     const address = buildAddressPayload(values.address);
     const sharedFields = {
+      careMessagesEnabled: values.careMessagesEnabled,
       notifyServiceOrderUpdates: values.notifyServiceOrderUpdates,
       name: values.name,
       phone: values.phone,
@@ -192,6 +199,7 @@ export function CustomerFormModal({ open, onOpenChange, customer, onCreated, pre
 
     if (isEditing && customer) {
       update.mutate({ id: customer.id, ...sharedFields, document: values.document,
+        birthDate: values.type === 'PF' ? values.birthDate || null : null,
         email: values.email || null, notes: values.notes || null, address: address ?? null,
         rg: values.rg || null, stateRegistration: values.stateRegistration || null,
         secondaryContactName: values.secondaryContactName || null,
@@ -201,19 +209,19 @@ export function CustomerFormModal({ open, onOpenChange, customer, onCreated, pre
         preferredContactTime: values.preferredContactTime ?? null,
       }, { onSuccess, onError });
     } else {
-      create.mutate({ type: values.type, document: values.document || undefined, ...sharedFields }, { onSuccess, onError });
+      create.mutate({ type: values.type, document: values.document || undefined, birthDate: values.type === 'PF' ? values.birthDate || undefined : undefined, ...sharedFields }, { onSuccess, onError });
     }
   }
 
   function onInvalid(errors: FieldErrors<CustomerFormValues>) {
     const firstPath = Object.keys(errors)[0] ?? '';
-    if (['type', 'document', 'name', 'phone', 'email', 'rg', 'stateRegistration'].includes(firstPath)) {
+    if (['type', 'document', 'name', 'phone', 'email', 'rg', 'stateRegistration', 'birthDate'].includes(firstPath)) {
       setActiveTab('general');
     } else if (firstPath.startsWith('address.')) {
       setActiveTab('address');
     } else if (firstPath.startsWith('secondaryContact')) {
       setActiveTab('contact');
-    } else if (firstPath.startsWith('preferredContact') || firstPath === 'notifyServiceOrderUpdates') {
+    } else if (firstPath.startsWith('preferredContact') || firstPath === 'notifyServiceOrderUpdates' || firstPath === 'careMessagesEnabled') {
       setActiveTab('preferences');
     } else if (firstPath === 'notes') {
       setActiveTab('notes');
