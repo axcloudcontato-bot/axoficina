@@ -2,13 +2,17 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { LEGAL_VERSION } from '@oficina/contracts';
+import { publicPageMetadata } from '@/lib/seo';
 import { legalDocuments, legalIdentity } from '@/features/privacy/legal-content';
 
 type DocumentKey = keyof typeof legalDocuments;
 function getDocument(key: string) { return Object.hasOwn(legalDocuments, key) ? legalDocuments[key as DocumentKey] : undefined; }
 export function generateStaticParams() { return Object.keys(legalDocuments).map((document) => ({ document })); }
 export async function generateMetadata({ params }: { params: Promise<{ document: string }> }): Promise<Metadata> {
-  return { title: `${getDocument((await params).document)?.title ?? 'Documento'} | Ofix` };
+  const key = (await params).document;
+  const doc = getDocument(key);
+  if (!doc) return { title: 'Documento', robots: { index: false } };
+  return publicPageMetadata({ title: doc.title, description: doc.intro, path: `/${key}` });
 }
 export default async function LegalPage({ params }: { params: Promise<{ document: string }> }) {
   const document = getDocument((await params).document);

@@ -6,11 +6,26 @@ import type { Metadata } from 'next';
 import '@fontsource-variable/montserrat';
 import { ThemeProvider } from '@/components/theme-provider';
 import { Providers } from '@/components/providers';
+import { SITE_DESCRIPTION, SITE_NAME, SITE_URL } from '@/lib/site';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'Ofix — Sistema para Oficina Mecânica',
-  description: 'Mais controle para sua oficina. Gestão de ordens de serviço, clientes, estoque e financeiro.',
+  metadataBase: new URL(SITE_URL),
+  title: { default: 'Ofix — Sistema para Oficina Mecânica', template: '%s | Ofix' },
+  description: SITE_DESCRIPTION,
+  applicationName: SITE_NAME,
+  openGraph: {
+    type: 'website',
+    locale: 'pt_BR',
+    siteName: SITE_NAME,
+    title: 'Ofix — Sistema para Oficina Mecânica',
+    description: SITE_DESCRIPTION,
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Ofix — Sistema para Oficina Mecânica',
+    description: SITE_DESCRIPTION,
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
