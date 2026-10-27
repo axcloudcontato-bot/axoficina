@@ -76,14 +76,15 @@ describe('Automatic WhatsApp status notices (HTTP + PostgreSQL)', () => {
     await opt(true); const id = await open(); await photos(id, 'ENTRY'); await photos(id, 'EXIT');
     for (const status of ['AWAITING_APPROVAL', 'IN_PROGRESS', 'WAITING_PARTS', 'IN_PROGRESS', 'COMPLETED', 'DELIVERED']) await post('service-orders/transition', { id, to_status: status }).expect(200);
     await drain();
-    const expected = ['ORDEM DE SERVIÇO ABERTA', 'ORÇAMENTO EM APROVAÇÃO', 'SERVIÇO INICIADO', 'AGUARDANDO PEÇAS', 'SERVIÇO RETOMADO', 'VEÍCULO PRONTO PARA RETIRADA', 'VEÍCULO ENTREGUE'];
-    expect(whatsapp.sendNotice).toHaveBeenCalledTimes(7);
+    // A aprovação não gera aviso de status: a pergunta com botões já é a mensagem dessa etapa.
+    const expected = ['ORDEM DE SERVIÇO ABERTA', 'SERVIÇO INICIADO', 'AGUARDANDO PEÇAS', 'SERVIÇO RETOMADO', 'VEÍCULO PRONTO PARA RETIRADA', 'VEÍCULO ENTREGUE'];
+    expect(whatsapp.sendNotice).toHaveBeenCalledTimes(6);
     expected.forEach((title, index) => expect(whatsapp.sendNotice.mock.calls[index][2]).toContain(`*${title}*`));
     expect(whatsapp.sendNotice.mock.calls[0]).toEqual([expect.objectContaining({ sessionId: tenants[0] }), '5511999998888@s.whatsapp.net', expect.stringContaining('*Solicitação:* Revisão dos freios')]);
-    await drain(); expect(whatsapp.sendNotice).toHaveBeenCalledTimes(7);
+    await drain(); expect(whatsapp.sendNotice).toHaveBeenCalledTimes(6);
     expect(whatsapp.sendButtons).toHaveBeenCalledTimes(1);
-    const history = await list(id).expect(200); expect(history.body.total).toBe(8); expect(history.body.items.every((record: { status: string }) => record.status === 'SENT')).toBe(true);
-    await post('service-orders/transition', { id, to_status: 'IN_PROGRESS' }).expect(400); expect((await list(id)).body.total).toBe(8);
+    const history = await list(id).expect(200); expect(history.body.total).toBe(7); expect(history.body.items.every((record: { status: string }) => record.status === 'SENT')).toBe(true);
+    await post('service-orders/transition', { id, to_status: 'IN_PROGRESS' }).expect(400); expect((await list(id)).body.total).toBe(7);
   });
 
   it('only notifies the winning transition and only once across concurrent dispatchers', async () => {

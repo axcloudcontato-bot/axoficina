@@ -14,6 +14,8 @@ export class ServiceOrderStatusNotificationRepository {
 
   async record(tx: PrismaClient, order: ServiceOrder, event: { id: string; fromStatus: ServiceOrderStatus | null; toStatus: ServiceOrderStatus; changedAt: Date }) {
     const customer = await tx.customer.findFirst({ where: { id: order.customerId, tenantId: order.tenantId, deletedAt: null } });
+    // A pergunta de aprovação (com botões) já é a mensagem desta etapa: não enviar um aviso de status a mais.
+    if (event.toStatus === 'AWAITING_APPROVAL') return;
     if (!customer || (!customer.notifyServiceOrderUpdates && event.toStatus !== 'DELIVERED')) return;
     const [vehicle, tenant] = await Promise.all([
       tx.vehicle.findFirst({ where: { id: order.vehicleId, tenantId: order.tenantId, deletedAt: null } }),

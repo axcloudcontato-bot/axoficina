@@ -2,7 +2,7 @@
 
 No cadastro do cliente, em **Preferências**, marque **Me avise sobre toda movimentação da Ordem de Serviço.** A opção começa desmarcada para clientes novos e existentes. O telefone principal precisa ter DDD e a oficina precisa manter sua integração WhatsApp ativa. A preferência geral de canal e horário não ativa esta opção; os avisos são imediatos, a cada evento.
 
-Depois de ativada, a abertura e cada mudança efetiva de status geram um aviso: Aberta, Aguardando aprovação, Em andamento, Aguardando peças, retomada, Pronto para entrega, Entregue e Cancelada. Editar campos, fotos, itens, consultar abas ou receber uma resposta sem mudar o status não gera este aviso. A ativação não reenvia o passado. A pergunta de aprovação e o aviso com botões de retirada continuam sendo comunicações próprias do fluxo, independentes destes avisos de status.
+Depois de ativada, a abertura e cada mudança efetiva de status geram um aviso: Aberta, Em andamento, Aguardando peças, retomada, Pronto para entrega, Entregue e Cancelada. Editar campos, fotos, itens, consultar abas ou receber uma resposta sem mudar o status não gera este aviso. A ativação não reenvia o passado. A pergunta de aprovação e o aviso com botões de retirada continuam sendo comunicações próprias do fluxo, independentes destes avisos de status.
 
 As mensagens usam a formatação nativa do WhatsApp, com asteriscos simples em títulos e rótulos. Incluem cliente, número da OS, veículo, placa, status registrado e data da movimentação em Brasília. A abertura acrescenta a solicitação do cliente e os dados de entrada. A previsão de entrega aparece quando definida e pertinente. Notas internas e informações de pagamento não são incluídas. A retirada não afirma que o saldo foi quitado.
 
