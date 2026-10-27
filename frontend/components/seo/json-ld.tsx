@@ -1,6 +1,7 @@
 import { COMPANY, SAME_AS, SITE_DESCRIPTION, SITE_NAME, SITE_URL } from '@/lib/site';
 import { FAQ } from '@/components/landing/faq';
 import { STEPS } from '@/components/landing/steps';
+import { SPEC } from '@/components/landing/facts';
 import type { ContentPage } from '@/components/landing/content-pages';
 
 export function JsonLd({ data }: { data: Record<string, unknown> }) {
@@ -40,6 +41,7 @@ export function HomeJsonLd() {
         inLanguage: 'pt-BR',
         publisher: { '@id': ORGANIZATION_ID },
         image: `${SITE_URL}/opengraph-image`,
+        featureList: SPEC.map(([name, value]) => `${name}: ${value}`),
       },
       {
         '@type': 'HowTo',

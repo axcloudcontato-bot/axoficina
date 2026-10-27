@@ -44,13 +44,13 @@ export const CONTENT_PAGES: ContentPage[] = [
         h2: 'Como o Ofix atende a oficina mecânica',
         paragraphs: [
           'O Ofix reúne esses recursos em um sistema simples e rápido. O cliente e o veículo são cadastrados com dados da tabela FIPE, a ordem de serviço recebe itens e fotos, e o orçamento segue para aprovação pelo WhatsApp, com a resposta registrada na ordem.',
-          'Depois da entrega, o sistema gera as parcelas e o recibo, e permite pedir a avaliação do cliente. Cada oficina tem um ambiente isolado, com usuários e permissões próprios, e há papéis prontos para administrador, gestor, mecânico e recepção.',
+          'Depois da entrega, o sistema gera as parcelas e o recibo, e permite pedir a avaliação do cliente. Cada oficina tem um ambiente isolado, com usuários e permissões próprios, e há 5 perfis prontos: administrador, gestor, mecânico, recepção e financeiro.',
         ],
       },
     ],
     faq: [
       ['Software para oficina mecânica precisa ser instalado?', 'No Ofix, não. O sistema funciona no navegador, no computador, no tablet e no celular, sem instalar nada.'],
-      ['Quem da oficina usa o sistema?', 'Recepção, mecânicos, financeiro e dono ou gestor. Cada função tem papéis prontos e é possível criar perfis de acesso com permissões detalhadas.'],
+      ['Quem da oficina usa o sistema?', 'Recepção, mecânicos, financeiro e dono ou gestor. Há 5 perfis prontos (administrador, gestor, mecânico, recepção e financeiro) e é possível criar perfis personalizados, com 20 permissões.'],
       ['O Ofix substitui a planilha de controle?', 'Ele reúne ordens de serviço, clientes, veículos, agenda e financeiro no mesmo sistema, para que a oficina não dependa de planilhas separadas.'],
     ],
     related: ['ordem-de-servico-para-oficina', 'controle-financeiro-para-oficina'],
@@ -84,7 +84,7 @@ export const CONTENT_PAGES: ContentPage[] = [
       {
         h2: 'Acompanhando o status e imprimindo a OS',
         paragraphs: [
-          'O mecânico trabalha pela ordem: itens, status e fotos, inclusive no tablet. A recepção vê em que etapa cada carro está e informa o cliente sem precisar procurar o responsável. Quando for necessário um documento em papel, a ordem de serviço tem impressão em A4 pronta.',
+          'A ordem passa por 7 status: aberta, aguardando aprovação, em andamento, aguardando peças, concluída, entregue e cancelada, e cada mudança fica no histórico. O mecânico trabalha pela ordem: itens, status e fotos (de até 8 MB cada), inclusive no tablet. A recepção vê em que etapa cada carro está e informa o cliente sem precisar procurar o responsável. Quando for necessário um documento em papel, a ordem de serviço tem impressão em A4 pronta.',
         ],
       },
       {
@@ -130,7 +130,7 @@ export const CONTENT_PAGES: ContentPage[] = [
       {
         h2: 'Como o financeiro funciona no Ofix',
         paragraphs: [
-          'No Ofix, ao finalizar uma ordem de serviço o sistema gera as parcelas e o recibo. O módulo financeiro traz contas a pagar e a receber, lançamentos, movimentações, categorias, fornecedores, fluxo de caixa e relatórios analíticos, com impressão em A4.',
+          'No Ofix, ao finalizar uma ordem de serviço o sistema gera as parcelas e o recibo. O parcelamento vai de 1 a 24 vezes e há 7 formas de pagamento: Pix, dinheiro, cartão de débito, cartão de crédito, transferência, boleto e outras. O módulo financeiro traz contas a pagar e a receber, lançamentos, movimentações, categorias, fornecedores, fluxo de caixa e relatórios analíticos, com impressão em A4.',
           'O acesso ao financeiro pode ser limitado por perfil: quem trabalha na recepção ou no pátio não precisa ver valores e configurações da oficina.',
         ],
       },

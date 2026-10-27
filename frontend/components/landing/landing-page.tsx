@@ -8,6 +8,7 @@ import { OfixLogo } from '@/components/brand/ofix-logo';
 import { DashboardMock, QuoteChatMock, StatusFlowMock } from './product-mock';
 import { FAQ } from './faq';
 import { STEPS } from './steps';
+import { SPEC, STATS } from './facts';
 import { SiteFooter } from './site-footer';
 import { COMPANY } from '@/lib/site';
 
@@ -207,6 +208,35 @@ export function LandingPage() {
                 <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{text}</p>
               </article>
             ))}
+          </div>
+        </Section>
+
+        <Section id="numeros" dark>
+          <Eyebrow>O Ofix em números</Eyebrow>
+          <Heading sub="Os limites e as opções do sistema, sem arredondar: o que está no produto hoje.">
+            Fatos sobre o que o sistema <span className={Y}>faz.</span>
+          </Heading>
+          <ul className="mt-14 grid gap-px overflow-hidden rounded-card border border-white/10 bg-white/10 sm:grid-cols-2 lg:grid-cols-3">
+            {STATS.map(([value, label, detail]) => (
+              <li key={label} className="bg-[#0f171f] p-7">
+                <p className={`text-5xl font-extrabold ${Y}`}>{value}</p>
+                <h3 className="mt-3 text-lg font-bold">{label}</h3>
+                <p className="mt-2 text-sm leading-relaxed text-white/60">{detail}</p>
+              </li>
+            ))}
+          </ul>
+          <div className="mt-14 overflow-hidden rounded-card border border-white/10">
+            <table className="w-full table-fixed border-collapse text-left text-sm">
+              <caption className="bg-white/5 p-4 text-left text-xs font-bold uppercase tracking-widest text-white/60">Ficha técnica do Ofix</caption>
+              <tbody>
+                {SPEC.map(([name, value]) => (
+                  <tr key={name} className="border-t border-white/10 align-top">
+                    <th scope="row" className="w-2/5 bg-white/[0.03] p-4 font-semibold sm:w-1/3 sm:px-6">{name}</th>
+                    <td className="p-4 text-white/70 sm:px-6">{value}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </Section>
 
