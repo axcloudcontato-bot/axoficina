@@ -14,7 +14,10 @@ export const COMPANY = {
 
 // Perfis oficiais (LinkedIn, Instagram, etc.) usados em `sameAs` do Organization.
 // Preencha quando existirem; enquanto vazio, o campo é omitido do JSON-LD.
-export const SAME_AS: string[] = [];
+export const SAME_AS: string[] = [
+  'https://www.instagram.com/ofixgestaomecanica',
+  'https://www.tiktok.com/@ofixgestao',
+];
 
 /** Páginas públicas indexáveis, com a prioridade usada no sitemap. */
 export const PUBLIC_PAGES: Array<{ path: string; priority: number; changeFrequency: 'weekly' | 'monthly' | 'yearly' }> = [

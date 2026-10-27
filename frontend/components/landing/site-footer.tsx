@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { OfixLogo } from '@/components/brand/ofix-logo';
-import { COMPANY } from '@/lib/site';
+import { COMPANY, SAME_AS } from '@/lib/site';
 import { CONTENT_PAGES } from './content-pages';
 
 export function SiteFooter() {
@@ -12,6 +12,9 @@ export function SiteFooter() {
           <p className="mt-4 text-sm text-white/50">Um produto {COMPANY.name}.</p>
           <p className="mt-1 text-sm text-white/50">CNPJ {COMPANY.document}</p>
           <p className="mt-1 text-sm text-white/50"><a href={`mailto:${COMPANY.email}`} className="hover:text-white">{COMPANY.email}</a></p>
+          <p className="mt-3 flex gap-4 text-sm text-white/70">
+            {SAME_AS.map((url) => <a key={url} href={url} rel="me noopener" target="_blank" className="hover:text-white">{url.includes('instagram') ? 'Instagram' : url.includes('tiktok') ? 'TikTok' : new URL(url).hostname}</a>)}
+          </p>
         </div>
         <nav aria-label="Guias" className="text-sm text-white/70">
           <p className="mb-3 text-xs font-bold uppercase tracking-widest text-white/40">Guias</p>
