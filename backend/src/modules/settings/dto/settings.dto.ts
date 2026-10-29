@@ -1,5 +1,5 @@
-import type { UpdatePhotoPolicyRequest } from '@oficina/contracts';
-import { IsBoolean, IsEmail, IsInt, IsOptional, IsString, Max, MaxLength, Min, ValidateIf } from 'class-validator';
+import type { UpdateAgendaHoursRequest, UpdatePhotoPolicyRequest } from '@oficina/contracts';
+import { ArrayMaxSize, ArrayMinSize, IsArray, IsBoolean, IsEmail, IsInt, IsOptional, IsString, Max, MaxLength, Min, ValidateIf } from 'class-validator';
 
 // `@IsOptional()` só pula a validação quando o valor é null/undefined — uma
 // string vazia (o que o frontend sempre manda pra um campo de e-mail opcional
@@ -53,4 +53,12 @@ export class UpdatePhotoPolicyDto implements UpdatePhotoPolicyRequest {
   @IsBoolean() entry!: boolean;
   @IsBoolean() exit!: boolean;
   @IsBoolean() items!: boolean;
+}
+
+export class UpdateAgendaHoursDto implements UpdateAgendaHoursRequest {
+  @IsInt() @Min(0) @Max(23) openHour!: number;
+  @IsInt() @Min(1) @Max(24) closeHour!: number;
+  @IsArray() @ArrayMinSize(1) @ArrayMaxSize(7) @IsInt({ each: true }) @Min(0, { each: true }) @Max(6, { each: true }) workDays!: number[];
+  @IsOptional() @IsInt() @Min(1) @Max(100) bays?: number | null;
+  @IsOptional() @IsBoolean() remindersEnabled?: boolean;
 }

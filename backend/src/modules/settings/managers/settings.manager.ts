@@ -1,5 +1,5 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import type { PhotoPolicy, TenantSettingsResponse, UpdateCompanySettingsRequest, UpdateEmailSettingsRequest, UpdatePhotoPolicyRequest } from '@oficina/contracts';
+import type { AgendaHours, UpdateAgendaHoursRequest, PhotoPolicy, TenantSettingsResponse, UpdateCompanySettingsRequest, UpdateEmailSettingsRequest, UpdatePhotoPolicyRequest } from '@oficina/contracts';
 import { AuditLogService } from '../../../shared/audit-log/audit-log.service';
 import type { AuthenticatedUser } from '../../../shared/guards/jwt-auth.guard';
 import { TenantRepository } from '../../iam/repositories/tenant.repository';
@@ -26,7 +26,21 @@ export class SettingsManager {
 
   async getBranding(user: AuthenticatedUser) {
     const tenant = await this.requireTenant(user.tenantId);
-    return { company: this.toResponse(tenant).company, whatsappEnabled: tenant.waAkgEnabled ?? false, photoPolicy: this.photoPolicy(tenant) };
+    return { company: this.toResponse(tenant).company, whatsappEnabled: tenant.waAkgEnabled ?? false, photoPolicy: this.photoPolicy(tenant), agendaHours: this.agendaHours(tenant) };
+  }
+
+  async updateAgendaHours(user: AuthenticatedUser, input: UpdateAgendaHoursRequest) {
+    const workDays = [...new Set(input.workDays)].sort((a, b) => a - b);
+    if (input.openHour >= input.closeHour) throw new BadRequestException('O horário de fechamento deve ser depois da abertura.');
+    if (!workDays.length) throw new BadRequestException('Escolha ao menos um dia de funcionamento.');
+    const tenant = await this.tenants.updateSettings(user.tenantId, { agendaOpenHour: input.openHour, agendaCloseHour: input.closeHour, agendaWorkDays: workDays, ...(input.bays !== undefined ? { agendaBays: input.bays } : {}), ...(input.remindersEnabled !== undefined ? { appointmentRemindersEnabled: input.remindersEnabled } : {}) });
+    if (!tenant) throw new NotFoundException('Empresa não encontrada.');
+    await this.audit.record({ tenantId: user.tenantId, userId: user.userId, action: 'settings.agenda_hours_updated', entity: 'tenant', entityId: user.tenantId });
+    return { agendaHours: this.agendaHours(tenant) };
+  }
+
+  private agendaHours(tenant: { agendaOpenHour?: number; agendaCloseHour?: number; agendaWorkDays?: number[]; agendaBays?: number | null; appointmentRemindersEnabled?: boolean }): AgendaHours {
+    return { openHour: tenant.agendaOpenHour ?? 8, closeHour: tenant.agendaCloseHour ?? 18, workDays: tenant.agendaWorkDays ?? [1, 2, 3, 4, 5, 6], bays: tenant.agendaBays ?? null, remindersEnabled: tenant.appointmentRemindersEnabled ?? false };
   }
 
   async updatePhotoPolicy(user: AuthenticatedUser, input: UpdatePhotoPolicyRequest) {

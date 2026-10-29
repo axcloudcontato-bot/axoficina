@@ -1,7 +1,7 @@
 'use client';
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { DEFAULT_PHOTO_POLICY, type PhotoPolicy, type UpdateCompanySettingsRequest, type UpdateEmailSettingsRequest, type UpdatePhotoPolicyRequest } from '@oficina/contracts';
+import { DEFAULT_AGENDA_HOURS, DEFAULT_PHOTO_POLICY, type AgendaHours, type UpdateAgendaHoursRequest, type PhotoPolicy, type UpdateCompanySettingsRequest, type UpdateEmailSettingsRequest, type UpdatePhotoPolicyRequest } from '@oficina/contracts';
 import { settingsApi } from '../api/settings-api';
 
 export const SETTINGS_KEY = ['tenant-settings'] as const;
@@ -47,6 +47,18 @@ export function useUpdatePhotoPolicy() {
   const client = useQueryClient();
   return useMutation({
     mutationFn: (request: UpdatePhotoPolicyRequest) => settingsApi.updatePhotoPolicy(request),
+    onSuccess: () => client.invalidateQueries({ queryKey: BRANDING_KEY }),
+  });
+}
+
+export function useAgendaHours(): AgendaHours {
+  return useBranding().data?.agendaHours ?? DEFAULT_AGENDA_HOURS;
+}
+
+export function useUpdateAgendaHours() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (request: UpdateAgendaHoursRequest) => settingsApi.updateAgendaHours(request),
     onSuccess: () => client.invalidateQueries({ queryKey: BRANDING_KEY }),
   });
 }

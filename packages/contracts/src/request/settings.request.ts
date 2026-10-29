@@ -29,3 +29,11 @@ export interface UpdatePhotoPolicyRequest {
   exit: boolean;
   items: boolean;
 }
+
+export interface UpdateAgendaHoursRequest {
+  openHour: number;
+  closeHour: number;
+  workDays: number[];
+  bays?: number | null;
+  remindersEnabled?: boolean;
+}

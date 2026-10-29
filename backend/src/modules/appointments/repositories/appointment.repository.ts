@@ -69,6 +69,19 @@ export class AppointmentRepository {
     });
   }
 
+  // Vehicles expected in the workshop during the interval.
+  overlapping(startsAt: Date, endsAt: Date, excludeId?: string): Promise<number> {
+    return this.prisma.client.appointment.count({
+      where: {
+        deletedAt: null,
+        status: { in: ['SCHEDULED', 'CONFIRMED', 'IN_SERVICE'] },
+        startsAt: { lt: endsAt },
+        endsAt: { gt: startsAt },
+        ...(excludeId ? { id: { not: excludeId } } : {}),
+      },
+    });
+  }
+
   conflicts(startsAt: Date, endsAt: Date, technicianId: string, excludeId?: string): Promise<Appointment[]> {
     return this.prisma.client.appointment.findMany({
       where: {

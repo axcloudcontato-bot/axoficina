@@ -1,8 +1,9 @@
-import { IsBoolean, IsIn, IsISO8601, IsNotEmpty, IsOptional, IsString, IsUUID } from 'class-validator';
+import { IsBoolean, IsIn, IsISO8601, IsNotEmpty, IsOptional, IsString, IsUUID, MaxLength } from 'class-validator';
 import { APPOINTMENT_STATUSES } from '@oficina/contracts';
 import type {
   AppointmentListRequest,
   CreateAppointmentRequest,
+  NotifyAppointmentRequest,
   StartAppointmentRequest,
   TransitionAppointmentRequest,
   UpdateAppointmentRequest,
@@ -14,8 +15,8 @@ export class CreateAppointmentDto implements CreateAppointmentRequest {
   @IsOptional() @IsUUID('4') technicianId?: string;
   @IsISO8601() startsAt!: string;
   @IsISO8601() endsAt!: string;
-  @IsString() @IsNotEmpty() serviceDescription!: string;
-  @IsOptional() @IsString() notes?: string;
+  @IsString() @IsNotEmpty() @MaxLength(300) serviceDescription!: string;
+  @IsOptional() @IsString() @MaxLength(2000) notes?: string;
   @IsOptional() @IsBoolean() confirmConflict?: boolean;
 }
 
@@ -33,8 +34,13 @@ export class AppointmentListDto implements AppointmentListRequest {
 export class TransitionAppointmentDto implements TransitionAppointmentRequest {
   @IsUUID('4') id!: string;
   @IsIn(APPOINTMENT_STATUSES) toStatus!: TransitionAppointmentRequest['toStatus'];
+  @IsOptional() @IsString() @MaxLength(300) reason?: string;
 }
 
 export class StartAppointmentDto implements StartAppointmentRequest {
+  @IsUUID('4') id!: string;
+}
+
+export class NotifyAppointmentDto implements NotifyAppointmentRequest {
   @IsUUID('4') id!: string;
 }

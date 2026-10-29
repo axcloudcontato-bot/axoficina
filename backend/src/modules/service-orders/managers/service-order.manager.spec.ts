@@ -2,7 +2,7 @@ import { HttpStatus } from '@nestjs/common';
 import { ServiceOrderManager } from './service-order.manager';
 
 const actingUser = { userId: 'user-1', tenantId: 'tenant-1', role: 'ADMIN' as const };
-const FAKE_TX = {} as never;
+const FAKE_TX = { appointment: { updateMany: jest.fn() } } as never;
 
 function buildManager() {
   const serviceOrderRepository = {
@@ -60,6 +60,7 @@ function buildManager() {
   const prisma = {
     transaction: jest.fn((fn: (tx: unknown) => Promise<unknown>) => fn(FAKE_TX)),
     client: {
+      appointment: { updateMany: jest.fn() },
       serviceOrderInstallment: {
         findMany: jest.fn().mockResolvedValue([]),
         findFirst: jest.fn(),
@@ -764,6 +765,23 @@ describe('ServiceOrderManager', () => {
       expect(result.accountsReceivableCents).toBe(5000);
       expect(result.overdueDeliveries).toBe(1);
       expect(result.technicianWorkload[0]).toMatchObject({ technicianName: 'Carlos Mecânico', activeOrders: 1 });
+    });
+  });
+
+  describe('appointment that opened the order', () => {
+    it.each([['DELIVERED', 'COMPLETED', 'COMPLETED'], ['CANCELLED', 'IN_PROGRESS', 'CANCELLED']])('closes it when the order becomes %s', async (toStatus, fromStatus, appointmentStatus) => {
+      const deps = buildManager();
+      const existing = { ...baseServiceOrder, status: fromStatus };
+      deps.serviceOrderRepository.byId.mockResolvedValueOnce(existing).mockResolvedValueOnce({ ...existing, status: toStatus });
+      deps.serviceOrderRepository.transition.mockResolvedValue({ count: 1 });
+      deps.vehicleRepository.byId.mockResolvedValue(baseVehicle);
+      deps.customerRepository.byId.mockResolvedValue(baseCustomer);
+      const tx = FAKE_TX as unknown as { appointment: { updateMany: jest.Mock } };
+      tx.appointment.updateMany.mockClear();
+
+      await deps.manager.transition(actingUser, { id: 'so-1', toStatus: toStatus as never, ...(toStatus === 'CANCELLED' ? { reason: 'Cliente desistiu do serviço' } : {}) });
+
+      expect(tx.appointment.updateMany).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ serviceOrderId: 'so-1', status: 'IN_SERVICE' }), data: expect.objectContaining({ status: appointmentStatus }) }));
     });
   });
 

@@ -3,6 +3,7 @@ import type {
   AppointmentListRequest,
   AppointmentResponse,
   CreateAppointmentRequest,
+  NotifyAppointmentRequest,
   StartAppointmentRequest,
   TransitionAppointmentRequest,
   UpdateAppointmentRequest,
@@ -20,6 +21,9 @@ export const appointmentsApi = {
   },
   async transition(request: TransitionAppointmentRequest) {
     return (await apiClient.post<{ appointment: AppointmentResponse }>('/api/v1/appointments/transition', request)).data;
+  },
+  async notify(request: NotifyAppointmentRequest) {
+    return (await apiClient.post<{ appointment: AppointmentResponse }>('/api/v1/appointments/notify', request)).data;
   },
   async start(request: StartAppointmentRequest) {
     return (await apiClient.post<{ appointment: AppointmentResponse; serviceOrder: { id: string } }>('/api/v1/appointments/start', request)).data;

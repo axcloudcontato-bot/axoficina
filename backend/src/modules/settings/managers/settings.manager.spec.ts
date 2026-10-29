@@ -47,4 +47,15 @@ describe('SettingsManager', () => {
     await manager.sendTest(user as never, 'owner@test.com');
     expect(mailer.send).toHaveBeenCalledWith('tenant-1', expect.objectContaining({ to: 'owner@test.com' }));
   });
+
+  it('saves the opening hours with unique, ordered working days and refuses an inverted day', async () => {
+    const tenants = { updateSettings: jest.fn().mockImplementation(async (_id: string, data: Record<string, unknown>) => ({ id: 'tenant-1', ...data })) };
+    const audit = { record: jest.fn() };
+    const manager = new SettingsManager(tenants as never, {} as never, {} as never, audit as never);
+    const user = { tenantId: 'tenant-1', userId: 'user-1' } as never;
+
+    const result = await manager.updateAgendaHours(user, { openHour: 7, closeHour: 17, workDays: [6, 1, 1, 3] });
+    expect(result.agendaHours).toEqual({ openHour: 7, closeHour: 17, workDays: [1, 3, 6], bays: null, remindersEnabled: false });
+    await expect(manager.updateAgendaHours(user, { openHour: 18, closeHour: 8, workDays: [1] })).rejects.toThrow('fechamento');
+  });
 });

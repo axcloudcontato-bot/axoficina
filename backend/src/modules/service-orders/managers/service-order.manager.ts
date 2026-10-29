@@ -346,6 +346,10 @@ export class ServiceOrderManager {
       // manutenção do veículo mudou — qualquer alerta OPEN anterior fica
       // obsoleto. Resolvido na mesma transação pra garantir atomicidade com
       // a mudança de status (TRANSACTIONS.md), não via fila assíncrona.
+      // The appointment that opened this order follows it to the end.
+      if (request.toStatus === 'DELIVERED' || request.toStatus === 'CANCELLED') {
+        await tx.appointment.updateMany({ where: { serviceOrderId: request.id, status: 'IN_SERVICE', deletedAt: null }, data: request.toStatus === 'DELIVERED' ? { status: 'COMPLETED' } : { status: 'CANCELLED', cancelledAt: changedAt } });
+      }
       if (request.toStatus === 'DELIVERED') {
         await this.maintenanceAlertRepository.resolveOpenByVehicleId(tx, existing.vehicleId, changedAt);
         await this.carePlans?.recordDelivered(tx, existing, changedAt);
@@ -432,6 +436,7 @@ export class ServiceOrderManager {
     if (count === 0) {
       throw new AppException(AppErrorCode.SERVICE_ORDER_NOT_FOUND, 'Ordem de serviço não encontrada.', HttpStatus.NOT_FOUND);
     }
+    await this.prisma.client.appointment.updateMany({ where: { serviceOrderId: id, status: 'IN_SERVICE', deletedAt: null }, data: { status: 'CANCELLED', cancelledAt: new Date() } });
 
     const [vehicle, technician] = await Promise.all([
       this.vehicleRepository.byId(existing.vehicleId),

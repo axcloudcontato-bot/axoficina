@@ -56,7 +56,7 @@ export class CustomerCareForecastService {
         const contact = maintenanceContact(plan, campaign, settings, today);
         if (contact.date > end) continue;
         if (!customer.careMessagesEnabled) { withoutConsent.add(customer.id); continue; }
-        add(contact.date, customer.id, customer.name, 'MAINTENANCE', { vehicleName: `${vehicle.brand} ${vehicle.model}`, plate: vehicle.plate, serviceKey: plan.serviceKey as CareServiceKey, serviceName: campaign.name, dueAt: contact.dueDate, late: contact.late });
+        add(contact.date, customer.id, customer.name, 'MAINTENANCE', { vehicleId: vehicle.id, vehicleName: `${vehicle.brand} ${vehicle.model}`, plate: vehicle.plate, serviceKey: plan.serviceKey as CareServiceKey, serviceName: campaign.name, dueAt: contact.dueDate, late: contact.late });
       }
       if (plans.length < BATCH) break;
       cursor = plans.at(-1)!.id;

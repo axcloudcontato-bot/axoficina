@@ -25,8 +25,14 @@ export interface AppointmentListRequest {
 export interface TransitionAppointmentRequest {
   id: string;
   toStatus: AppointmentStatus;
+  // Required (min. 5 characters) when cancelling; optional for a no-show.
+  reason?: string;
 }
 
 export interface StartAppointmentRequest {
+  id: string;
+}
+
+export interface NotifyAppointmentRequest {
   id: string;
 }

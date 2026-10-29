@@ -51,7 +51,7 @@ export interface RecordCareServiceRequest { vehicleId: string; serviceKey: CareS
 export interface CarePlanResponse { id: string; customerId: string; customerName: string; vehicleId: string; vehicleName: string; plate: string; serviceKey: CareServiceKey; serviceName: string; completedAt: string; mileage?: number; dueAt: string; dueMileage?: number; intervalMonths: number; intervalKm: number | null }
 export interface CareDeliveryResponse { id: string; customerName: string; campaignNames: string[]; channel: CareChannel; status: CareDeliveryStatus; message: string; reason?: string; scheduledAt: string; sentAt?: string }
 export interface CareDashboardResponse { settings: CareSettings; channels: { whatsapp: boolean; email: boolean }; stats: { optedIn: number; birthdaysThisMonth: number; dueThisMonth: number; sentThisMonth: number; pending: number; failed: number }; plans: CarePlanResponse[]; deliveries: CareDeliveryResponse[]; totalPlans: number; totalDeliveries: number }
-export interface CareForecastItem { vehicleName: string; plate: string; serviceKey: CareServiceKey; serviceName: string; dueAt: string; late: boolean }
+export interface CareForecastItem { vehicleId: string; vehicleName: string; plate: string; serviceKey: CareServiceKey; serviceName: string; dueAt: string; late: boolean }
 export interface CareForecastCustomer { customerId: string; customerName: string; kind: 'MAINTENANCE' | 'BIRTHDAY'; items: CareForecastItem[] }
 export interface CareForecastDay { date: string; customers: CareForecastCustomer[] }
 export interface CareForecastResponse { enabled: boolean; today: string; horizonDays: number; dailyLimit: number; withoutConsent: number; days: CareForecastDay[] }

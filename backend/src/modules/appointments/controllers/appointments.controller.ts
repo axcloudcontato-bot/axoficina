@@ -7,6 +7,7 @@ import { AppointmentManager } from '../managers/appointment.manager';
 import {
   AppointmentListDto,
   CreateAppointmentDto,
+  NotifyAppointmentDto,
   StartAppointmentDto,
   TransitionAppointmentDto,
   UpdateAppointmentDto,
@@ -47,6 +48,14 @@ export class AppointmentsController {
   @Post('transition')
   transition(@CurrentUser() user: AuthenticatedUser, @Body() body: TransitionAppointmentDto) {
     return this.manager.transition(user, body);
+  }
+
+  @Roles(...ALL_ROLES)
+  @Permissions('appointments.manage')
+  @HttpCode(HttpStatus.OK)
+  @Post('notify')
+  notify(@CurrentUser() user: AuthenticatedUser, @Body() body: NotifyAppointmentDto) {
+    return this.manager.notify(user, body);
   }
 
   @Roles(...ALL_ROLES)

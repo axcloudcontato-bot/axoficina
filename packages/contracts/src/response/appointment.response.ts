@@ -14,6 +14,7 @@ export interface AppointmentResponse {
   tenantId: string;
   customerId: string;
   customerName: string;
+  customerPhone?: string;
   vehicleId: string;
   vehicleBrand: string;
   vehicleModel: string;
@@ -29,6 +30,8 @@ export interface AppointmentResponse {
   createdBy: string;
   createdAt: string;
   cancelledAt?: string;
+  reminderSentAt?: string;
+  confirmationSentAt?: string;
 }
 
 export interface AppointmentConflictResponse {

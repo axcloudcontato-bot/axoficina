@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type {
   AppointmentListRequest,
   CreateAppointmentRequest,
+  NotifyAppointmentRequest,
   StartAppointmentRequest,
   TransitionAppointmentRequest,
   UpdateAppointmentRequest,
@@ -32,4 +33,7 @@ export function useTransitionAppointment() {
 }
 export function useStartAppointment() {
   return useRefreshingMutation<StartAppointmentRequest>(appointmentsApi.start);
+}
+export function useNotifyAppointment() {
+  return useRefreshingMutation<NotifyAppointmentRequest>(appointmentsApi.notify);
 }

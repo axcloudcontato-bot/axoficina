@@ -124,6 +124,11 @@ model Tenant {
   photoRequireEntry    Boolean   @default(true) @map("photo_require_entry")
   photoRequireExit     Boolean   @default(true) @map("photo_require_exit")
   photoRequireItems    Boolean   @default(true) @map("photo_require_items")
+  agendaOpenHour       Int       @default(8) @map("agenda_open_hour")
+  agendaCloseHour      Int       @default(18) @map("agenda_close_hour")
+  agendaWorkDays       Int[]     @default([1, 2, 3, 4, 5, 6]) @map("agenda_work_days")
+  agendaBays           Int?      @map("agenda_bays")
+  appointmentRemindersEnabled Boolean @default(false) @map("appointment_reminders_enabled")
   plan                String    @default("free")
   subscriptionStatus      String    @default("unconfigured") @map("subscription_status")
   subscriptionAmountCents Int       @default(0) @map("subscription_amount_cents")
@@ -683,6 +688,8 @@ model Appointment {
   status             String    @default("SCHEDULED")
   createdBy          String    @map("created_by") @db.Uuid
   cancelledAt        DateTime? @map("cancelled_at") @db.Timestamptz
+  reminderSentAt     DateTime? @map("reminder_sent_at") @db.Timestamptz
+  confirmationSentAt DateTime? @map("confirmation_sent_at") @db.Timestamptz
   createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz
   updatedAt          DateTime? @updatedAt @map("updated_at") @db.Timestamptz
   deletedAt          DateTime? @map("deleted_at") @db.Timestamptz

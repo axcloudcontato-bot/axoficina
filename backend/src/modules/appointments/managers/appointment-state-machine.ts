@@ -3,7 +3,8 @@ import type { AppointmentStatus } from '@oficina/contracts';
 const TRANSITIONS: Record<AppointmentStatus, AppointmentStatus[]> = {
   SCHEDULED: ['CONFIRMED', 'CANCELLED', 'NO_SHOW', 'IN_SERVICE'],
   CONFIRMED: ['CANCELLED', 'NO_SHOW', 'IN_SERVICE'],
-  IN_SERVICE: ['COMPLETED', 'CANCELLED'],
+  // Closed by the service order it generated (delivered → COMPLETED, cancelled → CANCELLED).
+  IN_SERVICE: [],
   COMPLETED: [],
   CANCELLED: [],
   NO_SHOW: [],

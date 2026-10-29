@@ -44,6 +44,11 @@ export interface UpdateTenantSettingsInput {
   photoRequireEntry?: boolean;
   photoRequireExit?: boolean;
   photoRequireItems?: boolean;
+  agendaOpenHour?: number;
+  agendaCloseHour?: number;
+  agendaWorkDays?: number[];
+  agendaBays?: number | null;
+  appointmentRemindersEnabled?: boolean;
 }
 
 @Injectable()
