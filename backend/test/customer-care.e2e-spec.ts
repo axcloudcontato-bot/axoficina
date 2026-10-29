@@ -14,6 +14,7 @@ import { CustomerCareAutomationService } from '../src/modules/customer-care/cust
 import { CustomerCarePlansService } from '../src/modules/customer-care/customer-care-plans.service';
 import { addMonthsClamped, DAY_MS, localClock } from '../src/modules/customer-care/care-policy';
 import { generateValidCpf } from './utils/generate-cpf';
+import { uniquePlate } from './utils/unique-plate';
 
 describe('Customer care automation (HTTP + PostgreSQL)', () => {
   let app: INestApplication; let prisma: PrismaService; let automation: CustomerCareAutomationService;
@@ -36,7 +37,7 @@ describe('Customer care automation (HTTP + PostgreSQL)', () => {
     await prisma.unscoped.tenant.updateMany({ where: { id: tenantId }, data: { waAkgEnabled: true, smtpEnabled: true, smtpHost: 'smtp.example.invalid', smtpFromEmail: 'workshop@example.invalid' } });
     const customer = await post('customers', { type: 'PF', name: 'Mariana Teste', phone: '11999998888', email: 'customer@example.invalid', birthDate: birthday, careMessagesEnabled: true }).expect(201);
     customerId = customer.body.customer.id;
-    const vehicle = await post('vehicles', { customerId, brand: 'Honda', model: 'Fit', plate: `C${randomUUID().replace(/-/g, '').slice(0, 6).toUpperCase()}` }).expect(201);
+    const vehicle = await post('vehicles', { customerId, brand: 'Honda', model: 'Fit', plate: uniquePlate() }).expect(201);
     vehicleId = vehicle.body.vehicle.id;
   });
   afterAll(async () => {

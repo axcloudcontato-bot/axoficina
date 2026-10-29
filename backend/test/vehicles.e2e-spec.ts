@@ -7,6 +7,7 @@ import { AppModule } from '../src/app.module';
 import { configureApp } from '../src/bootstrap';
 import { PrismaService } from '../src/shared/prisma/prisma.service';
 import { generateValidCpf } from './utils/generate-cpf';
+import { uniquePlate } from './utils/unique-plate';
 
 describe('Vehicles (e2e)', () => {
   let app: INestApplication;
@@ -79,11 +80,6 @@ describe('Vehicles (e2e)', () => {
     return response.body.customer.id as string;
   }
 
-  let plateCounter = 0;
-  function uniquePlate(): string {
-    plateCounter += 1;
-    return `E2E${plateCounter}${Math.floor(Math.random() * 10000)}`;
-  }
 
   function vehiclePayload(customerId: string, suffix: string) {
     return {

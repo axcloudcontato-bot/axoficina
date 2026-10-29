@@ -7,6 +7,7 @@ import { AppModule } from '../src/app.module';
 import { configureApp } from '../src/bootstrap';
 import { PrismaService } from '../src/shared/prisma/prisma.service';
 import { generateValidCpf } from './utils/generate-cpf';
+import { uniquePlate } from './utils/unique-plate';
 
 describe('Service Orders (e2e)', () => {
   let app: INestApplication;
@@ -86,11 +87,6 @@ describe('Service Orders (e2e)', () => {
     return { token: accept.body.access_token as string, userId: accept.body.user.id as string };
   }
 
-  let plateCounter = 0;
-  function uniquePlate(): string {
-    plateCounter += 1;
-    return `OS${plateCounter}${Math.floor(Math.random() * 10000)}`;
-  }
 
   async function createCustomer(adminToken: string, suffix: string): Promise<string> {
     const response = await request(app.getHttpServer())

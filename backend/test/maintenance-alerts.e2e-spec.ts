@@ -8,6 +8,7 @@ import { AppModule } from '../src/app.module';
 import { configureApp } from '../src/bootstrap';
 import { PrismaService } from '../src/shared/prisma/prisma.service';
 import { generateValidCpf } from './utils/generate-cpf';
+import { uniquePlate } from './utils/unique-plate';
 
 describe('Maintenance Alerts (e2e)', () => {
   let app: INestApplication;
@@ -60,11 +61,6 @@ describe('Maintenance Alerts (e2e)', () => {
     return response.body as { access_token: string; tenant: { id: string } };
   }
 
-  let plateCounter = 0;
-  function uniquePlate(): string {
-    plateCounter += 1;
-    return `MA${plateCounter}${Math.floor(Math.random() * 10000)}`;
-  }
 
   async function createCustomer(adminToken: string, suffix: string): Promise<string> {
     const response = await request(app.getHttpServer())
