@@ -1,8 +1,10 @@
 import { apiClient } from '@/lib/api/client';
 import type {
   CreateCustomerRequest,
+  CustomerArchiveImpactResponse,
   CustomerListItemResponse,
   CustomerListRequest,
+  CustomerOverviewResponse,
   CustomerResponse,
   DeleteCustomerRequest,
   PaginationData,
@@ -22,6 +24,21 @@ export const customersApi = {
 
   async delete(request: DeleteCustomerRequest): Promise<{ customer: CustomerResponse }> {
     const response = await apiClient.post<{ customer: CustomerResponse }>('/api/v1/customers/delete', request);
+    return response.data;
+  },
+
+  async restore(id: string): Promise<{ customer: CustomerResponse }> {
+    const response = await apiClient.post<{ customer: CustomerResponse }>('/api/v1/customers/restore', { id });
+    return response.data;
+  },
+
+  async archiveImpact(id: string): Promise<CustomerArchiveImpactResponse> {
+    const response = await apiClient.post<CustomerArchiveImpactResponse>('/api/v1/customers/archive-impact', { id });
+    return response.data;
+  },
+
+  async overview(id: string): Promise<CustomerOverviewResponse> {
+    const response = await apiClient.post<CustomerOverviewResponse>('/api/v1/customers/overview', { id });
     return response.data;
   },
 

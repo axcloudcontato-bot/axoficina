@@ -1,12 +1,15 @@
 import { Type } from 'class-transformer';
 import { IsBoolean, IsDateString, IsEmail, IsIn, IsInt, IsNotEmpty, IsObject, IsOptional, IsString, IsUUID, Matches, Max, MaxLength, Min, ValidateIf, ValidateNested } from 'class-validator';
-import { CUSTOMER_CONTACT_CHANNELS, CUSTOMER_CONTACT_TIMES, CUSTOMER_TYPES } from '@oficina/contracts';
+import { CUSTOMER_CONSENT_SOURCES, CUSTOMER_CONTACT_CHANNELS, CUSTOMER_CONTACT_TIMES, CUSTOMER_TYPES } from '@oficina/contracts';
 import type {
   CreateCustomerRequest,
   CustomerAddress,
   CustomerContactChannel,
   CustomerContactTime,
   CustomerListRequest,
+  CustomerArchiveImpactRequest,
+  CustomerOverviewRequest,
+  RestoreCustomerRequest,
   DeleteCustomerRequest,
   UpdateCustomerRequest,
 } from '@oficina/contracts';
@@ -36,6 +39,8 @@ export class CreateCustomerDto implements CreateCustomerRequest {
   birthDate?: string;
   @ValidateIf((_object, value) => value !== undefined) @IsBoolean()
   careMessagesEnabled?: boolean;
+  @IsOptional() @IsIn(CUSTOMER_CONSENT_SOURCES)
+  careConsentSource?: CreateCustomerRequest['careConsentSource'];
   @ValidateIf((_object, value) => value !== undefined) @IsBoolean()
   notifyServiceOrderUpdates?: boolean;
   @IsIn(CUSTOMER_TYPES, { message: 'type must be one of PF, PJ' })
@@ -94,10 +99,14 @@ export class CreateCustomerDto implements CreateCustomerRequest {
 }
 
 export class UpdateCustomerDto implements UpdateCustomerRequest {
+  @IsOptional() @IsIn(['PF', 'PJ'], { message: 'type must be PF or PJ' })
+  type?: UpdateCustomerRequest['type'];
   @IsOptional() @IsDateString({ strict: true }) @Matches(/^\d{4}-\d{2}-\d{2}$/)
   birthDate?: string | null;
   @ValidateIf((_object, value) => value !== undefined) @IsBoolean()
   careMessagesEnabled?: boolean;
+  @IsOptional() @IsIn(CUSTOMER_CONSENT_SOURCES)
+  careConsentSource?: CreateCustomerRequest['careConsentSource'];
   @ValidateIf((_object, value) => value !== undefined) @IsBoolean()
   notifyServiceOrderUpdates?: boolean;
   @IsNotEmpty({ message: 'id is required' })
@@ -164,6 +173,24 @@ export class DeleteCustomerDto implements DeleteCustomerRequest {
   id!: string;
 }
 
+export class RestoreCustomerDto implements RestoreCustomerRequest {
+  @IsNotEmpty({ message: 'id is required' })
+  @IsUUID('4', { message: 'id must be a valid id' })
+  id!: string;
+}
+
+export class CustomerArchiveImpactDto implements CustomerArchiveImpactRequest {
+  @IsNotEmpty({ message: 'id is required' })
+  @IsUUID('4', { message: 'id must be a valid id' })
+  id!: string;
+}
+
+export class CustomerOverviewDto implements CustomerOverviewRequest {
+  @IsNotEmpty({ message: 'id is required' })
+  @IsUUID('4', { message: 'id must be a valid id' })
+  id!: string;
+}
+
 export class GetCustomerDto {
   @IsNotEmpty({ message: 'id is required' })
   @IsUUID('4', { message: 'id must be a valid id' })
@@ -174,6 +201,12 @@ export class CustomerListDto implements CustomerListRequest {
   @IsOptional()
   @IsString() @MaxLength(2000)
   search?: string;
+
+  @IsOptional() @IsBoolean()
+  archived?: boolean;
+
+  @IsOptional() @IsIn(['DEBT', 'INACTIVE'])
+  filter?: CustomerListRequest['filter'];
 
   @IsInt()
   @Min(0)

@@ -1,7 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import { useRef, useState } from 'react';
+import { Suspense, useRef, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { ArrowLeft, ArrowRight, Check, ClipboardText, User, CarProfile } from '@phosphor-icons/react';
 import type { CustomerListItemResponse, ServiceOrderListItemResponse } from '@oficina/contracts';
 import { Button } from '@/components/ui/button';
@@ -19,9 +20,18 @@ const STEPS: Array<{ id: Exclude<Step, 'done'>; label: string; description: stri
   { id: 'order', label: 'Ordem de serviço', description: 'Serviço e responsável', icon: ClipboardText },
 ];
 
+// The customer page sends the customer (and maybe a vehicle) along, so the first steps are already done.
 export default function NewServiceOrderPage() {
-  const [step, setStep] = useState<Step>('customer');
-  const [customer, setCustomer] = useState<Pick<CustomerListItemResponse, 'id' | 'name'>>();
+  return <Suspense fallback={null}><NewServiceOrderFlow /></Suspense>;
+}
+
+function NewServiceOrderFlow() {
+  const params = useSearchParams();
+  const presetCustomer = params.get('customerId') && params.get('customerName') ? { id: params.get('customerId') as string, name: params.get('customerName') as string } : undefined;
+  const presetVehicleId = presetCustomer ? params.get('vehicleId') ?? undefined : undefined;
+  const presetVehicleLabel = presetVehicleId ? params.get('vehicleLabel') ?? undefined : undefined;
+  const [step, setStep] = useState<Step>(presetCustomer ? 'order' : 'customer');
+  const [customer, setCustomer] = useState<Pick<CustomerListItemResponse, 'id' | 'name'> | undefined>(presetCustomer);
   const [vehicle, setVehicle] = useState<{ id: string; brand: string; model: string; plate: string; customerId: string; customerName: string }>();
   const [serviceOrder, setServiceOrder] = useState<ServiceOrderListItemResponse>();
   const [seed, setSeed] = useState<RegistrationSeed>({ customer: {}, vehicle: {} });
@@ -68,7 +78,7 @@ export default function NewServiceOrderPage() {
 
       <CustomerFormModal presentation="page" open={step === 'customer'} initialValues={seed.customer} onOpenChange={(open) => !open && closeCurrentStep()} onCreated={(created) => { advancing.current = true; setCustomer(created); setStep('vehicle'); }} />
       <VehicleFormModal presentation="page" open={step === 'vehicle'} initialValues={seed.vehicle} onOpenChange={(open) => !open && closeCurrentStep()} initialCustomer={customer ? { id: customer.id, name: customer.name } : undefined} onCreated={(created) => { advancing.current = true; setVehicle(created); setStep('order'); }} />
-      <ServiceOrderFormModal presentation="page" open={step === 'order'} onOpenChange={(open) => !open && closeCurrentStep()} initialCustomer={customer ? { id: customer.id, name: customer.name } : undefined} initialVehicleId={vehicle?.id} initialVehicleLabel={vehicle ? `${vehicle.brand} ${vehicle.model} · ${vehicle.plate}` : undefined} onRequestNewCustomer={(text) => { setSeed(registrationSeed(text, inferRegistrationField(text, 'customer'))); setCustomer(undefined); setVehicle(undefined); setStep('customer'); }} onRequestNewVehicle={(text, owner) => { setSeed(registrationSeed(text, inferRegistrationField(text, 'vehicle'))); if (owner) setCustomer(owner); setVehicle(undefined); setStep('vehicle'); }} onCreated={(created) => { advancing.current = true; setServiceOrder(created); setStep('done'); }} />
+      <ServiceOrderFormModal presentation="page" open={step === 'order'} onOpenChange={(open) => !open && closeCurrentStep()} initialCustomer={customer ? { id: customer.id, name: customer.name } : undefined} initialVehicleId={vehicle?.id ?? presetVehicleId} initialVehicleLabel={vehicle ? `${vehicle.brand} ${vehicle.model} · ${vehicle.plate}` : presetVehicleLabel} onRequestNewCustomer={(text) => { setSeed(registrationSeed(text, inferRegistrationField(text, 'customer'))); setCustomer(undefined); setVehicle(undefined); setStep('customer'); }} onRequestNewVehicle={(text, owner) => { setSeed(registrationSeed(text, inferRegistrationField(text, 'vehicle'))); if (owner) setCustomer(owner); setVehicle(undefined); setStep('vehicle'); }} onCreated={(created) => { advancing.current = true; setServiceOrder(created); setStep('done'); }} />
     </div>
   );
 }

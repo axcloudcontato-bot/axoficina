@@ -1,10 +1,13 @@
 import { Injectable, Logger } from '@nestjs/common';
+import type { StatItem, StatOrder } from '../services/customer-stats';
 import type { CustomerAddress } from '@oficina/contracts';
 import { Prisma } from '@oficina/database';
 import { PrismaService } from '../../../shared/prisma/prisma.service';
 import { TenantContextService } from '../../../shared/tenant-context/tenant-context.service';
 
 export interface CreateCustomerInput {
+  careConsentSource?: string;
+  careConsentBy?: string;
   birthDate?: Date;
   careMessagesEnabled?: boolean;
   careConsentAt?: Date;
@@ -30,6 +33,9 @@ export interface CreateCustomerInput {
 }
 
 export interface UpdateCustomerInput {
+  careConsentSource?: string;
+  careConsentBy?: string;
+  type?: string;
   birthDate?: Date | null;
   careMessagesEnabled?: boolean;
   careConsentAt?: Date;
@@ -101,6 +107,8 @@ export class CustomerRepository {
         birthDate: input.birthDate,
         careMessagesEnabled: input.careMessagesEnabled,
         careConsentAt: input.careConsentAt,
+        careConsentSource: input.careConsentSource,
+        careConsentBy: input.careConsentBy,
         email: input.email,
         address: input.address as Prisma.InputJsonValue | undefined,
         notes: input.notes,
@@ -188,6 +196,92 @@ export class CustomerRepository {
     });
   }
 
+  // Archived customers are invisible to every other lookup; only the restore flow looks at them.
+  async archivedById(id: string) {
+    return this.prisma.client.customer.findFirst({ where: { id, deletedAt: { not: null } } });
+  }
+
+  async restore(id: string) {
+    return this.prisma.client.customer.updateMany({ where: { id, deletedAt: { not: null } }, data: { deletedAt: null } });
+  }
+
+  // Open orders and what is still to be received on this customer's orders.
+  async archiveImpact(id: string): Promise<{ openServiceOrders: number; pendingCents: number }> {
+    const orders = await this.prisma.client.serviceOrder.findMany({ where: { customerId: id, deletedAt: null }, select: { id: true, status: true } });
+    const openServiceOrders = orders.filter((order) => !['DELIVERED', 'CANCELLED'].includes(order.status)).length;
+    if (orders.length === 0) return { openServiceOrders, pendingCents: 0 };
+    const pending = await this.prisma.client.serviceOrderInstallment.aggregate({
+      where: { serviceOrderId: { in: orders.map((order) => order.id) }, status: 'PENDING', deletedAt: null },
+      _sum: { amountCents: true },
+    });
+    return { openServiceOrders, pendingCents: pending._sum.amountCents ?? 0 };
+  }
+
+  // Plates, orders and order items of a set of customers, for the numbers shown beside them.
+  async vehiclesOf(customerIds: string[]) {
+    if (customerIds.length === 0) return [];
+    return this.prisma.client.vehicle.findMany({
+      where: { customerId: { in: customerIds }, deletedAt: null },
+      select: { id: true, customerId: true, brand: true, model: true, plate: true, year: true, mileage: true },
+      orderBy: { createdAt: 'asc' },
+    });
+  }
+
+  async ordersOf(customerIds: string[]): Promise<{ orders: StatOrder[]; items: StatItem[] }> {
+    if (customerIds.length === 0) return { orders: [], items: [] };
+    const orders = await this.prisma.client.serviceOrder.findMany({
+      where: { customerId: { in: customerIds }, deletedAt: null },
+      select: { id: true, customerId: true, status: true, closedAt: true, discountCents: true },
+    });
+    const deliveredIds = orders.filter((order) => order.status === 'DELIVERED').map((order) => order.id);
+    // Items carry no tenant column: the orders above (tenant-scoped) say which ones belong here.
+    const items = deliveredIds.length
+      ? await this.prisma.client.serviceOrderItem.findMany({ where: { serviceOrderId: { in: deliveredIds }, deletedAt: null }, select: { serviceOrderId: true, quantity: true, unitPriceCents: true } })
+      : [];
+    return { orders, items };
+  }
+
+  async openOrdersOf(customerId: string) {
+    return this.prisma.client.serviceOrder.findMany({
+      where: { customerId, deletedAt: null, status: { notIn: ['DELIVERED', 'CANCELLED'] } },
+      select: { id: true, orderNumber: true, status: true, vehicleId: true },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async pendingCentsOf(customerId: string): Promise<number> {
+    const orders = await this.prisma.client.serviceOrder.findMany({ where: { customerId, deletedAt: null }, select: { id: true } });
+    if (orders.length === 0) return 0;
+    const pending = await this.prisma.client.serviceOrderInstallment.aggregate({
+      where: { serviceOrderId: { in: orders.map((order) => order.id) }, status: 'PENDING', deletedAt: null },
+      _sum: { amountCents: true },
+    });
+    return pending._sum.amountCents ?? 0;
+  }
+
+  async upcomingAppointmentsOf(customerId: string, from: Date) {
+    return this.prisma.client.appointment.findMany({
+      where: { customerId, deletedAt: null, startsAt: { gte: from }, status: { in: ['SCHEDULED', 'CONFIRMED', 'IN_SERVICE'] } },
+      select: { id: true, startsAt: true, status: true, serviceDescription: true },
+      orderBy: { startsAt: 'asc' },
+      take: 5,
+    });
+  }
+
+  // Customers with something still to receive.
+  async idsWithDebt(): Promise<string[]> {
+    const installments = await this.prisma.client.serviceOrderInstallment.findMany({ where: { status: 'PENDING', deletedAt: null }, select: { serviceOrderId: true } });
+    if (installments.length === 0) return [];
+    const orders = await this.prisma.client.serviceOrder.findMany({ where: { id: { in: [...new Set(installments.map((item) => item.serviceOrderId))] }, deletedAt: null }, select: { customerId: true } });
+    return [...new Set(orders.map((order) => order.customerId))];
+  }
+
+  // Customers who took a car home since `since`.
+  async idsDeliveredSince(since: Date): Promise<string[]> {
+    const orders = await this.prisma.client.serviceOrder.findMany({ where: { status: 'DELIVERED', closedAt: { gte: since }, deletedAt: null }, select: { customerId: true } });
+    return [...new Set(orders.map((order) => order.customerId))];
+  }
+
   async softDelete(id: string) {
     return this.prisma.client.customer.updateMany({
       where: { id, deletedAt: null },
@@ -195,16 +289,17 @@ export class CustomerRepository {
     });
   }
 
-  async listByTenant(offset: number, limit: number, search?: string) {
+  async listByTenant(offset: number, limit: number, search?: string, archived = false, ids?: { in?: string[]; notIn?: string[] }) {
     const where = {
-      deletedAt: null,
+      deletedAt: archived ? { not: null } : null,
+      ...(ids ? { id: ids } : {}),
       ...(search ? await this.searchFilter(search) : {}),
     };
 
     const [items, total] = await Promise.all([
       this.prisma.client.customer.findMany({
         where,
-        orderBy: { createdAt: 'desc' },
+        orderBy: archived ? { deletedAt: 'desc' as const } : { createdAt: 'desc' as const },
         skip: offset,
         take: limit,
       }),

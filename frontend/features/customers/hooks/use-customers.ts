@@ -55,3 +55,33 @@ export function useDeleteCustomer() {
     },
   });
 }
+
+export function useRestoreCustomer() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id: string) => customersApi.restore(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [CUSTOMERS_LIST_KEY] });
+    },
+  });
+}
+
+// What archiving would leave hanging; only asked while the confirmation is open.
+export function useCustomerArchiveImpact(id: string | undefined, enabled: boolean) {
+  return useQuery({
+    queryKey: ['customer-archive-impact', id],
+    queryFn: () => customersApi.archiveImpact(id as string),
+    enabled: enabled && Boolean(id),
+    staleTime: 0,
+    gcTime: 0,
+  });
+}
+
+export function useCustomerOverview(id: string) {
+  return useQuery({
+    queryKey: ['customer-overview', id],
+    queryFn: () => customersApi.overview(id),
+    enabled: Boolean(id),
+  });
+}

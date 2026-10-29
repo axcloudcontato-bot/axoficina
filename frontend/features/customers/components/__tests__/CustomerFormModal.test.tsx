@@ -8,7 +8,7 @@ import { customersApi } from '../../api/customers-api';
 import { serviceOrdersApi } from '../../../service-orders/api/service-orders-api';
 
 vi.mock('../../api/customers-api', () => ({
-  customersApi: { create: vi.fn(), update: vi.fn() },
+  customersApi: { create: vi.fn(), update: vi.fn(), list: vi.fn().mockResolvedValue({ items: [], total: 0, offset: 0, limit: 5, hasMore: false }) },
 }));
 
 vi.mock('../../../service-orders/api/service-orders-api', () => ({
@@ -207,7 +207,8 @@ describe('CustomerFormModal', () => {
         expect.objectContaining({ id: 'c1', name: 'João da Silva', phone: '(11) 77777-6666' }),
       ),
     );
-    expect(customersApi.update).not.toHaveBeenCalledWith(expect.objectContaining({ type: expect.anything() }));
+    // The type travels with the update now (it can be corrected); the server revalidates it against the document.
+    expect(customersApi.update).toHaveBeenCalledWith(expect.objectContaining({ type: 'PF' }));
   });
 
   it('keeps values entered in one tab after switching to another and back (Edge Case 5)', async () => {
@@ -336,6 +337,63 @@ describe('CustomerFormModal', () => {
     expect(screen.getByRole('button', { name: /próxima/i })).toBeDisabled();
     // Clicking pagination inside the tab must never submit the outer customer form.
     expect(customersApi.update).not.toHaveBeenCalled();
+  });
+
+  describe('possible duplicate', () => {
+    const sameNumber = { ...editingCustomer, id: 'other', name: 'Joao S.', phone: '(11) 77777-6666' };
+    const fillAndSave = async (user: ReturnType<typeof userEvent.setup>) => {
+      await user.type(screen.getByLabelText(/^nome$/i), 'João da Silva');
+      await user.type(screen.getByLabelText(/telefone/i), '11777776666');
+      await user.click(screen.getByRole('button', { name: /cadastrar cliente/i }));
+    };
+
+    it('asks before saving a new customer whose phone is already registered, and saves on confirmation', async () => {
+      vi.mocked(customersApi.list).mockResolvedValueOnce({ items: [sameNumber], total: 1, offset: 0, limit: 5, hasMore: false });
+      vi.mocked(customersApi.create).mockResolvedValue({ customer: { ...editingCustomer, id: 'new-id' } });
+      const user = userEvent.setup();
+      renderWithClient(<CustomerFormModal open onOpenChange={() => {}} />);
+      await fillAndSave(user);
+      expect(await screen.findByText(/esse telefone já está cadastrado/i)).toBeInTheDocument();
+      expect(screen.getByText(/Joao S\./)).toBeInTheDocument();
+      expect(customersApi.create).not.toHaveBeenCalled();
+      await user.click(screen.getByRole('button', { name: /cadastrar mesmo assim/i }));
+      await waitFor(() => expect(customersApi.create).toHaveBeenCalledWith(expect.objectContaining({ name: 'João da Silva' })));
+    });
+
+    it('goes back to the form without saving when told to check', async () => {
+      vi.mocked(customersApi.create).mockClear();
+      vi.mocked(customersApi.list).mockResolvedValueOnce({ items: [sameNumber], total: 1, offset: 0, limit: 5, hasMore: false });
+      const user = userEvent.setup();
+      renderWithClient(<CustomerFormModal open onOpenChange={() => {}} />);
+      await fillAndSave(user);
+      await user.click(await screen.findByRole('button', { name: /voltar e conferir/i }));
+      expect(customersApi.create).not.toHaveBeenCalled();
+      expect(screen.getByLabelText(/^nome$/i)).toHaveValue('João da Silva');
+    });
+
+    it('saves anyway when the check itself fails, and never checks when editing', async () => {
+      vi.mocked(customersApi.create).mockClear();
+      vi.mocked(customersApi.create).mockResolvedValue({ customer: { ...editingCustomer, id: 'new-id' } });
+      vi.mocked(customersApi.list).mockRejectedValueOnce(new Error('offline'));
+      const user = userEvent.setup();
+      renderWithClient(<CustomerFormModal open onOpenChange={() => {}} />);
+      await fillAndSave(user);
+      await waitFor(() => expect(customersApi.create).toHaveBeenCalledTimes(1));
+    });
+  });
+
+  it('asks how the customer authorized the care messages before saving', async () => {
+    vi.mocked(customersApi.create).mockClear();
+    const user = userEvent.setup();
+    renderWithClient(<CustomerFormModal open onOpenChange={() => {}} />);
+    await user.type(screen.getByLabelText(/^nome$/i), 'Maria Souza');
+    await user.type(screen.getByLabelText(/telefone/i), '11999998888');
+    await user.click(screen.getByRole('tab', { name: /preferências/i }));
+    await user.click(screen.getByLabelText(/autorizou os lembretes/i));
+    expect(screen.getByText('Como o cliente autorizou?')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: /cadastrar cliente/i }));
+    expect(await screen.findByText('Informe como o cliente autorizou.')).toBeInTheDocument();
+    expect(customersApi.create).not.toHaveBeenCalled();
   });
 });
 

@@ -30,7 +30,7 @@ export function CustomerGeneralTab({ form, isEditing }: CustomerGeneralTabProps)
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Tipo</FormLabel>
-                <Select disabled={isEditing} onValueChange={field.onChange} value={field.value}>
+                <Select onValueChange={field.onChange} value={field.value}>
                   <FormControl>
                     <SelectTrigger>
                       <SelectValue placeholder="Selecione o tipo" />

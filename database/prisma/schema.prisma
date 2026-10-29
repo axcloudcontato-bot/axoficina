@@ -281,6 +281,8 @@ model Customer {
   birthDate                 DateTime? @map("birth_date") @db.Date
   careMessagesEnabled       Boolean   @default(false) @map("care_messages_enabled")
   careConsentAt             DateTime? @map("care_consent_at") @db.Timestamptz
+  careConsentSource         String?   @map("care_consent_source")
+  careConsentBy             String?   @map("care_consent_by") @db.Uuid
 
   createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz
   updatedAt DateTime? @updatedAt @map("updated_at") @db.Timestamptz

@@ -1,9 +1,11 @@
 import type { PageableRequest } from '../response/pagination.response';
-import type { CustomerAddress, CustomerContactChannel, CustomerContactTime, CustomerType } from '../response/customer.response';
+import type { CustomerAddress, CustomerConsentSource, CustomerContactChannel, CustomerContactTime, CustomerType } from '../response/customer.response';
 
 export interface CreateCustomerRequest {
   birthDate?: string;
   careMessagesEnabled?: boolean;
+  // How the customer authorized the care messages; kept with the date when consent is recorded.
+  careConsentSource?: CustomerConsentSource;
   notifyServiceOrderUpdates?: boolean;
   type: CustomerType;
   document?: string;
@@ -24,8 +26,11 @@ export interface CreateCustomerRequest {
 export interface UpdateCustomerRequest {
   birthDate?: string | null;
   careMessagesEnabled?: boolean;
+  careConsentSource?: CustomerConsentSource;
   notifyServiceOrderUpdates?: boolean;
   id: string;
+  // Changing the type revalidates the document; a company loses birth date and RG, a person loses state registration.
+  type?: CustomerType;
   document?: string;
   name?: string;
   phone?: string;
@@ -47,4 +52,20 @@ export interface DeleteCustomerRequest {
 
 export interface CustomerListRequest extends PageableRequest {
   search?: string;
+  // The archived customers instead of the active ones.
+  archived?: boolean;
+  // DEBT: has installments still to receive. INACTIVE: no delivered order in the last 6 months (or ever).
+  filter?: 'DEBT' | 'INACTIVE';
+}
+
+export interface CustomerOverviewRequest {
+  id: string;
+}
+
+export interface RestoreCustomerRequest {
+  id: string;
+}
+
+export interface CustomerArchiveImpactRequest {
+  id: string;
 }

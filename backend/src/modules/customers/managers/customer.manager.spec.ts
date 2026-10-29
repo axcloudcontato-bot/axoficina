@@ -13,6 +13,16 @@ function buildManager() {
     update: jest.fn(),
     softDelete: jest.fn(),
     listByTenant: jest.fn(),
+    vehiclesOf: jest.fn().mockResolvedValue([]),
+    ordersOf: jest.fn().mockResolvedValue({ orders: [], items: [] }),
+    openOrdersOf: jest.fn().mockResolvedValue([]),
+    pendingCentsOf: jest.fn().mockResolvedValue(0),
+    upcomingAppointmentsOf: jest.fn().mockResolvedValue([]),
+    idsWithDebt: jest.fn().mockResolvedValue([]),
+    idsDeliveredSince: jest.fn().mockResolvedValue([]),
+    archivedById: jest.fn(),
+    restore: jest.fn(),
+    archiveImpact: jest.fn(),
   };
   const documentValidator = {
     validate: jest.fn<DocumentValidationResult, [string]>(() => ({ valid: true, type: 'CPF', normalized: '11144477735' })),
@@ -234,9 +244,166 @@ describe('CustomerManager', () => {
 
       const result = await deps.manager.list({ offset: 0, limit: 20, search: 'João' });
 
-      expect(deps.customerRepository.listByTenant).toHaveBeenCalledWith(0, 20, 'João');
+      expect(deps.customerRepository.listByTenant).toHaveBeenCalledWith(0, 20, 'João', false, undefined);
       expect(result.total).toBe(1);
       expect(result.hasMore).toBe(false);
+    });
+  });
+
+  describe('changing the type', () => {
+    it('lets a person become a company when the document on file is a CNPJ, clearing birth date and RG', async () => {
+      const deps = buildManager();
+      deps.customerRepository.byId.mockResolvedValueOnce({ ...baseCustomer, document: '11222333000181' }).mockResolvedValueOnce({ ...baseCustomer, type: 'PJ' });
+      deps.documentValidator.validate.mockReturnValue({ valid: true, type: 'CNPJ', normalized: '11222333000181' });
+      await deps.manager.update(actingUser, { id: 'customer-1', type: 'PJ' });
+      expect(deps.customerRepository.update).toHaveBeenCalledWith('customer-1', expect.objectContaining({ type: 'PJ', rg: null, birthDate: null }));
+    });
+
+    it('refuses a type that does not fit the document, in both directions', async () => {
+      const deps = buildManager();
+      deps.customerRepository.byId.mockResolvedValue(baseCustomer);
+      await expect(deps.manager.update(actingUser, { id: 'customer-1', type: 'PJ' })).rejects.toThrow('Pessoa jurídica usa CNPJ');
+      deps.documentValidator.validate.mockReturnValue({ valid: true, type: 'CNPJ', normalized: '11222333000181' });
+      await expect(deps.manager.create(actingUser, { type: 'PF', document: '11.222.333/0001-81', name: 'Oficina X', phone: '11999998888' })).rejects.toThrow('Pessoa física usa CPF');
+      expect(deps.customerRepository.update).not.toHaveBeenCalled();
+    });
+
+    it('allows the type to change when there is no document yet', async () => {
+      const deps = buildManager();
+      deps.customerRepository.byId.mockResolvedValueOnce({ ...baseCustomer, document: '' }).mockResolvedValueOnce({ ...baseCustomer, document: '', type: 'PJ' });
+      await deps.manager.update(actingUser, { id: 'customer-1', type: 'PJ' });
+      expect(deps.customerRepository.update).toHaveBeenCalledWith('customer-1', expect.objectContaining({ type: 'PJ' }));
+    });
+  });
+
+  describe('archived customers', () => {
+    it('lists the archived ones on request', async () => {
+      const deps = buildManager();
+      deps.customerRepository.listByTenant.mockResolvedValue({ items: [{ ...baseCustomer, deletedAt: new Date('2026-10-01T00:00:00Z') }], total: 1 });
+      const result = await deps.manager.list({ offset: 0, limit: 20, archived: true });
+      expect(deps.customerRepository.listByTenant).toHaveBeenCalledWith(0, 20, undefined, true, undefined);
+      expect(result.items[0].archivedAt).toBe('2026-10-01T00:00:00.000Z');
+    });
+
+    it('restores an archived customer and records it', async () => {
+      const deps = buildManager();
+      deps.customerRepository.archivedById.mockResolvedValue({ ...baseCustomer, deletedAt: new Date() });
+      deps.customerRepository.byDocument.mockResolvedValue(null);
+      const result = await deps.manager.restore(actingUser, 'customer-1');
+      expect(deps.customerRepository.restore).toHaveBeenCalledWith('customer-1');
+      expect(result.customer.archivedAt).toBeUndefined();
+      expect(deps.auditLog.record).toHaveBeenCalledWith(expect.objectContaining({ action: 'customer.restored', entityId: 'customer-1' }));
+    });
+
+    it('does not restore over another active customer with the same document, nor an unknown one', async () => {
+      const deps = buildManager();
+      deps.customerRepository.archivedById.mockResolvedValue({ ...baseCustomer, deletedAt: new Date() });
+      deps.customerRepository.byDocument.mockResolvedValue({ ...baseCustomer, id: 'customer-2' });
+      await expect(deps.manager.restore(actingUser, 'customer-1')).rejects.toMatchObject({ status: HttpStatus.CONFLICT });
+      expect(deps.customerRepository.restore).not.toHaveBeenCalled();
+      deps.customerRepository.archivedById.mockResolvedValue(null);
+      await expect(deps.manager.restore(actingUser, 'nope')).rejects.toMatchObject({ status: HttpStatus.NOT_FOUND });
+    });
+
+    it('reports what archiving would leave hanging', async () => {
+      const deps = buildManager();
+      deps.customerRepository.byId.mockResolvedValue(baseCustomer);
+      deps.customerRepository.archiveImpact.mockResolvedValue({ openServiceOrders: 2, pendingCents: 35000 });
+      expect(await deps.manager.archiveImpact('customer-1')).toEqual({ openServiceOrders: 2, pendingCents: 35000 });
+      deps.customerRepository.byId.mockResolvedValue(null);
+      await expect(deps.manager.archiveImpact('nope')).rejects.toMatchObject({ status: HttpStatus.NOT_FOUND });
+    });
+  });
+
+  describe('what the list and the page show about a customer', () => {
+    const order = (over: Record<string, unknown>) => ({ id: 'so-1', customerId: 'customer-1', status: 'DELIVERED', closedAt: new Date('2026-09-10T12:00:00Z'), discountCents: 0, ...over });
+    const item = (over: Record<string, unknown>) => ({ serviceOrderId: 'so-1', quantity: 1, unitPriceCents: 10000, ...over });
+    const history = {
+      orders: [order({}), order({ id: 'so-2', closedAt: new Date('2026-10-01T12:00:00Z'), discountCents: 2000 }), order({ id: 'so-3', status: 'IN_PROGRESS', closedAt: null }), order({ id: 'so-4', status: 'CANCELLED', closedAt: null })],
+      items: [item({}), item({ serviceOrderId: 'so-2', quantity: 2, unitPriceCents: 5000 })],
+    };
+
+    it('adds plates, visits and spend to each listed customer, with the discount taken off and cancelled orders left out', async () => {
+      const deps = buildManager();
+      deps.customerRepository.listByTenant.mockResolvedValue({ items: [baseCustomer], total: 1 });
+      deps.customerRepository.vehiclesOf.mockResolvedValue([{ id: 'v1', customerId: 'customer-1', plate: 'ABC1D23' }]);
+      deps.customerRepository.ordersOf.mockResolvedValue(history);
+      const result = await deps.manager.list({ offset: 0, limit: 20 }, { canViewPrices: true });
+      expect(result.items[0].stats).toEqual({ plates: ['ABC1D23'], orderCount: 3, lastVisitAt: '2026-10-01T12:00:00.000Z', totalSpentCents: 18000 });
+    });
+
+    it('leaves the money out for people who may not see prices', async () => {
+      const deps = buildManager();
+      deps.customerRepository.listByTenant.mockResolvedValue({ items: [baseCustomer], total: 1 });
+      deps.customerRepository.ordersOf.mockResolvedValue(history);
+      const result = await deps.manager.list({ offset: 0, limit: 20 });
+      expect(result.items[0].stats).not.toHaveProperty('totalSpentCents');
+      expect(result.items[0].stats?.orderCount).toBe(3);
+    });
+
+    it('filters customers with debt, and returns an empty page when nobody has any', async () => {
+      const deps = buildManager();
+      deps.customerRepository.idsWithDebt.mockResolvedValue(['customer-1']);
+      deps.customerRepository.listByTenant.mockResolvedValue({ items: [baseCustomer], total: 1 });
+      await deps.manager.list({ offset: 0, limit: 20, filter: 'DEBT' });
+      expect(deps.customerRepository.listByTenant).toHaveBeenCalledWith(0, 20, undefined, false, { in: ['customer-1'] });
+      deps.customerRepository.listByTenant.mockClear();
+      deps.customerRepository.idsWithDebt.mockResolvedValue([]);
+      const empty = await deps.manager.list({ offset: 0, limit: 20, filter: 'DEBT' });
+      expect(empty).toMatchObject({ items: [], total: 0, hasMore: false });
+      expect(deps.customerRepository.listByTenant).not.toHaveBeenCalled();
+    });
+
+    it('filters customers with no delivery in the last 6 months, counting from the given day', async () => {
+      const deps = buildManager();
+      deps.customerRepository.idsDeliveredSince.mockResolvedValue(['customer-9']);
+      deps.customerRepository.listByTenant.mockResolvedValue({ items: [], total: 0 });
+      const now = new Date('2026-10-29T12:00:00Z');
+      await deps.manager.list({ offset: 0, limit: 20, filter: 'INACTIVE' }, undefined, now);
+      expect(deps.customerRepository.idsDeliveredSince).toHaveBeenCalledWith(new Date('2026-05-02T12:00:00Z'));
+      expect(deps.customerRepository.listByTenant).toHaveBeenCalledWith(0, 20, undefined, false, { notIn: ['customer-9'] });
+    });
+
+    it('builds the customer page: vehicles, open orders, appointments and, for price viewers, spend and what is owed', async () => {
+      const deps = buildManager();
+      deps.customerRepository.byId.mockResolvedValue(baseCustomer);
+      deps.customerRepository.vehiclesOf.mockResolvedValue([{ id: 'v1', customerId: 'customer-1', brand: 'Fiat', model: 'Uno', plate: 'ABC1D23', year: 2012, mileage: 98000 }]);
+      deps.customerRepository.ordersOf.mockResolvedValue(history);
+      deps.customerRepository.openOrdersOf.mockResolvedValue([{ id: 'so-3', orderNumber: 41, status: 'IN_PROGRESS', vehicleId: 'v1' }]);
+      deps.customerRepository.upcomingAppointmentsOf.mockResolvedValue([{ id: 'ap-1', startsAt: new Date('2026-11-03T13:00:00Z'), status: 'CONFIRMED', serviceDescription: 'Revisão' }]);
+      deps.customerRepository.pendingCentsOf.mockResolvedValue(7500);
+      const result = await deps.manager.overview('customer-1', { canViewPrices: true });
+      expect(result).toMatchObject({
+        vehicles: [{ plate: 'ABC1D23', year: 2012, mileage: 98000 }], orderCount: 3, deliveredCount: 2,
+        openServiceOrders: [{ orderNumber: 41, vehicleLabel: 'Fiat Uno · ABC1D23' }],
+        upcomingAppointments: [{ id: 'ap-1', startsAt: '2026-11-03T13:00:00.000Z' }],
+        money: { totalSpentCents: 18000, averageTicketCents: 9000, pendingCents: 7500 },
+      });
+      const hidden = await deps.manager.overview('customer-1');
+      expect(hidden).not.toHaveProperty('money');
+      deps.customerRepository.byId.mockResolvedValue(null);
+      await expect(deps.manager.overview('nope')).rejects.toMatchObject({ status: HttpStatus.NOT_FOUND });
+    });
+  });
+
+  describe('consent source', () => {
+    it('keeps how and by whom the consent was given when it is recorded, on create and when turned on later', async () => {
+      const deps = buildManager();
+      deps.customerRepository.byDocument.mockResolvedValue(null);
+      deps.customerRepository.insert.mockResolvedValue(baseCustomer);
+      await deps.manager.create(actingUser, { type: 'PF', name: 'Maria', phone: '11999998888', careMessagesEnabled: true, careConsentSource: 'COUNTER' });
+      expect(deps.customerRepository.insert).toHaveBeenCalledWith(expect.objectContaining({ careConsentSource: 'COUNTER', careConsentBy: 'user-1', careConsentAt: expect.any(Date) }));
+
+      deps.customerRepository.byId.mockResolvedValue({ ...baseCustomer, careMessagesEnabled: false });
+      await deps.manager.update(actingUser, { id: 'customer-1', careMessagesEnabled: true, careConsentSource: 'WHATSAPP' });
+      expect(deps.customerRepository.update).toHaveBeenCalledWith('customer-1', expect.objectContaining({ careConsentSource: 'WHATSAPP', careConsentBy: 'user-1' }));
+    });
+
+    it('does not rewrite the original consent when an already-consenting customer is edited', async () => {
+      const deps = buildManager();
+      deps.customerRepository.byId.mockResolvedValue({ ...baseCustomer, careMessagesEnabled: true });
+      await deps.manager.update(actingUser, { id: 'customer-1', careMessagesEnabled: true, careConsentSource: 'PHONE' });
+      expect(deps.customerRepository.update).toHaveBeenCalledWith('customer-1', expect.objectContaining({ careConsentSource: undefined, careConsentBy: undefined, careConsentAt: undefined }));
     });
   });
 });

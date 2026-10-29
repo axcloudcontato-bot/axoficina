@@ -1,7 +1,7 @@
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useForm, type FieldErrors } from 'react-hook-form';
 import { toast } from 'sonner';
 import { z } from 'zod';
@@ -13,6 +13,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { WarningCircle, Check, CaretLeft, CaretRight, User } from '@phosphor-icons/react';
 import { extractErrorMessage, extractFieldErrors } from '@/lib/api/client';
+import { customersApi } from '../api/customers-api';
+import { displayPhone, phoneDigits } from '../format-customer';
 import { useCreateCustomer, useUpdateCustomer } from '../hooks/use-customers';
 import { CustomerGeneralTab } from './tabs/CustomerGeneralTab';
 import { CustomerAddressTab } from './tabs/CustomerAddressTab';
@@ -35,6 +37,7 @@ const addressSchema = z.object({
 export const customerSchema = z.object({
   birthDate: z.string().optional(),
   careMessagesEnabled: z.boolean().default(false),
+  careConsentSource: z.enum(['COUNTER', 'PHONE', 'WHATSAPP', 'SITE', 'OTHER']).optional(),
   notifyServiceOrderUpdates: z.boolean().default(false),
   type: z.enum(['PF', 'PJ']),
   document: z.string().max(24, 'Documento muito longo'),
@@ -71,6 +74,7 @@ const EMPTY_ADDRESS: NonNullable<CustomerFormValues['address']> = {
 const EMPTY_VALUES: CustomerFormValues = {
   birthDate: '',
   careMessagesEnabled: false,
+  careConsentSource: undefined,
   notifyServiceOrderUpdates: false,
   type: 'PF',
   document: '',
@@ -92,7 +96,7 @@ const GUIDED_STEPS = [
   { id: 'general', label: 'Dados gerais', fields: ['type', 'document', 'name', 'phone', 'email', 'rg', 'stateRegistration', 'birthDate'] },
   { id: 'address', label: 'Endereço', fields: ['address'] },
   { id: 'contact', label: 'Contato', fields: ['secondaryContactName', 'secondaryContactPhone', 'secondaryContactRelation'] },
-  { id: 'preferences', label: 'Preferências', fields: ['preferredContactChannel', 'preferredContactTime', 'notifyServiceOrderUpdates', 'careMessagesEnabled'] },
+  { id: 'preferences', label: 'Preferências', fields: ['preferredContactChannel', 'preferredContactTime', 'notifyServiceOrderUpdates', 'careMessagesEnabled', 'careConsentSource'] },
   { id: 'notes', label: 'Observações', fields: ['notes'] },
 ] as const;
 
@@ -127,6 +131,10 @@ export function CustomerFormModal({ open, onOpenChange, customer, onCreated, pre
   const create = useCreateCustomer();
   const update = useUpdateCustomer();
   const isPending = create.isPending || update.isPending;
+  // Customers that already have this phone number, found before a new one is saved.
+  const [duplicates, setDuplicates] = useState<CustomerListItemResponse[]>([]);
+  const pendingValues = useRef<CustomerFormValues | undefined>(undefined);
+  const [checking, setChecking] = useState(false);
 
   const form = useForm<CustomerFormValues>({
     resolver: zodResolver(customerSchema),
@@ -158,12 +166,44 @@ export function CustomerFormModal({ open, onOpenChange, customer, onCreated, pre
             notifyServiceOrderUpdates: customer.notifyServiceOrderUpdates ?? false,
             birthDate: customer.birthDate ?? '',
             careMessagesEnabled: customer.careMessagesEnabled ?? false,
+            careConsentSource: customer.careConsentSource,
           }
         : { ...EMPTY_VALUES, ...initialValues },
     );
   }, [open, customer, initialValues, form]);
 
-  function onSubmit(values: CustomerFormValues) {
+  // A second customer with the same phone is often the same person registered twice (a family sharing a number is the exception),
+  // so it is a question, not a block. If the check itself fails, saving goes ahead.
+  async function onSubmit(values: CustomerFormValues) {
+    // Consent given now needs its origin; an existing consent from before this field existed is left alone.
+    if (values.careMessagesEnabled && !values.careConsentSource && !(isEditing && customer?.careMessagesEnabled)) {
+      form.setError('careConsentSource', { message: 'Informe como o cliente autorizou.' });
+      setActiveTab('preferences');
+      return;
+    }
+    if (!isEditing) {
+      const digits = phoneDigits(values.phone);
+      if (digits.length >= 8) {
+        setChecking(true);
+        try {
+          const found = await customersApi.list({ offset: 0, limit: 5, search: digits });
+          const same = found.items.filter((item) => phoneDigits(item.phone) === digits);
+          if (same.length > 0) {
+            pendingValues.current = values;
+            setDuplicates(same);
+            return;
+          }
+        } catch {
+          // fall through and save
+        } finally {
+          setChecking(false);
+        }
+      }
+    }
+    save(values);
+  }
+
+  function save(values: CustomerFormValues) {
     const onSuccess = (result?: { customer: CustomerListItemResponse }) => {
       if (!isEditing && result?.customer) onCreated?.(result.customer);
       toast.success(isEditing ? 'Cliente atualizado com sucesso!' : 'Cliente cadastrado com sucesso!');
@@ -182,6 +222,7 @@ export function CustomerFormModal({ open, onOpenChange, customer, onCreated, pre
     const address = buildAddressPayload(values.address);
     const sharedFields = {
       careMessagesEnabled: values.careMessagesEnabled,
+      careConsentSource: values.careMessagesEnabled ? values.careConsentSource : undefined,
       notifyServiceOrderUpdates: values.notifyServiceOrderUpdates,
       name: values.name,
       phone: values.phone,
@@ -198,7 +239,7 @@ export function CustomerFormModal({ open, onOpenChange, customer, onCreated, pre
     };
 
     if (isEditing && customer) {
-      update.mutate({ id: customer.id, ...sharedFields, document: values.document,
+      update.mutate({ id: customer.id, ...sharedFields, type: values.type, document: values.document,
         birthDate: values.type === 'PF' ? values.birthDate || null : null,
         email: values.email || null, notes: values.notes || null, address: address ?? null,
         rg: values.rg || null, stateRegistration: values.stateRegistration || null,
@@ -221,7 +262,7 @@ export function CustomerFormModal({ open, onOpenChange, customer, onCreated, pre
       setActiveTab('address');
     } else if (firstPath.startsWith('secondaryContact')) {
       setActiveTab('contact');
-    } else if (firstPath.startsWith('preferredContact') || firstPath === 'notifyServiceOrderUpdates' || firstPath === 'careMessagesEnabled') {
+    } else if (firstPath.startsWith('preferredContact') || firstPath === 'notifyServiceOrderUpdates' || firstPath === 'careMessagesEnabled' || firstPath === 'careConsentSource') {
       setActiveTab('preferences');
     } else if (firstPath === 'notes') {
       setActiveTab('notes');
@@ -320,17 +361,31 @@ export function CustomerFormModal({ open, onOpenChange, customer, onCreated, pre
               </div>
             </Tabs>}
             <DialogFooter className="gap-2 border-t border-border pt-4 sm:gap-2">
-              <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={isPending}>
+              <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={isPending || checking}>
                 Cancelar
               </Button>
               {isGuidedCreate && activeTab !== 'general' && <Button type="button" variant="outline" onClick={goToPreviousGuidedStep} disabled={isPending}><CaretLeft className="size-4" aria-hidden="true" /> Voltar</Button>}
-              {isGuidedCreate && activeTab !== 'notes' ? <Button type="button" onClick={(event) => { event.preventDefault(); void goToNextGuidedStep(); }} disabled={isPending} className="sm:min-w-32">Próximo <CaretRight className="size-4" aria-hidden="true" /></Button> : <Button type="submit" disabled={isPending} className="sm:min-w-40">
-                {isPending ? 'Salvando...' : isEditing ? 'Salvar alterações' : 'Cadastrar cliente'}
+              {isGuidedCreate && activeTab !== 'notes' ? <Button type="button" onClick={(event) => { event.preventDefault(); void goToNextGuidedStep(); }} disabled={isPending} className="sm:min-w-32">Próximo <CaretRight className="size-4" aria-hidden="true" /></Button> : <Button type="submit" disabled={isPending || checking} className="sm:min-w-40">
+                {isPending || checking ? 'Salvando...' : isEditing ? 'Salvar alterações' : 'Cadastrar cliente'}
               </Button>}
             </DialogFooter>
           </form>
         </Form>
       </DialogContent>
+      <Dialog open={duplicates.length > 0} onOpenChange={(next) => { if (!next) setDuplicates([]); }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Esse telefone já está cadastrado</DialogTitle>
+            <DialogDescription>
+              {duplicates.map((item) => item.name).join(', ')} já {duplicates.length === 1 ? 'usa' : 'usam'} o número {displayPhone(duplicates[0]?.phone ?? '')}. Pode ser a mesma pessoa cadastrada duas vezes. Se for outra pessoa da mesma família ou empresa, é só confirmar.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2">
+            <Button type="button" variant="outline" onClick={() => setDuplicates([])}>Voltar e conferir</Button>
+            <Button type="button" onClick={() => { const values = pendingValues.current; setDuplicates([]); if (values) save(values); }}>Cadastrar mesmo assim</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Dialog>
   );
 }

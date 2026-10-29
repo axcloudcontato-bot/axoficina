@@ -1,6 +1,9 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
 import type {
   CreateCustomerRequest,
+  CustomerArchiveImpactResponse,
+  CustomerListStats,
+  CustomerOverviewResponse,
   CustomerListItemResponse,
   CustomerListRequest,
   CustomerResponse,
@@ -16,6 +19,12 @@ import { DocumentValidatorService } from '../../../shared/documents/document-val
 import type { AuthenticatedUser } from '../../../shared/guards/jwt-auth.guard';
 import { CustomerRepository } from '../repositories/customer.repository';
 import { whatsappRecipient } from '../../settings/services/whatsapp-recipient';
+import { summarizeHistory } from '../services/customer-stats';
+
+// What the person asking may see: money figures are for those who may see prices.
+export interface CustomerViewer { canViewPrices: boolean }
+const NO_PRICES: CustomerViewer = { canViewPrices: false };
+const INACTIVE_AFTER_DAYS = 180;
 
 @Injectable()
 export class CustomerManager {
@@ -34,6 +43,7 @@ export class CustomerManager {
     if (!documentCheck.valid) {
       throw new AppException(AppErrorCode.VALIDATION_ERROR, 'CPF/CNPJ inválido.');
     }
+    this.assertDocumentFitsType(request.type, documentCheck);
 
     const existing = documentCheck.normalized ? await this.customerRepository.byDocument(documentCheck.normalized) : null;
     if (existing) {
@@ -59,6 +69,8 @@ export class CustomerManager {
         birthDate,
         careMessagesEnabled: request.careMessagesEnabled,
         careConsentAt: request.careMessagesEnabled ? new Date() : undefined,
+        careConsentSource: request.careMessagesEnabled ? request.careConsentSource : undefined,
+        careConsentBy: request.careMessagesEnabled ? actingUser.userId : undefined,
         email: request.email,
         address: request.address,
         notes: request.notes,
@@ -100,30 +112,40 @@ export class CustomerManager {
       throw new AppException(AppErrorCode.CUSTOMER_NOT_FOUND, 'Cliente não encontrado.', HttpStatus.NOT_FOUND);
     }
     this.validateNotificationPhone(request.notifyServiceOrderUpdates ?? existing.notifyServiceOrderUpdates, request.phone ?? existing.phone);
-    const birthDate = request.birthDate === undefined ? undefined : request.birthDate === null ? null : this.birthDate(request.birthDate, existing.type);
+    const type = request.type ?? (existing.type as CustomerResponse['type']);
+    const typeChanged = type !== existing.type;
+    // A company has no birth date: switching to PJ clears it, whatever the request carries.
+    const birthDate = type === 'PJ' ? (typeChanged || request.birthDate === null ? null : undefined) : request.birthDate === undefined ? undefined : request.birthDate === null ? null : this.birthDate(request.birthDate, type);
 
     let document: string | undefined;
-    if (request.document !== undefined) {
-      const checked = request.document.trim() ? this.documentValidator.validate(request.document) : { valid: true, normalized: '' };
+    // A new type has to be checked against the document already on file, too.
+    const documentToCheck = request.document !== undefined ? request.document : typeChanged ? existing.document : undefined;
+    if (documentToCheck !== undefined) {
+      const checked = documentToCheck.trim() ? this.documentValidator.validate(documentToCheck) : { valid: true, normalized: '' };
       if (!checked.valid) throw new AppException(AppErrorCode.VALIDATION_ERROR, 'CPF/CNPJ inválido.');
+      this.assertDocumentFitsType(type, checked);
       const duplicate = checked.normalized ? await this.customerRepository.byDocument(checked.normalized) : null;
       if (duplicate && duplicate.id !== existing.id) throw new AppException(AppErrorCode.CUSTOMER_DOCUMENT_ALREADY_EXISTS, 'Já existe um cliente cadastrado com este documento.', HttpStatus.CONFLICT);
-      document = checked.normalized;
+      if (request.document !== undefined) document = checked.normalized;
     }
     // Corrigir ou remover documento não exige recriar o cadastro.
     try {
       await this.customerRepository.update(request.id, {
+        ...(typeChanged ? { type } : {}),
         document,
         name: request.name,
         phone: request.phone,
         birthDate,
         careMessagesEnabled: request.careMessagesEnabled,
         careConsentAt: request.careMessagesEnabled && !existing.careMessagesEnabled ? new Date() : undefined,
+        // The source and who recorded it belong to the moment consent was given, so they follow the date.
+        careConsentSource: request.careMessagesEnabled && !existing.careMessagesEnabled ? request.careConsentSource : undefined,
+        careConsentBy: request.careMessagesEnabled && !existing.careMessagesEnabled ? actingUser.userId : undefined,
         email: request.email,
         address: request.address,
         notes: request.notes,
-        rg: request.rg,
-        stateRegistration: request.stateRegistration,
+        rg: typeChanged && type === 'PJ' ? null : request.rg,
+        stateRegistration: typeChanged && type === 'PF' ? null : request.stateRegistration,
         secondaryContactName: request.secondaryContactName,
         secondaryContactPhone: request.secondaryContactPhone,
         secondaryContactRelation: request.secondaryContactRelation,
@@ -178,6 +200,28 @@ export class CustomerManager {
     return { customer: this.toResponse(existing) };
   }
 
+  async restore(actingUser: AuthenticatedUser, id: string): Promise<{ customer: CustomerResponse }> {
+    const archived = await this.customerRepository.archivedById(id);
+    if (!archived) throw new AppException(AppErrorCode.CUSTOMER_NOT_FOUND, 'Cliente arquivado não encontrado.', HttpStatus.NOT_FOUND);
+    // The document is unique among active customers: someone may have registered it again since.
+    if (archived.document && (await this.customerRepository.byDocument(archived.document))) {
+      throw new AppException(AppErrorCode.CUSTOMER_DOCUMENT_ALREADY_EXISTS, 'Já existe um cliente ativo com este documento. Arquive ou corrija o outro cadastro antes de reativar.', HttpStatus.CONFLICT);
+    }
+    try {
+      await this.customerRepository.restore(id);
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') throw new AppException(AppErrorCode.CUSTOMER_DOCUMENT_ALREADY_EXISTS, 'Já existe um cliente ativo com este documento.', HttpStatus.CONFLICT);
+      throw error;
+    }
+    await this.auditLog.record({ tenantId: actingUser.tenantId, userId: actingUser.userId, action: 'customer.restored', entity: 'customer', entityId: id, metadata: {} });
+    return { customer: this.toResponse({ ...archived, deletedAt: null }) };
+  }
+
+  async archiveImpact(id: string): Promise<CustomerArchiveImpactResponse> {
+    if (!(await this.customerRepository.byId(id))) throw new AppException(AppErrorCode.CUSTOMER_NOT_FOUND, 'Cliente não encontrado.', HttpStatus.NOT_FOUND);
+    return this.customerRepository.archiveImpact(id);
+  }
+
   async getById(id: string): Promise<{ customer: CustomerResponse }> {
     const customer = await this.customerRepository.byId(id);
     if (!customer) {
@@ -187,16 +231,65 @@ export class CustomerManager {
     return { customer: this.toResponse(customer) };
   }
 
-  async list(request: CustomerListRequest): Promise<PaginationData<CustomerListItemResponse>> {
-    const { items, total } = await this.customerRepository.listByTenant(request.offset, request.limit, request.search);
+  async list(request: CustomerListRequest, viewer: CustomerViewer = NO_PRICES, now = new Date()): Promise<PaginationData<CustomerListItemResponse>> {
+    const ids = await this.filterIds(request.filter, now);
+    // A filter that matches nobody is an empty page, not an unfiltered one.
+    if (ids && ids.in && ids.in.length === 0) return { items: [], total: 0, offset: request.offset, limit: request.limit, hasMore: false };
+    const { items, total } = await this.customerRepository.listByTenant(request.offset, request.limit, request.search, request.archived === true, ids);
+    const stats = await this.statsFor(items.map((customer) => customer.id), viewer);
 
     return {
-      items: items.map((customer) => this.toResponse(customer)),
+      items: items.map((customer) => ({ ...this.toResponse(customer), stats: stats.get(customer.id) })),
       total,
       offset: request.offset,
       limit: request.limit,
       hasMore: request.offset + items.length < total,
     };
+  }
+
+  // Everything the customer's page needs in one call. Money is left out unless the viewer may see prices.
+  async overview(id: string, viewer: CustomerViewer = NO_PRICES, now = new Date()): Promise<CustomerOverviewResponse> {
+    if (!(await this.customerRepository.byId(id))) throw new AppException(AppErrorCode.CUSTOMER_NOT_FOUND, 'Cliente não encontrado.', HttpStatus.NOT_FOUND);
+    const [vehicles, history, open, appointments] = await Promise.all([
+      this.customerRepository.vehiclesOf([id]),
+      this.customerRepository.ordersOf([id]),
+      this.customerRepository.openOrdersOf(id),
+      this.customerRepository.upcomingAppointmentsOf(id, now),
+    ]);
+    const summary = summarizeHistory(history.orders, history.items);
+    const labelOf = new Map(vehicles.map((vehicle) => [vehicle.id, `${vehicle.brand} ${vehicle.model} · ${vehicle.plate}`]));
+    return {
+      vehicles: vehicles.map((vehicle) => ({ id: vehicle.id, brand: vehicle.brand, model: vehicle.model, plate: vehicle.plate, year: vehicle.year ?? undefined, mileage: vehicle.mileage ?? undefined })),
+      orderCount: summary.orderCount,
+      deliveredCount: summary.deliveredCount,
+      lastVisitAt: summary.lastVisitAt?.toISOString(),
+      openServiceOrders: open.map((order) => ({ id: order.id, orderNumber: order.orderNumber, status: order.status, vehicleLabel: labelOf.get(order.vehicleId) ?? 'Veículo' })),
+      upcomingAppointments: appointments.map((appointment) => ({ id: appointment.id, startsAt: appointment.startsAt.toISOString(), status: appointment.status, serviceDescription: appointment.serviceDescription })),
+      ...(viewer.canViewPrices ? { money: {
+        totalSpentCents: summary.totalSpentCents,
+        averageTicketCents: summary.deliveredCount ? Math.round(summary.totalSpentCents / summary.deliveredCount) : 0,
+        pendingCents: await this.customerRepository.pendingCentsOf(id),
+      } } : {}),
+    };
+  }
+
+  private async filterIds(filter: CustomerListRequest['filter'], now: Date): Promise<{ in?: string[]; notIn?: string[] } | undefined> {
+    if (filter === 'DEBT') return { in: await this.customerRepository.idsWithDebt() };
+    if (filter === 'INACTIVE') return { notIn: await this.customerRepository.idsDeliveredSince(new Date(now.getTime() - INACTIVE_AFTER_DAYS * 86_400_000)) };
+    return undefined;
+  }
+
+  private async statsFor(ids: string[], viewer: CustomerViewer): Promise<Map<string, CustomerListStats>> {
+    const [vehicles, history] = await Promise.all([this.customerRepository.vehiclesOf(ids), this.customerRepository.ordersOf(ids)]);
+    return new Map(ids.map((id) => {
+      const summary = summarizeHistory(history.orders.filter((order) => order.customerId === id), history.items);
+      return [id, {
+        plates: vehicles.filter((vehicle) => vehicle.customerId === id).map((vehicle) => vehicle.plate),
+        orderCount: summary.orderCount,
+        lastVisitAt: summary.lastVisitAt?.toISOString(),
+        ...(viewer.canViewPrices ? { totalSpentCents: summary.totalSpentCents } : {}),
+      }];
+    }));
   }
 
   private toResponse(customer: CustomerEntity): CustomerResponse {
@@ -211,6 +304,7 @@ export class CustomerManager {
       birthDate: customer.birthDate?.toISOString().slice(0, 10),
       careMessagesEnabled: customer.careMessagesEnabled ?? false,
       careConsentAt: customer.careConsentAt?.toISOString(),
+      careConsentSource: (customer.careConsentSource ?? undefined) as CustomerResponse['careConsentSource'],
       notifyServiceOrderUpdates: customer.notifyServiceOrderUpdates ?? false,
       address: (customer.address as CustomerResponse['address']) ?? undefined,
       notes: customer.notes ?? undefined,
@@ -222,7 +316,16 @@ export class CustomerManager {
       preferredContactChannel: (customer.preferredContactChannel as CustomerResponse['preferredContactChannel']) ?? undefined,
       preferredContactTime: (customer.preferredContactTime as CustomerResponse['preferredContactTime']) ?? undefined,
       createdAt: customer.createdAt.toISOString(),
+      archivedAt: customer.deletedAt?.toISOString(),
     };
+  }
+
+  // A person has a CPF and a company a CNPJ: the other way round is a typo the record would carry forever.
+  private assertDocumentFitsType(type: string, checked: { type?: 'CPF' | 'CNPJ' | null; normalized: string }) {
+    if (!checked.normalized) return;
+    if ((type === 'PF' && checked.type !== 'CPF') || (type === 'PJ' && checked.type !== 'CNPJ')) {
+      throw new AppException(AppErrorCode.VALIDATION_ERROR, type === 'PF' ? 'Pessoa física usa CPF. Para um CNPJ, escolha pessoa jurídica.' : 'Pessoa jurídica usa CNPJ. Para um CPF, escolha pessoa física.');
+    }
   }
 
   private validateNotificationPhone(enabled: boolean | undefined, phone: string) {
