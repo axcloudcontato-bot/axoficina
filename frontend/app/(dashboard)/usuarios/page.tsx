@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { AuthGuard } from '@/features/auth/components/AuthGuard';
 import { InviteUserModal } from '@/features/users/components/InviteUserModal';
 import { UsersTable } from '@/features/users/components/UsersTable';
-import { useDeleteUser, useDisableUser, useUsersList } from '@/features/users/hooks/use-users';
+import { useDeleteUser, useDisableUser, useRenameUser, useUsersList } from '@/features/users/hooks/use-users';
 import type { UserListItemResponse } from '@oficina/contracts';
 import { extractErrorMessage } from '@/lib/api/client';
 import { AccessProfilesPanel } from '@/features/access-profiles/components/AccessProfilesPanel';
@@ -26,6 +26,7 @@ function UsersPageContent() {
   const assignProfile = useAssignUserProfile();
   const disableUser = useDisableUser();
   const deleteUser = useDeleteUser();
+  const renameUser = useRenameUser();
   const canManageTeam = hasPermission(user, 'team.manage');
   const visibleProfiles = canManageProfiles ? profiles.data?.items ?? [] : [];
 
@@ -44,6 +45,13 @@ function UsersPageContent() {
     });
   }
 
+  function rename(employee: UserListItemResponse, name: string) {
+    renameUser.mutate({ id: employee.id, name }, {
+      onSuccess: () => toast.success('Nome atualizado.'),
+      onError: (error) => toast.error(extractErrorMessage(error, 'Não foi possível alterar o nome.')),
+    });
+  }
+
   function remove(employee: UserListItemResponse) {
     if (!window.confirm(`Excluir ${employee.name}? O histórico será preservado, mas o acesso será removido.`)) return;
     deleteUser.mutate({ id: employee.id }, {
@@ -58,7 +66,7 @@ function UsersPageContent() {
         <Button onClick={() => setInviteModalOpen(true)}>Convidar usuário</Button>
       </div>
 
-      <UsersTable items={data?.items ?? []} isLoading={isLoading} isError={isError} onRetry={refetch} profiles={visibleProfiles} onAssignProfile={canManageProfiles ? assign : undefined} currentUserId={user?.id} canManage={canManageTeam} onDisable={block} onDelete={remove} />
+      <UsersTable items={data?.items ?? []} isLoading={isLoading} isError={isError} onRetry={refetch} profiles={visibleProfiles} onAssignProfile={canManageProfiles ? assign : undefined} currentUserId={user?.id} canManage={canManageTeam} onDisable={block} onDelete={remove} onRename={rename} renaming={renameUser.isPending} />
 
       {data && data.total > PAGE_SIZE && (
         <div className="flex items-center justify-between text-sm text-text-muted">

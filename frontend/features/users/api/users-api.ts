@@ -8,6 +8,7 @@ import type {
   UserListItemResponse,
   UserListRequest,
   ManageUserAccessRequest,
+  RenameUserRequest,
 } from '@oficina/contracts';
 
 export const usersApi = {
@@ -24,6 +25,10 @@ export const usersApi = {
   async list(request: UserListRequest): Promise<PaginationData<UserListItemResponse>> {
     const response = await apiClient.post<PaginationData<UserListItemResponse>>('/api/v1/users/list', request);
     return response.data;
+  },
+
+  async rename(request: RenameUserRequest): Promise<{ user: { id: string; name: string } }> {
+    return (await apiClient.post('/api/v1/users/rename', request)).data;
   },
 
   async disable(request: ManageUserAccessRequest): Promise<{ success: true }> {

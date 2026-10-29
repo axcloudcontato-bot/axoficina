@@ -8,7 +8,7 @@ import { Permissions } from '../../../shared/decorators/permissions.decorator';
 import { AUTH_THROTTLE } from '../../../shared/constants/throttle.constants';
 import type { AuthenticatedUser } from '../../../shared/guards/jwt-auth.guard';
 import { UserManager } from '../managers/user.manager';
-import { AcceptInviteDto, InviteUserDto, ManageUserAccessDto, UserListDto } from '../dto/user.dto';
+import { AcceptInviteDto, InviteUserDto, ManageUserAccessDto, RenameUserDto, UserListDto } from '../dto/user.dto';
 
 @Controller('api/v1/users')
 export class UsersController {
@@ -35,6 +35,14 @@ export class UsersController {
   @Post('list')
   async list(@CurrentUser() actingUser: AuthenticatedUser, @Body() body: UserListDto): Promise<PaginationData<UserListItemResponse>> {
     return this.userManager.list(body, actingUser);
+  }
+
+  @Roles('ADMIN', 'MANAGER')
+  @Permissions('team.manage')
+  @HttpCode(HttpStatus.OK)
+  @Post('rename')
+  async rename(@CurrentUser() actingUser: AuthenticatedUser, @Body() body: RenameUserDto) {
+    return this.userManager.rename(actingUser, body);
   }
 
   @Roles('ADMIN', 'MANAGER')

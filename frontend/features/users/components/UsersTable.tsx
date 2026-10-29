@@ -1,6 +1,9 @@
 'use client';
 
+import { useState } from 'react';
 import type { AccessProfileResponse, UserListItemResponse } from '@oficina/contracts';
+import { Check, PencilSimple, X } from '@phosphor-icons/react';
+import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -36,9 +39,19 @@ interface UsersTableProps {
   canManage?: boolean;
   onDisable?: (user: UserListItemResponse) => void;
   onDelete?: (user: UserListItemResponse) => void;
+  onRename?: (user: UserListItemResponse, name: string) => void;
+  renaming?: boolean;
 }
 
-export function UsersTable({ items, isLoading, isError, onRetry, profiles = [], onAssignProfile, currentUserId, canManage, onDisable, onDelete }: UsersTableProps) {
+export function UsersTable({ items, isLoading, isError, onRetry, profiles = [], onAssignProfile, currentUserId, canManage, onDisable, onDelete, onRename, renaming }: UsersTableProps) {
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [draftName, setDraftName] = useState('');
+  function startRename(user: UserListItemResponse) { setEditingId(user.id); setDraftName(user.name); }
+  function saveRename(user: UserListItemResponse) {
+    const name = draftName.trim();
+    if (name && name !== user.name) onRename?.(user, name);
+    setEditingId(null);
+  }
   if (isLoading) {
     return (
       <div role="status" aria-label="Carregando usuários" className="space-y-2">
@@ -84,7 +97,20 @@ export function UsersTable({ items, isLoading, isError, onRetry, profiles = [], 
         <TableBody>
           {items.map((user) => (
             <TableRow key={user.id}>
-              <TableCell className="font-medium text-text">{user.name}</TableCell>
+              <TableCell className="min-w-56 font-medium text-text">
+                {editingId === user.id ? (
+                  <form className="flex items-center gap-1" onSubmit={(event) => { event.preventDefault(); saveRename(user); }}>
+                    <Input autoFocus aria-label={`Nome de ${user.name}`} value={draftName} maxLength={100} disabled={renaming} onChange={(event) => setDraftName(event.target.value)} onKeyDown={(event) => { if (event.key === 'Escape') setEditingId(null); }} className="h-9" />
+                    <Button type="submit" variant="ghost" size="icon" disabled={renaming || !draftName.trim()} aria-label="Salvar nome"><Check className="size-4" /></Button>
+                    <Button type="button" variant="ghost" size="icon" disabled={renaming} onClick={() => setEditingId(null)} aria-label="Cancelar"><X className="size-4" /></Button>
+                  </form>
+                ) : (
+                  <span className="flex items-center gap-1">
+                    {user.name}
+                    {canManage && onRename && <Button type="button" variant="ghost" size="icon" className="size-7 text-text-muted" onClick={() => startRename(user)} aria-label={`Editar nome de ${user.name}`}><PencilSimple className="size-3.5" /></Button>}
+                  </span>
+                )}
+              </TableCell>
               <TableCell className="text-text-muted">{user.email}</TableCell>
               <TableCell>{ROLE_LABELS[user.role] ?? user.role}</TableCell>
               {profiles.length > 0 && <TableCell className="min-w-52">

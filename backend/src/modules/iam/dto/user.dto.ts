@@ -1,7 +1,7 @@
 import { Type } from 'class-transformer';
-import { Equals, IsEmail, IsIn, IsInt, IsNotEmpty, IsOptional, IsUUID, Max, Min, MinLength, ValidateNested } from 'class-validator';
+import { Equals, IsEmail, IsIn, IsInt, IsNotEmpty, IsOptional, IsString, IsUUID, Max, MaxLength, Min, MinLength, ValidateNested } from 'class-validator';
 import { INVITABLE_ROLES, LEGAL_VERSION, MIN_PASSWORD_LENGTH, USER_ROLES, USER_STATUSES } from '@oficina/contracts';
-import type { AcceptInviteRequest, InviteUserRequest, UserListFilters, UserListRequest } from '@oficina/contracts';
+import type { AcceptInviteRequest, InviteUserRequest, RenameUserRequest, UserListFilters, UserListRequest } from '@oficina/contracts';
 
 const MAX_LIST_LIMIT = 100;
 const DEFAULT_LIST_LIMIT = 100;
@@ -35,6 +35,14 @@ export class AcceptInviteDto implements AcceptInviteRequest {
 export class ManageUserAccessDto {
   @IsUUID()
   id!: string;
+}
+
+export class RenameUserDto implements RenameUserRequest {
+  @IsUUID()
+  id!: string;
+
+  @IsString() @IsNotEmpty({ message: 'name is required' }) @MaxLength(100)
+  name!: string;
 }
 
 class UserListFiltersDto implements UserListFilters {

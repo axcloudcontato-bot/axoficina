@@ -17,6 +17,11 @@ export interface ManageUserAccessRequest {
   id: string;
 }
 
+export interface RenameUserRequest {
+  id: string;
+  name: string;
+}
+
 export interface UserListFilters {
   status?: UserStatus;
   role?: UserRole;

@@ -247,6 +247,30 @@ describe('UserManager', () => {
     });
   });
 
+  describe('rename', () => {
+    it('renames a user of the same tenant, trimming the name, and records the change', async () => {
+      const deps = buildManager();
+      deps.userRepository.byId.mockResolvedValue({ ...invitedUser, status: 'active' });
+      const result = await deps.manager.rename(actingAdmin, { id: invitedUser.id, name: '  João da Silva  ' });
+      expect(deps.userRepository.update).toHaveBeenCalledWith(invitedUser.id, { name: 'João da Silva' });
+      expect(result.user).toEqual({ id: invitedUser.id, name: 'João da Silva' });
+    });
+
+    it('lets an administrator rename their own account', async () => {
+      const deps = buildManager();
+      deps.userRepository.byId.mockResolvedValue({ ...invitedUser, id: actingAdmin.userId, status: 'active' });
+      await expect(deps.manager.rename(actingAdmin, { id: actingAdmin.userId, name: 'Novo Nome' })).resolves.toBeDefined();
+    });
+
+    it('rejects a blank name and a user from another tenant', async () => {
+      const deps = buildManager();
+      deps.userRepository.byId.mockResolvedValue({ ...invitedUser, tenantId: 'other-tenant' });
+      await expect(deps.manager.rename(actingAdmin, { id: invitedUser.id, name: 'Fulano' })).rejects.toMatchObject({ status: HttpStatus.NOT_FOUND });
+      await expect(deps.manager.rename(actingAdmin, { id: invitedUser.id, name: '   ' })).rejects.toMatchObject({ status: HttpStatus.BAD_REQUEST });
+      expect(deps.userRepository.update).not.toHaveBeenCalled();
+    });
+  });
+
   describe('list', () => {
     it('lists users scoped to the tenant via the repository call', async () => {
       const deps = buildManager();

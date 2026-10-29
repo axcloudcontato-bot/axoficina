@@ -1,7 +1,7 @@
 'use client';
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type { AcceptInviteRequest, InviteUserRequest, ManageUserAccessRequest, UserListRequest } from '@oficina/contracts';
+import type { AcceptInviteRequest, InviteUserRequest, ManageUserAccessRequest, RenameUserRequest, UserListRequest } from '@oficina/contracts';
 import { useAuthStore } from '@/stores/auth-store';
 import { usersApi } from '../api/users-api';
 
@@ -45,5 +45,17 @@ function useUserAccessMutation(action: 'disable' | 'delete') {
   });
 }
 
+export function useRenameUser() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (request: RenameUserRequest) => usersApi.rename(request),
+    onSuccess: ({ user: renamed }) => {
+      queryClient.invalidateQueries({ queryKey: [USERS_LIST_KEY] });
+      // Se o administrador renomeou a si mesmo, o nome no cabeçalho acompanha.
+      const { user, accessToken, refreshToken, setSession } = useAuthStore.getState();
+      if (user?.id === renamed.id && accessToken && refreshToken) setSession({ accessToken, refreshToken, user: { ...user, name: renamed.name } });
+    },
+  });
+}
 export function useDisableUser() { return useUserAccessMutation('disable'); }
 export function useDeleteUser() { return useUserAccessMutation('delete'); }

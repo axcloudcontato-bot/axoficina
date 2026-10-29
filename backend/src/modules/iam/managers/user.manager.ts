@@ -7,6 +7,7 @@ import type {
   InviteUserRequest,
   InviteUserResponse,
   ManageUserAccessRequest,
+  RenameUserRequest,
   PaginationData,
   UserListItemResponse,
   UserListRequest,
@@ -203,6 +204,20 @@ export class UserManager {
       limit: request.limit,
       hasMore: request.offset + items.length < total,
     };
+  }
+
+  // Qualquer usuário da oficina pode ser renomeado, inclusive o próprio administrador
+  // (diferente de bloquear/excluir, que não valem para a própria conta).
+  async rename(actingUser: AuthenticatedUser, request: RenameUserRequest): Promise<{ user: { id: string; name: string } }> {
+    const name = request.name.trim();
+    if (!name) throw new AppException(AppErrorCode.VALIDATION_ERROR, 'Informe o nome do usuário.', HttpStatus.BAD_REQUEST);
+    const user = await this.userRepository.byId(request.id);
+    if (!user || user.tenantId !== actingUser.tenantId || user.deletedAt) {
+      throw new AppException(AppErrorCode.USER_NOT_FOUND, 'Funcionário não encontrado.', HttpStatus.NOT_FOUND);
+    }
+    await this.userRepository.update(user.id, { name });
+    await this.auditLog.record({ tenantId: actingUser.tenantId, userId: actingUser.userId, action: 'user.renamed', entity: 'user', entityId: user.id, metadata: {} });
+    return { user: { id: user.id, name } };
   }
 
   async disable(actingUser: AuthenticatedUser, request: ManageUserAccessRequest): Promise<{ success: true }> {

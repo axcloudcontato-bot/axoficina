@@ -16,6 +16,7 @@ export interface CreateUserInput {
 }
 
 export interface UpdateUserInput {
+  name?: string;
   legalVersion?: string;
   legalAcceptedAt?: Date;
   passwordHash?: string;
