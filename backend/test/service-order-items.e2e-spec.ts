@@ -103,13 +103,6 @@ describe('Service Order Items (e2e)', () => {
     return response.body.service_order.id as string;
   }
 
-  async function transition(adminToken: string, serviceOrderId: string, toStatus: string) {
-    return request(app.getHttpServer())
-      .post('/api/v1/service-orders/transition')
-      .set('Authorization', `Bearer ${adminToken}`)
-      .send({ id: serviceOrderId, to_status: toStatus });
-  }
-
   it('adds a PART and a LABOR item and reflects the summed total_amount_cents on the service order', async () => {
     const admin = await signupAdmin(`add-${Date.now()}`);
     const serviceOrderId = await createServiceOrder(admin.access_token, 'add');
