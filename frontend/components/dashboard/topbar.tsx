@@ -2,7 +2,7 @@
 
 import { usePathname } from 'next/navigation';
 import type { Icon as PhosphorIcon } from '@phosphor-icons/react';
-import { Bell, Car, CalendarBlank, ChartBar, ChartLine, ClipboardText, Heart, Package, ShieldCheck, SquaresFour, Users, UsersThree } from '@phosphor-icons/react';
+import { Bell, Buildings, Car, CalendarBlank, ChartBar, ChartLine, ClipboardText, Clock, Envelope, Gear, Heart, Package, ShieldCheck, SquaresFour, Users, UsersThree, WhatsappLogo } from '@phosphor-icons/react';
 import { HeaderDock } from '@/components/dashboard/header-dock';
 
 interface PageMeta { title: string; description: string; icon: PhosphorIcon }
@@ -20,6 +20,13 @@ const PAGE_META: Record<string, PageMeta> = {
   '/produtividade': { title: 'Produtividade', description: 'OS entregues, mão de obra gerada e carga por técnico.', icon: ChartBar },
   '/alertas-de-manutencao': { title: 'Alertas de manutenção', description: 'Acompanhe os contatos preventivos pendentes.', icon: Bell },
   '/usuarios': { title: 'Equipe e acesso', description: 'Gerencie usuários, perfis e permissões.', icon: UsersThree },
+  '/configuracoes': { title: 'Configurações', description: 'Estado da oficina e integrações.', icon: Gear },
+  '/configuracoes/empresa': { title: 'Empresa e marca', description: 'Dados cadastrais e documentos.', icon: Buildings },
+  '/configuracoes/operacao': { title: 'Operação', description: 'Horários, lembretes e fotos.', icon: Clock },
+  '/configuracoes/email': { title: 'E-mail', description: 'Servidor, remetente e teste.', icon: Envelope },
+  '/configuracoes/whatsapp': { title: 'WhatsApp', description: 'Conexão e recebimento de respostas.', icon: WhatsappLogo },
+  '/configuracoes/equipe': { title: 'Equipe e acesso', description: 'Gerencie usuários, convites e permissões.', icon: UsersThree },
+  '/configuracoes/privacidade-da-oficina': { title: 'Privacidade da oficina', description: 'Acompanhe os protocolos dos clientes.', icon: ShieldCheck },
   '/configuracoes/privacidade': { title: 'Privacidade e solicitações', description: 'Seus dados, direitos e protocolos de atendimento.', icon: ShieldCheck },
 };
 

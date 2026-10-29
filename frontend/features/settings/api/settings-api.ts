@@ -25,6 +25,12 @@ export const settingsApi = {
   async updateWhatsApp(input: UpdateWhatsAppSettingsRequest): Promise<WhatsAppSettingsResponse> { return (await apiClient.post('/api/v1/settings/whatsapp', input)).data; },
   async testWhatsApp(): Promise<WhatsAppConnectionResponse> { return (await apiClient.post('/api/v1/settings/whatsapp/test')).data; },
   async testWhatsAppWebhook(): Promise<WhatsAppWebhookTestResponse> { return (await apiClient.post('/api/v1/settings/whatsapp/webhook/test')).data; },
+  async reminderHealth(): Promise<{ failed: number; lastSentAt: string | null; lastFailureAt: string | null; lastError: string | null; items: Array<{ id: string; startsAt: string; attempts: number; error: string | null }> }> {
+    return (await apiClient.get('/api/v1/appointments/reminder-health')).data;
+  },
+  async retryReminder(id: string): Promise<{ sent: true }> {
+    return (await apiClient.post('/api/v1/appointments/reminder-retry', { id })).data;
+  },
   async updateCompany(request: UpdateCompanySettingsRequest): Promise<{ company: CompanySettingsResponse }> {
     return (await apiClient.post('/api/v1/settings/company', request)).data;
   },

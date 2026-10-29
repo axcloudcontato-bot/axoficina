@@ -28,6 +28,9 @@ export interface EmailSettingsResponse {
   fromEmail?: string;
   replyTo?: string;
   enabled: boolean;
+  lastTestAt?: string;
+  lastSuccessAt?: string;
+  lastTestError?: string;
 }
 
 export interface TenantSettingsResponse {

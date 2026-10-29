@@ -37,13 +37,16 @@ interface UsersTableProps {
   onAssignProfile?: (userId: string, profileId: string) => void;
   currentUserId?: string;
   canManage?: boolean;
+  canManageAdmins?: boolean;
   onDisable?: (user: UserListItemResponse) => void;
+  onEnable?: (user: UserListItemResponse) => void;
+  onResendInvite?: (user: UserListItemResponse) => void;
   onDelete?: (user: UserListItemResponse) => void;
   onRename?: (user: UserListItemResponse, name: string) => void;
   renaming?: boolean;
 }
 
-export function UsersTable({ items, isLoading, isError, onRetry, profiles = [], onAssignProfile, currentUserId, canManage, onDisable, onDelete, onRename, renaming }: UsersTableProps) {
+export function UsersTable({ items, isLoading, isError, onRetry, profiles = [], onAssignProfile, currentUserId, canManage, canManageAdmins = false, onDisable, onEnable, onResendInvite, onDelete, onRename, renaming }: UsersTableProps) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draftName, setDraftName] = useState('');
   function startRename(user: UserListItemResponse) { setEditingId(user.id); setDraftName(user.name); }
@@ -107,7 +110,7 @@ export function UsersTable({ items, isLoading, isError, onRetry, profiles = [], 
                 ) : (
                   <span className="flex items-center gap-1">
                     {user.name}
-                    {canManage && onRename && <Button type="button" variant="ghost" size="icon" className="size-7 text-text-muted" onClick={() => startRename(user)} aria-label={`Editar nome de ${user.name}`}><PencilSimple className="size-3.5" /></Button>}
+                    {canManage && (user.role !== 'ADMIN' || canManageAdmins) && onRename && <Button type="button" variant="ghost" size="icon" className="size-7 text-text-muted" onClick={() => startRename(user)} aria-label={`Editar nome de ${user.name}`}><PencilSimple className="size-3.5" /></Button>}
                   </span>
                 )}
               </TableCell>
@@ -125,8 +128,10 @@ export function UsersTable({ items, isLoading, isError, onRetry, profiles = [], 
                 </Badge>
               </TableCell>
               {canManage && <TableCell className="text-right">
-                {user.id !== currentUserId && <div className="flex justify-end gap-2">
+                {user.id !== currentUserId && (user.role !== 'ADMIN' || canManageAdmins) && <div className="flex justify-end gap-2">
                   {user.status !== 'disabled' && <Button variant="outline" size="sm" onClick={() => onDisable?.(user)}>Bloquear</Button>}
+                  {user.status === 'disabled' && <Button variant="outline" size="sm" onClick={() => onEnable?.(user)}>Reativar</Button>}
+                  {user.status === 'invited' && <Button variant="outline" size="sm" onClick={() => onResendInvite?.(user)}>Reenviar convite</Button>}
                   <Button variant="outline" size="sm" className="border-danger/30 text-danger hover:bg-danger/10" onClick={() => onDelete?.(user)}>Excluir</Button>
                 </div>}
               </TableCell>}

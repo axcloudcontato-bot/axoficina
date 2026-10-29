@@ -111,6 +111,31 @@ describe('UserManager', () => {
         status: HttpStatus.BAD_REQUEST,
       });
     });
+
+    it('reactivates a blocked user and renews a pending invitation', async () => {
+      const deps = buildManager();
+      deps.userRepository.byId.mockResolvedValueOnce({ ...invitedUser, status: 'disabled', passwordHash: 'hash' }).mockResolvedValueOnce(invitedUser);
+      await deps.manager.enable(actingAdmin, { id: invitedUser.id });
+      expect(deps.userRepository.update).toHaveBeenCalledWith(invitedUser.id, { status: 'active' });
+      const result = await deps.manager.resendInvite(actingAdmin, { id: invitedUser.id });
+      expect(result.inviteLink).toContain('raw-invite-token');
+      expect(deps.userRepository.update).toHaveBeenCalledWith(invitedUser.id, expect.objectContaining({ inviteTokenHash: 'hashed-invite-token', inviteExpiresAt: expect.any(Date) }));
+    });
+
+    it('renews the invitation when reactivating an account without a password', async () => {
+      const deps = buildManager();
+      deps.userRepository.byId.mockResolvedValue({ ...invitedUser, status: 'disabled' });
+      const result = await deps.manager.enable(actingAdmin, { id: invitedUser.id });
+      expect(result.inviteLink).toContain('raw-invite-token');
+      expect(deps.userRepository.update).toHaveBeenCalledWith(invitedUser.id, expect.objectContaining({ status: 'invited', inviteTokenHash: 'hashed-invite-token' }));
+    });
+
+    it('prevents a manager from changing an administrator account', async () => {
+      const deps = buildManager();
+      deps.userRepository.byId.mockResolvedValue({ ...invitedUser, status: 'active', roleId: ADMIN_ROLE.id });
+      deps.roleRepository.byId.mockResolvedValue(ADMIN_ROLE);
+      await expect(deps.manager.disable({ ...actingAdmin, role: 'MANAGER' }, { id: invitedUser.id })).rejects.toMatchObject({ status: HttpStatus.FORBIDDEN });
+    });
   });
 
   describe('invite', () => {

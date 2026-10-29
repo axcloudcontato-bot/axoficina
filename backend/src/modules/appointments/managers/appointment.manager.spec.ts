@@ -24,6 +24,7 @@ function setup(conflicts: unknown[] = [], bays: number | null = null) {
       endsAt: new Date(request.endsAt), serviceDescription: 'Revisão', notes: null, status: 'SCHEDULED',
       createdBy: user.userId, cancelledAt: null, createdAt: new Date(), updatedAt: null, deletedAt: null,
     }),
+    update: jest.fn().mockResolvedValue({ count: 1 }),
   };
   const customer = { id: request.customerId, name: 'Maria', phone: '11999990000' };
   const vehicle = { id: request.vehicleId, customerId: request.customerId, brand: 'Fiat', model: 'Uno', plate: 'ABC1D23' };
@@ -71,6 +72,13 @@ describe('AppointmentManager', () => {
     expect(result.items[0]).toMatchObject({ customerName: 'Maria', customerPhone: '11999990000', technicianName: 'Carlos' });
     expect(customers.byIds).toHaveBeenCalledTimes(1);
     expect(customers.byId).not.toHaveBeenCalled();
+  });
+
+  it('reabre o lembrete quando o agendamento muda de horário', async () => {
+    const { manager, appointments } = setup();
+    appointments.byId.mockResolvedValue(stored({ reminderSentAt: new Date() }));
+    await manager.update(user as never, { ...request, id: 'a1', startsAt: '2026-07-29T12:00:00.000Z', endsAt: '2026-07-29T13:00:00.000Z' });
+    expect(appointments.update).toHaveBeenCalledWith('a1', expect.any(Object), true);
   });
 
   it('exige motivo para cancelar e registra o motivo na auditoria', async () => {

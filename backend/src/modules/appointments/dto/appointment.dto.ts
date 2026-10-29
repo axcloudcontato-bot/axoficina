@@ -44,3 +44,7 @@ export class StartAppointmentDto implements StartAppointmentRequest {
 export class NotifyAppointmentDto implements NotifyAppointmentRequest {
   @IsUUID('4') id!: string;
 }
+
+export class RetryReminderDto {
+  @IsUUID('4') id!: string;
+}

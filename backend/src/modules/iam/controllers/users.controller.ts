@@ -53,6 +53,12 @@ export class UsersController {
     return this.userManager.disable(actingUser, body);
   }
 
+  @Roles('ADMIN', 'MANAGER') @Permissions('team.manage') @HttpCode(HttpStatus.OK) @Post('enable')
+  enable(@CurrentUser() actingUser: AuthenticatedUser, @Body() body: ManageUserAccessDto) { return this.userManager.enable(actingUser, body); }
+
+  @Roles('ADMIN', 'MANAGER') @Permissions('team.manage') @HttpCode(HttpStatus.OK) @Post('resend-invite')
+  resendInvite(@CurrentUser() actingUser: AuthenticatedUser, @Body() body: ManageUserAccessDto) { return this.userManager.resendInvite(actingUser, body); }
+
   @Roles('ADMIN', 'MANAGER')
   @Permissions('team.manage')
   @HttpCode(HttpStatus.OK)

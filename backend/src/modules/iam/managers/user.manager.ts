@@ -183,6 +183,7 @@ export class UserManager {
     const { items, total } = await this.userRepository.listByTenant(request.offset, request.limit, {
       status: request.filters?.status,
       roleId: roleFilterId,
+      search: request.filters?.search?.trim(),
     });
 
     const roleById = new Map(roles.map((role) => [role.id, role]));
@@ -215,6 +216,10 @@ export class UserManager {
     if (!user || user.tenantId !== actingUser.tenantId || user.deletedAt) {
       throw new AppException(AppErrorCode.USER_NOT_FOUND, 'Funcionário não encontrado.', HttpStatus.NOT_FOUND);
     }
+    if (actingUser.role !== 'ADMIN') {
+      const role = await this.roleRepository.byId(user.roleId);
+      if ((role?.baseRole ?? role?.name) === 'ADMIN') throw new AppException(AppErrorCode.VALIDATION_ERROR, 'Somente um administrador pode alterar outra conta administradora.', HttpStatus.FORBIDDEN);
+    }
     await this.userRepository.update(user.id, { name });
     await this.auditLog.record({ tenantId: actingUser.tenantId, userId: actingUser.userId, action: 'user.renamed', entity: 'user', entityId: user.id, metadata: {} });
     return { user: { id: user.id, name } };
@@ -225,6 +230,33 @@ export class UserManager {
     await this.userRepository.disableAndRevokeSessions(user.id);
     await this.auditLog.record({ tenantId: actingUser.tenantId, userId: actingUser.userId, action: 'user.disabled', entity: 'user', entityId: user.id, metadata: {} });
     return { success: true };
+  }
+
+  async enable(actingUser: AuthenticatedUser, request: ManageUserAccessRequest): Promise<{ success: true; inviteLink?: string; emailSent?: boolean }> {
+    const user = await this.getManageableUser(actingUser, request.id);
+    if (user.status !== 'disabled') throw new AppException(AppErrorCode.VALIDATION_ERROR, 'Este usuário não está bloqueado.', HttpStatus.BAD_REQUEST);
+    let inviteLink: string | undefined;
+    let emailSent: boolean | undefined;
+    if (user.passwordHash) await this.userRepository.update(user.id, { status: 'active' });
+    else {
+      const opaque = this.tokenService.generateOpaqueToken(this.config.get<number>('INVITE_TOKEN_TTL_SECONDS', DEFAULT_INVITE_TOKEN_TTL_SECONDS));
+      await this.userRepository.update(user.id, { status: 'invited', inviteTokenHash: opaque.tokenHash, inviteExpiresAt: opaque.expiresAt });
+      inviteLink = `${this.config.get<string>('FRONTEND_URL', DEFAULT_FRONTEND_URL)}/convite/${opaque.token}`;
+      emailSent = await this.sendInviteEmail(actingUser.tenantId, user, inviteLink);
+    }
+    await this.auditLog.record({ tenantId: actingUser.tenantId, userId: actingUser.userId, action: 'user.enabled', entity: 'user', entityId: user.id, metadata: {} });
+    return { success: true, inviteLink, emailSent };
+  }
+
+  async resendInvite(actingUser: AuthenticatedUser, request: ManageUserAccessRequest): Promise<{ inviteLink: string; emailSent: boolean }> {
+    const user = await this.getManageableUser(actingUser, request.id);
+    if (user.status !== 'invited') throw new AppException(AppErrorCode.VALIDATION_ERROR, 'Apenas convites pendentes podem ser reenviados.', HttpStatus.BAD_REQUEST);
+    const opaque = this.tokenService.generateOpaqueToken(this.config.get<number>('INVITE_TOKEN_TTL_SECONDS', DEFAULT_INVITE_TOKEN_TTL_SECONDS));
+    await this.userRepository.update(user.id, { inviteTokenHash: opaque.tokenHash, inviteExpiresAt: opaque.expiresAt });
+    const inviteLink = `${this.config.get<string>('FRONTEND_URL', DEFAULT_FRONTEND_URL)}/convite/${opaque.token}`;
+    const emailSent = await this.sendInviteEmail(actingUser.tenantId, user, inviteLink);
+    await this.auditLog.record({ tenantId: actingUser.tenantId, userId: actingUser.userId, action: 'user.invite_resent', entity: 'user', entityId: user.id, metadata: { emailSent } });
+    return { inviteLink, emailSent };
   }
 
   async delete(actingUser: AuthenticatedUser, request: ManageUserAccessRequest): Promise<{ success: true }> {
@@ -241,6 +273,10 @@ export class UserManager {
     const user = await this.userRepository.byId(id);
     if (!user || user.tenantId !== actingUser.tenantId) {
       throw new AppException(AppErrorCode.USER_NOT_FOUND, 'Funcionário não encontrado.', HttpStatus.NOT_FOUND);
+    }
+    const role = await this.roleRepository.byId(user.roleId);
+    if (actingUser.role !== 'ADMIN' && (role?.baseRole ?? role?.name) === 'ADMIN') {
+      throw new AppException(AppErrorCode.VALIDATION_ERROR, 'Somente um administrador pode alterar outra conta administradora.', HttpStatus.FORBIDDEN);
     }
     return user;
   }

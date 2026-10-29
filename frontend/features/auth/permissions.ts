@@ -12,6 +12,6 @@ export function hasPermission(user: UserResponse | null, permission: PermissionK
   // Compatibilidade para sessões de administradores emitidas antes da
   // introdução do módulo de configurações. O backend continua sendo a fonte
   // de verdade e consulta as permissões atuais no banco a cada requisição.
-  if (user.role === 'ADMIN' && permission.startsWith('settings.')) return true;
-  return (user.permissions?.length ? user.permissions : LEGACY_PERMISSIONS[user.role] ?? []).includes(permission);
+  if (user.role === 'ADMIN' && permission.startsWith('settings.') && user.permissions === undefined) return true;
+  return (user.permissions ?? LEGACY_PERMISSIONS[user.role] ?? []).includes(permission);
 }

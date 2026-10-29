@@ -28,13 +28,13 @@ async function downloadData(url: string, filename: string, body?: object) {
   document.body.appendChild(link); link.click(); link.remove(); URL.revokeObjectURL(href);
 }
 
-export function PrivacyCenter() {
+export function PrivacyCenter({ mode = 'self' }: { mode?: 'self' | 'admin' }) {
   const user = useAuthStore((state) => state.user);
   const isAdmin = user?.role === 'ADMIN' && hasPermission(user, 'settings.manage');
   const canManageCustomers = isAdmin && hasPermission(user, 'customers.manage');
-  const [manage, setManage] = useState(false);
+  const manage = mode === 'admin';
   const [type, setType] = useState<PrivacyRequestType>('ACCESS');
-  const [subject, setSubject] = useState('self');
+  const subject = mode === 'admin' ? 'customer' : 'self';
   const [customerId, setCustomerId] = useState('');
   const [details, setDetails] = useState('');
   const [selected, setSelected] = useState<PrivacyRequestResponse | null>(null);
@@ -49,7 +49,7 @@ export function PrivacyCenter() {
   const requests = useQuery({
     queryKey: ['privacy-requests', user?.id, manage && isAdmin],
     queryFn: async () => (await apiClient.get<{ items: PrivacyRequestResponse[] }>(`/api/v1/privacy/requests${manage && isAdmin ? '/manage' : ''}`)).data,
-    enabled: Boolean(user),
+    enabled: Boolean(user) && (mode === 'self' || isAdmin),
   });
   async function refresh() { await queryClient.invalidateQueries({ queryKey: ['privacy-requests'] }); }
   const create = useMutation({
@@ -86,17 +86,17 @@ export function PrivacyCenter() {
     catch (error) { toast.error(extractErrorMessage(error)); }
     finally { setExporting(false); }
   }
+  if (mode === 'admin' && !isAdmin) return <div role="alert" className={cardClass}>Seu perfil não permite gerenciar solicitações da oficina.</div>;
   return <div className="space-y-6 text-text">
-    <header><h2 className="text-2xl font-bold">Central de privacidade e solicitações</h2><p className="mt-2 text-sm leading-6 text-text-muted">Consulte seus dados, exerça direitos da LGPD ou solicite cancelamento e reembolso. Cada pedido recebe um protocolo. Registrar uma solicitação não apaga dados nem executa estorno automaticamente.</p>{legalIdentity.email && <p className="mt-3 text-sm text-text-muted">Para assuntos do fornecedor, inclusive cancelamento e reembolso do software, encaminhe seu protocolo para <a className="text-primary underline" href={`mailto:${legalIdentity.email}`}>{legalIdentity.email}</a>. Esse envio não é automático.</p>}</header>
-    <section className={cardClass}><h3 className="font-bold">Seus dados, suas escolhas</h3><p className="mb-4 mt-2 text-sm leading-6 text-text-muted">Baixe os dados cadastrais da sua conta. Para acesso completo, correção, exclusão ou revisão de tratamento, registre um pedido abaixo. Não há cobrança para exercer seus direitos.</p><Button variant="outline" disabled={exporting} onClick={() => void exportRegistry()}>Baixar meus dados cadastrais</Button><p className="mt-4 text-xs leading-5 text-text-muted">O acesso simplificado deve ser imediato quando possível; a declaração completa de acesso observa até 15 dias, conforme a LGPD. Para outros pedidos, a data exibida é uma meta de acompanhamento, sujeita ao prazo legal aplicável. <Link className="text-primary underline" href="/privacidade">Ler a política de privacidade</Link>.</p></section>
-    <section className={cardClass}><h3 className="font-bold">Nova solicitação</h3><form onSubmit={submit} className="mt-5 space-y-4">
-      {canManageCustomers && <div><label htmlFor="privacy-subject" className="mb-2 block text-sm font-semibold">A quem se refere</label><select id="privacy-subject" className={selectClass} value={subject} onChange={(event) => { setSubject(event.target.value); setType('ACCESS'); }}><option value="self">À minha conta / contratação</option><option value="customer">A um cliente da oficina</option></select></div>}
+    <header><h2 className="text-2xl font-bold">{mode === 'admin' ? 'Solicitações da oficina' : 'Minha privacidade e solicitações'}</h2><p className="mt-2 text-sm leading-6 text-text-muted">{mode === 'admin' ? 'Registre e acompanhe pedidos de clientes, com protocolo e resposta documentada.' : 'Consulte seus dados, exerça direitos da LGPD ou solicite cancelamento e reembolso. Cada pedido recebe um protocolo. Registrar uma solicitação não apaga dados nem executa estorno automaticamente.'}</p>{mode === 'self' && legalIdentity.email && <p className="mt-3 text-sm text-text-muted">Para assuntos do fornecedor, inclusive cancelamento e reembolso do software, encaminhe seu protocolo para <a className="text-primary underline" href={`mailto:${legalIdentity.email}`}>{legalIdentity.email}</a>. Esse envio não é automático.</p>}</header>
+    {mode === 'self' && <section className={cardClass}><h3 className="font-bold">Seus dados, suas escolhas</h3><p className="mb-4 mt-2 text-sm leading-6 text-text-muted">Baixe os dados cadastrais da sua conta. Para acesso completo, correção, exclusão ou revisão de tratamento, registre um pedido abaixo. Não há cobrança para exercer seus direitos.</p><Button variant="outline" disabled={exporting} onClick={() => void exportRegistry()}>Baixar meus dados cadastrais</Button><p className="mt-4 text-xs leading-5 text-text-muted">O acesso simplificado deve ser imediato quando possível; a declaração completa de acesso observa até 15 dias, conforme a LGPD. Para outros pedidos, a data exibida é uma meta de acompanhamento, sujeita ao prazo legal aplicável. <Link className="text-primary underline" href="/privacidade">Ler a política de privacidade</Link>.</p></section>}
+    {(mode === 'self' || canManageCustomers) && <section className={cardClass}><h3 className="font-bold">Nova solicitação</h3><form onSubmit={submit} className="mt-5 space-y-4">
       {subject === 'customer' && <div><label htmlFor="privacy-customer" className="mb-2 block text-sm font-semibold">Cliente</label><CustomerSearchCombobox id="privacy-customer" value={customerId} onChange={setCustomerId} /><p className="mt-2 text-xs text-text-muted">Verifique a identidade e a legitimidade do pedido sem exigir documento completo por padrão. Para cadastro arquivado, informe o identificador interno.</p><label className="mt-3 block text-xs" htmlFor="privacy-customer-id">Identificador interno do cliente (alternativa à busca)</label><Input id="privacy-customer-id" value={customerId} onChange={(event) => setCustomerId(event.target.value)} placeholder="UUID do cadastro" /></div>}
       <div><label htmlFor="privacy-type" className="mb-2 block text-sm font-semibold">Tipo de solicitação</label><select id="privacy-type" value={type} onChange={(event) => setType(event.target.value as PrivacyRequestType)} className={selectClass}>{PRIVACY_REQUEST_TYPES.filter((item) => subject !== 'customer' || !['REFUND', 'CANCELLATION'].includes(item)).map((item) => <option key={item} value={item}>{typeLabels[item]}</option>)}</select></div>
       <div><label htmlFor="privacy-details" className="mb-2 block text-sm font-semibold">Informações adicionais (opcional)</label><Textarea id="privacy-details" maxLength={2000} rows={3} value={details} onChange={(event) => setDetails(event.target.value)} aria-describedby="privacy-details-help" /><p id="privacy-details-help" className="mt-2 text-xs leading-5 text-text-muted">Descreva apenas o necessário. Não envie senhas, dados sensíveis, documentos completos nem dados de cartão. Motivo do arrependimento não é obrigatório. Solicitações são acompanhadas pelo administrador autorizado da oficina; pedidos sobre o fornecedor devem ser encaminhados ao canal indicado nas políticas.</p></div>
       <Button type="submit" disabled={create.isPending}>{create.isPending ? 'Registrando...' : 'Registrar solicitação'}</Button>
-    </form></section>
-    <section className={cardClass}><div className="flex flex-wrap items-center justify-between gap-3"><h3 className="font-bold">Protocolos e respostas</h3>{isAdmin && <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={manage} onChange={(event) => setManage(event.target.checked)} className="accent-primary" />Gerenciar pedidos da oficina</label>}</div>
+    </form></section>}
+    <section className={cardClass}><div className="flex flex-wrap items-center justify-between gap-3"><h3 className="font-bold">Protocolos e respostas</h3></div>
       {requests.isPending && <p className="mt-4 text-sm" role="status">Carregando solicitações...</p>}
       {requests.isError && <div role="alert" className="mt-4 text-sm text-danger"><p>{extractErrorMessage(requests.error, 'Não foi possível carregar as solicitações.')}</p><Button variant="outline" className="mt-3" onClick={() => void requests.refetch()}>Tentar novamente</Button></div>}
       {!requests.isPending && !requests.isError && !requests.data?.items.length && <p className="mt-4 text-sm text-text-muted">Nenhuma solicitação registrada.</p>}

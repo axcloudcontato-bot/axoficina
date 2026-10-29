@@ -27,6 +27,8 @@ export class WaAkgService {
       baseUrl: tenant.waAkgBaseUrl ?? undefined, sessionId: tenant.waAkgSessionId ?? undefined,
       apiKeyConfigured: Boolean(tenant.waAkgApiKey), webhookSecretConfigured: Boolean(tenant.waAkgWebhookSecret), enabled: tenant.waAkgEnabled,
       webhookUrl: `${publicApi.replace(/\/$/, '')}/api/v1/webhooks/wa-akg/${tenantId}`,
+      connectionTestAt: tenant.waAkgTestedAt?.toISOString(), connectionSuccessAt: tenant.waAkgTestSuccessAt?.toISOString(), connectionTestError: tenant.waAkgTestError ?? undefined,
+      webhookTestAt: tenant.waWebhookTestedAt?.toISOString(), webhookSuccessAt: tenant.waWebhookTestSuccessAt?.toISOString(), webhookTestError: tenant.waWebhookTestError ?? undefined,
     };
   }
 
@@ -47,6 +49,8 @@ export class WaAkgService {
       waAkgApiKey: apiKey ? this.secrets.encrypt(apiKey) : current.waAkgApiKey,
       waAkgWebhookSecret: webhookSecret ? this.secrets.encrypt(webhookSecret) : current.waAkgWebhookSecret,
       waAkgEnabled: input.enabled,
+      waAkgTestedAt: null, waAkgTestSuccessAt: null, waAkgTestError: null,
+      waWebhookTestedAt: null, waWebhookTestSuccessAt: null, waWebhookTestError: null,
     });
     await this.audit.record({ tenantId: user.tenantId, userId: user.userId, action: 'settings.whatsapp_updated', entity: 'tenant', entityId: user.tenantId, metadata: { enabled: input.enabled } });
     return this.getSettings(user.tenantId);
@@ -60,13 +64,21 @@ export class WaAkgService {
   }
 
   async testConnection(tenantId: string): Promise<WhatsAppConnectionResponse> {
-    const connection = (await this.getConnection(tenantId, false))!;
-    const response = await this.request(connection, '/sessions');
-    const sessions = Array.isArray(response) ? response : isRecord(response) && Array.isArray(response.data) ? response.data : null;
-    const session = sessions?.find((item: unknown) => isRecord(item) && item.sessionId === connection.sessionId) as Record<string, unknown> | undefined;
-    if (!session) throw new BadRequestException('A sessão informada não foi encontrada ou a chave de API não possui acesso a ela.');
-    const status = typeof session.status === 'string' ? session.status : 'Unknown';
-    return { connected: status.toLowerCase() === 'connected', status };
+    const testedAt = new Date();
+    try {
+      const connection = (await this.getConnection(tenantId, false))!;
+      const response = await this.request(connection, '/sessions');
+      const sessions = Array.isArray(response) ? response : isRecord(response) && Array.isArray(response.data) ? response.data : null;
+      const session = sessions?.find((item: unknown) => isRecord(item) && item.sessionId === connection.sessionId) as Record<string, unknown> | undefined;
+      if (!session) throw new BadRequestException('A sessão informada não foi encontrada ou a chave de API não possui acesso a ela.');
+      const status = typeof session.status === 'string' ? session.status : 'Unknown';
+      const connected = status.toLowerCase() === 'connected';
+      await this.tenants.updateSettings(tenantId, { waAkgTestedAt: testedAt, ...(connected ? { waAkgTestSuccessAt: testedAt } : {}), waAkgTestError: connected ? null : `Sessão desconectada (${status}).` });
+      return { connected, status };
+    } catch (error) {
+      await this.tenants.updateSettings(tenantId, { waAkgTestedAt: testedAt, waAkgTestError: error instanceof Error ? error.message.slice(0, 500) : 'Falha no teste da conexão.' });
+      throw error;
+    }
   }
 
   async sendButtons(connection: WaAkgConnection, input: { recipient: string; message: string; question: string; options: string[]; token: string }) {
@@ -95,6 +107,15 @@ export class WaAkgService {
   }
 
   async testWebhook(tenantId: string): Promise<WhatsAppWebhookTestResponse> {
+    const testedAt = new Date();
+    try { return await this.performWebhookTest(tenantId, testedAt); }
+    catch (error) {
+      await this.tenants.updateSettings(tenantId, { waWebhookTestedAt: testedAt, waWebhookTestError: error instanceof Error ? error.message.slice(0, 500) : 'Falha no teste de recebimento.' });
+      throw error;
+    }
+  }
+
+  private async performWebhookTest(tenantId: string, testedAt: Date): Promise<WhatsAppWebhookTestResponse> {
     const tenant = await this.requireTenant(tenantId);
     if (!tenant.waAkgEnabled || !tenant.waAkgWebhookSecret) throw new BadRequestException('Salve o segredo e ative a integração antes de testar o recebimento.');
     const { webhookUrl } = await this.getSettings(tenantId);
@@ -112,6 +133,7 @@ export class WaAkgService {
     let result: unknown;
     try { result = await response.json(); } catch { throw new BadRequestException('A URL pública não retornou JSON válido do Ofix.'); }
     if (!isRecord(result) || result.received !== true || result.recorded !== false) throw new BadRequestException('A URL respondeu, mas não confirmou o teste do webhook do Ofix. Confira o domínio e o caminho completos.');
+    await this.tenants.updateSettings(tenantId, { waWebhookTestedAt: testedAt, waWebhookTestSuccessAt: testedAt, waWebhookTestError: null });
     return { reachable: true, webhookUrl };
   }
 

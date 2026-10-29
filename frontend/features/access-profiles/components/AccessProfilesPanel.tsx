@@ -19,7 +19,7 @@ const MODULES: Array<{ name: string; permissions: Array<{ key: PermissionKey; la
   { name: 'Veículos', permissions: [{ key: 'vehicles.view', label: 'Consultar' }, { key: 'vehicles.manage', label: 'Criar e alterar' }] },
   { name: 'Alertas', permissions: [{ key: 'alerts.view', label: 'Consultar' }, { key: 'alerts.manage', label: 'Resolver alertas' }] },
   { name: 'Equipe e acesso', permissions: [{ key: 'team.view', label: 'Ver equipe' }, { key: 'team.manage', label: 'Convidar e alterar usuários' }, { key: 'profiles.manage', label: 'Gerenciar perfis' }] },
-  { name: 'Configurações', permissions: [{ key: 'settings.view', label: 'Ver dados da empresa e integrações' }, { key: 'settings.manage', label: 'Alterar empresa, marca e e-mail' }] },
+  { name: 'Configurações', permissions: [{ key: 'settings.view', label: 'Ver empresa, operação e integrações' }, { key: 'settings.manage', label: 'Alterar empresa, operação e integrações' }] },
 ];
 
 export function AccessProfilesPanel() {
@@ -42,6 +42,8 @@ export function AccessProfilesPanel() {
   }
   function save() {
     if (!name.trim()) return toast.error('Informe o nome do perfil.');
+    const removed = editing?.permissions.filter((permission) => !permissions.includes(permission)) ?? [];
+    if (editing && removed.length && editing.userCount > 0 && !window.confirm(`Este perfil é usado por ${editing.userCount} pessoa(s). Ao salvar, elas perderão ${removed.length} permissão(ões). Confirmar?`)) return;
     const request = editing
       ? update.mutateAsync({ id: editing.id, name, description, permissions })
       : create.mutateAsync({ name, description, permissions });
@@ -50,6 +52,8 @@ export function AccessProfilesPanel() {
 
   return <section className="space-y-3">
     <div className="flex items-center justify-between"><div><h2 className="text-lg font-bold text-text">Perfis de acesso</h2><p className="text-sm text-text-muted">Defina exatamente quais módulos cada função pode acessar.</p></div><Button onClick={() => open()}><Plus className="size-4" />Novo perfil</Button></div>
+    {query.isPending && <p role="status" className="text-sm text-text-muted">Carregando perfis...</p>}
+    {query.isError && <div role="alert" className="rounded-card border border-danger/30 p-4 text-sm">Não foi possível carregar os perfis. <Button variant="outline" size="sm" onClick={() => query.refetch()}>Tentar novamente</Button></div>}
     <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
       {query.data?.items.map((profile) => <button key={profile.id} type="button" onClick={() => open(profile)} className="rounded-card border border-border bg-card p-4 text-left shadow-sm transition-colors hover:border-primary/30">
         <div className="flex items-start justify-between gap-3"><div className="flex size-9 items-center justify-center rounded-button bg-primary/10 text-primary"><ShieldCheck className="size-4" /></div><span className="text-xs text-text-muted">{profile.userCount} {profile.userCount === 1 ? 'usuário' : 'usuários'}</span></div>
@@ -59,7 +63,7 @@ export function AccessProfilesPanel() {
     </div>
     <Dialog open={editing !== undefined} onOpenChange={(value) => !value && setEditing(undefined)}>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
-        <DialogHeader><DialogTitle className="flex items-center gap-2.5"><span data-reveal className="flex size-8 shrink-0 items-center justify-center rounded-button bg-muted text-text-muted"><ShieldCheck className="size-[18px]" aria-hidden="true" /></span>{editing ? 'Editar perfil' : 'Novo perfil'}</DialogTitle><DialogDescription>Marque apenas os acessos necessários para esta função.</DialogDescription></DialogHeader>
+        <DialogHeader><DialogTitle className="flex items-center gap-2.5"><span data-reveal className="flex size-8 shrink-0 items-center justify-center rounded-button bg-muted text-text-muted"><ShieldCheck className="size-[18px]" aria-hidden="true" /></span>{editing ? 'Editar perfil' : 'Novo perfil'}</DialogTitle><DialogDescription>Marque apenas os acessos necessários para esta função. {editing?.userCount ? `As alterações afetarão ${editing.userCount} pessoa(s).` : ''}</DialogDescription></DialogHeader>
         <div className="space-y-4"><div className="grid gap-3 sm:grid-cols-2"><Input aria-label="Nome do perfil" placeholder="Ex.: Consultor técnico" value={name} disabled={Boolean(editing?.isSystem)} onChange={(e) => setName(e.target.value)} /><Textarea aria-label="Descrição do perfil" className="min-h-10" placeholder="Responsabilidades deste perfil" value={description} onChange={(e) => setDescription(e.target.value)} /></div>
           <div className="grid gap-3 sm:grid-cols-2">{MODULES.map((module) => <fieldset key={module.name} className="rounded-button border border-border p-3"><legend className="px-1 text-sm font-bold text-text">{module.name}</legend><div className="mt-1 space-y-2">{module.permissions.map((permission) => <label key={permission.key} className="flex cursor-pointer items-center gap-2 text-sm text-text-muted"><input type="checkbox" checked={permissions.includes(permission.key)} onChange={() => toggle(permission.key)} className="size-4 accent-primary" />{permission.label}</label>)}</div></fieldset>)}</div>
         </div>

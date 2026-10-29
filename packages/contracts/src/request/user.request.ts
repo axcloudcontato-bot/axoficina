@@ -25,6 +25,7 @@ export interface RenameUserRequest {
 export interface UserListFilters {
   status?: UserStatus;
   role?: UserRole;
+  search?: string;
 }
 
 export interface UserListRequest extends PageableRequest {

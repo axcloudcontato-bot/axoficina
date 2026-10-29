@@ -33,8 +33,9 @@ describe('WA-AKG connection', () => {
 
   it('checks session access with a read-only request and no message send', async () => {
     const fetchMock = jest.spyOn(global, 'fetch').mockResolvedValue(new Response(JSON.stringify([{ sessionId: 'oficina', status: 'Connected' }]), { status: 200 }));
-    const { service } = setup();
+    const { service, tenants } = setup();
     await expect(service.testConnection('tenant-a')).resolves.toEqual({ connected: true, status: 'Connected' });
+    expect(tenants.updateSettings).toHaveBeenCalledWith('tenant-a', expect.objectContaining({ waAkgTestSuccessAt: expect.any(Date), waAkgTestError: null }));
     expect(fetchMock).toHaveBeenCalledWith('https://chat.axcloud.com.br/api/sessions', expect.objectContaining({ headers: { 'X-API-Key': 'private-api-key', 'Content-Type': 'application/json' }, redirect: 'error' }));
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
@@ -91,8 +92,9 @@ describe('WA-AKG connection', () => {
 
   it('rejects HTTP 200 HTML instead of reporting a successful webhook', async () => {
     jest.spyOn(global, 'fetch').mockResolvedValue(new Response('<!DOCTYPE html><html>WA-AKG</html>', { status: 200, headers: { 'content-type': 'text/html' } }));
-    const { service } = setup();
+    const { service, tenants } = setup();
     await expect(service.testWebhook('tenant-a')).rejects.toThrow('retornou HTML');
+    expect(tenants.updateSettings).toHaveBeenCalledWith('tenant-a', expect.objectContaining({ waWebhookTestError: expect.stringContaining('retornou HTML') }));
   });
 
   it('rejects a generic JSON page that does not acknowledge the callback', async () => {

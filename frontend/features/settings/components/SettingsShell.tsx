@@ -1,6 +1,6 @@
 'use client';
 
-import { Buildings, Envelope, UsersThree, ShieldCheck, WhatsappLogo } from '@phosphor-icons/react';
+import { Buildings, Envelope, UsersThree, ShieldCheck, WhatsappLogo, SquaresFour, Clock } from '@phosphor-icons/react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
@@ -8,21 +8,26 @@ import { hasPermission } from '@/features/auth/permissions';
 import { useAuthStore } from '@/stores/auth-store';
 
 const items = [
+  { href: '/configuracoes', label: 'Visão geral', description: 'Estado das configurações', icon: SquaresFour, permission: null },
   { href: '/configuracoes/empresa', label: 'Empresa e marca', description: 'Identidade e documentos', icon: Buildings, permission: 'settings.view' as const },
+  { href: '/configuracoes/operacao', label: 'Operação', description: 'Agenda e fotos', icon: Clock, permission: 'settings.view' as const },
   { href: '/configuracoes/email', label: 'E-mail', description: 'Servidor e remetente', icon: Envelope, permission: 'settings.view' as const },
   { href: '/configuracoes/whatsapp', label: 'WhatsApp', description: 'Conexão com WA-AKG', icon: WhatsappLogo, permission: 'settings.view' as const },
   { href: '/configuracoes/equipe', label: 'Equipe e acesso', description: 'Usuários e permissões', icon: UsersThree, permission: 'team.view' as const },
+  { href: '/configuracoes/privacidade-da-oficina', label: 'Privacidade da oficina', description: 'Protocolos dos clientes', icon: ShieldCheck, permission: 'settings.manage' as const },
 ];
 
 export function SettingsShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const user = useAuthStore((state) => state.user);
-  const tabs = [{ href: '/configuracoes/privacidade', label: 'Privacidade e solicitações', icon: ShieldCheck }, ...items.filter((item) => hasPermission(user, item.permission))];
+  const privacy = pathname === '/configuracoes/privacidade';
+  const tabs = privacy ? [{ href: '/configuracoes/privacidade', label: 'Privacidade e solicitações', icon: ShieldCheck }] : items.filter((item) => (item.permission === null || hasPermission(user, item.permission)) && (item.href !== '/configuracoes/privacidade-da-oficina' || user?.role === 'ADMIN'));
   return <div className="space-y-6">
     <header>
-      <p className="text-xs font-bold uppercase tracking-[0.14em] text-primary">Administração</p>
-      <h1 className="mt-1 text-3xl font-bold tracking-tight text-text">Configurações</h1>
-      <p className="mt-1 text-sm text-text-muted">Personalize a oficina, as comunicações e o acesso da equipe.</p>
+      <p className="text-xs font-bold uppercase tracking-[0.14em] text-primary">{privacy ? 'Minha conta' : 'Administração'}</p>
+      <h1 className="mt-1 text-3xl font-bold tracking-tight text-text">{privacy ? 'Privacidade e solicitações' : 'Configurações'}</h1>
+      <p className="mt-1 text-sm text-text-muted">{privacy ? 'Acompanhe seus dados e pedidos de privacidade.' : 'Personalize a oficina, as comunicações e o acesso da equipe.'}</p>
+      {privacy && (hasPermission(user, 'settings.view') || hasPermission(user, 'team.view')) && <Link href="/configuracoes" className="mt-3 inline-block text-sm font-semibold text-primary hover:underline">Voltar às configurações</Link>}
     </header>
     <nav aria-label="Seções das configurações" className="flex gap-1 overflow-x-auto border-b border-border">
       {tabs.map(({ href, label, icon: Icon }) => {

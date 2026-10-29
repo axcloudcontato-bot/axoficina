@@ -34,6 +34,12 @@ export const usersApi = {
   async disable(request: ManageUserAccessRequest): Promise<{ success: true }> {
     return (await apiClient.post('/api/v1/users/disable', request)).data;
   },
+  async enable(request: ManageUserAccessRequest): Promise<{ success: true; inviteLink?: string; emailSent?: boolean }> {
+    return (await apiClient.post('/api/v1/users/enable', request)).data;
+  },
+  async resendInvite(request: ManageUserAccessRequest): Promise<{ inviteLink: string; emailSent: boolean }> {
+    return (await apiClient.post('/api/v1/users/resend-invite', request)).data;
+  },
 
   async delete(request: ManageUserAccessRequest): Promise<{ success: true }> {
     return (await apiClient.post('/api/v1/users/delete', request)).data;

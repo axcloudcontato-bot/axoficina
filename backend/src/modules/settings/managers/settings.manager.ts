@@ -1,10 +1,11 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import type { UpdateMaintenanceAlertMonthsRequest, UpdateLaborRateRequest, AgendaHours, UpdateAgendaHoursRequest, PhotoPolicy, TenantSettingsResponse, UpdateCompanySettingsRequest, UpdateEmailSettingsRequest, UpdatePhotoPolicyRequest } from '@oficina/contracts';
 import { AuditLogService } from '../../../shared/audit-log/audit-log.service';
 import type { AuthenticatedUser } from '../../../shared/guards/jwt-auth.guard';
 import { TenantRepository } from '../../iam/repositories/tenant.repository';
 import { SecretEncryptionService } from '../services/secret-encryption.service';
 import { TenantMailerService } from '../services/tenant-mailer.service';
+import { DocumentValidatorService } from '../../../shared/documents/document-validator.service';
 
 const LOGO_PATTERN = /^data:image\/(png|jpeg|webp);base64,/;
 const MAX_LOGO_BYTES = 500 * 1024;
@@ -47,9 +48,10 @@ export class SettingsManager {
     const workDays = [...new Set(input.workDays)].sort((a, b) => a - b);
     if (input.openHour >= input.closeHour) throw new BadRequestException('O horário de fechamento deve ser depois da abertura.');
     if (!workDays.length) throw new BadRequestException('Escolha ao menos um dia de funcionamento.');
+    if (input.remindersEnabled && !(await this.requireTenant(user.tenantId)).waAkgEnabled) throw new BadRequestException('Ative o WhatsApp da oficina antes de ligar os lembretes.');
     const tenant = await this.tenants.updateSettings(user.tenantId, { agendaOpenHour: input.openHour, agendaCloseHour: input.closeHour, agendaWorkDays: workDays, ...(input.bays !== undefined ? { agendaBays: input.bays } : {}), ...(input.remindersEnabled !== undefined ? { appointmentRemindersEnabled: input.remindersEnabled } : {}) });
     if (!tenant) throw new NotFoundException('Empresa não encontrada.');
-    await this.audit.record({ tenantId: user.tenantId, userId: user.userId, action: 'settings.agenda_hours_updated', entity: 'tenant', entityId: user.tenantId });
+    await this.audit.record({ tenantId: user.tenantId, userId: user.userId, action: 'settings.agenda_hours_updated', entity: 'tenant', entityId: user.tenantId, metadata: { openHour: input.openHour, closeHour: input.closeHour, workDays: workDays.join(','), bays: input.bays ?? 0, remindersEnabled: input.remindersEnabled ?? false } });
     return { agendaHours: this.agendaHours(tenant) };
   }
 
@@ -60,7 +62,7 @@ export class SettingsManager {
   async updatePhotoPolicy(user: AuthenticatedUser, input: UpdatePhotoPolicyRequest) {
     const tenant = await this.tenants.updateSettings(user.tenantId, { photoRequireEntry: input.entry, photoRequireExit: input.exit, photoRequireItems: input.items });
     if (!tenant) throw new NotFoundException('Empresa não encontrada.');
-    await this.audit.record({ tenantId: user.tenantId, userId: user.userId, action: 'settings.photo_policy_updated', entity: 'tenant', entityId: user.tenantId, metadata: { enabled: input.entry && input.exit && input.items } });
+    await this.audit.record({ tenantId: user.tenantId, userId: user.userId, action: 'settings.photo_policy_updated', entity: 'tenant', entityId: user.tenantId, metadata: { photoEntry: input.entry, photoExit: input.exit, photoItems: input.items } });
     return { photoPolicy: this.photoPolicy(tenant) };
   }
 
@@ -70,10 +72,23 @@ export class SettingsManager {
 
   async updateCompany(user: AuthenticatedUser, input: UpdateCompanySettingsRequest) {
     this.validateLogo(input.logoDataUrl);
+    const document = new DocumentValidatorService().validate(input.document);
+    if (!document.valid) throw new BadRequestException('Informe um CPF ou CNPJ válido.');
+    const owner = await this.tenants.byDocument(document.normalized);
+    if (owner && owner.id !== user.tenantId) throw new ConflictException('Este CPF/CNPJ já está cadastrado em outra oficina.');
+    if (input.addressPostalCode && !/^\d{5}-?\d{3}$/.test(input.addressPostalCode.trim())) throw new BadRequestException('Informe um CEP válido.');
+    if (input.addressState && !/^(AC|AL|AP|AM|BA|CE|DF|ES|GO|MA|MT|MS|MG|PA|PB|PR|PE|PI|RJ|RN|RS|RO|RR|SC|SP|SE|TO)$/i.test(input.addressState.trim())) throw new BadRequestException('Informe uma UF válida.');
+    for (const [label, value] of [['telefone', input.phone], ['WhatsApp', input.whatsapp]] as const) {
+      if (value && !/^\d{10,13}$/.test(value.replace(/\D/g, ''))) throw new BadRequestException(`Informe um ${label} válido com DDD.`);
+    }
+    if (input.website) {
+      try { const url = new URL(input.website); if (!['http:', 'https:'].includes(url.protocol) || !url.hostname.includes('.')) throw new Error(); }
+      catch { throw new BadRequestException('Informe um site válido com http:// ou https://.'); }
+    }
     const tenant = await this.tenants.updateSettings(user.tenantId, {
       name: input.name.trim(),
       legalName: clean(input.legalName),
-      document: input.document.trim(),
+      document: document.normalized,
       stateRegistration: clean(input.stateRegistration),
       phone: clean(input.phone),
       whatsapp: clean(input.whatsapp),
@@ -109,6 +124,7 @@ export class SettingsManager {
       smtpFromEmail: clean(input.fromEmail),
       smtpReplyTo: clean(input.replyTo),
       smtpEnabled: input.enabled,
+      smtpTestedAt: null, smtpTestSuccessAt: null, smtpTestError: null,
     });
     if (!tenant) throw new NotFoundException('Empresa não encontrada.');
     await this.audit.record({ tenantId: user.tenantId, userId: user.userId, action: 'settings.email_updated', entity: 'tenant', entityId: user.tenantId, metadata: { enabled: input.enabled } });
@@ -117,13 +133,20 @@ export class SettingsManager {
 
   async sendTest(user: AuthenticatedUser, recipient: string) {
     const tenant = await this.requireTenant(user.tenantId);
-    await this.mailer.send(user.tenantId, {
-      to: recipient,
-      subject: `Teste de e-mail — ${tenant.name}`,
-      text: `O envio de e-mail da ${tenant.name} foi configurado corretamente.`,
-      html: `<p>O envio de e-mail da <strong>${escapeHtml(tenant.name)}</strong> foi configurado corretamente.</p>`,
-    });
-    return { sent: true };
+    const testedAt = new Date();
+    try {
+      await this.mailer.send(user.tenantId, {
+        to: recipient,
+        subject: `Teste de e-mail — ${tenant.name}`,
+        text: `O envio de e-mail da ${tenant.name} foi configurado corretamente.`,
+        html: `<p>O envio de e-mail da <strong>${escapeHtml(tenant.name)}</strong> foi configurado corretamente.</p>`,
+      });
+      await this.tenants.updateSettings(user.tenantId, { smtpTestedAt: testedAt, smtpTestSuccessAt: testedAt, smtpTestError: null });
+      return { sent: true };
+    } catch (error) {
+      await this.tenants.updateSettings(user.tenantId, { smtpTestedAt: testedAt, smtpTestError: error instanceof Error ? error.message.slice(0, 500) : 'Falha no teste de SMTP.' });
+      throw error;
+    }
   }
 
   async sendMessage(user: AuthenticatedUser, input: { recipient: string; subject: string; text: string }) {
@@ -162,6 +185,7 @@ export class SettingsManager {
         username: tenant.smtpUsername ?? undefined, passwordConfigured: Boolean(tenant.smtpPassword),
         fromName: tenant.smtpFromName ?? undefined, fromEmail: tenant.smtpFromEmail ?? undefined,
         replyTo: tenant.smtpReplyTo ?? undefined, enabled: tenant.smtpEnabled,
+        lastTestAt: tenant.smtpTestedAt?.toISOString(), lastSuccessAt: tenant.smtpTestSuccessAt?.toISOString(), lastTestError: tenant.smtpTestError ?? undefined,
       },
     } satisfies TenantSettingsResponse;
   }

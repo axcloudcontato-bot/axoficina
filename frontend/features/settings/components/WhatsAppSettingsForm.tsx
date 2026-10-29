@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { extractErrorMessage } from '@/lib/api/client';
 import { settingsApi } from '../api/settings-api';
 import { BRANDING_KEY } from '../hooks/use-settings';
+import { useUnsavedSettings } from '../hooks/use-unsaved-settings';
 import { hasPermission } from '@/features/auth/permissions';
 import { useAuthStore } from '@/stores/auth-store';
 
@@ -23,6 +24,7 @@ export function WhatsAppSettingsForm() {
   const queryClient = useQueryClient();
   const [form, setForm] = useState(EMPTY);
   const [dirty, setDirty] = useState(false);
+  const [loaded, setLoaded] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState('');
   const [webhookStatus, setWebhookStatus] = useState('');
   const update = useMutation({ mutationFn: settingsApi.updateWhatsApp });
@@ -30,10 +32,12 @@ export function WhatsAppSettingsForm() {
   const testWebhook = useMutation({ mutationFn: settingsApi.testWhatsAppWebhook });
 
   useEffect(() => {
-    if (!settings.data) return;
+    if (!settings.data || loaded) return;
     setForm({ baseUrl: settings.data.baseUrl ?? EMPTY.baseUrl, sessionId: settings.data.sessionId ?? '', apiKey: '', webhookSecret: '', enabled: settings.data.enabled });
     setDirty(false);
-  }, [settings.data]);
+    setLoaded(true);
+  }, [settings.data, loaded]);
+  useUnsavedSettings(dirty && !update.isPending);
 
   function set<K extends keyof UpdateWhatsAppSettingsRequest>(key: K, value: UpdateWhatsAppSettingsRequest[K]) {
     setForm((current) => ({ ...current, [key]: value }));
@@ -50,6 +54,7 @@ export function WhatsAppSettingsForm() {
       setForm((current) => ({ ...current, apiKey: '', webhookSecret: '' }));
       setDirty(false);
       await queryClient.invalidateQueries({ queryKey: BRANDING_KEY });
+      await queryClient.invalidateQueries({ queryKey: SETTINGS_KEY });
       toast.success('Configuração do WhatsApp atualizada.');
     } catch (error) { toast.error(extractErrorMessage(error, 'Não foi possível salvar o WhatsApp.')); }
   }
@@ -58,6 +63,7 @@ export function WhatsAppSettingsForm() {
     if (dirty) return toast.warning('Salve a configuração antes de testar a conexão.');
     try {
       const result = await testConnection.mutateAsync();
+      await queryClient.invalidateQueries({ queryKey: SETTINGS_KEY });
       setConnectionStatus(result.connected ? 'Conexão validada. A sessão está conectada ao WhatsApp.' : `A API respondeu, mas a sessão está desconectada (${result.status}). Conecte o número no WA-AKG.`);
     } catch (error) { setConnectionStatus(extractErrorMessage(error, 'Não foi possível verificar a conexão com o WA-AKG.')); }
   }
@@ -71,6 +77,7 @@ export function WhatsAppSettingsForm() {
     if (dirty) return toast.warning('Salve a configuração antes de testar o recebimento.');
     try {
       await testWebhook.mutateAsync();
+      await queryClient.invalidateQueries({ queryKey: SETTINGS_KEY });
       setWebhookStatus('Recebimento validado: a URL pública alcançou o webhook desta oficina e confirmou a assinatura. Confira se essa mesma URL, segredo e evento message.received estão cadastrados no WA-AKG.');
     } catch (error) { setWebhookStatus(extractErrorMessage(error, 'Não foi possível validar o recebimento.')); }
   }
@@ -80,6 +87,7 @@ export function WhatsAppSettingsForm() {
   if (settings.isError) return <div role="alert"><p>Não foi possível carregar a configuração.</p><Button variant="outline" className="mt-3" onClick={() => settings.refetch()}>Tentar novamente</Button></div>;
   const busy = update.isPending || testConnection.isPending || testWebhook.isPending;
   return <div className="space-y-6">
+    <section className="rounded-card border border-border bg-card p-5"><h2 className="font-bold">Configuração em 3 etapas</h2><ol className="mt-3 grid gap-3 text-sm sm:grid-cols-3"><li><strong>1. Salve a conexão</strong><p className="mt-1 text-text-muted">Informe servidor, sessão, chave e segredo.</p></li><li><strong>2. Teste a sessão</strong><p className="mt-1 text-text-muted">Confira se o número está conectado.</p></li><li><strong>3. Teste o recebimento</strong><p className="mt-1 text-text-muted">Cadastre o webhook e valide a URL.</p></li></ol></section>
     <section className="rounded-card border border-border bg-card p-5 shadow-sm">
       <div className="flex items-start justify-between gap-4"><div><h2 className="text-base font-bold">WhatsApp via WA-AKG</h2><p className="mt-1 text-sm text-text-muted">Envie as perguntas da OS com botões na conversa e receba as escolhas automaticamente.</p></div><span className="rounded-full bg-muted px-2.5 py-1 text-xs font-semibold">{settings.data.enabled ? 'Ativo' : 'Inativo'}</span></div>
       <fieldset disabled={!canManage || busy} className="mt-5 space-y-4">
@@ -92,7 +100,7 @@ export function WhatsAppSettingsForm() {
           set('webhookSecret', Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join(''));
         }}>Gerar segredo</Button><Button type="button" variant="outline" size="sm" disabled={!form.webhookSecret} onClick={() => copy(form.webhookSecret!)}>Copiar segredo antes de salvar</Button></div>
         <label className="flex items-center gap-2 text-sm font-semibold"><input type="checkbox" checked={form.enabled} onChange={(event) => set('enabled', event.target.checked)} className="size-4 accent-primary" />Ativar envio de botões pelo WA-AKG</label>
-        <div className="flex justify-end"><Button type="button" onClick={save}>{update.isPending ? 'Salvando...' : 'Salvar configuração'}</Button></div>
+        <div className="flex justify-end"><Button type="button" onClick={save} disabled={!dirty}>{update.isPending ? 'Salvando...' : 'Salvar configuração'}</Button></div>
       </fieldset>
       <p className="mt-4 text-xs text-text-muted">A chave e o segredo são criptografados e não são exibidos novamente. O envio direto usa os botões quando “Solicitar resposta por botões” estiver ativado na OS. Mensagens de texto continuam com o compartilhamento manual.</p>
     </section>
@@ -109,6 +117,8 @@ export function WhatsAppSettingsForm() {
       <h2 className="font-bold">Verificar conexão</h2><p className="mt-2 text-sm text-text-muted">Confere a chave e a sessão, sem enviar mensagens. A confirmação do webhook pode ser feita pelo teste do próprio WA-AKG.</p>
       <Button variant="outline" className="mt-4" onClick={test} disabled={!canManage || busy || dirty}>{testConnection.isPending ? 'Verificando...' : 'Testar conexão'}</Button>
       {connectionStatus && <p role="status" className="mt-3 text-sm">{connectionStatus}</p>}
+      {settings.data.connectionTestAt && <p className="mt-2 text-xs text-text-muted">Último teste da conexão: {new Date(settings.data.connectionTestAt).toLocaleString('pt-BR')} · {settings.data.connectionTestError ? `falhou — ${settings.data.connectionTestError}` : 'sessão conectada'}. Último sucesso: {settings.data.connectionSuccessAt ? new Date(settings.data.connectionSuccessAt).toLocaleString('pt-BR') : 'nenhum'}.</p>}
+      {settings.data.webhookTestAt && <p className="mt-2 text-xs text-text-muted">Último teste do recebimento: {new Date(settings.data.webhookTestAt).toLocaleString('pt-BR')} · {settings.data.webhookTestError ? `falhou — ${settings.data.webhookTestError}` : 'URL validada'}. Último sucesso: {settings.data.webhookSuccessAt ? new Date(settings.data.webhookSuccessAt).toLocaleString('pt-BR') : 'nenhum'}.</p>}
     </section>
   </div>;
 }

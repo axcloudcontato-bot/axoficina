@@ -51,7 +51,7 @@ export class AppointmentManager {
     }
     const input = await this.validateWrite(actingUser, request);
     await this.ensureNoUnconfirmedConflict(actingUser, request, input.startsAt, input.endsAt, request.id);
-    await this.appointments.update(request.id, input);
+    await this.appointments.update(request.id, input, existing.startsAt.getTime() !== input.startsAt.getTime());
     await this.record(actingUser, request.id, 'appointment.updated');
     return { appointment: await this.toResponse(await this.getEntity(request.id)) };
   }

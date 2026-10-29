@@ -58,4 +58,12 @@ export function useRenameUser() {
   });
 }
 export function useDisableUser() { return useUserAccessMutation('disable'); }
+export function useEnableUser() {
+  const queryClient = useQueryClient();
+  return useMutation({ mutationFn: usersApi.enable, onSuccess: () => queryClient.invalidateQueries({ queryKey: [USERS_LIST_KEY] }) });
+}
 export function useDeleteUser() { return useUserAccessMutation('delete'); }
+export function useResendInvite() {
+  const queryClient = useQueryClient();
+  return useMutation({ mutationFn: usersApi.resendInvite, onSuccess: () => queryClient.invalidateQueries({ queryKey: [USERS_LIST_KEY] }) });
+}

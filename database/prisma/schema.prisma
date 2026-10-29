@@ -130,11 +130,20 @@ model Tenant {
   smtpFromEmail       String?   @map("smtp_from_email")
   smtpReplyTo         String?   @map("smtp_reply_to")
   smtpEnabled         Boolean   @default(false) @map("smtp_enabled")
+  smtpTestedAt        DateTime? @map("smtp_tested_at") @db.Timestamptz
+  smtpTestSuccessAt   DateTime? @map("smtp_test_success_at") @db.Timestamptz
+  smtpTestError       String?   @map("smtp_test_error")
   waAkgBaseUrl         String?   @map("wa_akg_base_url")
   waAkgSessionId       String?   @map("wa_akg_session_id")
   waAkgApiKey          String?   @map("wa_akg_api_key")
   waAkgWebhookSecret   String?   @map("wa_akg_webhook_secret")
   waAkgEnabled         Boolean   @default(false) @map("wa_akg_enabled")
+  waAkgTestedAt        DateTime? @map("wa_akg_tested_at") @db.Timestamptz
+  waAkgTestSuccessAt   DateTime? @map("wa_akg_test_success_at") @db.Timestamptz
+  waAkgTestError       String?   @map("wa_akg_test_error")
+  waWebhookTestedAt    DateTime? @map("wa_webhook_tested_at") @db.Timestamptz
+  waWebhookTestSuccessAt DateTime? @map("wa_webhook_test_success_at") @db.Timestamptz
+  waWebhookTestError   String?   @map("wa_webhook_test_error")
   photoRequireEntry    Boolean   @default(true) @map("photo_require_entry")
   photoRequireExit     Boolean   @default(true) @map("photo_require_exit")
   photoRequireItems    Boolean   @default(true) @map("photo_require_items")
@@ -874,6 +883,10 @@ model Appointment {
   createdBy          String    @map("created_by") @db.Uuid
   cancelledAt        DateTime? @map("cancelled_at") @db.Timestamptz
   reminderSentAt     DateTime? @map("reminder_sent_at") @db.Timestamptz
+  reminderClaimedAt  DateTime? @map("reminder_claimed_at") @db.Timestamptz
+  reminderAttemptedAt DateTime? @map("reminder_attempted_at") @db.Timestamptz
+  reminderAttempts   Int       @default(0) @map("reminder_attempts")
+  reminderLastError  String?   @map("reminder_last_error")
   confirmationSentAt DateTime? @map("confirmation_sent_at") @db.Timestamptz
   createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz
   updatedAt          DateTime? @updatedAt @map("updated_at") @db.Timestamptz

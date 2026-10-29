@@ -46,6 +46,8 @@ export class RenameUserDto implements RenameUserRequest {
 }
 
 class UserListFiltersDto implements UserListFilters {
+  @IsOptional() @IsString() @MaxLength(100)
+  search?: string;
   @IsOptional()
   @IsIn(USER_STATUSES, { message: 'status must be one of active, invited, disabled' })
   status?: UserListFilters['status'];

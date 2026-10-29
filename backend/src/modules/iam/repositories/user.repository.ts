@@ -29,6 +29,7 @@ export interface UpdateUserInput {
 export interface ListUsersFilters {
   status?: string;
   roleId?: string;
+  search?: string;
 }
 
 @Injectable()
@@ -131,6 +132,7 @@ export class UserRepository {
       deletedAt: null,
       ...(filters?.status ? { status: filters.status } : {}),
       ...(filters?.roleId ? { roleId: filters.roleId } : {}),
+      ...(filters?.search ? { OR: [{ name: { contains: filters.search, mode: 'insensitive' as const } }, { email: { contains: filters.search, mode: 'insensitive' as const } }] } : {}),
     };
 
     const [items, total] = await Promise.all([

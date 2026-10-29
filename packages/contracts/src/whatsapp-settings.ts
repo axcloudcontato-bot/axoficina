@@ -13,6 +13,12 @@ export interface WhatsAppSettingsResponse {
   webhookSecretConfigured: boolean;
   enabled: boolean;
   webhookUrl: string;
+  connectionTestAt?: string;
+  connectionSuccessAt?: string;
+  connectionTestError?: string;
+  webhookTestAt?: string;
+  webhookSuccessAt?: string;
+  webhookTestError?: string;
 }
 
 export interface WhatsAppConnectionResponse {

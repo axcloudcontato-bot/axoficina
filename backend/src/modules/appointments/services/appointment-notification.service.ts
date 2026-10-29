@@ -1,4 +1,4 @@
-import { ConflictException, Injectable, Logger } from '@nestjs/common';
+import { BadGatewayException, BadRequestException, ConflictException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import type { Appointment } from '@oficina/database';
 import { PrismaService } from '../../../shared/prisma/prisma.service';
 import { WaAkgService } from '../../settings/services/wa-akg.service';
@@ -6,6 +6,8 @@ import { whatsappRecipient } from '../../settings/services/whatsapp-recipient';
 
 const DEFAULT_TIME_ZONE = 'America/Sao_Paulo';
 const HOUR_MS = 3_600_000;
+const RETRY_DELAY_MS = 15 * 60_000;
+const MAX_REMINDER_ATTEMPTS = 4;
 
 export type AppointmentMessageKind = 'CONFIRMATION' | 'REMINDER';
 
@@ -59,21 +61,65 @@ export class AppointmentNotificationService {
     for (const tenant of tenants) {
       const hour = Number(new Intl.DateTimeFormat('en-GB', { timeZone: await this.timeZone(tenant.id), hour: '2-digit', hourCycle: 'h23' }).format(now));
       if (hour < 8 || hour >= 20) continue;
-      const due = await this.prisma.unscoped.appointment.findMany({ where: { tenantId: tenant.id, deletedAt: null, reminderSentAt: null, status: { in: ['SCHEDULED', 'CONFIRMED'] }, startsAt: { gt: new Date(now.getTime() + 2 * HOUR_MS), lte: new Date(now.getTime() + 24 * HOUR_MS) } }, orderBy: { startsAt: 'asc' }, take: 200 });
+      const retryBefore = new Date(now.getTime() - RETRY_DELAY_MS);
+      const due = await this.prisma.unscoped.appointment.findMany({ where: { tenantId: tenant.id, deletedAt: null, reminderSentAt: null, reminderAttempts: { lt: MAX_REMINDER_ATTEMPTS }, AND: [{ OR: [{ reminderClaimedAt: null }, { reminderClaimedAt: { lt: retryBefore } }] }, { OR: [{ reminderAttemptedAt: null }, { reminderAttemptedAt: { lt: retryBefore } }] }], status: { in: ['SCHEDULED', 'CONFIRMED'] }, startsAt: { gt: new Date(now.getTime() + 2 * HOUR_MS), lte: new Date(now.getTime() + 24 * HOUR_MS) } }, orderBy: { startsAt: 'asc' }, take: 200 });
       if (!due.length) continue;
-      let connection;
-      try { connection = await this.whatsapp.getConnection(tenant.id); } catch { continue; }
-      if (!connection) continue;
+      let connection: Awaited<ReturnType<WaAkgService['getConnection']>> = null;
+      let connectionError: string | null = null;
+      try { connection = await this.whatsapp.getConnection(tenant.id); }
+      catch (error) { connectionError = error instanceof Error ? error.message : 'WhatsApp indisponível.'; }
       for (const appointment of due) {
-        const content = await this.content(appointment, 'REMINDER');
-        if (!content) continue;
-        // Claim first: a reminder is never sent twice, even if the provider fails.
-        const claimed = await this.prisma.unscoped.appointment.updateMany({ where: { id: appointment.id, tenantId: tenant.id, reminderSentAt: null }, data: { reminderSentAt: now } });
+        // A short lease prevents concurrent workers from sending the same reminder.
+        const claimed = await this.prisma.unscoped.appointment.updateMany({ where: { id: appointment.id, tenantId: tenant.id, reminderSentAt: null, reminderAttempts: { lt: MAX_REMINDER_ATTEMPTS }, OR: [{ reminderClaimedAt: null }, { reminderClaimedAt: { lt: retryBefore } }] }, data: { reminderClaimedAt: now, reminderAttemptedAt: now, reminderAttempts: { increment: 1 } } });
         if (claimed.count !== 1) continue;
-        try { await this.whatsapp.sendNotice(connection, content.recipient, content.text); sent++; }
-        catch { this.logger.warn(`Lembrete do agendamento ${appointment.id} não confirmado pelo provedor.`); }
+        try {
+          if (!connection) throw new Error(connectionError ?? 'WhatsApp indisponível.');
+          const content = await this.content(appointment, 'REMINDER');
+          if (!content) throw new Error('Cliente sem celular válido para o lembrete.');
+          await this.whatsapp.sendNotice(connection, content.recipient, content.text);
+          await this.prisma.unscoped.appointment.updateMany({ where: { id: appointment.id, tenantId: tenant.id, reminderClaimedAt: now }, data: { reminderSentAt: new Date(), reminderClaimedAt: null, reminderLastError: null } });
+          sent++;
+        } catch (error) {
+          const reason = error instanceof Error ? error.message.slice(0, 500) : 'Provedor não confirmou o envio.';
+          const uncertain = error instanceof BadGatewayException;
+          await this.prisma.unscoped.appointment.updateMany({ where: { id: appointment.id, tenantId: tenant.id, reminderClaimedAt: now }, data: { reminderClaimedAt: null, reminderLastError: reason, ...(uncertain ? { reminderAttempts: MAX_REMINDER_ATTEMPTS } : {}) } });
+          this.logger.warn(uncertain ? `Lembrete do agendamento ${appointment.id} não foi confirmado; verifique o histórico antes de reenviar.` : `Lembrete do agendamento ${appointment.id} falhou; nova tentativa será feita quando possível.`);
+        }
       }
     }
     return { sent };
+  }
+
+  async reminderHealth(tenantId: string) {
+    const now = new Date();
+    const [failed, lastSent, lastFailure, items] = await Promise.all([
+      this.prisma.client.appointment.count({ where: { tenantId, deletedAt: null, reminderSentAt: null, reminderAttempts: { gt: 0 }, startsAt: { gt: now } } }),
+      this.prisma.client.appointment.findFirst({ where: { tenantId, reminderSentAt: { not: null } }, orderBy: { reminderSentAt: 'desc' }, select: { reminderSentAt: true } }),
+      this.prisma.client.appointment.findFirst({ where: { tenantId, reminderLastError: { not: null } }, orderBy: { reminderAttemptedAt: 'desc' }, select: { reminderAttemptedAt: true, reminderLastError: true } }),
+      this.prisma.client.appointment.findMany({ where: { tenantId, deletedAt: null, reminderSentAt: null, reminderAttempts: { gt: 0 }, startsAt: { gt: now } }, orderBy: { startsAt: 'asc' }, take: 10, select: { id: true, startsAt: true, reminderAttempts: true, reminderLastError: true } }),
+    ]);
+    return { failed, lastSentAt: lastSent?.reminderSentAt?.toISOString() ?? null, lastFailureAt: lastFailure?.reminderAttemptedAt?.toISOString() ?? null, lastError: lastFailure?.reminderLastError ?? null, items: items.map((item) => ({ id: item.id, startsAt: item.startsAt.toISOString(), attempts: item.reminderAttempts, error: item.reminderLastError })) };
+  }
+
+  async retryReminder(tenantId: string, id: string) {
+    const appointment = await this.prisma.client.appointment.findFirst({ where: { id, tenantId, deletedAt: null } });
+    if (!appointment) throw new NotFoundException('Agendamento não encontrado.');
+    if (appointment.reminderSentAt || appointment.reminderAttempts < 1 || !['SCHEDULED', 'CONFIRMED'].includes(appointment.status) || appointment.startsAt <= new Date()) throw new BadRequestException('Este agendamento não pode receber outro lembrete.');
+    const now = new Date();
+    if (appointment.reminderClaimedAt && appointment.reminderClaimedAt > new Date(now.getTime() - RETRY_DELAY_MS)) throw new ConflictException('Há uma tentativa em andamento. Aguarde alguns minutos.');
+    const claimed = await this.prisma.client.appointment.updateMany({ where: { id, tenantId, reminderSentAt: null, OR: [{ reminderClaimedAt: null }, { reminderClaimedAt: { lt: new Date(now.getTime() - RETRY_DELAY_MS) } }] }, data: { reminderClaimedAt: now, reminderAttemptedAt: now, reminderAttempts: { increment: 1 } } });
+    if (claimed.count !== 1) throw new ConflictException('O lembrete foi alterado. Atualize a página e tente novamente.');
+    try {
+      const connection = await this.whatsapp.getConnection(tenantId);
+      if (!connection) throw new BadRequestException('Ative o WhatsApp da oficina antes de tentar novamente.');
+      const content = await this.content(appointment, 'REMINDER');
+      if (!content) throw new BadRequestException('Cliente sem celular válido para o lembrete.');
+      await this.whatsapp.sendNotice(connection, content.recipient, content.text);
+      await this.prisma.client.appointment.updateMany({ where: { id, tenantId, reminderClaimedAt: now }, data: { reminderSentAt: new Date(), reminderClaimedAt: null, reminderLastError: null } });
+      return { sent: true };
+    } catch (error) {
+      await this.prisma.client.appointment.updateMany({ where: { id, tenantId, reminderClaimedAt: now }, data: { reminderClaimedAt: null, reminderLastError: error instanceof Error ? error.message.slice(0, 500) : 'Falha no envio do lembrete.' } });
+      throw error;
+    }
   }
 }

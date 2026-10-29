@@ -1,6 +1,7 @@
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
+import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 import { z } from 'zod';
@@ -12,6 +13,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { extractErrorMessage, extractFieldErrors } from '@/lib/api/client';
 import { useInviteUser } from '../hooks/use-users';
+import type { InviteUserResponse } from '@oficina/contracts';
 
 // ADMIN de propósito fora daqui: contas admin só nascem via signup
 // self-service — permitir convidar um ADMIN deixaria um Gerente promover
@@ -37,6 +39,8 @@ interface InviteUserModalProps {
 
 export function InviteUserModal({ open, onOpenChange }: InviteUserModalProps) {
   const invite = useInviteUser();
+  const [result, setResult] = useState<InviteUserResponse | null>(null);
+  const close = (value: boolean) => { if (!value) setResult(null); onOpenChange(value); };
   const form = useForm<InviteFormValues>({
     resolver: zodResolver(inviteSchema),
     defaultValues: { email: '', name: '', role: 'MECHANIC' },
@@ -45,19 +49,8 @@ export function InviteUserModal({ open, onOpenChange }: InviteUserModalProps) {
   function onSubmit(values: InviteFormValues) {
     invite.mutate(values, {
       onSuccess: (data) => {
-        if (data.emailSent) {
-          toast.success(`Convite enviado por e-mail para ${values.email}`, {
-            description: `Se precisar, copie o link para enviar por outro canal: ${data.inviteLink}`,
-            duration: 10000,
-          });
-        } else {
-          toast.success(`Convite criado para ${values.email}`, {
-            description: `Envio de e-mail não está configurado em Configurações — copie o link e envie manualmente: ${data.inviteLink}`,
-            duration: 10000,
-          });
-        }
+        setResult(data);
         form.reset();
-        onOpenChange(false);
       },
       onError: (error) => {
         const fieldErrors = extractFieldErrors(error);
@@ -73,8 +66,9 @@ export function InviteUserModal({ open, onOpenChange }: InviteUserModalProps) {
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={close}>
       <DialogContent>
+        {result ? <div className="space-y-4"><DialogHeader><DialogTitle>Convite criado</DialogTitle><DialogDescription>{result.emailSent ? `Enviado para ${result.user.email}. Guarde o link se quiser encaminhá-lo por outro canal.` : `O e-mail não foi enviado. Copie o link e encaminhe para ${result.user.email}.`}</DialogDescription></DialogHeader><Input readOnly value={result.inviteLink} onFocus={(event) => event.target.select()} aria-label="Link do convite" /><DialogFooter><Button variant="outline" onClick={() => close(false)}>Concluir</Button><Button onClick={async () => { try { await navigator.clipboard.writeText(result.inviteLink); toast.success('Link copiado.'); } catch { toast.error('Selecione o link e copie manualmente.'); } }}>Copiar link</Button></DialogFooter></div> : <>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2.5">
             <span data-reveal className="flex size-8 shrink-0 items-center justify-center rounded-button bg-muted text-text-muted">
@@ -147,6 +141,7 @@ export function InviteUserModal({ open, onOpenChange }: InviteUserModalProps) {
             </DialogFooter>
           </form>
         </Form>
+        </>}
       </DialogContent>
     </Dialog>
   );

@@ -43,9 +43,22 @@ describe('SettingsManager', () => {
   });
 
   it('sends a real test through the tenant mailer', async () => {
-    const { manager, mailer } = build();
+    const { manager, mailer, tenants } = build();
     await manager.sendTest(user as never, 'owner@test.com');
     expect(mailer.send).toHaveBeenCalledWith('tenant-1', expect.objectContaining({ to: 'owner@test.com' }));
+    expect(tenants.updateSettings).toHaveBeenCalledWith('tenant-1', expect.objectContaining({ smtpTestSuccessAt: expect.any(Date), smtpTestError: null }));
+  });
+
+  it('records a failed SMTP test for later diagnosis', async () => {
+    const { manager, mailer, tenants } = build();
+    mailer.send.mockRejectedValue(new Error('SMTP indisponível'));
+    await expect(manager.sendTest(user as never, 'owner@test.com')).rejects.toThrow('SMTP indisponível');
+    expect(tenants.updateSettings).toHaveBeenCalledWith('tenant-1', expect.objectContaining({ smtpTestError: 'SMTP indisponível' }));
+  });
+
+  it('rejects an invalid company document', async () => {
+    const { manager } = build();
+    await expect(manager.updateCompany(user as never, { name: 'Oficina', document: '123' })).rejects.toThrow('CPF ou CNPJ válido');
   });
 
   it('saves the opening hours with unique, ordered working days and refuses an inverted day', async () => {
@@ -57,6 +70,11 @@ describe('SettingsManager', () => {
     const result = await manager.updateAgendaHours(user, { openHour: 7, closeHour: 17, workDays: [6, 1, 1, 3] });
     expect(result.agendaHours).toEqual({ openHour: 7, closeHour: 17, workDays: [1, 3, 6], bays: null, remindersEnabled: false });
     await expect(manager.updateAgendaHours(user, { openHour: 18, closeHour: 8, workDays: [1] })).rejects.toThrow('fechamento');
+  });
+
+  it('does not activate appointment reminders without WhatsApp', async () => {
+    const { manager } = build();
+    await expect(manager.updateAgendaHours(user as never, { openHour: 8, closeHour: 18, workDays: [1, 2], remindersEnabled: true })).rejects.toThrow('Ative o WhatsApp');
   });
 
   it('saves the hourly labor rate and lets it be cleared', async () => {

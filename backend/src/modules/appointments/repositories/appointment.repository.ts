@@ -27,7 +27,7 @@ export class AppointmentRepository {
     return this.prisma.client.appointment.findFirst({ where: { id, deletedAt: null } });
   }
 
-  async update(id: string, input: Omit<AppointmentWriteInput, 'tenantId' | 'createdBy'>) {
+  async update(id: string, input: Omit<AppointmentWriteInput, 'tenantId' | 'createdBy'>, resetReminder = false) {
     return this.prisma.client.appointment.updateMany({
       where: { id, deletedAt: null },
       data: {
@@ -38,6 +38,7 @@ export class AppointmentRepository {
         endsAt: input.endsAt,
         serviceDescription: input.serviceDescription,
         notes: input.notes,
+        ...(resetReminder ? { reminderSentAt: null, reminderClaimedAt: null, reminderAttemptedAt: null, reminderAttempts: 0, reminderLastError: null } : {}),
       },
     });
   }

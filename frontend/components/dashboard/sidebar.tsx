@@ -2,7 +2,7 @@
 
 import type { PermissionKey } from '@oficina/contracts';
 import type { Icon as PhosphorIcon } from '@phosphor-icons/react';
-import { Bell, Buildings, CalendarBlank, Car, ChartBar, ChartLine, ClipboardText, Envelope, Package, Gear, Heart, SidebarSimple, SignOut, SquaresFour, Users, UsersThree } from '@phosphor-icons/react';
+import { Bell, Buildings, CalendarBlank, Car, ChartBar, ChartLine, ClipboardText, Envelope, Package, Gear, Heart, SidebarSimple, SignOut, SquaresFour, Users, UsersThree, WhatsappLogo, Clock } from '@phosphor-icons/react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -37,7 +37,9 @@ const NAV_ITEMS: NavItem[] = [
   { href: '/produtividade', label: 'Produtividade', shortLabel: 'Produtiv.', icon: ChartBar, permission: 'service_orders.prices', group: 'Gestão' },
   { href: '/configuracoes', label: 'Configurações', shortLabel: 'Config.', icon: Gear, permission: 'team.view', group: 'Gestão', children: [
     { href: '/configuracoes/empresa', label: 'Empresa e marca', icon: Buildings, permission: 'settings.view' },
+    { href: '/configuracoes/operacao', label: 'Operação', icon: Clock, permission: 'settings.view' },
     { href: '/configuracoes/email', label: 'E-mail', icon: Envelope, permission: 'settings.view' },
+    { href: '/configuracoes/whatsapp', label: 'WhatsApp', icon: WhatsappLogo, permission: 'settings.view' },
     { href: '/configuracoes/equipe', label: 'Equipe e acesso', icon: UsersThree, permission: 'team.view' },
   ] },
 ];
@@ -103,8 +105,5 @@ export function Sidebar() {
 }
 
 function DesktopNavItem({ item, active, collapsed }: { item: NavItem; active: boolean; collapsed: boolean }) {
-  const user = useAuthStore((state) => state.user);
-  // As abas de Configurações ficam na própria página; aqui `children` só define o destino do link.
-  const children = item.children?.filter((child) => hasPermission(user, child.permission)) ?? [];
-  return <div><Link href={children[0]?.href ?? item.href} aria-current={active ? 'page' : undefined} aria-label={item.label} title={collapsed ? item.label : undefined} className={cn('group flex min-h-10 items-center rounded-button text-sm font-semibold', collapsed ? 'justify-center' : 'gap-3 px-3', active ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted hover:text-foreground')}><AnimatedIcon icon={item.icon} active={active} className="size-[18px] shrink-0" />{!collapsed && item.label}</Link></div>;
+  return <div><Link href={item.href} aria-current={active ? 'page' : undefined} aria-label={item.label} title={collapsed ? item.label : undefined} className={cn('group flex min-h-10 items-center rounded-button text-sm font-semibold', collapsed ? 'justify-center' : 'gap-3 px-3', active ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted hover:text-foreground')}><AnimatedIcon icon={item.icon} active={active} className="size-[18px] shrink-0" />{!collapsed && item.label}</Link></div>;
 }

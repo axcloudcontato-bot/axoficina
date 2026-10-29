@@ -1,13 +1,15 @@
-import { Body, Controller, HttpCode, HttpStatus, Post } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, HttpStatus, Post } from '@nestjs/common';
 import { Roles } from '../../../shared/decorators/roles.decorator';
 import { CurrentUser } from '../../../shared/decorators/current-user.decorator';
 import { Permissions } from '../../../shared/decorators/permissions.decorator';
 import type { AuthenticatedUser } from '../../../shared/guards/jwt-auth.guard';
 import { AppointmentManager } from '../managers/appointment.manager';
+import { AppointmentNotificationService } from '../services/appointment-notification.service';
 import {
   AppointmentListDto,
   CreateAppointmentDto,
   NotifyAppointmentDto,
+  RetryReminderDto,
   StartAppointmentDto,
   TransitionAppointmentDto,
   UpdateAppointmentDto,
@@ -17,7 +19,17 @@ const ALL_ROLES = ['ADMIN', 'MANAGER', 'FRONT_DESK', 'MECHANIC'] as const;
 
 @Controller('api/v1/appointments')
 export class AppointmentsController {
-  constructor(private readonly manager: AppointmentManager) {}
+  constructor(private readonly manager: AppointmentManager, private readonly notifications: AppointmentNotificationService) {}
+
+  @Roles('ADMIN', 'MANAGER')
+  @Permissions('settings.view')
+  @Get('reminder-health')
+  reminderHealth(@CurrentUser() user: AuthenticatedUser) { return this.notifications.reminderHealth(user.tenantId); }
+
+  @Roles('ADMIN', 'MANAGER')
+  @Permissions('appointments.manage')
+  @Post('reminder-retry') @HttpCode(HttpStatus.OK)
+  retryReminder(@CurrentUser() user: AuthenticatedUser, @Body() body: RetryReminderDto) { return this.notifications.retryReminder(user.tenantId, body.id); }
 
   @Roles(...ALL_ROLES)
   @Permissions('appointments.manage')
