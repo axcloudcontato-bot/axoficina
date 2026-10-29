@@ -130,6 +130,7 @@ model Tenant {
   agendaBays           Int?      @map("agenda_bays")
   appointmentRemindersEnabled Boolean @default(false) @map("appointment_reminders_enabled")
   laborRateCents       Int?      @map("labor_rate_cents")
+  maintenanceAlertMonths Int @default(6) @map("maintenance_alert_months")
   plan                String    @default("free")
   subscriptionStatus      String    @default("unconfigured") @map("subscription_status")
   subscriptionAmountCents Int       @default(0) @map("subscription_amount_cents")
@@ -550,6 +551,9 @@ model MaintenanceAlert {
   status        String    @default("OPEN")
   resolvedAt    DateTime? @map("resolved_at") @db.Timestamptz
   resolvedBy    String?   @map("resolved_by") @db.Uuid
+  snoozedUntil  DateTime? @map("snoozed_until") @db.Timestamptz
+  dismissReason String?   @map("dismiss_reason")
+  dismissNote   String?   @map("dismiss_note")
   createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz
   updatedAt     DateTime? @updatedAt @map("updated_at") @db.Timestamptz
 
@@ -558,6 +562,20 @@ model MaintenanceAlert {
   @@unique([vehicleId, referenceDate])
   @@index([tenantId, status])
   @@map("maintenance_alerts")
+}
+
+// One attempt to reach the customer about an alert.
+model MaintenanceAlertContact {
+  id        String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  tenantId  String   @map("tenant_id") @db.Uuid
+  alertId   String   @map("alert_id") @db.Uuid
+  outcome   String
+  note      String?
+  createdBy String?  @map("created_by") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([tenantId, alertId, createdAt])
+  @@map("maintenance_alert_contacts")
 }
 
 model ServiceOrderPhoto {

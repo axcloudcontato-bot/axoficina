@@ -68,4 +68,14 @@ describe('SettingsManager', () => {
     expect(await manager.updateLaborRate(user, { laborRateCents: null })).toEqual({ laborRateCents: null });
     expect(audit.record).toHaveBeenCalledWith(expect.objectContaining({ action: 'settings.labor_rate_updated', metadata: { itemAction: 'update', amountCents: 12000 } }));
   });
+
+  it('saves the months without a delivered order before a vehicle is flagged, and records it', async () => {
+    const tenants = { updateSettings: jest.fn().mockImplementation(async (_id: string, data: Record<string, unknown>) => ({ id: 'tenant-1', ...data })) };
+    const audit = { record: jest.fn() };
+    const manager = new SettingsManager(tenants as never, {} as never, {} as never, audit as never);
+    const user = { tenantId: 'tenant-1', userId: 'user-1' } as never;
+    expect(await manager.updateMaintenanceAlertMonths(user, { months: 3 })).toEqual({ maintenanceAlertMonths: 3 });
+    expect(tenants.updateSettings).toHaveBeenCalledWith('tenant-1', { maintenanceAlertMonths: 3 });
+    expect(audit.record).toHaveBeenCalledWith(expect.objectContaining({ action: 'settings.maintenance_alert_months_updated' }));
+  });
 });

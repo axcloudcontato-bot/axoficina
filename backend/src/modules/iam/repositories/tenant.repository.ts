@@ -50,6 +50,7 @@ export interface UpdateTenantSettingsInput {
   agendaBays?: number | null;
   appointmentRemindersEnabled?: boolean;
   laborRateCents?: number | null;
+  maintenanceAlertMonths?: number;
 }
 
 @Injectable()

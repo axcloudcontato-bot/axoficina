@@ -141,4 +141,16 @@ describe('MaintenanceAlertScanProcessor', () => {
 
     expect(deps.vehicleRepository.listActiveForTenantUnscoped.mock.calls.length).toBeLessThan(1000);
   });
+
+  it('uses the months the workshop chose: 3 flags a car 4 months old, 12 does not', async () => {
+    const deps = buildProcessor();
+    deps.tenantRepository.listAllUnscoped.mockImplementation(onePageThenEmpty([{ id: 'tenant-fleet', maintenanceAlertMonths: 3 }, { id: 'tenant-slow', maintenanceAlertMonths: 12 }]));
+    deps.vehicleRepository.listActiveForTenantUnscoped.mockImplementation((tenantId: string, offset: number) => Promise.resolve(offset === 0 ? [{ id: `vehicle-${tenantId}`, tenantId, customerId: 'customer-1', createdAt: new Date('2020-01-01T00:00:00.000Z') }] : []));
+    deps.serviceOrderRepository.lastDeliveredClosedAtUnscoped.mockResolvedValue(new Date('2026-03-20T00:00:00.000Z'));
+
+    await deps.processor.process(job(NOW));
+
+    expect(deps.maintenanceAlertRepository.upsertOpenAlert).toHaveBeenCalledTimes(1);
+    expect(deps.maintenanceAlertRepository.upsertOpenAlert).toHaveBeenCalledWith(expect.objectContaining({ tenantId: 'tenant-fleet' }));
+  });
 });

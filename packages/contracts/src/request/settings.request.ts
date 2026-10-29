@@ -42,3 +42,8 @@ export interface UpdateLaborRateRequest {
   // Price of one technician hour in cents; null clears it.
   laborRateCents: number | null;
 }
+
+export interface UpdateMaintenanceAlertMonthsRequest {
+  // Months without a delivered order before a vehicle shows up as due for a visit.
+  months: number;
+}

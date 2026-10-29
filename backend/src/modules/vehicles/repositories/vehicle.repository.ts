@@ -153,6 +153,8 @@ export class VehicleRepository {
       await tx.vehicle.updateMany({ where: { id, deletedAt: null }, data: { customerId } });
       await tx.appointment.updateMany({ where: { vehicleId: id, deletedAt: null, startsAt: { gte: now }, status: { in: ['SCHEDULED', 'CONFIRMED'] } }, data: { customerId } });
       await tx.customerCarePlan.updateMany({ where: { vehicleId: id }, data: { customerId } });
+      // An alert still open follows the car; the closed ones stay in the name of who had it then.
+      await tx.maintenanceAlert.updateMany({ where: { vehicleId: id, status: 'OPEN' }, data: { customerId } });
     });
   }
 

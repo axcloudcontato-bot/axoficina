@@ -10,9 +10,8 @@ import { CustomerRepository } from '../../customers/repositories/customer.reposi
 import { MaintenanceAlertRepository } from '../repositories/maintenance-alert.repository';
 import { monthsSince } from '../utils/months-since';
 
-// Devido depois de 6 meses sem manutenção (spec: limiar fixo no código, não
-// configurável por tenant).
-const DUE_THRESHOLD_MONTHS = 6;
+// Default for a workshop that never changed it (settings: months without a delivered order).
+const DEFAULT_DUE_THRESHOLD_MONTHS = 6;
 
 // Paginação em chunks (BATCH_PROCESSING.md): nunca carrega todos os tenants
 // nem todos os veículos de um tenant de uma vez em memória. MAX_CHUNKS é um
@@ -53,7 +52,7 @@ export class MaintenanceAlertScanProcessor extends WorkerHost {
       }
 
       for (const tenant of tenants) {
-        await this.scanTenant(tenant.id, now);
+        await this.scanTenant(tenant.id, now, tenant.maintenanceAlertMonths ?? DEFAULT_DUE_THRESHOLD_MONTHS);
       }
 
       if (tenants.length < TENANT_CHUNK_SIZE) {
@@ -63,7 +62,7 @@ export class MaintenanceAlertScanProcessor extends WorkerHost {
     }
   }
 
-  private async scanTenant(tenantId: string, now: Date): Promise<void> {
+  private async scanTenant(tenantId: string, now: Date, thresholdMonths: number): Promise<void> {
     let offset = 0;
     for (let chunk = 0; chunk < VEHICLE_MAX_CHUNKS; chunk++) {
       const vehicles = await this.vehicleRepository.listActiveForTenantUnscoped(tenantId, offset, VEHICLE_CHUNK_SIZE);
@@ -82,7 +81,7 @@ export class MaintenanceAlertScanProcessor extends WorkerHost {
 
       for (const vehicle of vehiclesWithActiveCustomer) {
         try {
-          await this.scanVehicle(vehicle, now);
+          await this.scanVehicle(vehicle, now, thresholdMonths);
         } catch (error) {
           this.logger.warn(`Falha ao avaliar alerta de manutenção do veículo ${vehicle.id}`, error as Error);
         }
@@ -95,11 +94,11 @@ export class MaintenanceAlertScanProcessor extends WorkerHost {
     }
   }
 
-  private async scanVehicle(vehicle: Vehicle, now: Date): Promise<void> {
+  private async scanVehicle(vehicle: Vehicle, now: Date, thresholdMonths: number): Promise<void> {
     const lastDeliveredAt = await this.serviceOrderRepository.lastDeliveredClosedAtUnscoped(vehicle.id);
     const referenceDate = lastDeliveredAt ?? vehicle.createdAt;
 
-    if (monthsSince(referenceDate, now) < DUE_THRESHOLD_MONTHS) {
+    if (monthsSince(referenceDate, now) < thresholdMonths) {
       return;
     }
 

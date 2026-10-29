@@ -1,7 +1,7 @@
 'use client';
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { type UpdateLaborRateRequest, DEFAULT_AGENDA_HOURS, DEFAULT_PHOTO_POLICY, type AgendaHours, type UpdateAgendaHoursRequest, type PhotoPolicy, type UpdateCompanySettingsRequest, type UpdateEmailSettingsRequest, type UpdatePhotoPolicyRequest } from '@oficina/contracts';
+import { type UpdateMaintenanceAlertMonthsRequest, type UpdateLaborRateRequest, DEFAULT_AGENDA_HOURS, DEFAULT_PHOTO_POLICY, type AgendaHours, type UpdateAgendaHoursRequest, type PhotoPolicy, type UpdateCompanySettingsRequest, type UpdateEmailSettingsRequest, type UpdatePhotoPolicyRequest } from '@oficina/contracts';
 import { settingsApi } from '../api/settings-api';
 
 export const SETTINGS_KEY = ['tenant-settings'] as const;
@@ -72,6 +72,19 @@ export function useUpdateLaborRate() {
   const client = useQueryClient();
   return useMutation({
     mutationFn: (request: UpdateLaborRateRequest) => settingsApi.updateLaborRate(request),
+    onSuccess: () => client.invalidateQueries({ queryKey: BRANDING_KEY }),
+  });
+}
+
+// Months without a delivered order before a vehicle is flagged as due for a visit.
+export function useMaintenanceAlertMonths(): number {
+  return useBranding().data?.maintenanceAlertMonths ?? 6;
+}
+
+export function useUpdateMaintenanceAlertMonths() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (request: UpdateMaintenanceAlertMonthsRequest) => settingsApi.updateMaintenanceAlertMonths(request),
     onSuccess: () => client.invalidateQueries({ queryKey: BRANDING_KEY }),
   });
 }

@@ -1,5 +1,5 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import type { UpdateLaborRateRequest, AgendaHours, UpdateAgendaHoursRequest, PhotoPolicy, TenantSettingsResponse, UpdateCompanySettingsRequest, UpdateEmailSettingsRequest, UpdatePhotoPolicyRequest } from '@oficina/contracts';
+import type { UpdateMaintenanceAlertMonthsRequest, UpdateLaborRateRequest, AgendaHours, UpdateAgendaHoursRequest, PhotoPolicy, TenantSettingsResponse, UpdateCompanySettingsRequest, UpdateEmailSettingsRequest, UpdatePhotoPolicyRequest } from '@oficina/contracts';
 import { AuditLogService } from '../../../shared/audit-log/audit-log.service';
 import type { AuthenticatedUser } from '../../../shared/guards/jwt-auth.guard';
 import { TenantRepository } from '../../iam/repositories/tenant.repository';
@@ -26,7 +26,14 @@ export class SettingsManager {
 
   async getBranding(user: AuthenticatedUser) {
     const tenant = await this.requireTenant(user.tenantId);
-    return { company: this.toResponse(tenant).company, whatsappEnabled: tenant.waAkgEnabled ?? false, photoPolicy: this.photoPolicy(tenant), agendaHours: this.agendaHours(tenant), laborRateCents: tenant.laborRateCents ?? null };
+    return { company: this.toResponse(tenant).company, whatsappEnabled: tenant.waAkgEnabled ?? false, photoPolicy: this.photoPolicy(tenant), agendaHours: this.agendaHours(tenant), laborRateCents: tenant.laborRateCents ?? null, maintenanceAlertMonths: tenant.maintenanceAlertMonths ?? 6 };
+  }
+
+  async updateMaintenanceAlertMonths(user: AuthenticatedUser, input: UpdateMaintenanceAlertMonthsRequest) {
+    const tenant = await this.tenants.updateSettings(user.tenantId, { maintenanceAlertMonths: input.months });
+    if (!tenant) throw new NotFoundException('Empresa não encontrada.');
+    await this.audit.record({ tenantId: user.tenantId, userId: user.userId, action: 'settings.maintenance_alert_months_updated', entity: 'tenant', entityId: user.tenantId, metadata: { itemAction: 'update' } });
+    return { maintenanceAlertMonths: tenant.maintenanceAlertMonths ?? 6 };
   }
 
   async updateLaborRate(user: AuthenticatedUser, input: UpdateLaborRateRequest) {

@@ -1,5 +1,26 @@
 export const RELEASE_NOTES = [
   {
+    id: '2026-10-29-alertas-contato', date: '2026-10-29', title: "Alertas de manutenção: contato com o cliente e prazo da oficina",
+    items: [
+      "Cada alerta agora tem atalhos para falar com o cliente: WhatsApp com uma mensagem pronta (você lê e edita antes de enviar), ligar, agendar e abrir uma OS já com o cliente e o carro.",
+      "Novo botão Registrar contato: anote se mandou mensagem, se o cliente não atendeu, se vai agendar ou se não quer agora. A lista mostra o último contato, quem fez e quantas tentativas houve, para a equipe não ligar duas vezes para o mesmo cliente.",
+      "A lista destaca os cuidados que já venceram no carro (por prazo ou por quilometragem), como óleo e freios, e avisa quando o cliente não autorizou lembretes automáticos e precisa de contato manual.",
+      "Filtros por tempo sem visita (6 a 9, 9 a 12 e mais de 12 meses) e por contato (ainda sem contato ou já contatados).",
+      "Administradores definem em quantos meses sem OS entregue um carro entra na lista, em vez do valor fixo de 6 meses. A mudança vale a partir da próxima varredura diária.",
+    ],
+  },
+  {
+    id: '2026-10-29-alertas-manutencao', date: '2026-10-29', title: "Alertas de manutenção: adiar, dispensar com motivo e buscar",
+    items: [
+      "Em vez de só marcar como resolvido, agora dá para adiar o alerta por 30, 60 ou 90 dias (ele volta sozinho se o carro continuar sem revisão) ou dispensar com um motivo: vendeu o carro, mudou de cidade, não quer ser contatado ou outro.",
+      "Novas abas Adiados e Dispensados, e a aba Resolvidos mostra quem resolveu e quando, ou que foi a entrega de uma OS. O que uma pessoa fechou pode ser reaberto.",
+      "Busca por placa, modelo ou cliente e o total de alertas no topo da lista.",
+      "O veículo e o cliente agora levam direto às fichas deles.",
+      "Quem só pode consultar, como o mecânico, não vê mais botões que dariam erro.",
+      "Ao transferir um veículo para outro dono, o alerta em aberto passa junto para o novo dono.",
+    ],
+  },
+  {
     id: '2026-10-29-veiculos', date: '2026-10-29', title: "Veículos com ficha completa, troca de dono e planilhas",
     items: [
       "A placa passa a ser gravada no padrão ABC1D23 e validada (formato antigo e Mercosul). As placas já cadastradas foram corrigidas, e o mesmo carro não entra mais duas vezes com grafias diferentes.",
