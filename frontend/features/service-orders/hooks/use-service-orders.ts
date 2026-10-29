@@ -15,6 +15,7 @@ import type {
   ServiceOrderPhotoAngle,
   ServiceOrderPhotoResponse,
   TechnicianProductivityRequest,
+  TechnicianProductivityOrdersRequest,
 } from '@oficina/contracts';
 import { serviceOrdersApi } from '../api/service-orders-api';
 
@@ -142,11 +143,33 @@ export function useDueServiceOrderInstallments(limit = 20) {
   });
 }
 
-export function useTechnicianProductivity(request: TechnicianProductivityRequest) {
+export function useTechnicianProductivity(request: TechnicianProductivityRequest, enabled = true) {
   return useQuery({
     queryKey: ['technician-productivity', request],
     queryFn: () => serviceOrdersApi.technicianProductivity(request),
+    enabled,
   });
+}
+
+export function useTechnicianProductivityOrders(request: TechnicianProductivityOrdersRequest, enabled = true) {
+  return useQuery({ queryKey: ['technician-productivity-orders', request], queryFn: () => serviceOrdersApi.technicianProductivityOrders(request), enabled });
+}
+
+export function useWorkSessions(serviceOrderId: string) {
+  return useQuery({ queryKey: ['work-sessions', serviceOrderId], queryFn: () => serviceOrdersApi.workSessions(serviceOrderId), enabled: Boolean(serviceOrderId), refetchInterval: 30_000 });
+}
+
+export function useWorkSessionAction(serviceOrderId: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (action: 'start' | 'stop') => action === 'start' ? serviceOrdersApi.startWork(serviceOrderId) : serviceOrdersApi.stopWork(serviceOrderId),
+    onSuccess: data => { client.setQueryData(['work-sessions', serviceOrderId], data); client.invalidateQueries({ queryKey: ['technician-productivity'] }); },
+  });
+}
+
+export function useSetProductivityTarget() {
+  const client = useQueryClient();
+  return useMutation({ mutationFn: serviceOrdersApi.setProductivityTarget, onSuccess: () => client.invalidateQueries({ queryKey: ['technician-productivity'] }) });
 }
 
 const SERVICE_ORDER_PHOTOS_KEY = 'service-order-photos';

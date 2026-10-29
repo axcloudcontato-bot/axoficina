@@ -19,7 +19,18 @@ import type {
   ServiceOrderPhotoResponse,
   TechnicianProductivityRequest,
   TechnicianProductivityResponse,
+  TechnicianProductivityOrdersRequest,
+  TechnicianProductivityOrdersResponse,
 } from '@oficina/contracts';
+
+export interface WorkSession {
+  id: string;
+  technicianId: string;
+  technicianName: string;
+  startedAt: string;
+  endedAt: string | null;
+  workedMinutes: number;
+}
 
 export const serviceOrdersApi = {
   async create(request: CreateServiceOrderRequest): Promise<{ serviceOrder: ServiceOrderResponse }> {
@@ -92,5 +103,20 @@ export const serviceOrdersApi = {
   },
   async technicianProductivity(request: TechnicianProductivityRequest): Promise<TechnicianProductivityResponse> {
     return (await apiClient.post('/api/v1/service-orders/technician-productivity', request)).data;
+  },
+  async technicianProductivityOrders(request: TechnicianProductivityOrdersRequest): Promise<TechnicianProductivityOrdersResponse> {
+    return (await apiClient.post('/api/v1/service-orders/technician-productivity/orders', request)).data;
+  },
+  async workSessions(serviceOrderId: string): Promise<{ sessions: WorkSession[] }> {
+    return (await apiClient.get('/api/v1/service-orders/work-sessions', { params: { serviceOrderId } })).data;
+  },
+  async startWork(serviceOrderId: string): Promise<{ sessions: WorkSession[] }> {
+    return (await apiClient.post('/api/v1/service-orders/work-sessions/start', { serviceOrderId })).data;
+  },
+  async stopWork(serviceOrderId: string): Promise<{ sessions: WorkSession[] }> {
+    return (await apiClient.post('/api/v1/service-orders/work-sessions/stop', { serviceOrderId })).data;
+  },
+  async setProductivityTarget(input: { technicianId: string; month: string; completedCount: number; laborRevenueCents: number; workedMinutes: number }): Promise<{ success: true }> {
+    return (await apiClient.post('/api/v1/service-orders/productivity-target', input)).data;
   },
 };

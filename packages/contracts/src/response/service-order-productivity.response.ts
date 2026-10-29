@@ -3,18 +3,34 @@ export interface TechnicianProductivityItem {
   technicianName: string;
   // OS entregues (status DELIVERED) com closedAt dentro do período pedido.
   completedCount: number;
-  // Soma do valor de itens tipo LABOR das OS contadas em completedCount.
+  // Mão de obra líquida da OS, rateada por tempo registrado quando houver.
   laborRevenueCents: number;
-  // Média de openedAt -> closedAt, em horas, só das OS contadas acima.
-  // null quando o técnico não entregou nenhuma OS no período.
-  avgCompletionHours: number | null;
-  // OS atualmente abertas/em andamento com este técnico — não depende do
-  // período selecionado, é sempre o estado agora.
+  // OS em execução, aguardando peças ou prontas para entrega, agora.
   activeOrders: number;
+  workedMinutes: number;
+  estimatedCount: number;
+  target: { completedCount: number; laborRevenueCents: number; workedMinutes: number } | null;
+}
+
+export interface TechnicianProductivityOrder {
+  id: string;
+  orderNumber: number;
+  deliveredAt: string;
+  laborCents: number;
+  workedMinutes: number;
+  estimated: boolean;
 }
 
 export interface TechnicianProductivityResponse {
   startAt: string;
   endAt: string;
   items: TechnicianProductivityItem[];
+  totals: { completedCount: number; laborRevenueCents: number; workedMinutes: number; unassignedCount: number; estimatedCount: number };
+}
+
+export interface TechnicianProductivityOrdersResponse {
+  items: TechnicianProductivityOrder[];
+  total: number;
+  offset: number;
+  limit: number;
 }

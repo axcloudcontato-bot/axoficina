@@ -58,15 +58,15 @@ export class ServiceOrderItemRepository {
     });
   }
 
-  async update(id: string, patch: UpdateServiceOrderItemInput) {
-    return this.prisma.client.serviceOrderItem.updateMany({
+  async update(id: string, patch: UpdateServiceOrderItemInput, tx?: PrismaClient) {
+    return (tx ?? this.prisma.client).serviceOrderItem.updateMany({
       where: { id, deletedAt: null },
       data: patch,
     });
   }
 
-  async softDelete(id: string) {
-    return this.prisma.client.serviceOrderItem.updateMany({
+  async softDelete(id: string, tx?: PrismaClient) {
+    return (tx ?? this.prisma.client).serviceOrderItem.updateMany({
       where: { id, deletedAt: null },
       data: { deletedAt: new Date() },
     });

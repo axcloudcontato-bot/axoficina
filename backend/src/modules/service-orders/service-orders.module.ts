@@ -24,6 +24,7 @@ import { CustomerMessageRepository } from './repositories/customer-message.repos
 import { WaAkgWebhookController } from './controllers/wa-akg-webhook.controller';
 import { CustomerReplyNotificationsController } from './controllers/customer-reply-notifications.controller';
 import { CustomerReplyNotificationRepository } from './repositories/customer-reply-notification.repository';
+import { ProductivityService } from './services/productivity.service';
 
 // Importa VehiclesModule/CustomersModule/IamModule pra ter acesso aos
 // repositórios que exportam — ServiceOrderManager valida vehicleId (e lê
@@ -37,7 +38,7 @@ import { CustomerReplyNotificationRepository } from './repositories/customer-rep
 @Module({
   imports: [VehiclesModule, CustomersModule, IamModule, SettingsModule, CustomerCareModule, forwardRef(() => MaintenanceAlertsModule)],
   controllers: [ServiceOrderStatusNotificationsController, ServiceOrdersController, CustomerMessagesController, WaAkgWebhookController, CustomerReplyNotificationsController],
-  providers: [ServiceOrderStatusNotificationRepository, ServiceOrderStatusNotificationService, ServiceOrderStatusNotificationProcessor, CustomerReplyNotificationRepository, CustomerMessageManager, CustomerMessageRepository, ServiceOrderManager, ServiceOrderPhotoManager, ServiceOrderPhotoStorageService, ServiceOrderRepository, ServiceOrderStatusHistoryRepository, ServiceOrderItemRepository, ServiceOrderReceiptRepository, ServiceOrderPhotoRepository],
+  providers: [ServiceOrderStatusNotificationRepository, ServiceOrderStatusNotificationService, ServiceOrderStatusNotificationProcessor, CustomerReplyNotificationRepository, CustomerMessageManager, CustomerMessageRepository, ProductivityService, ServiceOrderManager, ServiceOrderPhotoManager, ServiceOrderPhotoStorageService, ServiceOrderRepository, ServiceOrderStatusHistoryRepository, ServiceOrderItemRepository, ServiceOrderReceiptRepository, ServiceOrderPhotoRepository],
   // MaintenanceAlertsModule (Feature Motor de Manutenção Preventiva) importa
   // este módulo pra usar ServiceOrderRepository.lastDeliveredClosedAtUnscoped
   // no job diário de scan.

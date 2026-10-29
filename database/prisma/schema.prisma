@@ -371,6 +371,7 @@ model ServiceOrder {
   @@index([customerId])
   @@index([vehicleId])
   @@index([status])
+  @@index([tenantId, status, closedAt], map: "service_orders_productivity_period_idx")
   @@index([technicianId])
   @@map("service_orders")
 }
@@ -444,6 +445,48 @@ model ServiceOrderItem {
 
   @@index([serviceOrderId])
   @@map("service_order_items")
+}
+
+model ServiceOrderWorkSession {
+  id             String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  tenantId       String    @map("tenant_id") @db.Uuid
+  serviceOrderId String    @map("service_order_id") @db.Uuid
+  technicianId   String    @map("technician_id") @db.Uuid
+  startedAt      DateTime  @map("started_at") @db.Timestamptz
+  endedAt        DateTime? @map("ended_at") @db.Timestamptz
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([tenantId, serviceOrderId])
+  @@index([tenantId, technicianId, startedAt])
+  @@map("service_order_work_sessions")
+}
+
+model ServiceOrderProductivityShare {
+  id             String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  tenantId       String   @map("tenant_id") @db.Uuid
+  serviceOrderId String   @map("service_order_id") @db.Uuid
+  technicianId   String?  @map("technician_id") @db.Uuid
+  laborCents     Int      @map("labor_cents")
+  workedMinutes  Int      @map("worked_minutes")
+  basis          String
+  deliveredAt    DateTime @map("delivered_at") @db.Timestamptz
+
+  @@index([tenantId, deliveredAt])
+  @@index([tenantId, technicianId, deliveredAt])
+  @@map("service_order_productivity_shares")
+}
+
+model TechnicianProductivityTarget {
+  id                    String @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  tenantId              String @map("tenant_id") @db.Uuid
+  technicianId          String @map("technician_id") @db.Uuid
+  month                 String
+  completedTarget       Int @map("completed_target")
+  laborCentsTarget      Int @map("labor_cents_target")
+  workedMinutesTarget   Int @map("worked_minutes_target")
+  @@unique([tenantId, technicianId, month])
+  @@index([tenantId, month])
+  @@map("technician_productivity_targets")
 }
 
 // Catálogo de peças, produtos e serviços (mão de obra) da oficina. Os itens da

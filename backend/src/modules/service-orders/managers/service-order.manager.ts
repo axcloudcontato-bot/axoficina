@@ -20,8 +20,6 @@ import {
   type ServiceOrderListResponse,
   type ServiceOrderResponse,
   type ServiceOrderStatusHistoryItemResponse,
-  type TechnicianProductivityRequest,
-  type TechnicianProductivityResponse,
   type TransitionServiceOrderRequest,
   type UpdateServiceOrderItemRequest,
   type UpdateServiceOrderRequest,
@@ -63,6 +61,7 @@ import type { CustomerMessageQuote } from '@oficina/contracts';
 import { CustomerMessageRepository } from '../repositories/customer-message.repository';
 import { ServiceOrderStatusNotificationRepository } from '../repositories/service-order-status-notification.repository';
 import { CustomerCarePlansService } from '../../customer-care/customer-care-plans.service';
+import { ProductivityService } from '../services/productivity.service';
 
 const PHOTO_ANGLE_LABELS: Record<ServiceOrderPhotoAngle, string> = {
   FRONT: 'frente',
@@ -98,6 +97,7 @@ export class ServiceOrderManager {
     private readonly statusNotifications?: ServiceOrderStatusNotificationRepository,
     private readonly carePlans?: CustomerCarePlansService,
     private readonly tenantRepository?: TenantRepository,
+    private readonly productivity?: ProductivityService,
   ) {}
 
   async create(actingUser: AuthenticatedUser, request: CreateServiceOrderRequest): Promise<{ serviceOrder: ServiceOrderResponse }> {
@@ -355,9 +355,12 @@ export class ServiceOrderManager {
         await tx.appointment.updateMany({ where: { serviceOrderId: request.id, status: 'IN_SERVICE', deletedAt: null }, data: request.toStatus === 'DELIVERED' ? { status: 'COMPLETED' } : { status: 'CANCELLED', cancelledAt: changedAt } });
       }
       if (request.toStatus === 'DELIVERED') {
+        await this.productivity?.captureDelivery(tx, existing, changedAt);
         await this.maintenanceAlertRepository.resolveOpenByVehicleId(tx, existing.vehicleId, changedAt);
         await this.carePlans?.recordDelivered(tx, existing, changedAt);
         await this.deductStock(tx, existing.tenantId, existing.id, actingUser.userId);
+      } else if (['WAITING_PARTS', 'COMPLETED', 'CANCELLED'].includes(request.toStatus)) {
+        await this.productivity?.closeSessions(tx, existing.id, changedAt);
       }
     });
 
@@ -680,57 +683,6 @@ export class ServiceOrderManager {
     };
   }
 
-  async technicianProductivity(request: TechnicianProductivityRequest): Promise<TechnicianProductivityResponse> {
-    const startAt = new Date(request.startAt);
-    const endAt = new Date(request.endAt);
-    const [orders, activeUsers] = await Promise.all([
-      this.serviceOrderRepository.listForProductivity(startAt, endAt),
-      // Base da lista: todo técnico ativo aparece, mesmo com 0 OS no
-      // período — é justamente isso que torna o relatório útil pra achar
-      // quem está sem produção, não só ranquear quem já apareceu.
-      this.userRepository.listByTenant(0, 500, { status: 'active' }),
-    ]);
-    const financialItems = await this.itemRepository.financialItemsByServiceOrderIds(orders.map((order) => order.id));
-    const laborByOrderId = new Map<string, number>();
-    financialItems.filter((item) => item.type === 'LABOR').forEach((item) => {
-      laborByOrderId.set(item.serviceOrderId, (laborByOrderId.get(item.serviceOrderId) ?? 0) + item.lineTotalCents);
-    });
-
-    const delivered = orders.filter((order) => order.status === 'DELIVERED' && order.closedAt);
-    const active = orders.filter((order) => order.status !== 'DELIVERED');
-
-    const buckets = new Map<string, { completedCount: number; laborRevenueCents: number; totalHours: number; activeOrders: number }>();
-    const bucketFor = (technicianId: string) => {
-      if (!buckets.has(technicianId)) buckets.set(technicianId, { completedCount: 0, laborRevenueCents: 0, totalHours: 0, activeOrders: 0 });
-      return buckets.get(technicianId)!;
-    };
-    delivered.forEach((order) => {
-      if (!order.technicianId) return;
-      const bucket = bucketFor(order.technicianId);
-      bucket.completedCount += 1;
-      bucket.laborRevenueCents += laborByOrderId.get(order.id) ?? 0;
-      bucket.totalHours += (order.closedAt!.getTime() - order.openedAt.getTime()) / 3_600_000;
-    });
-    active.forEach((order) => {
-      if (!order.technicianId) return;
-      bucketFor(order.technicianId).activeOrders += 1;
-    });
-
-    const items = activeUsers.items.map((technician) => {
-      const bucket = buckets.get(technician.id) ?? { completedCount: 0, laborRevenueCents: 0, totalHours: 0, activeOrders: 0 };
-      return {
-        technicianId: technician.id,
-        technicianName: technician.name,
-        completedCount: bucket.completedCount,
-        laborRevenueCents: bucket.laborRevenueCents,
-        avgCompletionHours: bucket.completedCount > 0 ? Math.round((bucket.totalHours / bucket.completedCount) * 10) / 10 : null,
-        activeOrders: bucket.activeOrders,
-      };
-    }).sort((left, right) => right.laborRevenueCents - left.laborRevenueCents || right.completedCount - left.completedCount);
-
-    return { startAt: request.startAt, endAt: request.endAt, items };
-  }
-
   async addItem(request: CreateServiceOrderItemRequest, actingUser?: AuthenticatedUser): Promise<{ item: ServiceOrderItemResponse }> {
     const serviceOrder = await this.serviceOrderRepository.byId(request.serviceOrderId);
     if (!serviceOrder) {
@@ -745,7 +697,7 @@ export class ServiceOrderManager {
     if (request.catalogItemId && !catalogItem) {
       throw new AppException(AppErrorCode.VALIDATION_ERROR, 'Item do catálogo não encontrado.', HttpStatus.BAD_REQUEST);
     }
-    const created = await this.itemRepository.insert({
+    const itemInput = {
       catalogItemId: catalogItem?.id ?? null,
       costCents: catalogItem?.costCents ?? null,
       serviceOrderId: request.serviceOrderId,
@@ -754,9 +706,16 @@ export class ServiceOrderManager {
       quantity: request.quantity,
       unitPriceCents: request.unitPriceCents,
       careServiceKey: request.careServiceKey,
-    });
+    };
+    let created: Awaited<ReturnType<ServiceOrderItemRepository['insert']>>;
+    let adjustment: { beforeCents: number; afterCents: number } | null = null;
+    if (serviceOrder.status === 'DELIVERED' && this.productivity && actingUser) {
+      const corrected = await this.productivity.withDeliveredItemCorrection(serviceOrder.id, actingUser.tenantId, tx => this.itemRepository.insert(itemInput, tx));
+      created = corrected.result;
+      adjustment = corrected.adjustment;
+    } else created = await this.itemRepository.insert(itemInput);
 
-    if (closedReason) await this.auditClosedItemChange(actingUser, serviceOrder, 'add', created.id, closedReason, previousTotal);
+    if (closedReason) await this.auditClosedItemChange(actingUser, serviceOrder, 'add', created.id, closedReason, previousTotal, adjustment);
     return { item: this.toItemResponse(created) };
   }
 
@@ -801,20 +760,29 @@ export class ServiceOrderManager {
     if (request.careServiceKey !== undefined && request.careServiceKey !== existing.careServiceKey && ['DELIVERED', 'CANCELLED'].includes(owningOrder.status)) throw new AppException(AppErrorCode.VALIDATION_ERROR, 'Para uma OS encerrada, registre o cuidado na central de relacionamento.');
     const closedReason = this.closedEditReason(owningOrder.status, request.editReason);
     const previousTotal = closedReason ? await this.computeTotalAmountCents(owningOrder.id) : 0;
-    await this.itemRepository.update(request.id, {
+    const itemPatch = {
       type: request.type,
       description: request.description,
       quantity: request.quantity,
       unitPriceCents: request.unitPriceCents,
       careServiceKey: request.careServiceKey,
-    });
+    };
+    let adjustment: { beforeCents: number; afterCents: number } | null = null;
+    if (owningOrder.status === 'DELIVERED' && this.productivity && actingUser) {
+      const corrected = await this.productivity.withDeliveredItemCorrection(owningOrder.id, actingUser.tenantId, async tx => {
+        const result = await this.itemRepository.update(request.id, itemPatch, tx);
+        if (!result.count) throw new AppException(AppErrorCode.SERVICE_ORDER_ITEM_NOT_FOUND, 'Item da OS não encontrado.', HttpStatus.NOT_FOUND);
+        return result;
+      });
+      adjustment = corrected.adjustment;
+    } else await this.itemRepository.update(request.id, itemPatch);
 
     const updated = await this.itemRepository.byId(request.id);
     if (!updated) {
       throw new AppException(AppErrorCode.SERVICE_ORDER_ITEM_NOT_FOUND, 'Item da OS não encontrado.', HttpStatus.NOT_FOUND);
     }
 
-    if (closedReason) await this.auditClosedItemChange(actingUser, owningOrder, 'update', request.id, closedReason, previousTotal);
+    if (closedReason) await this.auditClosedItemChange(actingUser, owningOrder, 'update', request.id, closedReason, previousTotal, adjustment);
     return { item: this.toItemResponse(updated) };
   }
 
@@ -831,12 +799,22 @@ export class ServiceOrderManager {
 
     const closedReason = this.closedEditReason(owningOrder.status, editReason);
     const previousTotal = closedReason ? await this.computeTotalAmountCents(owningOrder.id) : 0;
-    const { count } = await this.itemRepository.softDelete(id);
+    let adjustment: { beforeCents: number; afterCents: number } | null = null;
+    let count: number;
+    if (owningOrder.status === 'DELIVERED' && this.productivity && actingUser) {
+      const corrected = await this.productivity.withDeliveredItemCorrection(owningOrder.id, actingUser.tenantId, async tx => {
+        const result = await this.itemRepository.softDelete(id, tx);
+        if (!result.count) throw new AppException(AppErrorCode.SERVICE_ORDER_ITEM_NOT_FOUND, 'Item da OS não encontrado.', HttpStatus.NOT_FOUND);
+        return result;
+      });
+      count = corrected.result.count;
+      adjustment = corrected.adjustment;
+    } else count = (await this.itemRepository.softDelete(id)).count;
     if (count === 0) {
       throw new AppException(AppErrorCode.SERVICE_ORDER_ITEM_NOT_FOUND, 'Item da OS não encontrado.', HttpStatus.NOT_FOUND);
     }
 
-    if (closedReason) await this.auditClosedItemChange(actingUser, owningOrder, 'delete', id, closedReason, previousTotal);
+    if (closedReason) await this.auditClosedItemChange(actingUser, owningOrder, 'delete', id, closedReason, previousTotal, adjustment);
     return { item: this.toItemResponse(existing) };
   }
 
@@ -850,7 +828,7 @@ export class ServiceOrderManager {
     return reason;
   }
 
-  private async auditClosedItemChange(actingUser: AuthenticatedUser | undefined, order: { id: string; status: string; tenantId: string }, itemAction: 'add' | 'update' | 'delete', itemId: string, reason: string, previousAmountCents: number): Promise<void> {
+  private async auditClosedItemChange(actingUser: AuthenticatedUser | undefined, order: { id: string; status: string; tenantId: string }, itemAction: 'add' | 'update' | 'delete', itemId: string, reason: string, previousAmountCents: number, productivityAdjustment: { beforeCents: number; afterCents: number } | null): Promise<void> {
     if (!actingUser) return;
     await this.auditLog.record({
       tenantId: actingUser.tenantId,
@@ -858,7 +836,7 @@ export class ServiceOrderManager {
       action: 'service_order.closed_items_changed',
       entity: 'service_order_item',
       entityId: itemId,
-      metadata: { serviceOrderId: order.id, status: order.status, itemAction, reason, previousAmountCents, amountCents: await this.computeTotalAmountCents(order.id) },
+      metadata: { serviceOrderId: order.id, status: order.status, itemAction, reason, previousAmountCents, amountCents: await this.computeTotalAmountCents(order.id), productivityBeforeCents: productivityAdjustment?.beforeCents, productivityAfterCents: productivityAdjustment?.afterCents },
     });
   }
 

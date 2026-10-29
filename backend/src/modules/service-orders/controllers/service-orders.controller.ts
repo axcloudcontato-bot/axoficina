@@ -1,7 +1,7 @@
 import { Body, Controller, Get, HttpCode, HttpStatus, Post, Query, Res, StreamableFile, UploadedFile, UseInterceptors } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import type { Response } from 'express';
-import type { DashboardBusinessSummaryResponse, DashboardTodayResponse, DueServiceOrderInstallmentsResponse, ServiceOrderInstallmentResponse, ServiceOrderItemResponse, ServiceOrderListResponse, ServiceOrderReceiptResponse, ServiceOrderResponse, TechnicianProductivityResponse } from '@oficina/contracts';
+import type { DashboardBusinessSummaryResponse, DashboardTodayResponse, DueServiceOrderInstallmentsResponse, ServiceOrderInstallmentResponse, ServiceOrderItemResponse, ServiceOrderListResponse, ServiceOrderReceiptResponse, ServiceOrderResponse, TechnicianProductivityResponse, TechnicianProductivityOrdersResponse } from '@oficina/contracts';
 import { Roles } from '../../../shared/decorators/roles.decorator';
 import { CurrentUser } from '../../../shared/decorators/current-user.decorator';
 import { Permissions } from '../../../shared/decorators/permissions.decorator';
@@ -15,6 +15,9 @@ import {
   GetServiceOrderDto,
   ServiceOrderListDto,
   TechnicianProductivityDto,
+  TechnicianProductivityOrdersDto,
+  WorkSessionDto,
+  ProductivityTargetDto,
   TransitionServiceOrderDto,
   UpdateServiceOrderDto,
 } from '../dto/service-order.dto';
@@ -24,6 +27,7 @@ import { ConfirmServiceOrderReceiptDto, DeleteServiceOrderReceiptDto } from '../
 import { ConfigureServiceOrderPaymentDto, ConfirmServiceOrderInstallmentDto, ListDueServiceOrderInstallmentsDto } from '../dto/service-order-installment.dto';
 import { DeleteServiceOrderPhotoDto, GetServiceOrderPhotoDto, ListServiceOrderPhotosDto, UploadServiceOrderPhotoDto } from '../dto/service-order-photo.dto';
 import { ServiceOrderPhotoManager } from '../managers/service-order-photo.manager';
+import { ProductivityService } from '../services/productivity.service';
 
 // Todos os 4 papéis têm acesso total a todo endpoint — divergência
 // deliberada do padrão de Clientes/Veículos (spec: "todos os papéis fazem
@@ -37,7 +41,7 @@ const ITEM_ROLES = ['ADMIN', 'MANAGER', 'FRONT_DESK'] as const;
 
 @Controller('api/v1')
 export class ServiceOrdersController {
-  constructor(private readonly serviceOrderManager: ServiceOrderManager, private readonly photoManager: ServiceOrderPhotoManager, private readonly roles: RoleRepository, private readonly users: UserRepository) {}
+  constructor(private readonly serviceOrderManager: ServiceOrderManager, private readonly photoManager: ServiceOrderPhotoManager, private readonly roles: RoleRepository, private readonly users: UserRepository, private readonly productivity: ProductivityService) {}
 
   @Roles(...ALL_ROLES)
   @Permissions('service_orders.manage')
@@ -112,7 +116,46 @@ export class ServiceOrdersController {
   @HttpCode(HttpStatus.OK)
   @Post('service-orders/technician-productivity')
   async technicianProductivity(@Body() body: TechnicianProductivityDto): Promise<TechnicianProductivityResponse> {
-    return this.serviceOrderManager.technicianProductivity(body);
+    return this.productivity.report(body);
+  }
+
+  @Roles(...ITEM_ROLES)
+  @Permissions('service_orders.prices')
+  @HttpCode(HttpStatus.OK)
+  @Post('service-orders/technician-productivity/orders')
+  async technicianProductivityOrders(@CurrentUser() user: AuthenticatedUser, @Body() body: TechnicianProductivityOrdersDto): Promise<TechnicianProductivityOrdersResponse> {
+    return this.productivity.orders(body, user.tenantId);
+  }
+
+  @Roles('ADMIN', 'MANAGER')
+  @Permissions('service_orders.prices')
+  @HttpCode(HttpStatus.OK)
+  @Post('service-orders/productivity-target')
+  async setProductivityTarget(@CurrentUser() user: AuthenticatedUser, @Body() body: ProductivityTargetDto) {
+    return this.productivity.setTarget(body, user);
+  }
+
+  @Roles(...ALL_ROLES)
+  @Permissions('service_orders.view')
+  @Get('service-orders/work-sessions')
+  async workSessions(@Query() query: WorkSessionDto) {
+    return this.productivity.sessions(query.serviceOrderId);
+  }
+
+  @Roles(...ALL_ROLES)
+  @Permissions('service_orders.manage')
+  @HttpCode(HttpStatus.OK)
+  @Post('service-orders/work-sessions/start')
+  async startWork(@CurrentUser() user: AuthenticatedUser, @Body() body: WorkSessionDto) {
+    return this.productivity.start(body.serviceOrderId, user);
+  }
+
+  @Roles(...ALL_ROLES)
+  @Permissions('service_orders.manage')
+  @HttpCode(HttpStatus.OK)
+  @Post('service-orders/work-sessions/stop')
+  async stopWork(@CurrentUser() user: AuthenticatedUser, @Body() body: WorkSessionDto) {
+    return this.productivity.stop(body.serviceOrderId, user);
   }
 
   @Roles(...ITEM_ROLES)

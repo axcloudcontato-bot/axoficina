@@ -5,6 +5,7 @@ import type {
   DeleteServiceOrderRequest,
   ServiceOrderListRequest,
   TechnicianProductivityRequest,
+  TechnicianProductivityOrdersRequest,
   TransitionServiceOrderRequest,
   UpdateServiceOrderRequest,
 } from '@oficina/contracts';
@@ -142,6 +143,26 @@ export class ServiceOrderListDto implements ServiceOrderListRequest {
 export class TechnicianProductivityDto implements TechnicianProductivityRequest {
   @IsISO8601() startAt!: string;
   @IsISO8601() endAt!: string;
+}
+
+export class WorkSessionDto {
+  @IsUUID('4') serviceOrderId!: string;
+}
+
+export class ProductivityTargetDto {
+  @IsUUID('4') technicianId!: string;
+  @Matches(/^\d{4}-(0[1-9]|1[0-2])$/) month!: string;
+  @IsInt() @Min(0) @Max(100000) completedCount!: number;
+  @IsInt() @Min(0) @Max(100000000000) laborRevenueCents!: number;
+  @IsInt() @Min(0) @Max(1000000) workedMinutes!: number;
+}
+
+export class TechnicianProductivityOrdersDto implements TechnicianProductivityOrdersRequest {
+  @IsISO8601() startAt!: string;
+  @IsISO8601() endAt!: string;
+  @IsUUID('4') technicianId!: string;
+  @IsInt() @Min(0) offset!: number;
+  @IsInt() @Min(1) @Max(50) limit!: number;
 }
 
 // The browser sends its own calendar day, so "today" follows the workshop clock
