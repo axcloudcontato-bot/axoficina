@@ -1,21 +1,27 @@
 'use client';
 
 import { useState } from 'react';
-import { MagnifyingGlass } from '@phosphor-icons/react';
+import { DownloadSimple, MagnifyingGlass, UploadSimple } from '@phosphor-icons/react';
 import { toast } from 'sonner';
 import type { CustomerListItemResponse } from '@oficina/contracts';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { hasPermission } from '@/features/auth/permissions';
+import { CustomerImportModal } from '@/features/customers/components/CustomerImportModal';
+import { customersToRows } from '@/features/customers/customer-csv';
+import { customersApi } from '@/features/customers/api/customers-api';
 import { CustomerFormModal } from '@/features/customers/components/CustomerFormModal';
 import { CustomersTable } from '@/features/customers/components/CustomersTable';
 import { DeleteCustomerDialog } from '@/features/customers/components/DeleteCustomerDialog';
 import { useCustomersList, useRestoreCustomer } from '@/features/customers/hooks/use-customers';
 import { extractErrorMessage } from '@/lib/api/client';
+import { downloadCsv } from '@/lib/csv';
 import { useDebouncedValue } from '@/lib/use-debounced-value';
 import { useAuthStore } from '@/stores/auth-store';
 
 const PAGE_SIZE = 20;
+const EXPORT_PAGE_SIZE = 100;
+const EXPORT_MAX = 5000;
 
 export default function CustomersPage() {
   const user = useAuthStore((state) => state.user);
@@ -31,6 +37,8 @@ export default function CustomersPage() {
   const [editingCustomer, setEditingCustomer] = useState<CustomerListItemResponse | undefined>(undefined);
   const [deletingCustomer, setDeletingCustomer] = useState<CustomerListItemResponse | null>(null);
   const restore = useRestoreCustomer();
+  const [importing, setImporting] = useState(false);
+  const [exporting, setExporting] = useState(false);
 
   // The list follows the box once typing pauses, not on every keystroke.
   const search = useDebouncedValue(searchInput.trim(), 300);
@@ -44,6 +52,26 @@ export default function CustomersPage() {
   function openEditModal(customer: CustomerListItemResponse) {
     setEditingCustomer(customer);
     setFormModalOpen(true);
+  }
+
+  // Everything the current search and filter show, not just the page on screen.
+  async function exportList() {
+    setExporting(true);
+    try {
+      const items: CustomerListItemResponse[] = [];
+      for (let from = 0; from < EXPORT_MAX; from += EXPORT_PAGE_SIZE) {
+        const page = await customersApi.list({ offset: from, limit: EXPORT_PAGE_SIZE, search: search || undefined, archived: archived || undefined, filter: archived || !filter ? undefined : filter });
+        items.push(...page.items);
+        if (!page.hasMore) break;
+      }
+      if (items.length === 0) return void toast.info('Não há clientes para exportar com essa busca.');
+      downloadCsv(`clientes-${new Date().toISOString().slice(0, 10)}.csv`, customersToRows(items));
+      toast.success(`${items.length} ${items.length === 1 ? 'cliente exportado' : 'clientes exportados'}.`);
+    } catch (error) {
+      toast.error(extractErrorMessage(error));
+    } finally {
+      setExporting(false);
+    }
   }
 
   function switchView(next: boolean) {
@@ -85,6 +113,8 @@ export default function CustomersPage() {
               ))}
             </div>
           )}
+          {canManage && <Button variant="outline" onClick={exportList} disabled={exporting}><DownloadSimple className="size-4" aria-hidden="true" />{exporting ? 'Exportando...' : 'Exportar CSV'}</Button>}
+          {canManage && !archived && <Button variant="outline" onClick={() => setImporting(true)}><UploadSimple className="size-4" aria-hidden="true" />Importar planilha</Button>}
           {canManage && <Button onClick={openCreateModal}>Novo cliente</Button>}
         </div>
       </div>
@@ -116,6 +146,7 @@ export default function CustomersPage() {
         </div>
       )}
 
+      <CustomerImportModal open={importing} onOpenChange={setImporting} />
       <CustomerFormModal open={formModalOpen} onOpenChange={setFormModalOpen} customer={editingCustomer} />
       <DeleteCustomerDialog open={Boolean(deletingCustomer)} onOpenChange={(open) => !open && setDeletingCustomer(null)} customer={deletingCustomer} />
     </div>

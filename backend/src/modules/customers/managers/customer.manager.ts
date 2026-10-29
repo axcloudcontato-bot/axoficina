@@ -3,6 +3,11 @@ import type {
   CreateCustomerRequest,
   CustomerArchiveImpactResponse,
   CustomerListStats,
+  ImportCustomersProblem,
+  ImportCustomersRequest,
+  ImportCustomersResponse,
+  MergeCustomersRequest,
+  MergeCustomersResponse,
   CustomerOverviewResponse,
   CustomerListItemResponse,
   CustomerListRequest,
@@ -20,6 +25,11 @@ import type { AuthenticatedUser } from '../../../shared/guards/jwt-auth.guard';
 import { CustomerRepository } from '../repositories/customer.repository';
 import { whatsappRecipient } from '../../settings/services/whatsapp-recipient';
 import { summarizeHistory } from '../services/customer-stats';
+import type { UpdateCustomerInput } from '../repositories/customer.repository';
+
+const normalizeName = (value: string) => value.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase().replace(/\s+/g, ' ').trim();
+// Same number whatever the mask or the country code.
+const phoneKey = (value: string) => { const digits = value.replace(/\D/g, ''); return digits.startsWith('55') && [12, 13].includes(digits.length) ? digits.slice(2) : digits; };
 
 // What the person asking may see: money figures are for those who may see prices.
 export interface CustomerViewer { canViewPrices: boolean }
@@ -198,6 +208,73 @@ export class CustomerManager {
     });
 
     return { customer: this.toResponse(existing) };
+  }
+
+  // Joins a duplicate into the customer to keep. Fields the kept customer lacks are filled from the duplicate;
+  // the consent to care messages is never copied, because it belongs to what that registration was told.
+  async merge(actingUser: AuthenticatedUser, request: MergeCustomersRequest): Promise<MergeCustomersResponse> {
+    if (request.keepId === request.mergeId) throw new AppException(AppErrorCode.VALIDATION_ERROR, 'Escolha dois cadastros diferentes para juntar.');
+    const [keep, duplicate] = await Promise.all([this.customerRepository.byId(request.keepId), this.customerRepository.byId(request.mergeId)]);
+    if (!keep || !duplicate) throw new AppException(AppErrorCode.CUSTOMER_NOT_FOUND, 'Cliente não encontrado.', HttpStatus.NOT_FOUND);
+    if (keep.type !== duplicate.type) throw new AppException(AppErrorCode.VALIDATION_ERROR, 'Só é possível juntar cadastros do mesmo tipo (pessoa física com pessoa física, empresa com empresa).');
+
+    const patch: UpdateCustomerInput = {};
+    const fill = <K extends keyof UpdateCustomerInput>(key: K, keepValue: unknown, duplicateValue: UpdateCustomerInput[K] | undefined) => {
+      if ((keepValue === null || keepValue === undefined || keepValue === '') && duplicateValue !== null && duplicateValue !== undefined && duplicateValue !== '') patch[key] = duplicateValue;
+    };
+    fill('document', keep.document, duplicate.document);
+    fill('email', keep.email, duplicate.email);
+    fill('birthDate', keep.birthDate, duplicate.birthDate);
+    fill('rg', keep.rg, duplicate.rg);
+    fill('stateRegistration', keep.stateRegistration, duplicate.stateRegistration);
+    fill('address', keep.address, duplicate.address as UpdateCustomerInput['address']);
+    fill('secondaryContactName', keep.secondaryContactName, duplicate.secondaryContactName);
+    fill('secondaryContactPhone', keep.secondaryContactPhone, duplicate.secondaryContactPhone);
+    fill('secondaryContactRelation', keep.secondaryContactRelation, duplicate.secondaryContactRelation);
+    fill('preferredContactChannel', keep.preferredContactChannel, duplicate.preferredContactChannel);
+    fill('preferredContactTime', keep.preferredContactTime, duplicate.preferredContactTime);
+    if (duplicate.notes?.trim()) patch.notes = [keep.notes?.trim(), `Do cadastro unido (${duplicate.name}): ${duplicate.notes.trim()}`].filter(Boolean).join('\n\n').slice(0, 2000);
+
+    const moved = await this.customerRepository.mergeInto(keep.id, duplicate.id, patch);
+    await this.auditLog.record({ tenantId: actingUser.tenantId, userId: actingUser.userId, action: 'customer.merged', entity: 'customer', entityId: keep.id, metadata: {} });
+    const updated = await this.customerRepository.byId(keep.id);
+    return { customer: this.toResponse(updated ?? keep), ...moved };
+  }
+
+  // Spreadsheet import. A row that is invalid, or that matches a customer already registered (same document,
+  // or same name and phone), is reported instead of imported; the rest go in.
+  async importRows(actingUser: AuthenticatedUser, request: ImportCustomersRequest): Promise<ImportCustomersResponse> {
+    const existing = await this.customerRepository.allForMatching();
+    const documents = new Set(existing.map((customer) => customer.document).filter(Boolean));
+    const people = new Set(existing.map((customer) => `${normalizeName(customer.name)}|${phoneKey(customer.phone)}`));
+    const problems: ImportCustomersProblem[] = [];
+    let created = 0;
+
+    for (const row of request.rows) {
+      const name = row.name.trim();
+      const fail = (reason: string) => problems.push({ line: row.line, name: name || '(sem nome)', reason });
+      if (!name) { fail('Falta o nome.'); continue; }
+      if (phoneKey(row.phone).length < 8) { fail('Telefone inválido ou ausente.'); continue; }
+      const checked = row.document?.trim() ? this.documentValidator.validate(row.document) : { valid: true, type: null, normalized: '' };
+      if (!checked.valid) { fail('CPF/CNPJ inválido.'); continue; }
+      const type = row.type ?? (checked.type === 'CNPJ' ? 'PJ' : 'PF');
+      try { this.assertDocumentFitsType(type, checked); } catch { fail(type === 'PF' ? 'Pessoa física usa CPF.' : 'Pessoa jurídica usa CNPJ.'); continue; }
+      if (row.email?.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(row.email.trim())) { fail('E-mail inválido.'); continue; }
+      if (checked.normalized && documents.has(checked.normalized)) { fail('Já existe um cliente com este documento.'); continue; }
+      const personKey = `${normalizeName(name)}|${phoneKey(row.phone)}`;
+      if (people.has(personKey)) { fail('Já existe um cliente com este nome e telefone.'); continue; }
+      try {
+        const customer = await this.customerRepository.insert({ tenantId: actingUser.tenantId, type, document: checked.normalized, name, phone: row.phone.trim(), email: row.email?.trim() || undefined });
+        created += 1;
+        if (customer.document) documents.add(customer.document);
+        people.add(personKey);
+      } catch (error) {
+        if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') { fail('Já existe um cliente com este documento.'); continue; }
+        throw error;
+      }
+    }
+    await this.auditLog.record({ tenantId: actingUser.tenantId, userId: actingUser.userId, action: 'customer.imported', entity: 'customer', entityId: actingUser.tenantId, metadata: {} });
+    return { created, problems };
   }
 
   async restore(actingUser: AuthenticatedUser, id: string): Promise<{ customer: CustomerResponse }> {

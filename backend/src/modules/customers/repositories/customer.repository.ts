@@ -282,6 +282,34 @@ export class CustomerRepository {
     return [...new Set(orders.map((order) => order.customerId))];
   }
 
+  // Just what is needed to recognise a customer that is already registered.
+  async allForMatching() {
+    return this.prisma.client.customer.findMany({ where: { deletedAt: null }, select: { id: true, name: true, phone: true, document: true } });
+  }
+
+  // Moves everything that hangs off `mergeId` to `keepId`, archives `mergeId` and applies what the kept customer gained.
+  // One transaction: either the whole customer moves or nothing does.
+  async mergeInto(keepId: string, mergeId: string, keeperPatch: UpdateCustomerInput): Promise<{ movedVehicles: number; movedServiceOrders: number }> {
+    return this.prisma.transaction(async (tx) => {
+      const move = { where: { customerId: mergeId }, data: { customerId: keepId } };
+      const vehicles = await tx.vehicle.updateMany(move);
+      const orders = await tx.serviceOrder.updateMany(move);
+      await tx.appointment.updateMany(move);
+      await tx.customerCarePlan.updateMany(move);
+      await tx.customerCareDelivery.updateMany(move);
+      await tx.customerMessage.updateMany(move);
+      await tx.serviceOrderStatusNotification.updateMany(move);
+      await tx.maintenanceAlert.updateMany(move);
+      await tx.financialEntry.updateMany(move);
+      // The duplicate leaves first, so its document is free for the kept customer to take.
+      await tx.customer.updateMany({ where: { id: mergeId, deletedAt: null }, data: { deletedAt: new Date() } });
+      if (Object.keys(keeperPatch).length > 0) {
+        await tx.customer.updateMany({ where: { id: keepId, deletedAt: null }, data: { ...keeperPatch, address: keeperPatch.address === null ? Prisma.DbNull : keeperPatch.address as Prisma.InputJsonValue | undefined } });
+      }
+      return { movedVehicles: vehicles.count, movedServiceOrders: orders.count };
+    });
+  }
+
   async softDelete(id: string) {
     return this.prisma.client.customer.updateMany({
       where: { id, deletedAt: null },

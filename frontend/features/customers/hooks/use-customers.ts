@@ -1,7 +1,7 @@
 'use client';
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type { CreateCustomerRequest, CustomerListRequest, DeleteCustomerRequest, UpdateCustomerRequest } from '@oficina/contracts';
+import type { CreateCustomerRequest, CustomerListRequest, DeleteCustomerRequest, ImportCustomersRequest, MergeCustomersRequest, UpdateCustomerRequest } from '@oficina/contracts';
 import { customersApi } from '../api/customers-api';
 
 const CUSTOMERS_LIST_KEY = 'customers-list';
@@ -83,5 +83,32 @@ export function useCustomerOverview(id: string) {
     queryKey: ['customer-overview', id],
     queryFn: () => customersApi.overview(id),
     enabled: Boolean(id),
+  });
+}
+
+export function useMergeCustomers() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (request: MergeCustomersRequest) => customersApi.merge(request),
+    onSuccess: () => {
+      // Vehicles, orders and appointments changed owner: everything built from them is stale.
+      queryClient.invalidateQueries({ queryKey: [CUSTOMERS_LIST_KEY] });
+      queryClient.invalidateQueries({ queryKey: ['customer-overview'] });
+      queryClient.invalidateQueries({ queryKey: ['customer'] });
+      queryClient.invalidateQueries({ queryKey: ['service-orders-list'] });
+      queryClient.invalidateQueries({ queryKey: ['vehicles'] });
+    },
+  });
+}
+
+export function useImportCustomers() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (request: ImportCustomersRequest) => customersApi.importRows(request),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [CUSTOMERS_LIST_KEY] });
+    },
   });
 }

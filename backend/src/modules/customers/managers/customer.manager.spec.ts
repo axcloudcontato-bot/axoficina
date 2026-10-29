@@ -20,6 +20,8 @@ function buildManager() {
     upcomingAppointmentsOf: jest.fn().mockResolvedValue([]),
     idsWithDebt: jest.fn().mockResolvedValue([]),
     idsDeliveredSince: jest.fn().mockResolvedValue([]),
+    allForMatching: jest.fn().mockResolvedValue([]),
+    mergeInto: jest.fn().mockResolvedValue({ movedVehicles: 2, movedServiceOrders: 5 }),
     archivedById: jest.fn(),
     restore: jest.fn(),
     archiveImpact: jest.fn(),
@@ -404,6 +406,85 @@ describe('CustomerManager', () => {
       deps.customerRepository.byId.mockResolvedValue({ ...baseCustomer, careMessagesEnabled: true });
       await deps.manager.update(actingUser, { id: 'customer-1', careMessagesEnabled: true, careConsentSource: 'PHONE' });
       expect(deps.customerRepository.update).toHaveBeenCalledWith('customer-1', expect.objectContaining({ careConsentSource: undefined, careConsentBy: undefined, careConsentAt: undefined }));
+    });
+  });
+
+  describe('merging duplicates', () => {
+    const keep = { ...baseCustomer, id: 'keep', email: null, document: '', birthDate: null, notes: 'Cliente antigo' };
+    const duplicate = { ...baseCustomer, id: 'dup', name: 'Joao Silva', email: 'joao@example.com', document: '11144477735', birthDate: new Date('1980-05-10T00:00:00Z'), notes: 'Prefere ligar à tarde' };
+
+    it('moves the history to the customer kept, filling what it lacked from the duplicate', async () => {
+      const deps = buildManager();
+      deps.customerRepository.byId.mockImplementation(async (id: string) => (id === 'keep' ? keep : duplicate));
+      const result = await deps.manager.merge(actingUser, { keepId: 'keep', mergeId: 'dup' });
+      const [keepId, mergeId, patch] = deps.customerRepository.mergeInto.mock.calls[0];
+      expect([keepId, mergeId]).toEqual(['keep', 'dup']);
+      expect(patch).toMatchObject({ email: 'joao@example.com', document: '11144477735', birthDate: duplicate.birthDate });
+      expect(patch.notes).toBe('Cliente antigo\n\nDo cadastro unido (Joao Silva): Prefere ligar à tarde');
+      expect(patch).not.toHaveProperty('careMessagesEnabled');
+      expect(result).toMatchObject({ movedVehicles: 2, movedServiceOrders: 5 });
+      expect(deps.auditLog.record).toHaveBeenCalledWith(expect.objectContaining({ action: 'customer.merged', entityId: 'keep' }));
+    });
+
+    it('never overwrites what the kept customer already has', async () => {
+      const deps = buildManager();
+      deps.customerRepository.byId.mockImplementation(async (id: string) => (id === 'keep' ? { ...keep, email: 'principal@example.com', document: '11144477735' } : { ...duplicate, document: '' }));
+      await deps.manager.merge(actingUser, { keepId: 'keep', mergeId: 'dup' });
+      expect(deps.customerRepository.mergeInto.mock.calls[0][2]).not.toHaveProperty('email');
+      expect(deps.customerRepository.mergeInto.mock.calls[0][2]).not.toHaveProperty('document');
+    });
+
+    it('refuses the same customer twice, an unknown one, and a person with a company', async () => {
+      const deps = buildManager();
+      await expect(deps.manager.merge(actingUser, { keepId: 'a', mergeId: 'a' })).rejects.toThrow('dois cadastros diferentes');
+      deps.customerRepository.byId.mockImplementation(async (id: string) => (id === 'keep' ? keep : null));
+      await expect(deps.manager.merge(actingUser, { keepId: 'keep', mergeId: 'dup' })).rejects.toMatchObject({ status: HttpStatus.NOT_FOUND });
+      deps.customerRepository.byId.mockImplementation(async (id: string) => (id === 'keep' ? keep : { ...duplicate, type: 'PJ' }));
+      await expect(deps.manager.merge(actingUser, { keepId: 'keep', mergeId: 'dup' })).rejects.toThrow('mesmo tipo');
+      expect(deps.customerRepository.mergeInto).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('spreadsheet import', () => {
+    const row = (over: Record<string, unknown>) => ({ line: 2, name: 'Maria Souza', phone: '(11) 98888-7777', ...over });
+
+    it('creates the valid rows, infers the type from the document and reports the rest with their line', async () => {
+      const deps = buildManager();
+      deps.customerRepository.insert.mockImplementation(async (input: Record<string, unknown>) => ({ ...baseCustomer, ...input }));
+      deps.documentValidator.validate.mockImplementation((document: string) => {
+        const digits = document.replace(/\D/g, '');
+        return digits.length === 14 ? { valid: true, type: 'CNPJ', normalized: digits } : digits === '11144477735' ? { valid: true, type: 'CPF', normalized: digits } : { valid: false, type: null, normalized: digits };
+      });
+      const result = await deps.manager.importRows(actingUser, { rows: [
+        row({}),
+        row({ line: 3, name: 'Frota LTDA', document: '11.222.333/0001-81', email: 'frota@example.com' }),
+        row({ line: 4, name: '' }),
+        row({ line: 5, name: 'Sem Telefone', phone: '12' }),
+        row({ line: 6, name: 'Doc Ruim', document: '123' }),
+        row({ line: 7, name: 'Email Ruim', email: 'sem-arroba' }),
+      ] });
+      expect(result.created).toBe(2);
+      expect(result.problems.map((problem) => [problem.line, problem.reason])).toEqual([
+        [4, 'Falta o nome.'], [5, 'Telefone inválido ou ausente.'], [6, 'CPF/CNPJ inválido.'], [7, 'E-mail inválido.'],
+      ]);
+      expect(deps.customerRepository.insert).toHaveBeenCalledWith(expect.objectContaining({ name: 'Frota LTDA', type: 'PJ', document: '11222333000181' }));
+      expect(deps.auditLog.record).toHaveBeenCalledWith(expect.objectContaining({ action: 'customer.imported' }));
+    });
+
+    it('skips customers already registered by document, or by name and phone, including repeats inside the sheet', async () => {
+      const deps = buildManager();
+      deps.customerRepository.allForMatching.mockResolvedValue([{ id: 'c1', name: 'João da Silva', phone: '11999998888', document: '11144477735' }]);
+      deps.customerRepository.insert.mockImplementation(async (input: Record<string, unknown>) => ({ ...baseCustomer, ...input }));
+      const result = await deps.manager.importRows(actingUser, { rows: [
+        row({ line: 2, name: 'Outro Nome', document: '111.444.777-35' }),
+        row({ line: 3, name: 'joao da silva', phone: '+55 11 99999-8888' }),
+        row({ line: 4 }),
+        row({ line: 5, phone: '11988887777' }),
+      ] });
+      expect(result.created).toBe(1);
+      expect(result.problems.map((problem) => [problem.line, problem.reason])).toEqual([
+        [2, 'Já existe um cliente com este documento.'], [3, 'Já existe um cliente com este nome e telefone.'], [5, 'Já existe um cliente com este nome e telefone.'],
+      ]);
     });
   });
 });

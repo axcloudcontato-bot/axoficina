@@ -69,3 +69,20 @@ export interface RestoreCustomerRequest {
 export interface CustomerArchiveImpactRequest {
   id: string;
 }
+
+// Joins a duplicate registration into the one to keep: vehicles, orders, appointments and messages move over.
+export interface MergeCustomersRequest {
+  keepId: string;
+  mergeId: string;
+}
+
+export interface ImportCustomerRow {
+  // Line in the spreadsheet, so a problem can point at it.
+  line: number;
+  type?: CustomerType;
+  name: string;
+  phone: string;
+  document?: string;
+  email?: string;
+}
+export interface ImportCustomersRequest { rows: ImportCustomerRow[] }

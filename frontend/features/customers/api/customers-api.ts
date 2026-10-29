@@ -6,6 +6,10 @@ import type {
   CustomerListRequest,
   CustomerOverviewResponse,
   CustomerResponse,
+  ImportCustomersRequest,
+  ImportCustomersResponse,
+  MergeCustomersRequest,
+  MergeCustomersResponse,
   DeleteCustomerRequest,
   PaginationData,
   UpdateCustomerRequest,
@@ -39,6 +43,16 @@ export const customersApi = {
 
   async overview(id: string): Promise<CustomerOverviewResponse> {
     const response = await apiClient.post<CustomerOverviewResponse>('/api/v1/customers/overview', { id });
+    return response.data;
+  },
+
+  async merge(request: MergeCustomersRequest): Promise<MergeCustomersResponse> {
+    const response = await apiClient.post<MergeCustomersResponse>('/api/v1/customers/merge', request);
+    return response.data;
+  },
+
+  async importRows(request: ImportCustomersRequest): Promise<ImportCustomersResponse> {
+    const response = await apiClient.post<ImportCustomersResponse>('/api/v1/customers/import', request);
     return response.data;
   },
 

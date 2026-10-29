@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { extractErrorMessage } from '@/lib/api/client';
+import { readFileText } from '@/lib/csv';
 import { CATALOG_IMPORT_TEMPLATE, parseCatalogCsv, type CatalogImportParse } from '../catalog-import';
 import { useImportCatalog } from '../hooks/use-catalog';
 
@@ -37,7 +38,7 @@ export function CatalogImportModal({ open, existing, onOpenChange }: { open: boo
     event.target.value = '';
     if (!file) return;
     setFileName(file.name);
-    setParsed(parseCatalogCsv(await file.text()));
+    setParsed(parseCatalogCsv(await readFileText(file)));
   }
 
   function downloadTemplate() {

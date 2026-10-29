@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, CarProfile, ChatCircleDots, ClipboardText, Phone, PencilSimple, Plus } from '@phosphor-icons/react';
+import { ArrowLeft, CarProfile, ChatCircleDots, ClipboardText, GitMerge, Phone, PencilSimple, Plus } from '@phosphor-icons/react';
 import { CUSTOMER_CONSENT_SOURCE_LABELS, type CustomerResponse } from '@oficina/contracts';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -15,6 +15,7 @@ import { useAuthStore } from '@/stores/auth-store';
 import { displayDocument, displayPhone, newServiceOrderHref, phoneDigits, whatsappHref } from '../format-customer';
 import { useCustomerOverview } from '../hooks/use-customers';
 import { CustomerFormModal } from './CustomerFormModal';
+import { MergeCustomerDialog } from './MergeCustomerDialog';
 
 const HISTORY_PAGE_SIZE = 10;
 const dateTime = (value: string) => new Date(value).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
@@ -29,6 +30,9 @@ export function CustomerProfile({ customer }: { customer: CustomerResponse }) {
   const overview = useCustomerOverview(customer.id);
   const [offset, setOffset] = useState(0);
   const [editing, setEditing] = useState(false);
+  const [merging, setMerging] = useState(false);
+  // Joining registrations moves a customer's whole history; the server limits it to managers.
+  const canMerge = canManage && (user?.role === 'ADMIN' || user?.role === 'MANAGER');
   const history = useServiceOrdersList({ customerId: customer.id, offset, limit: HISTORY_PAGE_SIZE });
   const data = overview.data;
   const money = data?.money;
@@ -47,6 +51,7 @@ export function CustomerProfile({ customer }: { customer: CustomerResponse }) {
       <div className="flex flex-wrap gap-2">
         {phone.length >= 10 && <Button variant="outline" asChild><a href={whatsappHref(customer.phone)} target="_blank" rel="noopener noreferrer"><ChatCircleDots className="size-4" aria-hidden="true" />WhatsApp</a></Button>}
         {phone.length >= 8 && <Button variant="outline" asChild><a href={`tel:${phone}`}><Phone className="size-4" aria-hidden="true" />Ligar</a></Button>}
+        {canMerge && <Button variant="outline" onClick={() => setMerging(true)}><GitMerge className="size-4" aria-hidden="true" />Juntar cadastro</Button>}
         {canManage && <Button variant="outline" onClick={() => setEditing(true)}><PencilSimple className="size-4" aria-hidden="true" />Editar</Button>}
         {canManage && <Button asChild><Link href={newServiceOrderHref(customer)}><ClipboardText className="size-4" aria-hidden="true" />Nova OS</Link></Button>}
       </div>
@@ -103,5 +108,6 @@ export function CustomerProfile({ customer }: { customer: CustomerResponse }) {
     {customer.notes && <section aria-label="Observações" className="rounded-card border border-border bg-card p-5 shadow-sm"><h2 className="text-sm font-bold text-text">Observações internas</h2><p className="mt-2 whitespace-pre-wrap text-sm text-text-muted">{customer.notes}</p></section>}
 
     <CustomerFormModal open={editing} onOpenChange={setEditing} customer={customer} />
+    {canMerge && <MergeCustomerDialog customer={customer} open={merging} onOpenChange={setMerging} />}
   </div>;
 }

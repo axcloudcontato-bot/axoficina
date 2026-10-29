@@ -1,5 +1,5 @@
 import { Body, Controller, Get, HttpCode, HttpStatus, Post, Query } from '@nestjs/common';
-import type { CustomerArchiveImpactResponse, CustomerOverviewResponse, CustomerListItemResponse, CustomerResponse, PaginationData } from '@oficina/contracts';
+import type { ImportCustomersResponse, MergeCustomersResponse, CustomerArchiveImpactResponse, CustomerOverviewResponse, CustomerListItemResponse, CustomerResponse, PaginationData } from '@oficina/contracts';
 import { Roles } from '../../../shared/decorators/roles.decorator';
 import { CurrentUser } from '../../../shared/decorators/current-user.decorator';
 import { Permissions } from '../../../shared/decorators/permissions.decorator';
@@ -7,7 +7,7 @@ import type { AuthenticatedUser } from '../../../shared/guards/jwt-auth.guard';
 import { CustomerManager, type CustomerViewer } from '../managers/customer.manager';
 import { RoleRepository } from '../../iam/repositories/role.repository';
 import { UserRepository } from '../../iam/repositories/user.repository';
-import { CreateCustomerDto, CustomerArchiveImpactDto, CustomerListDto, CustomerOverviewDto, DeleteCustomerDto, GetCustomerDto, RestoreCustomerDto, UpdateCustomerDto } from '../dto/customer.dto';
+import { CreateCustomerDto, CustomerArchiveImpactDto, CustomerListDto, CustomerOverviewDto, ImportCustomersDto, MergeCustomersDto, DeleteCustomerDto, GetCustomerDto, RestoreCustomerDto, UpdateCustomerDto } from '../dto/customer.dto';
 
 // Um único controller sob /api/v1 (não /api/v1/customers) porque a rota de
 // leitura individual é singular (`/customer`) e as demais são plurais
@@ -46,6 +46,23 @@ export class CustomersController {
   @Post('customers/delete')
   async delete(@CurrentUser() actingUser: AuthenticatedUser, @Body() body: DeleteCustomerDto): Promise<{ customer: CustomerResponse }> {
     return this.customerManager.delete(actingUser, body.id);
+  }
+
+  // Joining registrations moves a customer's whole history: managers only.
+  @Roles('ADMIN', 'MANAGER')
+  @Permissions('customers.manage')
+  @HttpCode(HttpStatus.OK)
+  @Post('customers/merge')
+  async merge(@CurrentUser() actingUser: AuthenticatedUser, @Body() body: MergeCustomersDto): Promise<MergeCustomersResponse> {
+    return this.customerManager.merge(actingUser, body);
+  }
+
+  @Roles('ADMIN', 'MANAGER', 'FRONT_DESK')
+  @Permissions('customers.manage')
+  @HttpCode(HttpStatus.OK)
+  @Post('customers/import')
+  async importRows(@CurrentUser() actingUser: AuthenticatedUser, @Body() body: ImportCustomersDto): Promise<ImportCustomersResponse> {
+    return this.customerManager.importRows(actingUser, body);
   }
 
   @Roles('ADMIN', 'MANAGER', 'FRONT_DESK')

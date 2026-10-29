@@ -1,4 +1,5 @@
 import { CATALOG_UNITS, type CatalogUnit, type ImportCatalogRow } from '@oficina/contracts';
+import { readCsv } from '@/lib/csv';
 import { parseMoneyToCents } from '@/lib/parse-money';
 
 export const MAX_IMPORT_ROWS = 500;
@@ -30,37 +31,8 @@ function typeOf(value: string): ImportCatalogRow['type'] | undefined {
   return undefined;
 }
 
-// A small CSV reader: quoted fields, doubled quotes, and ";" "," or tab as the separator (Excel in pt-BR saves with ";").
-function readRows(text: string): string[][] {
-  const clean = text.charCodeAt(0) === 0xfeff ? text.slice(1) : text;
-  const firstLine = clean.split(/\r?\n/, 1)[0] ?? '';
-  const delimiter = [';', '\t', ','].map(candidate => ({ candidate, count: firstLine.split(candidate).length })).sort((a, b) => b.count - a.count)[0].candidate;
-  const rows: string[][] = [];
-  let row: string[] = [];
-  let field = '';
-  let quoted = false;
-  for (let index = 0; index < clean.length; index += 1) {
-    const char = clean[index];
-    if (quoted) {
-      if (char === '"' && clean[index + 1] === '"') { field += '"'; index += 1; }
-      else if (char === '"') quoted = false;
-      else field += char;
-    } else if (char === '"') quoted = true;
-    else if (char === delimiter) { row.push(field); field = ''; }
-    else if (char === '\n' || char === '\r') {
-      if (char === '\r' && clean[index + 1] === '\n') index += 1;
-      row.push(field); field = '';
-      if (row.some(cell => cell.trim() !== '')) rows.push(row);
-      row = [];
-    } else field += char;
-  }
-  row.push(field);
-  if (row.some(cell => cell.trim() !== '')) rows.push(row);
-  return rows;
-}
-
 export function parseCatalogCsv(text: string): CatalogImportParse {
-  const table = readRows(text);
+  const table = readCsv(text);
   if (table.length < 2) return { rows: [], errors: ['A planilha precisa de uma linha de títulos e pelo menos um item.'] };
   const columns = table[0].map(fieldOf);
   if (!columns.includes('name')) return { rows: [], errors: ['Não encontrei a coluna "Nome" na primeira linha.'] };

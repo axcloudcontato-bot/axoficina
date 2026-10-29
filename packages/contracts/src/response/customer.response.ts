@@ -82,3 +82,16 @@ export interface CustomerArchiveImpactResponse {
   openServiceOrders: number;
   pendingCents: number;
 }
+
+export interface MergeCustomersResponse {
+  customer: CustomerResponse;
+  movedVehicles: number;
+  movedServiceOrders: number;
+}
+
+export interface ImportCustomersProblem { line: number; name: string; reason: string }
+export interface ImportCustomersResponse {
+  created: number;
+  // Rows that were not imported, with the reason (invalid data or already registered).
+  problems: ImportCustomersProblem[];
+}

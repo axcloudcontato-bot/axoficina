@@ -1,5 +1,5 @@
 import { Type } from 'class-transformer';
-import { IsBoolean, IsDateString, IsEmail, IsIn, IsInt, IsNotEmpty, IsObject, IsOptional, IsString, IsUUID, Matches, Max, MaxLength, Min, ValidateIf, ValidateNested } from 'class-validator';
+import { ArrayMaxSize, ArrayMinSize, IsArray, IsBoolean, IsDateString, IsEmail, IsIn, IsInt, IsNotEmpty, IsObject, IsOptional, IsString, IsUUID, Matches, Max, MaxLength, Min, ValidateIf, ValidateNested } from 'class-validator';
 import { CUSTOMER_CONSENT_SOURCES, CUSTOMER_CONTACT_CHANNELS, CUSTOMER_CONTACT_TIMES, CUSTOMER_TYPES } from '@oficina/contracts';
 import type {
   CreateCustomerRequest,
@@ -9,6 +9,9 @@ import type {
   CustomerListRequest,
   CustomerArchiveImpactRequest,
   CustomerOverviewRequest,
+  ImportCustomerRow,
+  ImportCustomersRequest,
+  MergeCustomersRequest,
   RestoreCustomerRequest,
   DeleteCustomerRequest,
   UpdateCustomerRequest,
@@ -216,4 +219,21 @@ export class CustomerListDto implements CustomerListRequest {
   @Min(1)
   @Max(MAX_LIST_LIMIT)
   limit: number = DEFAULT_LIST_LIMIT;
+}
+
+export class MergeCustomersDto implements MergeCustomersRequest {
+  @IsUUID('4') keepId!: string;
+  @IsUUID('4') mergeId!: string;
+}
+
+export class ImportCustomerRowDto implements ImportCustomerRow {
+  @IsInt() @Min(1) line!: number;
+  @IsOptional() @IsIn(CUSTOMER_TYPES) type?: ImportCustomerRow['type'];
+  @IsString() @MaxLength(200) name!: string;
+  @IsString() @MaxLength(30) phone!: string;
+  @IsOptional() @IsString() @MaxLength(24) document?: string;
+  @IsOptional() @IsString() @MaxLength(200) email?: string;
+}
+export class ImportCustomersDto implements ImportCustomersRequest {
+  @IsArray() @ArrayMinSize(1) @ArrayMaxSize(300) @ValidateNested({ each: true }) @Type(() => ImportCustomerRowDto) rows!: ImportCustomerRowDto[];
 }
