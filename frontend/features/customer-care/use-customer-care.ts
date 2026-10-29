@@ -1,10 +1,13 @@
 'use client';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type { CareDashboardResponse, CarePreviewRequest, CarePreviewResponse, CareSettings, RecordCareServiceRequest } from '@oficina/contracts';
+import type { CareDashboardResponse, CareForecastResponse,CarePreviewRequest, CarePreviewResponse, CareSettings, RecordCareServiceRequest } from '@oficina/contracts';
 import { apiClient } from '@/lib/api/client';
 
 export function useCustomerCare(planOffset: number, deliveryOffset: number, enabled: boolean) {
   return useQuery({ queryKey: ['customer-care', planOffset, deliveryOffset], queryFn: async () => (await apiClient.get<CareDashboardResponse>('/api/v1/customer-care', { params: { planOffset, deliveryOffset } })).data, enabled, refetchInterval: 30_000 });
+}
+export function useCareForecast(enabled: boolean) {
+  return useQuery({ queryKey: ['customer-care-forecast'], queryFn: async () => (await apiClient.get<CareForecastResponse>('/api/v1/customer-care/forecast')).data, enabled, staleTime: 60_000 });
 }
 export function useSaveCareSettings() {
   const client = useQueryClient();

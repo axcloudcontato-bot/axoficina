@@ -9,6 +9,7 @@ import type { AuthenticatedUser } from '../../shared/guards/jwt-auth.guard';
 import { CustomerCareService } from './customer-care.service';
 import { CustomerCarePlansService } from './customer-care-plans.service';
 import { CustomerCareAutomationService } from './customer-care-automation.service';
+import { CustomerCareForecastService } from './customer-care-forecast.service';
 import { CareIdDto, CarePreviewDto, CareUnsubscribeDto, RecordCareServiceDto, UpdateCareSettingsDto } from './customer-care.dto';
 
 class CarePageDto {
@@ -18,9 +19,11 @@ class CarePageDto {
 @Controller('api/v1/customer-care')
 @Roles('ADMIN', 'MANAGER', 'FRONT_DESK', 'MECHANIC')
 export class CustomerCareController {
-  constructor(private readonly care: CustomerCareService, private readonly plans: CustomerCarePlansService, private readonly automation: CustomerCareAutomationService) {}
+  constructor(private readonly care: CustomerCareService, private readonly plans: CustomerCarePlansService, private readonly automation: CustomerCareAutomationService, private readonly forecast: CustomerCareForecastService) {}
   @Get() @Permissions('alerts.view')
   dashboard(@CurrentUser() user: AuthenticatedUser, @Query() query: CarePageDto) { return this.care.dashboard(user.tenantId, query.planOffset, query.deliveryOffset); }
+  @Get('forecast') @Permissions('alerts.view')
+  forecastContacts(@CurrentUser() user: AuthenticatedUser) { return this.forecast.forecast(user.tenantId); }
   @Post('settings') @HttpCode(200) @Permissions('settings.manage')
   settings(@CurrentUser() user: AuthenticatedUser, @Body() body: UpdateCareSettingsDto) { return this.care.update(user, body); }
   @Post('services') @HttpCode(200) @Permissions('alerts.manage')

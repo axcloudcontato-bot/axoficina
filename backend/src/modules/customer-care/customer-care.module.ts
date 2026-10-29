@@ -6,6 +6,7 @@ import { SettingsModule } from '../settings/settings.module';
 import { CustomerCareService } from './customer-care.service';
 import { CustomerCarePlansService } from './customer-care-plans.service';
 import { CustomerCareAutomationService } from './customer-care-automation.service';
+import { CustomerCareForecastService } from './customer-care-forecast.service';
 import { CustomerCareController, CustomerCarePreferencesController } from './customer-care.controller';
 
 @Processor(CUSTOMER_CARE_QUEUE, { concurrency: 1 })
@@ -17,7 +18,7 @@ class CustomerCareProcessor extends WorkerHost {
 @Module({
   imports: [SettingsModule],
   controllers: [CustomerCareController, CustomerCarePreferencesController],
-  providers: [CustomerCareService, CustomerCarePlansService, CustomerCareAutomationService, ...(process.env.NODE_ENV === 'test' ? [] : [CustomerCareProcessor])],
+  providers: [CustomerCareService, CustomerCarePlansService, CustomerCareAutomationService, CustomerCareForecastService, ...(process.env.NODE_ENV === 'test' ? [] : [CustomerCareProcessor])],
   exports: [CustomerCarePlansService],
 })
 export class CustomerCareModule implements OnModuleInit {
