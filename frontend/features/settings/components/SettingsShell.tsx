@@ -17,24 +17,22 @@ const items = [
 export function SettingsShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const user = useAuthStore((state) => state.user);
+  const tabs = [{ href: '/configuracoes/privacidade', label: 'Privacidade e solicitações', icon: ShieldCheck }, ...items.filter((item) => hasPermission(user, item.permission))];
   return <div className="space-y-6">
-    <header className="border-b border-border pb-5">
+    <header>
       <p className="text-xs font-bold uppercase tracking-[0.14em] text-primary">Administração</p>
       <h1 className="mt-1 text-3xl font-bold tracking-tight text-text">Configurações</h1>
       <p className="mt-1 text-sm text-text-muted">Personalize a oficina, as comunicações e o acesso da equipe.</p>
     </header>
-    <div className="grid items-start gap-6 lg:grid-cols-[240px_minmax(0,1fr)]">
-      <nav aria-label="Seções das configurações" className="flex gap-2 overflow-x-auto lg:sticky lg:top-24 lg:flex-col">
-        <Link href="/configuracoes/privacidade" className={cn('flex min-w-[190px] items-center gap-3 rounded-button border px-3 py-3 lg:min-w-0', pathname === '/configuracoes/privacidade' ? 'border-primary/30 bg-primary-subtle text-primary-strong' : 'border-transparent text-text-muted hover:border-border hover:bg-muted')}><ShieldCheck className="size-5 shrink-0" aria-hidden="true" /><span><span className="block text-sm font-bold">Privacidade e solicitações</span><span className="block text-[11px]">Seus dados e direitos</span></span></Link>
-        {items.filter((item) => hasPermission(user, item.permission)).map(({ href, label, description, icon: Icon }) => {
-          const active = pathname === href;
-          return <Link key={href} href={href} className={cn('flex min-w-[190px] items-center gap-3 rounded-button border px-3 py-3 transition-colors lg:min-w-0', active ? 'border-primary/30 bg-primary-subtle text-primary-strong' : 'border-transparent text-text-muted hover:border-border hover:bg-muted')}>
-            <Icon className="size-5 shrink-0" aria-hidden="true" />
-            <span><span className="block text-sm font-bold">{label}</span><span className="block text-[11px]">{description}</span></span>
-          </Link>;
-        })}
-      </nav>
-      <div className="min-w-0">{children}</div>
-    </div>
+    <nav aria-label="Seções das configurações" className="flex gap-1 overflow-x-auto border-b border-border">
+      {tabs.map(({ href, label, icon: Icon }) => {
+        const active = pathname === href;
+        return <Link key={href} href={href} aria-current={active ? 'page' : undefined} className={cn('-mb-px flex shrink-0 items-center gap-2 border-b-2 px-4 py-3 text-sm font-bold transition-colors', active ? 'border-primary text-primary-strong' : 'border-transparent text-text-muted hover:border-border hover:text-text')}>
+          <Icon className="size-[18px] shrink-0" aria-hidden="true" />
+          {label}
+        </Link>;
+      })}
+    </nav>
+    <div className="min-w-0">{children}</div>
   </div>;
 }
