@@ -14,6 +14,11 @@ function buildManager() {
     listByTenant: jest.fn(),
     listForBusinessSummary: jest.fn(),
     listForProductivity: jest.fn().mockResolvedValue([]),
+    todayMetrics: jest.fn(),
+    attentionOrders: jest.fn().mockResolvedValue([]),
+    activeWorkloadRows: jest.fn().mockResolvedValue([]),
+    waitingSince: jest.fn().mockResolvedValue([]),
+    myOrders: jest.fn().mockResolvedValue({ items: [], total: 0 }),
   };
   const statusHistoryRepository = {
     insert: jest.fn(),
@@ -693,6 +698,60 @@ describe('ServiceOrderManager', () => {
       expect(result.accountsReceivableCents).toBe(5000);
       expect(result.overdueDeliveries).toBe(1);
       expect(result.technicianWorkload[0]).toMatchObject({ technicianName: 'Carlos Mecânico', activeOrders: 1 });
+    });
+  });
+
+  describe('dashboardToday', () => {
+    it('returns exact counts, the prioritized attention rows and every active person in the workload, idle ones last', async () => {
+      const deps = buildManager();
+      const metrics = { active: 130, overdue: 12, waitingParts: 5, awaitingApproval: 7, ready: 3, unassigned: 2, dueToday: 4 };
+      deps.serviceOrderRepository.todayMetrics.mockResolvedValue({ metrics, attentionTotal: 21 });
+      deps.serviceOrderRepository.attentionOrders.mockResolvedValue([{ ...baseServiceOrder, id: 'late', status: 'IN_PROGRESS' }]);
+      deps.serviceOrderRepository.activeWorkloadRows.mockResolvedValue([
+        { technicianId: 'busy', status: 'IN_PROGRESS' }, { technicianId: 'busy', status: 'OPEN' }, { technicianId: 'busy', status: 'WAITING_PARTS' },
+        { technicianId: null, status: 'OPEN' },
+      ]);
+      deps.userRepository.byIds.mockResolvedValue([]);
+      deps.userRepository.listByTenant.mockResolvedValue({ items: [{ id: 'idle', name: 'Zélia' }, { id: 'busy', name: 'Carlos' }], total: 2 });
+
+      const result = await deps.manager.dashboardToday({ userId: 'user-1', canViewPrices: false }, undefined, new Date('2026-07-27T12:00:00Z'));
+
+      expect(result.metrics).toEqual(metrics);
+      expect(result.attention.total).toBe(21);
+      expect(result.attention.items.map((item) => item.id)).toEqual(['late']);
+      expect(deps.serviceOrderRepository.attentionOrders).toHaveBeenCalledWith(new Date('2026-07-27T12:00:00Z'), 6);
+      expect(result.workload.map((entry) => entry.technicianName)).toEqual(['Carlos', 'Sem técnico', 'Zélia']);
+      expect(result.workload[0]).toMatchObject({ notStarted: 1, inProgress: 1, waitingParts: 1 });
+      expect(result.workload[2]).toMatchObject({ technicianId: 'idle', notStarted: 0, inProgress: 0, waitingParts: 0 });
+    });
+  });
+
+  describe('dashboardToday waiting and own orders', () => {
+    const now = new Date('2026-07-27T12:00:00Z');
+    const setup = (canViewPrices: boolean) => {
+      const deps = buildManager();
+      deps.serviceOrderRepository.todayMetrics.mockResolvedValue({ metrics: { active: 3, overdue: 0, waitingParts: 0, awaitingApproval: 3, ready: 1, unassigned: 0, dueToday: 0 }, attentionTotal: 0 });
+      deps.serviceOrderRepository.waitingSince.mockImplementation(async (status: string) => status === 'AWAITING_APPROVAL'
+        ? [{ id: 'q1', since: new Date('2026-07-26T12:00:00Z') }, { id: 'q2', since: new Date('2026-07-24T12:00:00Z') }, { id: 'q3', since: new Date('2026-07-20T12:00:00Z') }]
+        : [{ id: 'r1', since: new Date('2026-07-27T08:00:00Z') }]);
+      deps.itemRepository.sumTotalsByServiceOrderIds.mockImplementation(async (ids: string[]) => new Map(ids.map((id) => [id, 10000])));
+      deps.userRepository.byIds.mockResolvedValue([]);
+      deps.serviceOrderRepository.myOrders.mockResolvedValue({ items: [{ ...baseServiceOrder, id: 'mine-1', status: 'IN_PROGRESS' }], total: 4 });
+      return deps.manager.dashboardToday({ userId: 'user-1', canViewPrices }, undefined, now);
+    };
+
+    it('counts unanswered quotes and parked cars, flags the stale ones and adds money only with price access', async () => {
+      const result = await setup(true);
+      expect(result.waiting.approvals).toEqual({ count: 3, stale: 2, oldestDays: 7, amountCents: 30000 });
+      expect(result.waiting.ready).toEqual({ count: 1, stale: 0, oldestDays: 0, amountCents: 10000 });
+      expect(result.mine).toMatchObject({ total: 4 });
+      expect(result.mine.items.map((item) => item.id)).toEqual(['mine-1']);
+    });
+
+    it('never leaks amounts to people without price access', async () => {
+      const result = await setup(false);
+      expect(result.waiting.approvals).toEqual({ count: 3, stale: 2, oldestDays: 7 });
+      expect(result.waiting.ready).not.toHaveProperty('amountCents');
     });
   });
 

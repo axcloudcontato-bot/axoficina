@@ -53,6 +53,11 @@ export default function ServiceOrdersPage() {
   useEffect(() => {
     const stored = window.localStorage.getItem('service-orders-view');
     if (stored === 'board' || stored === 'list') setView(stored);
+    // Deep links from the dashboard cards (?status=COMPLETED, ?attention=OVERDUE).
+    const params = new URLSearchParams(window.location.search);
+    const linkedStatus = params.get('status'); const linkedAttention = params.get('attention');
+    if (linkedStatus && (ALL_STATUSES as string[]).includes(linkedStatus)) setStatus(linkedStatus as ServiceOrderStatus);
+    if (linkedAttention && ['ACTIVE', 'OVERDUE', 'UNASSIGNED', 'PAYMENT_PENDING'].includes(linkedAttention)) setAttention(linkedAttention as ServiceOrderAttentionFilter);
   }, []);
 
   function changeView(next: ViewMode) {

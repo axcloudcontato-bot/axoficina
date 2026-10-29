@@ -8,6 +8,9 @@ import {
   type DeleteServiceOrderReceiptRequest,
   type CreateServiceOrderRequest,
   type DashboardBusinessSummaryResponse,
+  type DashboardTodayResponse,
+  type DashboardTodayWorkloadResponse,
+  type DashboardWaitingResponse,
   type ServiceOrderItemResponse,
   type ServiceOrderInstallmentResponse,
   type ServiceOrderPhotoAngle,
@@ -66,6 +69,10 @@ const PHOTO_ANGLE_LABELS: Record<ServiceOrderPhotoAngle, string> = {
   SPARE_TIRE: 'estepe/porta-malas',
   DASHBOARD: 'painel (km)',
 };
+
+// A quote unanswered for 2 days, or a finished car left in the yard for 3, is worth a call.
+const APPROVAL_STALE_DAYS = 2;
+const READY_STALE_DAYS = 3;
 
 @Injectable()
 export class ServiceOrderManager {
@@ -442,6 +449,17 @@ export class ServiceOrderManager {
         ? [{ startDate: request.startDate, endDate: request.endDate, dateField: request.dateField, attention: request.attention, includeMetrics: request.includeMetrics }] : []),
     );
 
+    return {
+      items: await this.toListResponses(items),
+      total,
+      ...(metrics ? { metrics } : {}),
+      offset: request.offset,
+      limit: request.limit,
+      hasMore: request.offset + items.length < total,
+    };
+  }
+
+  private async toListResponses(items: Awaited<ReturnType<ServiceOrderRepository['attentionOrders']>>): Promise<ServiceOrderResponse[]> {
     const vehicleIds = [...new Set(items.map((item) => item.vehicleId))];
     const customerIds = [...new Set(items.map((item) => item.customerId))];
     const technicianIds = [...new Set(items.map((item) => item.technicianId).filter((id): id is string => !!id))];
@@ -457,22 +475,54 @@ export class ServiceOrderManager {
     const customerById = new Map(customers.map((customer) => [customer.id, customer]));
     const technicianById = new Map(technicians.map((technician) => [technician.id, technician]));
 
-    return {
-      items: items.map((serviceOrder) =>
-        this.toResponse(
-          serviceOrder,
-          vehicleById.get(serviceOrder.vehicleId) ?? null,
-          customerById.get(serviceOrder.customerId) ?? null,
-          serviceOrder.technicianId ? (technicianById.get(serviceOrder.technicianId) ?? null) : null,
-          { totalAmountCentsOverride: totalsByOrderId.get(serviceOrder.id) ?? 0, receipts: receipts.filter((receipt) => receipt.serviceOrderId === serviceOrder.id) },
-        ),
+    return items.map((serviceOrder) =>
+      this.toResponse(
+        serviceOrder,
+        vehicleById.get(serviceOrder.vehicleId) ?? null,
+        customerById.get(serviceOrder.customerId) ?? null,
+        serviceOrder.technicianId ? (technicianById.get(serviceOrder.technicianId) ?? null) : null,
+        { totalAmountCentsOverride: totalsByOrderId.get(serviceOrder.id) ?? 0, receipts: receipts.filter((receipt) => receipt.serviceOrderId === serviceOrder.id) },
       ),
-      total,
-      ...(metrics ? { metrics } : {}),
-      offset: request.offset,
-      limit: request.limit,
-      hasMore: request.offset + items.length < total,
+    );
+  }
+
+  async dashboardToday(viewer: { userId: string; canViewPrices: boolean }, today?: { startsAt: Date; endsAt: Date }, now = new Date()): Promise<DashboardTodayResponse> {
+    const [{ metrics, attentionTotal }, attention, rows, users, approvalsSince, readySince, mine] = await Promise.all([
+      this.serviceOrderRepository.todayMetrics(now, today),
+      this.serviceOrderRepository.attentionOrders(now, 6),
+      this.serviceOrderRepository.activeWorkloadRows(),
+      this.userRepository.listByTenant(0, 500, { status: 'active' }),
+      this.serviceOrderRepository.waitingSince('AWAITING_APPROVAL'),
+      this.serviceOrderRepository.waitingSince('COMPLETED'),
+      this.serviceOrderRepository.myOrders(viewer.userId, 6),
+    ]);
+    const buckets = new Map<string, DashboardTodayWorkloadResponse>();
+    const bucket = (technicianId: string | null, name: string) => {
+      const key = technicianId ?? 'unassigned';
+      if (!buckets.has(key)) buckets.set(key, { ...(technicianId ? { technicianId } : {}), technicianName: name, notStarted: 0, inProgress: 0, waitingParts: 0 });
+      return buckets.get(key)!;
     };
+    users.items.forEach((user) => bucket(user.id, user.name));
+    const names = new Map(users.items.map((user) => [user.id, user.name]));
+    for (const row of rows) {
+      const entry = bucket(row.technicianId, row.technicianId ? (names.get(row.technicianId) ?? 'Técnico removido') : 'Sem técnico');
+      if (row.status === 'OPEN') entry.notStarted += 1; else if (row.status === 'IN_PROGRESS') entry.inProgress += 1; else entry.waitingParts += 1;
+    }
+    // Busiest first; people with nothing to do come last so the gap is visible.
+    const workload = [...buckets.values()].sort((a, b) => (b.notStarted + b.inProgress + b.waitingParts) - (a.notStarted + a.inProgress + a.waitingParts) || a.technicianName.localeCompare(b.technicianName, 'pt-BR'));
+    const [approvals, ready, mineItems] = await Promise.all([
+      this.waitingSummary(approvalsSince, APPROVAL_STALE_DAYS, viewer.canViewPrices, now),
+      this.waitingSummary(readySince, READY_STALE_DAYS, viewer.canViewPrices, now),
+      this.toListResponses(mine.items),
+    ]);
+    return { metrics, attention: { total: attentionTotal, items: await this.toListResponses(attention) }, workload, waiting: { approvals, ready }, mine: { total: mine.total, items: mineItems } };
+  }
+
+  private async waitingSummary(rows: Array<{ id: string; since: Date }>, staleDays: number, includeAmount: boolean, now: Date): Promise<DashboardWaitingResponse> {
+    const days = rows.map((row) => Math.max(0, Math.floor((now.getTime() - row.since.getTime()) / 86_400_000)));
+    const summary: DashboardWaitingResponse = { count: rows.length, stale: days.filter((value) => value >= staleDays).length, oldestDays: days.length ? Math.max(...days) : 0 };
+    if (includeAmount && rows.length) summary.amountCents = [...(await this.itemRepository.sumTotalsByServiceOrderIds(rows.map((row) => row.id))).values()].reduce((sum, value) => sum + value, 0);
+    return summary;
   }
 
   async businessSummary(now = new Date()): Promise<DashboardBusinessSummaryResponse> {

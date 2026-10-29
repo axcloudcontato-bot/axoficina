@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import type { Prisma, PrismaClient } from '@oficina/database';
+import type { Prisma, PrismaClient, ServiceOrder } from '@oficina/database';
 import type { ServiceOrderStatus, ServiceOrderListRequest } from '@oficina/contracts';
 import type { PaymentMethod } from '@oficina/contracts';
 import { PrismaService } from '../../../shared/prisma/prisma.service';
@@ -205,6 +205,56 @@ export class ServiceOrderRepository {
       this.prisma.client.serviceOrder.count({ where: { AND: [base, { status: 'DELIVERED', closedAt: period }] } }),
     ]);
     return { active: activeCount, overdue, waitingParts, ready, delivered };
+  }
+
+  async todayMetrics(now: Date, today?: { startsAt: Date; endsAt: Date }) {
+    const base: Prisma.ServiceOrderWhereInput = { deletedAt: null, status: { notIn: ['DELIVERED', 'CANCELLED'] } };
+    const count = (condition: Prisma.ServiceOrderWhereInput) => this.prisma.client.serviceOrder.count({ where: { AND: [base, condition] } });
+    const [active, overdue, waitingParts, awaitingApproval, ready, unassigned, dueToday, attentionTotal] = await Promise.all([
+      count({}), count({ expectedDeliveryAt: { lt: now } }), count({ status: 'WAITING_PARTS' }), count({ status: 'AWAITING_APPROVAL' }), count({ status: 'COMPLETED' }), count({ technicianId: null }),
+      today ? count({ status: { not: 'COMPLETED' }, expectedDeliveryAt: { gte: today.startsAt, lt: today.endsAt } }) : Promise.resolve(0),
+      count({ OR: [{ expectedDeliveryAt: { lt: now } }, { status: { in: ['WAITING_PARTS', 'AWAITING_APPROVAL', 'COMPLETED'] } }, { technicianId: null }] }),
+    ]);
+    return { metrics: { active, overdue, waitingParts, awaitingApproval, ready, unassigned, dueToday }, attentionTotal };
+  }
+
+  // Priority tiers, most urgent first; each tier is oldest-first. Only the rows
+  // that fit in the page size are loaded, so the cost does not grow with the workshop.
+  async attentionOrders(now: Date, take: number) {
+    const base: Prisma.ServiceOrderWhereInput = { deletedAt: null, status: { notIn: ['DELIVERED', 'CANCELLED'] } };
+    const tiers: Prisma.ServiceOrderWhereInput[] = [
+      { expectedDeliveryAt: { lt: now } }, { status: 'WAITING_PARTS' }, { status: 'AWAITING_APPROVAL' }, { technicianId: null }, { status: 'COMPLETED' },
+    ];
+    const found: ServiceOrder[] = [];
+    for (const tier of tiers) {
+      if (found.length >= take) break;
+      found.push(...await this.prisma.client.serviceOrder.findMany({ where: { AND: [base, tier, { id: { notIn: found.map((order) => order.id) } }] }, orderBy: [{ openedAt: 'asc' }, { id: 'asc' }], take: take - found.length }));
+    }
+    return found;
+  }
+
+  // Since when each order sits in `status`: the latest transition into it
+  // (the order's own entry date when no history row exists).
+  async waitingSince(status: 'AWAITING_APPROVAL' | 'COMPLETED') {
+    const orders = await this.prisma.client.serviceOrder.findMany({ where: { deletedAt: null, status }, select: { id: true, openedAt: true } });
+    if (!orders.length) return [];
+    const history = await this.prisma.client.serviceOrderStatusHistory.findMany({ where: { serviceOrderId: { in: orders.map((order) => order.id) }, toStatus: status }, orderBy: { changedAt: 'desc' }, select: { serviceOrderId: true, changedAt: true } });
+    const latest = new Map<string, Date>();
+    for (const row of history) if (!latest.has(row.serviceOrderId)) latest.set(row.serviceOrderId, row.changedAt);
+    return orders.map((order) => ({ id: order.id, since: latest.get(order.id) ?? order.openedAt }));
+  }
+
+  async myOrders(userId: string, take: number) {
+    const where: Prisma.ServiceOrderWhereInput = { deletedAt: null, technicianId: userId, status: { in: ['OPEN', 'IN_PROGRESS', 'WAITING_PARTS'] } };
+    const [items, total] = await Promise.all([
+      this.prisma.client.serviceOrder.findMany({ where, orderBy: [{ openedAt: 'asc' }, { id: 'asc' }], take }),
+      this.prisma.client.serviceOrder.count({ where }),
+    ]);
+    return { items, total };
+  }
+
+  async activeWorkloadRows() {
+    return this.prisma.client.serviceOrder.findMany({ where: { deletedAt: null, status: { in: ['OPEN', 'IN_PROGRESS', 'WAITING_PARTS'] } }, select: { technicianId: true, status: true } });
   }
 
   async listForBusinessSummary(since: Date) {

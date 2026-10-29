@@ -1,12 +1,14 @@
 import { Body, Controller, Get, HttpCode, HttpStatus, Post, Query, Res, StreamableFile, UploadedFile, UseInterceptors } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import type { Response } from 'express';
-import type { DashboardBusinessSummaryResponse, DueServiceOrderInstallmentsResponse, ServiceOrderInstallmentResponse, ServiceOrderItemResponse, ServiceOrderListResponse, ServiceOrderReceiptResponse, ServiceOrderResponse, TechnicianProductivityResponse } from '@oficina/contracts';
+import type { DashboardBusinessSummaryResponse, DashboardTodayResponse, DueServiceOrderInstallmentsResponse, ServiceOrderInstallmentResponse, ServiceOrderItemResponse, ServiceOrderListResponse, ServiceOrderReceiptResponse, ServiceOrderResponse, TechnicianProductivityResponse } from '@oficina/contracts';
 import { Roles } from '../../../shared/decorators/roles.decorator';
 import { CurrentUser } from '../../../shared/decorators/current-user.decorator';
 import { Permissions } from '../../../shared/decorators/permissions.decorator';
 import type { AuthenticatedUser } from '../../../shared/guards/jwt-auth.guard';
 import { ServiceOrderManager } from '../managers/service-order.manager';
+import { RoleRepository } from '../../iam/repositories/role.repository';
+import { UserRepository } from '../../iam/repositories/user.repository';
 import {
   CreateServiceOrderDto,
   DeleteServiceOrderDto,
@@ -16,6 +18,7 @@ import {
   TransitionServiceOrderDto,
   UpdateServiceOrderDto,
 } from '../dto/service-order.dto';
+import { DashboardTodayDto } from '../dto/service-order.dto';
 import { CreateServiceOrderItemDto, DeleteServiceOrderItemDto, UpdateServiceOrderItemDto } from '../dto/service-order-item.dto';
 import { ConfirmServiceOrderReceiptDto, DeleteServiceOrderReceiptDto } from '../dto/service-order-receipt.dto';
 import { ConfigureServiceOrderPaymentDto, ConfirmServiceOrderInstallmentDto, ListDueServiceOrderInstallmentsDto } from '../dto/service-order-installment.dto';
@@ -34,7 +37,7 @@ const ITEM_ROLES = ['ADMIN', 'MANAGER', 'FRONT_DESK'] as const;
 
 @Controller('api/v1')
 export class ServiceOrdersController {
-  constructor(private readonly serviceOrderManager: ServiceOrderManager, private readonly photoManager: ServiceOrderPhotoManager) {}
+  constructor(private readonly serviceOrderManager: ServiceOrderManager, private readonly photoManager: ServiceOrderPhotoManager, private readonly roles: RoleRepository, private readonly users: UserRepository) {}
 
   @Roles(...ALL_ROLES)
   @Permissions('service_orders.manage')
@@ -83,6 +86,18 @@ export class ServiceOrdersController {
   @Post('service-orders/list')
   async list(@Body() body: ServiceOrderListDto): Promise<ServiceOrderListResponse> {
     return this.serviceOrderManager.list(body);
+  }
+
+  @Roles(...ALL_ROLES)
+  @Permissions('service_orders.view')
+  @Get('dashboard/today')
+  async dashboardToday(@CurrentUser() actingUser: AuthenticatedUser, @Query() query: DashboardTodayDto): Promise<DashboardTodayResponse> {
+    // Amounts only reach people who may see prices; the role is read fresh, like PermissionsGuard does.
+    const current = await this.users.byId(actingUser.userId);
+    const roleId = current && current.tenantId === actingUser.tenantId ? current.roleId : actingUser.roleId;
+    const canViewPrices = roleId ? (await this.roles.permissionKeys(roleId)).includes('service_orders.prices') : Boolean(actingUser.permissions?.includes('service_orders.prices'));
+    const today = query.startsAt && query.endsAt ? { startsAt: new Date(query.startsAt), endsAt: new Date(query.endsAt) } : undefined;
+    return this.serviceOrderManager.dashboardToday({ userId: actingUser.userId, canViewPrices }, today);
   }
 
   @Roles(...ALL_ROLES)

@@ -137,3 +137,13 @@ export class TechnicianProductivityDto implements TechnicianProductivityRequest 
   @IsISO8601() startAt!: string;
   @IsISO8601() endAt!: string;
 }
+
+// The browser sends its own calendar day, so "today" follows the workshop clock
+// instead of the server's timezone.
+export class DashboardTodayDto {
+  @IsOptional() @IsISO8601({ strict: true })
+  startsAt?: string;
+
+  @IsOptional() @IsISO8601({ strict: true })
+  endsAt?: string;
+}
