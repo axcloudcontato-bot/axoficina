@@ -33,6 +33,20 @@ export class ServiceOrderStatusHistoryRepository {
     });
   }
 
+  // When each order entered the status it is in now (its latest transition into it).
+  async statusSince(orders: Array<{ id: string; status: string }>): Promise<Map<string, Date>> {
+    const since = new Map<string, Date>();
+    if (orders.length === 0) return since;
+    const current = new Map(orders.map((order) => [order.id, order.status]));
+    const rows = await this.prisma.client.serviceOrderStatusHistory.findMany({
+      where: { serviceOrderId: { in: orders.map((order) => order.id) } },
+      orderBy: { changedAt: 'desc' },
+      select: { serviceOrderId: true, toStatus: true, changedAt: true },
+    });
+    for (const row of rows) if (!since.has(row.serviceOrderId) && row.toStatus === current.get(row.serviceOrderId)) since.set(row.serviceOrderId, row.changedAt);
+    return since;
+  }
+
   async byServiceOrderId(serviceOrderId: string) {
     return this.prisma.client.serviceOrderStatusHistory.findMany({
       where: { serviceOrderId },

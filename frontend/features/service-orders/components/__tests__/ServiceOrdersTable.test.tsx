@@ -20,7 +20,7 @@ const serviceOrder: ServiceOrderListItemResponse = {
   technicianName: undefined,
   openedAt: '2026-01-01T00:00:00Z',
   createdAt: '2026-01-01T00:00:00Z',
-  totalAmountCents: 15000,
+  totalAmountCents: 15000, discountCents: 0,
   receivedAmountCents: 0,
   outstandingAmountCents: 15000,
   paymentStatus: 'AWAITING_PAYMENT',

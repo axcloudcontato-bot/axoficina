@@ -17,6 +17,7 @@ const base: ServiceOrderListItemResponse = {
   openedAt: '2026-07-20T12:00:00Z',
   createdAt: '2026-07-20T12:00:00Z',
   totalAmountCents: 100_00,
+  discountCents: 0,
   receivedAmountCents: 0,
   outstandingAmountCents: 100_00,
   paymentStatus: 'AWAITING_PAYMENT',

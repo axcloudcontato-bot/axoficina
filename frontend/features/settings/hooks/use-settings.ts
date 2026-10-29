@@ -1,7 +1,7 @@
 'use client';
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type { UpdateCompanySettingsRequest, UpdateEmailSettingsRequest } from '@oficina/contracts';
+import { DEFAULT_PHOTO_POLICY, type PhotoPolicy, type UpdateCompanySettingsRequest, type UpdateEmailSettingsRequest, type UpdatePhotoPolicyRequest } from '@oficina/contracts';
 import { settingsApi } from '../api/settings-api';
 
 export const SETTINGS_KEY = ['tenant-settings'] as const;
@@ -36,4 +36,17 @@ export function useUpdateEmailSettings() {
 
 export function useTestEmailSettings() {
   return useMutation({ mutationFn: settingsApi.testEmail });
+}
+
+// Which photo evidence this workshop requires; strict until the settings arrive.
+export function usePhotoPolicy(): PhotoPolicy {
+  return useBranding().data?.photoPolicy ?? DEFAULT_PHOTO_POLICY;
+}
+
+export function useUpdatePhotoPolicy() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (request: UpdatePhotoPolicyRequest) => settingsApi.updatePhotoPolicy(request),
+    onSuccess: () => client.invalidateQueries({ queryKey: BRANDING_KEY }),
+  });
 }

@@ -46,7 +46,7 @@ export default function NewServiceOrderPage() {
           <div>
             <p className="mb-2 text-xs font-bold uppercase tracking-[0.14em] text-primary">Atendimento guiado</p>
             <h1 className="text-2xl font-bold tracking-tight text-text sm:text-3xl">Novo atendimento</h1>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-text-muted">Cadastre o cliente, identifique o veículo e abra a ordem de serviço em uma única sequência. O calendário de agendamento entra como próxima etapa do fluxo.</p>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-text-muted">Cadastre o cliente, identifique o veículo e abra a ordem de serviço em uma única sequência.</p>
           </div>
         </div>
 

@@ -28,6 +28,8 @@ export default function ServiceOrdersPage() {
   const [status, setStatus] = useState<ServiceOrderStatus | 'ALL'>('ALL');
   const [attention, setAttention] = useState<ServiceOrderAttentionFilter>('ACTIVE');
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [urlReady, setUrlReady] = useState(false);
   const [view, setView] = useState<ViewMode>('board');
   const [offset, setOffset] = useState(0);
   const [draftStart, setDraftStart] = useState('');
@@ -37,11 +39,11 @@ export default function ServiceOrdersPage() {
   const request: ServiceOrderListRequest = {
     offset, limit: PAGE_SIZE, includeMetrics: true, dateField,
     startDate: period.startDate || undefined, endDate: period.endDate || undefined,
-    status: status === 'ALL' ? undefined : status, search: search.trim() || undefined,
+    status: status === 'ALL' ? undefined : status, search: debouncedSearch.trim() || undefined,
     attention: attention === 'ALL' ? undefined : attention,
   };
   const { data, isLoading, isFetching, isPlaceholderData, isError, refetch } = useServiceOrdersList(request);
-  const pending = isLoading || isPlaceholderData;
+  const pending = isLoading || isPlaceholderData || search !== debouncedSearch;
   const invalidPeriod = Boolean(draftStart && draftEnd && draftStart > draftEnd);
 
   function updateFilter(change: () => void) { setOffset(0); change(); }
@@ -58,7 +60,27 @@ export default function ServiceOrdersPage() {
     const linkedStatus = params.get('status'); const linkedAttention = params.get('attention');
     if (linkedStatus && (ALL_STATUSES as string[]).includes(linkedStatus)) setStatus(linkedStatus as ServiceOrderStatus);
     if (linkedAttention && ['ACTIVE', 'OVERDUE', 'UNASSIGNED', 'PAYMENT_PENDING'].includes(linkedAttention)) setAttention(linkedAttention as ServiceOrderAttentionFilter);
+    const linkedSearch = params.get('q');
+    if (linkedSearch) { setSearch(linkedSearch); setDebouncedSearch(linkedSearch); }
+    setUrlReady(true);
   }, []);
+
+  // Typing does not hit the API on every key.
+  useEffect(() => {
+    const timer = window.setTimeout(() => setDebouncedSearch(search), 350);
+    return () => window.clearTimeout(timer);
+  }, [search]);
+
+  // Filters live in the address so a link, a refresh or the back button keeps them.
+  useEffect(() => {
+    if (!urlReady) return;
+    const params = new URLSearchParams();
+    if (status !== 'ALL') params.set('status', status);
+    if (attention !== 'ACTIVE') params.set('attention', attention);
+    if (debouncedSearch.trim()) params.set('q', debouncedSearch.trim());
+    const query = params.toString();
+    window.history.replaceState(null, '', `${window.location.pathname}${query ? `?${query}` : ''}`);
+  }, [urlReady, status, attention, debouncedSearch]);
 
   function changeView(next: ViewMode) {
     setView(next);
@@ -82,7 +104,7 @@ export default function ServiceOrdersPage() {
     : 'Todo o histórico';
 
   function clearFilters() {
-    setSearch('');
+    setSearch(''); setDebouncedSearch('');
     setStatus('ALL');
     setAttention('ACTIVE'); setOffset(0); setDateField('OPENED');
     setPeriod({ startDate: '', endDate: '' }); setDraftStart(''); setDraftEnd('');
@@ -99,24 +121,6 @@ export default function ServiceOrdersPage() {
         {canManage && <NewServiceOrderQuickStart className="shrink-0" />}
       </header>
 
-      <section aria-label="Período do histórico" className="rounded-card border border-border bg-surface p-4">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <h3 className="text-sm font-semibold text-text">Histórico por dia ou período</h3>
-          <div className="flex flex-wrap gap-1">
-            {[['Hoje', 0], ['Ontem', 1], ['Últimos 7 dias', 6], ['Últimos 30 dias', 29]].map(([label, days]) => <Button key={label} size="sm" variant="outline" onClick={() => { const today = workshopToday(); applyPeriod(shiftCalendarDay(today, -Number(days)), label === 'Ontem' ? shiftCalendarDay(today, -1) : today); }}>{label}</Button>)}
-            <Button size="sm" variant="ghost" onClick={() => applyPeriod('', '')}>Todo o histórico</Button>
-          </div>
-        </div>
-        <form className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-[1fr_1fr_1.3fr_auto] xl:items-end" onSubmit={(event) => { event.preventDefault(); if (!invalidPeriod) applyPeriod(draftStart, draftEnd); }}>
-          <label className="min-w-0 text-xs font-medium text-text-muted">Data inicial<Input type="date" className="mt-1 min-w-0" value={draftStart} max={draftEnd || undefined} onChange={(event) => setDraftStart(event.target.value)} /></label>
-          <label className="min-w-0 text-xs font-medium text-text-muted">Data final<Input type="date" className="mt-1 min-w-0" value={draftEnd} min={draftStart || undefined} aria-invalid={invalidPeriod} onChange={(event) => setDraftEnd(event.target.value)} /></label>
-          <div><span id="history-date-label" className="text-xs font-medium text-text-muted">Consultar pela data de</span><Select value={dateField} onValueChange={(value) => updateFilter(() => setDateField(value as 'OPENED' | 'CLOSED'))}><SelectTrigger aria-labelledby="history-date-label" className="mt-1"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="OPENED">Entrada na oficina</SelectItem><SelectItem value="CLOSED">Entrega ou cancelamento</SelectItem></SelectContent></Select></div>
-          <Button type="submit" disabled={invalidPeriod}>Aplicar período</Button>
-        </form>
-        {invalidPeriod && <p role="alert" className="mt-2 text-sm text-danger">A data final deve ser igual ou posterior à inicial.</p>}
-        <p className="mt-3 text-xs text-text-muted">{periodLabel} · Horário de Brasília. A lista usa a data de {dateField === 'OPENED' ? 'entrada' : 'entrega ou cancelamento'}; o card Entregues usa sempre a entrega efetiva. Os status exibidos são os atuais.</p>
-      </section>
-
       <section aria-label="Resumo das ordens de serviço" aria-busy={isFetching} className="grid grid-cols-2 gap-3 xl:grid-cols-5">
         <MetricButton label="OS ativas" value={pending ? undefined : metrics?.active} detail="em fluxo operacional" icon={ClipboardText} active={attention === 'ACTIVE' && status === 'ALL'} onClick={() => updateFilter(() => { setStatus('ALL'); setAttention('ACTIVE'); })} />
         <MetricButton label="Atrasadas" value={pending ? undefined : metrics?.overdue} detail="prazo de entrega vencido" icon={Warning} tone="danger" active={attention === 'OVERDUE'} onClick={() => updateFilter(() => { setStatus('ALL'); setAttention('OVERDUE'); })} />
@@ -130,7 +134,7 @@ export default function ServiceOrdersPage() {
           <div className="relative min-w-0">
             <MagnifyingGlass className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-text-muted" aria-hidden="true" />
             <Input aria-label="Buscar ordens de serviço" placeholder="Buscar OS, placa ou cliente" maxLength={120} value={search} onChange={(event) => updateFilter(() => setSearch(event.target.value))} className="h-10 pl-9 pr-10" />
-            {search && <button type="button" aria-label="Limpar busca" onClick={() => updateFilter(() => setSearch(''))} className="absolute right-2 top-1/2 flex size-7 -translate-y-1/2 items-center justify-center rounded-button text-text-muted hover:bg-muted hover:text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><X className="size-4" aria-hidden="true" /></button>}
+            {search && <button type="button" aria-label="Limpar busca" onClick={() => updateFilter(() => { setSearch(''); setDebouncedSearch(''); })} className="absolute right-2 top-1/2 flex size-7 -translate-y-1/2 items-center justify-center rounded-button text-text-muted hover:bg-muted hover:text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><X className="size-4" aria-hidden="true" /></button>}
           </div>
           <Select value={status} onValueChange={(value) => updateFilter(() => { setStatus(value as ServiceOrderStatus | 'ALL'); setAttention('ALL'); if (value !== 'ALL') setView('list'); if (value === 'DELIVERED' || value === 'CANCELLED') setDateField('CLOSED'); })}>
             <SelectTrigger aria-label="Filtrar por status"><SlidersHorizontal className="mr-2 size-4 text-text-muted" aria-hidden="true" /><SelectValue /></SelectTrigger>
@@ -153,10 +157,30 @@ export default function ServiceOrdersPage() {
         </div>
       </section>
 
+      <details aria-label="Período do histórico" className="rounded-card border border-border bg-surface p-4" open={Boolean(period.startDate || period.endDate) || dateField === 'CLOSED'}>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <summary className="cursor-pointer text-sm font-semibold text-text">Consultar histórico por dia ou período</summary>
+          <div className="flex flex-wrap gap-1">
+            {[['Hoje', 0], ['Ontem', 1], ['Últimos 7 dias', 6], ['Últimos 30 dias', 29]].map(([label, days]) => <Button key={label} size="sm" variant="outline" onClick={() => { const today = workshopToday(); applyPeriod(shiftCalendarDay(today, -Number(days)), label === 'Ontem' ? shiftCalendarDay(today, -1) : today); }}>{label}</Button>)}
+            <Button size="sm" variant="ghost" onClick={() => applyPeriod('', '')}>Todo o histórico</Button>
+          </div>
+        </div>
+        <form className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-[1fr_1fr_1.3fr_auto] xl:items-end" onSubmit={(event) => { event.preventDefault(); if (!invalidPeriod) applyPeriod(draftStart, draftEnd); }}>
+          <label className="min-w-0 text-xs font-medium text-text-muted">Data inicial<Input type="date" className="mt-1 min-w-0" value={draftStart} max={draftEnd || undefined} onChange={(event) => setDraftStart(event.target.value)} /></label>
+          <label className="min-w-0 text-xs font-medium text-text-muted">Data final<Input type="date" className="mt-1 min-w-0" value={draftEnd} min={draftStart || undefined} aria-invalid={invalidPeriod} onChange={(event) => setDraftEnd(event.target.value)} /></label>
+          <div><span id="history-date-label" className="text-xs font-medium text-text-muted">Consultar pela data de</span><Select value={dateField} onValueChange={(value) => updateFilter(() => setDateField(value as 'OPENED' | 'CLOSED'))}><SelectTrigger aria-labelledby="history-date-label" className="mt-1"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="OPENED">Entrada na oficina</SelectItem><SelectItem value="CLOSED">Entrega ou cancelamento</SelectItem></SelectContent></Select></div>
+          <Button type="submit" disabled={invalidPeriod}>Aplicar período</Button>
+        </form>
+        {invalidPeriod && <p role="alert" className="mt-2 text-sm text-danger">A data final deve ser igual ou posterior à inicial.</p>}
+        <p className="mt-3 text-xs text-text-muted">{periodLabel} · Horário de Brasília. A lista usa a data de {dateField === 'OPENED' ? 'entrada' : 'entrega ou cancelamento'}; o card Entregues usa sempre a entrega efetiva. Os status exibidos são os atuais.</p>
+      </details>
+
       <div className="flex flex-wrap items-center justify-between gap-3" aria-live="polite">
         <p className="text-sm text-text-muted"><span className="font-semibold text-text">{pending ? '—' : data?.total ?? 0}</span> {data?.total === 1 ? 'ordem encontrada' : 'ordens encontradas'}{hasFilters && ' com os filtros atuais'}</p>
         {hasFilters && <Button variant="ghost" size="sm" onClick={clearFilters} className="text-text-muted">Limpar filtros<X className="size-3.5" aria-hidden="true" /></Button>}
       </div>
+
+      {effectiveView === 'board' && data && data.total > PAGE_SIZE && <p className="rounded-button border border-warning/30 bg-warning-subtle p-3 text-sm text-text">O quadro mostra uma página de {PAGE_SIZE} das {data.total} ordens. Use os filtros ou a lista para ver as demais.</p>}
 
       {effectiveView === 'board'
         ? <ServiceOrderBoard items={items} isLoading={pending} isError={isError} onRetry={refetch} canManage={canManage} canViewPrices={canViewPrices} />

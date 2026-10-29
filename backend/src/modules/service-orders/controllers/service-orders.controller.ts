@@ -118,24 +118,24 @@ export class ServiceOrdersController {
   @Roles(...ITEM_ROLES)
   @Permissions('service_orders.prices')
   @Post('service-orders/items')
-  async addItem(@Body() body: CreateServiceOrderItemDto): Promise<{ item: ServiceOrderItemResponse }> {
-    return this.serviceOrderManager.addItem(body);
+  async addItem(@CurrentUser() actingUser: AuthenticatedUser, @Body() body: CreateServiceOrderItemDto): Promise<{ item: ServiceOrderItemResponse }> {
+    return this.serviceOrderManager.addItem(body, actingUser);
   }
 
   @Roles(...ITEM_ROLES)
   @Permissions('service_orders.prices')
   @HttpCode(HttpStatus.OK)
   @Post('service-orders/items/update')
-  async updateItem(@Body() body: UpdateServiceOrderItemDto): Promise<{ item: ServiceOrderItemResponse }> {
-    return this.serviceOrderManager.updateItem(body);
+  async updateItem(@CurrentUser() actingUser: AuthenticatedUser, @Body() body: UpdateServiceOrderItemDto): Promise<{ item: ServiceOrderItemResponse }> {
+    return this.serviceOrderManager.updateItem(body, actingUser);
   }
 
   @Roles(...ITEM_ROLES)
   @Permissions('service_orders.prices')
   @HttpCode(HttpStatus.OK)
   @Post('service-orders/items/delete')
-  async deleteItem(@Body() body: DeleteServiceOrderItemDto): Promise<{ item: ServiceOrderItemResponse }> {
-    return this.serviceOrderManager.deleteItem(body.id);
+  async deleteItem(@CurrentUser() actingUser: AuthenticatedUser, @Body() body: DeleteServiceOrderItemDto): Promise<{ item: ServiceOrderItemResponse }> {
+    return this.serviceOrderManager.deleteItem(body.id, actingUser, body.editReason);
   }
 
   @Roles(...ITEM_ROLES)

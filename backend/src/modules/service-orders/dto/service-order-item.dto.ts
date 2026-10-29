@@ -1,4 +1,4 @@
-import { IsIn, IsInt, IsNotEmpty, IsNumber, IsOptional, IsUUID, Min } from 'class-validator';
+import { IsIn, IsInt, IsNotEmpty, IsNumber, IsOptional, IsString, IsUUID, MaxLength, Min } from 'class-validator';
 import { CARE_SERVICE_KEYS, SERVICE_ORDER_ITEM_TYPES } from '@oficina/contracts';
 import type {
   CreateServiceOrderItemRequest,
@@ -32,6 +32,9 @@ export class CreateServiceOrderItemDto implements CreateServiceOrderItemRequest 
   @IsInt({ message: 'unit_price_cents must be an integer' })
   @Min(0, { message: 'unit_price_cents cannot be negative' })
   unitPriceCents!: number;
+
+  @IsOptional() @IsString() @MaxLength(300)
+  editReason?: string;
 }
 
 export class UpdateServiceOrderItemDto implements UpdateServiceOrderItemRequest {
@@ -63,10 +66,16 @@ export class UpdateServiceOrderItemDto implements UpdateServiceOrderItemRequest 
   @IsInt({ message: 'unit_price_cents must be an integer' })
   @Min(0, { message: 'unit_price_cents cannot be negative' })
   unitPriceCents?: number;
+
+  @IsOptional() @IsString() @MaxLength(300)
+  editReason?: string;
 }
 
 export class DeleteServiceOrderItemDto implements DeleteServiceOrderItemRequest {
   @IsNotEmpty({ message: 'id is required' })
   @IsUUID('4', { message: 'id must be a valid id' })
   id!: string;
+
+  @IsOptional() @IsString() @MaxLength(300)
+  editReason?: string;
 }

@@ -111,6 +111,7 @@ export function ServiceOrderPrintDocument({
         <div><p className="text-xs font-bold uppercase tracking-wide text-slate-500">Valor total</p><p className="text-2xl font-black">{formatCurrencyBRL(serviceOrder.totalAmountCents)}</p></div>
         <p className="text-xs text-slate-500">Documento referente à OS #{String(serviceOrder.orderNumber).padStart(5, '0')}</p>
       </section>
+      {serviceOrder.warrantyDays !== undefined && <p className="print-break-inside-avoid mt-3 text-sm"><strong>Garantia:</strong> {serviceOrder.warrantyDays === 0 ? 'sem garantia adicional' : `${serviceOrder.warrantyDays} ${serviceOrder.warrantyDays === 1 ? 'dia' : 'dias'}${serviceOrder.status === 'DELIVERED' && serviceOrder.closedAt ? `, válida até ${new Date(new Date(serviceOrder.closedAt).getTime() + serviceOrder.warrantyDays * 86_400_000).toLocaleDateString('pt-BR')}` : ', a contar da entrega'}`}</p>}
 
       <section className="print-break-inside-avoid mt-14 grid grid-cols-2 gap-12 text-center text-xs">
         <p className="border-t border-slate-600 pt-2">Assinatura do cliente</p>
@@ -180,6 +181,7 @@ function ApprovalCopy({
         <div className="ml-auto grid w-full max-w-xs grid-cols-2 gap-x-5 gap-y-1 text-[13px]">
           <span>Peças e produtos</span><strong className="text-right">{formatCurrencyBRL(partsTotal)}</strong>
           <span>Mão de obra</span><strong className="text-right">{formatCurrencyBRL(laborTotal)}</strong>
+          {serviceOrder.discountCents > 0 && <><span>Desconto</span><strong className="text-right">-{formatCurrencyBRL(serviceOrder.discountCents)}</strong></>}
           <span className="border-t border-slate-500 pt-1 font-black">Total</span><strong className="border-t border-slate-500 pt-1 text-right text-base">{formatCurrencyBRL(serviceOrder.totalAmountCents)}</strong>
         </div>
         <div className="mt-auto grid grid-cols-2 gap-10 pb-1 text-center text-[11px]">

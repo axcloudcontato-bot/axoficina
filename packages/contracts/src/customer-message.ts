@@ -13,6 +13,8 @@ export interface CustomerMessageQuote {
   vehicle: string;
   plate: string;
   totalAmountCents: number;
+  // Order discount already deducted from totalAmountCents; absent on older quotes.
+  discountCents?: number;
   items: { id: string; description: string; type: ServiceOrderItemType; quantity: number; unitPriceCents: number; lineTotalCents: number }[];
 }
 

@@ -1,3 +1,4 @@
+import type { UpdatePhotoPolicyRequest } from '@oficina/contracts';
 import { IsBoolean, IsEmail, IsInt, IsOptional, IsString, Max, MaxLength, Min, ValidateIf } from 'class-validator';
 
 // `@IsOptional()` só pula a validação quando o valor é null/undefined — uma
@@ -46,4 +47,10 @@ export class SendEmailDto {
   @IsEmail() recipient!: string;
   @IsString() @MaxLength(200) subject!: string;
   @IsString() @MaxLength(20000) text!: string;
+}
+
+export class UpdatePhotoPolicyDto implements UpdatePhotoPolicyRequest {
+  @IsBoolean() entry!: boolean;
+  @IsBoolean() exit!: boolean;
+  @IsBoolean() items!: boolean;
 }

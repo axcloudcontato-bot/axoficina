@@ -51,7 +51,8 @@ export class CustomerMessageRepository {
       ]);
       const lines = items.map((item) => ({ id: item.id, type: item.type as CustomerMessageQuote['items'][number]['type'], description: item.description, quantity: item.quantity.toNumber(), unitPriceCents: item.unitPriceCents, lineTotalCents: Math.round(item.quantity.toNumber() * item.unitPriceCents) }));
       const snapshot = message.quoteSnapshot as unknown as CustomerMessageQuote;
-      quoteIsCurrent = quotesMatch(snapshot, { ...snapshot, items: lines, totalAmountCents: lines.reduce((sum, item) => sum + item.lineTotalCents, 0) });
+      const discountCents = Math.min(order.discountCents, lines.reduce((sum, item) => sum + item.lineTotalCents, 0));
+      quoteIsCurrent = quotesMatch(snapshot, { ...snapshot, items: lines, totalAmountCents: lines.reduce((sum, item) => sum + item.lineTotalCents, 0) - discountCents, discountCents });
       isLatestQuote = latest?.id === message.id;
     }
     return { message, companyName: tenant.name, quoteIsCurrent, isLatestQuote, orderStatus: order.status };

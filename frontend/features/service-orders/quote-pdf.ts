@@ -82,6 +82,10 @@ export async function generateQuotePdf(serviceOrder: ServiceOrderResponse): Prom
   y += 6;
   pdf.text(`Mão de obra: ${formatCurrencyBRL(laborTotal)}`, pageWidth - margin, y, { align: 'right' });
   y += 7;
+  if (serviceOrder.discountCents > 0) {
+    pdf.text(`Desconto: -${formatCurrencyBRL(serviceOrder.discountCents)}`, pageWidth - margin, y, { align: 'right' });
+    y += 7;
+  }
   pdf.setFont('helvetica', 'bold');
   pdf.setFontSize(13);
   pdf.text(`TOTAL: ${formatCurrencyBRL(serviceOrder.totalAmountCents)}`, pageWidth - margin, y, { align: 'right' });

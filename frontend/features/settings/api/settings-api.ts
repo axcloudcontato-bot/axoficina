@@ -1,4 +1,4 @@
-import type { CompanySettingsResponse, EmailSettingsResponse, SendEmailRequest, TestEmailSettingsRequest, TenantSettingsResponse, UpdateCompanySettingsRequest, UpdateEmailSettingsRequest } from '@oficina/contracts';
+import type { PhotoPolicy, UpdatePhotoPolicyRequest, CompanySettingsResponse, EmailSettingsResponse, SendEmailRequest, TestEmailSettingsRequest, TenantSettingsResponse, UpdateCompanySettingsRequest, UpdateEmailSettingsRequest } from '@oficina/contracts';
 import { apiClient } from '@/lib/api/client';
 import type { UpdateWhatsAppSettingsRequest, WhatsAppConnectionResponse, WhatsAppSettingsResponse, WhatsAppWebhookTestResponse } from '@oficina/contracts';
 
@@ -6,8 +6,11 @@ export const settingsApi = {
   async get(): Promise<TenantSettingsResponse> {
     return (await apiClient.get<TenantSettingsResponse>('/api/v1/settings')).data;
   },
-  async branding(): Promise<{ company: CompanySettingsResponse; whatsappEnabled?: boolean }> {
-    return (await apiClient.get<{ company: CompanySettingsResponse; whatsappEnabled?: boolean }>('/api/v1/settings/branding')).data;
+  async branding(): Promise<{ company: CompanySettingsResponse; whatsappEnabled?: boolean; photoPolicy?: PhotoPolicy }> {
+    return (await apiClient.get<{ company: CompanySettingsResponse; whatsappEnabled?: boolean; photoPolicy?: PhotoPolicy }>('/api/v1/settings/branding')).data;
+  },
+  async updatePhotoPolicy(request: UpdatePhotoPolicyRequest): Promise<{ photoPolicy: PhotoPolicy }> {
+    return (await apiClient.post('/api/v1/settings/photo-policy', request)).data;
   },
   async whatsapp(): Promise<WhatsAppSettingsResponse> { return (await apiClient.get('/api/v1/settings/whatsapp')).data; },
   async updateWhatsApp(input: UpdateWhatsAppSettingsRequest): Promise<WhatsAppSettingsResponse> { return (await apiClient.post('/api/v1/settings/whatsapp', input)).data; },

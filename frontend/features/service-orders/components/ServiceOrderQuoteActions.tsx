@@ -35,9 +35,9 @@ const APPROVAL_COPY = {
   expired: ['Solicitação expirada', 'Envie uma nova solicitação para o cliente responder.'],
 };
 
-export function ServiceOrderQuoteActions({ serviceOrder, beforeSend, entryReady = true, onGoToEntry, onGoToQuote, onStart }: {
+export function ServiceOrderQuoteActions({ serviceOrder, beforeSend, entryReady = true, onGoToEntry, onGoToQuote, onStart, onCancelOrder }: {
   serviceOrder: ServiceOrderResponse; beforeSend?: () => Promise<boolean>; entryReady?: boolean;
-  onGoToEntry?: () => void; onGoToQuote?: () => void; onStart?: (manual: boolean) => void;
+  onGoToEntry?: () => void; onGoToQuote?: () => void; onStart?: (manual: boolean) => void; onCancelOrder?: () => void;
 }) {
   const customer = useCustomer(serviceOrder.customerId);
   const history = useCustomerMessages(serviceOrder.id);
@@ -119,6 +119,7 @@ export function ServiceOrderQuoteActions({ serviceOrder, beforeSend, entryReady 
       {!terminal && <div className="mt-4 flex flex-wrap gap-2">
         {approval.state === 'approved' && canStart && <Button onClick={() => onStart?.(false)}>Iniciar serviço autorizado</Button>}
         {['declined', 'contact', 'changed'].includes(approval.state) && <Button variant="outline" onClick={onGoToQuote}>Revisar orçamento</Button>}
+        {approval.state === 'declined' && onCancelOrder && <Button variant="outline" className="text-danger" onClick={onCancelOrder}>Encerrar atendimento (cliente recusou)</Button>}
         <Button variant={approval.state === 'not-sent' || ['expired', 'changed'].includes(approval.state) ? 'default' : 'outline'} onClick={() => setOpen(true)} disabled={!canSend || !ready || busy || history.isPending || history.isError}>{approval.state === 'not-sent' ? 'Revisar e enviar ao cliente' : 'Enviar nova solicitação'}</Button>
       </div>}
       {!terminal && !hasItems && <p className="mt-3 text-sm text-text-muted">Adicione os serviços e valores na etapa <button className="font-semibold text-primary underline" onClick={onGoToQuote}>Orçamento</button>.</p>}

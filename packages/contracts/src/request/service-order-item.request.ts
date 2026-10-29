@@ -8,6 +8,8 @@ export interface CreateServiceOrderItemRequest {
   description: string;
   quantity: number;
   unitPriceCents: number;
+  // Required when the order is already delivered or cancelled.
+  editReason?: string;
 }
 
 export interface UpdateServiceOrderItemRequest {
@@ -17,8 +19,10 @@ export interface UpdateServiceOrderItemRequest {
   description?: string;
   quantity?: number;
   unitPriceCents?: number;
+  editReason?: string;
 }
 
 export interface DeleteServiceOrderItemRequest {
   id: string;
+  editReason?: string;
 }

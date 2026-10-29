@@ -11,7 +11,7 @@ import { ServiceOrderManager } from './service-order.manager';
 import { CustomerMessageRepository } from '../repositories/customer-message.repository';
 import { customerMessageContent, customerMessageEmail } from '../services/customer-message-content';
 import { WaAkgService } from '../../settings/services/wa-akg.service';
-import { quoteRevision, quoteSnapshot, quotesMatch } from '../services/customer-message-quote';
+import { quoteSnapshot, quoteSnapshotRevision, quotesMatch } from '../services/customer-message-quote';
 
 const hashToken = (token: string) => createHash('sha256').update(token).digest('hex');
 
@@ -34,7 +34,7 @@ export class CustomerMessageManager {
     const { serviceOrder: order } = await this.orders.getById(input.serviceOrderId);
     if (order.status === 'CANCELLED') throw new BadRequestException('Não é possível solicitar respostas para uma OS cancelada.');
     if (input.includeQuote && !order.items?.length) throw new BadRequestException('Adicione itens ao orçamento antes de compartilhar.');
-    if (input.purpose === 'QUOTE' && input.expectedQuoteRevision && quoteRevision(quoteSnapshot(order).items) !== input.expectedQuoteRevision) throw new ConflictException('O orçamento mudou desde a prévia. Atualize a OS e confira os valores antes de enviar.');
+    if (input.purpose === 'QUOTE' && input.expectedQuoteRevision && quoteSnapshotRevision(quoteSnapshot(order)) !== input.expectedQuoteRevision) throw new ConflictException('O orçamento mudou desde a prévia. Atualize a OS e confira os valores antes de enviar.');
     if (input.purpose === 'QUOTE' && order.status === 'DELIVERED') throw new BadRequestException('Esta OS já foi entregue. Consulte o histórico da aprovação.');
     if (input.purpose === 'PICKUP' && order.status !== 'COMPLETED') throw new BadRequestException('Marque o veículo como pronto para entrega antes de enviar o aviso de retirada.');
     if (input.purpose === 'QUOTE' && order.status === 'OPEN') await this.orders.assertReadyForApproval(order.id);

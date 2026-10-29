@@ -1,5 +1,5 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import type { TenantSettingsResponse, UpdateCompanySettingsRequest, UpdateEmailSettingsRequest } from '@oficina/contracts';
+import type { PhotoPolicy, TenantSettingsResponse, UpdateCompanySettingsRequest, UpdateEmailSettingsRequest, UpdatePhotoPolicyRequest } from '@oficina/contracts';
 import { AuditLogService } from '../../../shared/audit-log/audit-log.service';
 import type { AuthenticatedUser } from '../../../shared/guards/jwt-auth.guard';
 import { TenantRepository } from '../../iam/repositories/tenant.repository';
@@ -26,7 +26,18 @@ export class SettingsManager {
 
   async getBranding(user: AuthenticatedUser) {
     const tenant = await this.requireTenant(user.tenantId);
-    return { company: this.toResponse(tenant).company, whatsappEnabled: tenant.waAkgEnabled ?? false };
+    return { company: this.toResponse(tenant).company, whatsappEnabled: tenant.waAkgEnabled ?? false, photoPolicy: this.photoPolicy(tenant) };
+  }
+
+  async updatePhotoPolicy(user: AuthenticatedUser, input: UpdatePhotoPolicyRequest) {
+    const tenant = await this.tenants.updateSettings(user.tenantId, { photoRequireEntry: input.entry, photoRequireExit: input.exit, photoRequireItems: input.items });
+    if (!tenant) throw new NotFoundException('Empresa não encontrada.');
+    await this.audit.record({ tenantId: user.tenantId, userId: user.userId, action: 'settings.photo_policy_updated', entity: 'tenant', entityId: user.tenantId, metadata: { enabled: input.entry && input.exit && input.items } });
+    return { photoPolicy: this.photoPolicy(tenant) };
+  }
+
+  private photoPolicy(tenant: { photoRequireEntry?: boolean; photoRequireExit?: boolean; photoRequireItems?: boolean }): PhotoPolicy {
+    return { entry: tenant.photoRequireEntry ?? true, exit: tenant.photoRequireExit ?? true, items: tenant.photoRequireItems ?? true };
   }
 
   async updateCompany(user: AuthenticatedUser, input: UpdateCompanySettingsRequest) {

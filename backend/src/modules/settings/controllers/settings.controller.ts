@@ -3,7 +3,7 @@ import { CurrentUser } from '../../../shared/decorators/current-user.decorator';
 import { Permissions } from '../../../shared/decorators/permissions.decorator';
 import { Roles } from '../../../shared/decorators/roles.decorator';
 import type { AuthenticatedUser } from '../../../shared/guards/jwt-auth.guard';
-import { SendEmailDto, TestEmailSettingsDto, UpdateCompanySettingsDto, UpdateEmailSettingsDto } from '../dto/settings.dto';
+import { SendEmailDto, TestEmailSettingsDto, UpdateCompanySettingsDto, UpdateEmailSettingsDto, UpdatePhotoPolicyDto } from '../dto/settings.dto';
 import { SettingsManager } from '../managers/settings.manager';
 
 @Controller('api/v1/settings')
@@ -19,6 +19,9 @@ export class SettingsController {
 
   @Post('company') @HttpCode(HttpStatus.OK) @Permissions('settings.manage')
   updateCompany(@CurrentUser() user: AuthenticatedUser, @Body() body: UpdateCompanySettingsDto) { return this.manager.updateCompany(user, body); }
+
+  @Post('photo-policy') @HttpCode(HttpStatus.OK) @Permissions('settings.manage')
+  updatePhotoPolicy(@CurrentUser() user: AuthenticatedUser, @Body() body: UpdatePhotoPolicyDto) { return this.manager.updatePhotoPolicy(user, body); }
 
   @Post('email') @HttpCode(HttpStatus.OK) @Permissions('settings.manage')
   updateEmail(@CurrentUser() user: AuthenticatedUser, @Body() body: UpdateEmailSettingsDto) { return this.manager.updateEmail(user, body); }

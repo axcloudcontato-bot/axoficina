@@ -9,6 +9,7 @@ import {
   type CreateServiceOrderRequest,
   type DashboardBusinessSummaryResponse,
   type DashboardTodayResponse,
+  type PhotoPolicy,
   type DashboardTodayWorkloadResponse,
   type DashboardWaitingResponse,
   type ServiceOrderItemResponse,
@@ -43,6 +44,7 @@ import type { AuthenticatedUser } from '../../../shared/guards/jwt-auth.guard';
 import { CustomerRepository } from '../../customers/repositories/customer.repository';
 import { VehicleRepository } from '../../vehicles/repositories/vehicle.repository';
 import { UserRepository } from '../../iam/repositories/user.repository';
+import { TenantRepository } from '../../iam/repositories/tenant.repository';
 import { ServiceOrderRepository } from '../repositories/service-order.repository';
 import { ServiceOrderStatusHistoryRepository } from '../repositories/service-order-status-history.repository';
 import { ServiceOrderItemRepository } from '../repositories/service-order-item.repository';
@@ -55,7 +57,7 @@ import { SERVICE_ORDER_CLOSING_STATUSES, SERVICE_ORDER_TRANSITIONS } from './ser
 // `forwardRef()` — ver comentário em service-orders.module.ts e Gotchas do
 // plano motor-manutencao-preventiva.md).
 import { MaintenanceAlertRepository } from '../../maintenance-alerts/repositories/maintenance-alert.repository';
-import { quoteRevision, quoteSnapshot, quotesMatch } from '../services/customer-message-quote';
+import { quoteRevision, quoteSnapshot, quoteSnapshotRevision, quotesMatch } from '../services/customer-message-quote';
 import type { CustomerMessageQuote } from '@oficina/contracts';
 import { CustomerMessageRepository } from '../repositories/customer-message.repository';
 import { ServiceOrderStatusNotificationRepository } from '../repositories/service-order-status-notification.repository';
@@ -69,6 +71,9 @@ const PHOTO_ANGLE_LABELS: Record<ServiceOrderPhotoAngle, string> = {
   SPARE_TIRE: 'estepe/porta-malas',
   DASHBOARD: 'painel (km)',
 };
+
+// Net amount of an order: items minus its discount (never below zero).
+const netTotal = (grossCents: number, discountCents = 0) => Math.max(0, grossCents - Math.min(discountCents, grossCents));
 
 // A quote unanswered for 2 days, or a finished car left in the yard for 3, is worth a call.
 const APPROVAL_STALE_DAYS = 2;
@@ -91,6 +96,7 @@ export class ServiceOrderManager {
     private readonly customerMessageRepository?: CustomerMessageRepository,
     private readonly statusNotifications?: ServiceOrderStatusNotificationRepository,
     private readonly carePlans?: CustomerCarePlansService,
+    private readonly tenantRepository?: TenantRepository,
   ) {}
 
   async create(actingUser: AuthenticatedUser, request: CreateServiceOrderRequest): Promise<{ serviceOrder: ServiceOrderResponse }> {
@@ -175,8 +181,30 @@ export class ServiceOrderManager {
       }
     }
 
+    if (request.discountCents !== undefined && request.discountCents !== existing.discountCents) {
+      if (['DELIVERED', 'CANCELLED'].includes(existing.status)) {
+        throw new AppException(AppErrorCode.VALIDATION_ERROR, 'Não é possível alterar o desconto de uma OS encerrada.', HttpStatus.BAD_REQUEST);
+      }
+      const gross = await this.computeTotalAmountCents(existing.id);
+      if (request.discountCents > gross) {
+        throw new AppException(AppErrorCode.VALIDATION_ERROR, 'O desconto não pode ser maior que o total dos itens.', HttpStatus.BAD_REQUEST);
+      }
+      const received = (await this.receiptRepository.byServiceOrderId(existing.id)).reduce((sum, receipt) => sum + receipt.amountCents, 0);
+      if (gross - request.discountCents < received) {
+        throw new AppException(AppErrorCode.VALIDATION_ERROR, 'O desconto deixaria o total abaixo do que já foi recebido.', HttpStatus.BAD_REQUEST);
+      }
+    }
+    const exitMileage = request.exitMileage === undefined ? existing.exitMileage : request.exitMileage;
+    const entryMileage = request.entryMileage === undefined ? existing.entryMileage : request.entryMileage;
+    if (exitMileage != null && entryMileage != null && exitMileage < entryMileage) {
+      throw new AppException(AppErrorCode.VALIDATION_ERROR, 'A quilometragem de saída não pode ser menor que a de entrada.', HttpStatus.BAD_REQUEST);
+    }
+
     await this.serviceOrderRepository.update(request.id, {
       technicianId: request.technicianId,
+      discountCents: request.discountCents,
+      warrantyDays: request.warrantyDays,
+      exitMileage: request.exitMileage,
       checklist: request.checklist,
       diagnosis: request.diagnosis,
       entryMileage: request.entryMileage,
@@ -213,7 +241,7 @@ export class ServiceOrderManager {
       action: 'service_order.updated',
       entity: 'service_order',
       entityId: updated.id,
-      metadata: {},
+      metadata: request.discountCents !== undefined && request.discountCents !== existing.discountCents ? { itemAction: 'discount', previousAmountCents: existing.discountCents, amountCents: request.discountCents } : {},
     });
 
     return { serviceOrder: this.toResponse(updated, vehicle, customer, technician, { totalAmountCentsOverride: totalAmountCents }) };
@@ -241,7 +269,12 @@ export class ServiceOrderManager {
     // entrega), mais 1 foto de antes (ISSUE) e depois (RESOLVED) por peça/
     // serviço lançado na OS. CANCELLED fica isento de tudo isso — é um
     // caminho de aborto, não de entrega.
-    if (fromStatus === 'OPEN' && (request.toStatus === 'IN_PROGRESS' || request.toStatus === 'AWAITING_APPROVAL')) {
+    const cancelReason = request.toStatus === 'CANCELLED' ? request.reason?.trim() : undefined;
+    if (request.toStatus === 'CANCELLED' && (!cancelReason || cancelReason.length < 5)) {
+      throw new AppException(AppErrorCode.VALIDATION_ERROR, 'Informe o motivo do cancelamento (mínimo 5 caracteres).', HttpStatus.BAD_REQUEST);
+    }
+    const photoPolicy = await this.photoPolicy(actingUser.tenantId);
+    if (photoPolicy.entry && fromStatus === 'OPEN' && (request.toStatus === 'IN_PROGRESS' || request.toStatus === 'AWAITING_APPROVAL')) {
       const missing = await this.missingAngles(request.id, 'ENTRY');
       if (missing.length > 0) {
         throw new AppException(
@@ -252,7 +285,7 @@ export class ServiceOrderManager {
       }
     }
     if (request.toStatus === 'COMPLETED') {
-      const missingAngles = await this.missingAngles(request.id, 'EXIT');
+      const missingAngles = photoPolicy.exit ? await this.missingAngles(request.id, 'EXIT') : [];
       if (missingAngles.length > 0) {
         throw new AppException(
           AppErrorCode.SERVICE_ORDER_MISSING_EXIT_PHOTO,
@@ -261,7 +294,7 @@ export class ServiceOrderManager {
         );
       }
 
-      const incompleteItems = await this.incompleteItemPhotos(request.id);
+      const incompleteItems = photoPolicy.items ? await this.incompleteItemPhotos(request.id) : [];
       if (incompleteItems.length > 0) {
         throw new AppException(
           AppErrorCode.SERVICE_ORDER_MISSING_ITEM_PHOTOS,
@@ -280,8 +313,8 @@ export class ServiceOrderManager {
         if (!approval?.answeredAt || approval.selectedOption !== 0 || !approval.quoteSnapshot || !quotesMatch(approval.quoteSnapshot as unknown as CustomerMessageQuote, current)) {
           throw new AppException(AppErrorCode.VALIDATION_ERROR, 'O orçamento atual ainda não tem uma aprovação válida do cliente. Confira a resposta ou confirme a autorização presencial.');
         }
-        authorizationMetadata = { authorization: 'CUSTOMER_MESSAGE', customerMessageId: approval.id, quoteRevision: quoteRevision(current.items) };
-      } else authorizationMetadata = { authorization: 'MANUAL', quoteRevision: quoteRevision(current.items) };
+        authorizationMetadata = { authorization: 'CUSTOMER_MESSAGE', customerMessageId: approval.id, quoteRevision: quoteSnapshotRevision(current) };
+      } else authorizationMetadata = { authorization: 'MANUAL', quoteRevision: quoteSnapshotRevision(current) };
     }
     const closedAt = SERVICE_ORDER_CLOSING_STATUSES.includes(request.toStatus) ? changedAt : undefined;
 
@@ -337,7 +370,7 @@ export class ServiceOrderManager {
       action: 'service_order.transitioned',
       entity: 'service_order',
       entityId: updated.id,
-      metadata: { fromStatus, toStatus: request.toStatus, ...authorizationMetadata },
+      metadata: { fromStatus, toStatus: request.toStatus, ...authorizationMetadata, ...(cancelReason ? { reason: cancelReason } : {}) },
     });
 
     return { serviceOrder: this.toResponse(updated, vehicle, customer, technician, { totalAmountCentsOverride: totalAmountCents }) };
@@ -348,7 +381,15 @@ export class ServiceOrderManager {
     return SERVICE_ORDER_PHOTO_ANGLES.filter((angle) => !covered.has(angle)).map((angle) => PHOTO_ANGLE_LABELS[angle]);
   }
 
+  // Each workshop decides which photo evidence it demands (Configurações > Empresa e marca).
+  private async photoPolicy(tenantId: string): Promise<PhotoPolicy> {
+    const tenant = await this.tenantRepository?.byId(tenantId);
+    return { entry: tenant?.photoRequireEntry ?? true, exit: tenant?.photoRequireExit ?? true, items: tenant?.photoRequireItems ?? true };
+  }
+
   async assertReadyForApproval(serviceOrderId: string) {
+    const order = await this.serviceOrderRepository.byId(serviceOrderId);
+    if (order && !(await this.photoPolicy(order.tenantId)).entry) return;
     const missing = await this.missingAngles(serviceOrderId, 'ENTRY');
     if (missing.length) throw new AppException(AppErrorCode.SERVICE_ORDER_MISSING_ENTRY_PHOTO, `Complete as fotos de entrada antes de solicitar a aprovação: ${missing.join(', ')}.`);
   }
@@ -376,6 +417,15 @@ export class ServiceOrderManager {
     const existing = await this.serviceOrderRepository.byId(id);
     if (!existing) {
       throw new AppException(AppErrorCode.SERVICE_ORDER_NOT_FOUND, 'Ordem de serviço não encontrada.', HttpStatus.NOT_FOUND);
+    }
+
+    // A delivered order or one that already took money is a financial record: it is cancelled, never erased.
+    const [receipts, paidInstallment] = await Promise.all([
+      this.receiptRepository.byServiceOrderId(id),
+      this.prisma.client.serviceOrderInstallment.findFirst({ where: { serviceOrderId: id, status: 'PAID', deletedAt: null } }),
+    ]);
+    if (existing.status === 'DELIVERED' || receipts.length > 0 || paidInstallment) {
+      throw new AppException(AppErrorCode.VALIDATION_ERROR, 'Não é possível excluir uma OS entregue ou com recebimento registrado. Para encerrar sem valor, use Cancelar atendimento.', HttpStatus.CONFLICT);
     }
 
     const { count } = await this.serviceOrderRepository.softDelete(id);
@@ -464,26 +514,28 @@ export class ServiceOrderManager {
     const customerIds = [...new Set(items.map((item) => item.customerId))];
     const technicianIds = [...new Set(items.map((item) => item.technicianId).filter((id): id is string => !!id))];
 
-    const [vehicles, customers, technicians, totalsByOrderId, receipts] = await Promise.all([
+    const [vehicles, customers, technicians, totalsByOrderId, receipts, statusSince] = await Promise.all([
       this.vehicleRepository.byIds(vehicleIds),
       this.customerRepository.byIds(customerIds),
       this.userRepository.byIds(technicianIds),
       this.itemRepository.sumTotalsByServiceOrderIds(items.map((serviceOrder) => serviceOrder.id)),
       this.receiptRepository.byServiceOrderIds(items.map((serviceOrder) => serviceOrder.id)),
+      this.statusHistoryRepository.statusSince(items),
     ]);
     const vehicleById = new Map(vehicles.map((vehicle) => [vehicle.id, vehicle]));
     const customerById = new Map(customers.map((customer) => [customer.id, customer]));
     const technicianById = new Map(technicians.map((technician) => [technician.id, technician]));
 
-    return items.map((serviceOrder) =>
-      this.toResponse(
+    return items.map((serviceOrder) => ({
+      ...this.toResponse(
         serviceOrder,
         vehicleById.get(serviceOrder.vehicleId) ?? null,
         customerById.get(serviceOrder.customerId) ?? null,
         serviceOrder.technicianId ? (technicianById.get(serviceOrder.technicianId) ?? null) : null,
         { totalAmountCentsOverride: totalsByOrderId.get(serviceOrder.id) ?? 0, receipts: receipts.filter((receipt) => receipt.serviceOrderId === serviceOrder.id) },
       ),
-    );
+      statusSince: (statusSince.get(serviceOrder.id) ?? serviceOrder.openedAt).toISOString(),
+    }));
   }
 
   async dashboardToday(viewer: { userId: string; canViewPrices: boolean }, today?: { startsAt: Date; endsAt: Date }, now = new Date()): Promise<DashboardTodayResponse> {
@@ -518,10 +570,10 @@ export class ServiceOrderManager {
     return { metrics, attention: { total: attentionTotal, items: await this.toListResponses(attention) }, workload, waiting: { approvals, ready }, mine: { total: mine.total, items: mineItems } };
   }
 
-  private async waitingSummary(rows: Array<{ id: string; since: Date }>, staleDays: number, includeAmount: boolean, now: Date): Promise<DashboardWaitingResponse> {
+  private async waitingSummary(rows: Array<{ id: string; since: Date; discountCents: number }>, staleDays: number, includeAmount: boolean, now: Date): Promise<DashboardWaitingResponse> {
     const days = rows.map((row) => Math.max(0, Math.floor((now.getTime() - row.since.getTime()) / 86_400_000)));
     const summary: DashboardWaitingResponse = { count: rows.length, stale: days.filter((value) => value >= staleDays).length, oldestDays: days.length ? Math.max(...days) : 0 };
-    if (includeAmount && rows.length) summary.amountCents = [...(await this.itemRepository.sumTotalsByServiceOrderIds(rows.map((row) => row.id))).values()].reduce((sum, value) => sum + value, 0);
+    if (includeAmount && rows.length) { const totals = await this.itemRepository.sumTotalsByServiceOrderIds(rows.map((row) => row.id)); summary.amountCents = rows.reduce((sum, row) => sum + netTotal(totals.get(row.id) ?? 0, row.discountCents), 0); }
     return summary;
   }
 
@@ -530,7 +582,7 @@ export class ServiceOrderManager {
     const previousMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
     const sixMonthsStart = new Date(now.getFullYear(), now.getMonth() - 5, 1);
     const orders = await this.serviceOrderRepository.listForBusinessSummary(sixMonthsStart);
-    const [totalsByOrderId, financialItems, allReceipts, cashReceipts, technicians, vehicles, customers] = await Promise.all([
+    const [grossTotalsByOrderId, financialItems, allReceipts, cashReceipts, technicians, vehicles, customers] = await Promise.all([
       this.itemRepository.sumTotalsByServiceOrderIds(orders.map((order) => order.id)),
       this.itemRepository.financialItemsByServiceOrderIds(orders.map((order) => order.id)),
       this.receiptRepository.byServiceOrderIds(orders.map((order) => order.id)),
@@ -539,6 +591,7 @@ export class ServiceOrderManager {
       this.vehicleRepository.byIds([...new Set(orders.map((order) => order.vehicleId))]),
       this.customerRepository.byIds([...new Set(orders.map((order) => order.customerId))]),
     ]);
+    const totalsByOrderId = new Map(orders.map((order) => [order.id, netTotal(grossTotalsByOrderId.get(order.id) ?? 0, order.discountCents)]));
     const technicianNames = new Map(technicians.map((technician) => [technician.id, technician.name]));
     const delivered = orders.filter((order) => order.status === 'DELIVERED' && order.closedAt);
     const currentDelivered = delivered.filter((order) => order.closedAt! >= currentMonthStart);
@@ -668,13 +721,15 @@ export class ServiceOrderManager {
     return { startAt: request.startAt, endAt: request.endAt, items };
   }
 
-  async addItem(request: CreateServiceOrderItemRequest): Promise<{ item: ServiceOrderItemResponse }> {
+  async addItem(request: CreateServiceOrderItemRequest, actingUser?: AuthenticatedUser): Promise<{ item: ServiceOrderItemResponse }> {
     const serviceOrder = await this.serviceOrderRepository.byId(request.serviceOrderId);
     if (!serviceOrder) {
       throw new AppException(AppErrorCode.SERVICE_ORDER_NOT_FOUND, 'Ordem de serviço não encontrada.', HttpStatus.NOT_FOUND);
     }
 
     if (request.careServiceKey && ['DELIVERED', 'CANCELLED'].includes(serviceOrder.status)) throw new AppException(AppErrorCode.VALIDATION_ERROR, 'Para uma OS encerrada, registre o cuidado na central de relacionamento.');
+    const closedReason = this.closedEditReason(serviceOrder.status, request.editReason);
+    const previousTotal = closedReason ? await this.computeTotalAmountCents(serviceOrder.id) : 0;
     const created = await this.itemRepository.insert({
       serviceOrderId: request.serviceOrderId,
       type: request.type,
@@ -684,10 +739,11 @@ export class ServiceOrderManager {
       careServiceKey: request.careServiceKey,
     });
 
+    if (closedReason) await this.auditClosedItemChange(actingUser, serviceOrder, 'add', created.id, closedReason, previousTotal);
     return { item: this.toItemResponse(created) };
   }
 
-  async updateItem(request: UpdateServiceOrderItemRequest): Promise<{ item: ServiceOrderItemResponse }> {
+  async updateItem(request: UpdateServiceOrderItemRequest, actingUser?: AuthenticatedUser): Promise<{ item: ServiceOrderItemResponse }> {
     const existing = await this.itemRepository.byId(request.id);
     if (!existing) {
       throw new AppException(AppErrorCode.SERVICE_ORDER_ITEM_NOT_FOUND, 'Item da OS não encontrado.', HttpStatus.NOT_FOUND);
@@ -702,6 +758,8 @@ export class ServiceOrderManager {
     }
 
     if (request.careServiceKey !== undefined && request.careServiceKey !== existing.careServiceKey && ['DELIVERED', 'CANCELLED'].includes(owningOrder.status)) throw new AppException(AppErrorCode.VALIDATION_ERROR, 'Para uma OS encerrada, registre o cuidado na central de relacionamento.');
+    const closedReason = this.closedEditReason(owningOrder.status, request.editReason);
+    const previousTotal = closedReason ? await this.computeTotalAmountCents(owningOrder.id) : 0;
     await this.itemRepository.update(request.id, {
       type: request.type,
       description: request.description,
@@ -715,10 +773,11 @@ export class ServiceOrderManager {
       throw new AppException(AppErrorCode.SERVICE_ORDER_ITEM_NOT_FOUND, 'Item da OS não encontrado.', HttpStatus.NOT_FOUND);
     }
 
+    if (closedReason) await this.auditClosedItemChange(actingUser, owningOrder, 'update', request.id, closedReason, previousTotal);
     return { item: this.toItemResponse(updated) };
   }
 
-  async deleteItem(id: string): Promise<{ item: ServiceOrderItemResponse }> {
+  async deleteItem(id: string, actingUser?: AuthenticatedUser, editReason?: string): Promise<{ item: ServiceOrderItemResponse }> {
     const existing = await this.itemRepository.byId(id);
     if (!existing) {
       throw new AppException(AppErrorCode.SERVICE_ORDER_ITEM_NOT_FOUND, 'Item da OS não encontrado.', HttpStatus.NOT_FOUND);
@@ -729,12 +788,37 @@ export class ServiceOrderManager {
       throw new AppException(AppErrorCode.SERVICE_ORDER_ITEM_NOT_FOUND, 'Item da OS não encontrado.', HttpStatus.NOT_FOUND);
     }
 
+    const closedReason = this.closedEditReason(owningOrder.status, editReason);
+    const previousTotal = closedReason ? await this.computeTotalAmountCents(owningOrder.id) : 0;
     const { count } = await this.itemRepository.softDelete(id);
     if (count === 0) {
       throw new AppException(AppErrorCode.SERVICE_ORDER_ITEM_NOT_FOUND, 'Item da OS não encontrado.', HttpStatus.NOT_FOUND);
     }
 
+    if (closedReason) await this.auditClosedItemChange(actingUser, owningOrder, 'delete', id, closedReason, previousTotal);
     return { item: this.toItemResponse(existing) };
+  }
+
+  // Prices of a delivered or cancelled order change money already counted: a reason is mandatory and audited.
+  private closedEditReason(status: string, editReason?: string): string | undefined {
+    if (!['DELIVERED', 'CANCELLED'].includes(status)) return undefined;
+    const reason = editReason?.trim();
+    if (!reason || reason.length < 5) {
+      throw new AppException(AppErrorCode.VALIDATION_ERROR, 'Informe o motivo da correção (mínimo 5 caracteres) para alterar os itens de uma OS encerrada.', HttpStatus.BAD_REQUEST);
+    }
+    return reason;
+  }
+
+  private async auditClosedItemChange(actingUser: AuthenticatedUser | undefined, order: { id: string; status: string; tenantId: string }, itemAction: 'add' | 'update' | 'delete', itemId: string, reason: string, previousAmountCents: number): Promise<void> {
+    if (!actingUser) return;
+    await this.auditLog.record({
+      tenantId: actingUser.tenantId,
+      userId: actingUser.userId,
+      action: 'service_order.closed_items_changed',
+      entity: 'service_order_item',
+      entityId: itemId,
+      metadata: { serviceOrderId: order.id, status: order.status, itemAction, reason, previousAmountCents, amountCents: await this.computeTotalAmountCents(order.id) },
+    });
   }
 
   async configurePayment(actingUser: AuthenticatedUser, request: ConfigureServiceOrderPaymentRequest): Promise<{ serviceOrder: ServiceOrderResponse }> {
@@ -744,7 +828,7 @@ export class ServiceOrderManager {
     if (!request.anticipated && !request.firstDueAt) {
       throw new AppException(AppErrorCode.VALIDATION_ERROR, 'Informe a data da primeira parcela.', HttpStatus.BAD_REQUEST);
     }
-    const totalAmountCents = await this.computeTotalAmountCents(serviceOrder.id);
+    const totalAmountCents = netTotal(await this.computeTotalAmountCents(serviceOrder.id), serviceOrder.discountCents);
     if (totalAmountCents <= 0) {
       throw new AppException(AppErrorCode.VALIDATION_ERROR, 'Adicione peças ou serviços antes de configurar o pagamento.', HttpStatus.BAD_REQUEST);
     }
@@ -872,7 +956,7 @@ export class ServiceOrderManager {
         tx.serviceOrderItem.findMany({ where: { serviceOrderId: serviceOrder.id, deletedAt: null } }),
         tx.serviceOrderReceipt.findMany({ where: { serviceOrderId: serviceOrder.id, deletedAt: null } }),
       ]);
-      const totalAmountCents = items.reduce((sum, item) => sum + Math.round(item.quantity.toNumber() * item.unitPriceCents), 0);
+      const totalAmountCents = netTotal(items.reduce((sum, item) => sum + Math.round(item.quantity.toNumber() * item.unitPriceCents), 0), serviceOrder.discountCents);
       const received = receipts.reduce((sum, item) => sum + item.amountCents, 0);
       if (request.amountCents > totalAmountCents - received) {
         throw new AppException(AppErrorCode.SERVICE_ORDER_RECEIPT_EXCEEDS_BALANCE, 'O valor recebido é maior que o saldo pendente.', HttpStatus.BAD_REQUEST);
@@ -940,16 +1024,18 @@ export class ServiceOrderManager {
     },
   ): ServiceOrderResponse {
     const itemResponses = options?.items?.map((item) => this.toItemResponse(item));
-    const totalAmountCents = itemResponses
+    const grossAmountCents = itemResponses
       ? itemResponses.reduce((sum, item) => sum + item.lineTotalCents, 0)
       : (options?.totalAmountCentsOverride ?? 0);
+    const discountCents = Math.min(serviceOrder.discountCents ?? 0, grossAmountCents);
+    const totalAmountCents = grossAmountCents - discountCents;
     const receiptResponses = options?.receipts?.map((receipt) => this.toReceiptResponse(receipt));
     const receivedAmountCents = receiptResponses?.reduce((sum, receipt) => sum + receipt.amountCents, 0) ?? 0;
     const outstandingAmountCents = Math.max(0, totalAmountCents - receivedAmountCents);
 
     return {
       id: serviceOrder.id,
-      ...(itemResponses ? { quoteRevision: quoteRevision(itemResponses.map(({ id, description, type, quantity, unitPriceCents, lineTotalCents }) => ({ id, description, type, quantity, unitPriceCents, lineTotalCents }))) } : {}),
+      ...(itemResponses ? { quoteRevision: quoteRevision(itemResponses.map(({ id, description, type, quantity, unitPriceCents, lineTotalCents }) => ({ id, description, type, quantity, unitPriceCents, lineTotalCents })), discountCents) } : {}),
       tenantId: serviceOrder.tenantId,
       orderNumber: serviceOrder.orderNumber,
       customerId: serviceOrder.customerId,
@@ -978,6 +1064,9 @@ export class ServiceOrderManager {
       createdAt: serviceOrder.createdAt.toISOString(),
       statusHistory: options?.history?.map((item) => this.toHistoryItem(item)),
       totalAmountCents,
+      discountCents,
+      warrantyDays: serviceOrder.warrantyDays ?? undefined,
+      exitMileage: serviceOrder.exitMileage ?? undefined,
       items: itemResponses,
       receipts: receiptResponses,
       installments: options?.installments?.map((installment) => this.toInstallmentResponse(installment)),

@@ -28,7 +28,7 @@ const serviceOrder: ServiceOrderResponse = {
     version: 1,
     items: [{ id: 'brakes', label: 'Freios', status: 'critical', note: 'Trocar pastilhas' }],
   },
-  totalAmountCents: 35000,
+  totalAmountCents: 35000, discountCents: 0,
   receivedAmountCents: 0,
   outstandingAmountCents: 35000,
   paymentStatus: 'AWAITING_PAYMENT',

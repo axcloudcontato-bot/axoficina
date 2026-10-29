@@ -5,7 +5,9 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ServiceOrderResponse } from '@oficina/contracts';
 import { ServiceOrderItemsSection } from '../ServiceOrderItemsSection';
 import { serviceOrderItemsApi } from '../../api/service-order-items-api';
+import { serviceOrdersApi } from '../../api/service-orders-api';
 
+vi.mock('../../api/service-orders-api', () => ({ serviceOrdersApi: { update: vi.fn() } }));
 vi.mock('../../api/service-order-items-api', () => ({
   serviceOrderItemsApi: { create: vi.fn(), update: vi.fn(), delete: vi.fn() },
 }));
@@ -42,7 +44,7 @@ const baseServiceOrder: ServiceOrderResponse = {
   status: 'OPEN',
   openedAt: '2026-07-01T00:00:00Z',
   createdAt: '2026-07-01T00:00:00Z',
-  totalAmountCents: 13000,
+  totalAmountCents: 13000, discountCents: 0,
   receivedAmountCents: 0,
   outstandingAmountCents: 13000,
   paymentStatus: 'AWAITING_PAYMENT',
@@ -171,6 +173,50 @@ describe('ServiceOrderItemsSection', () => {
     await user.click(removeButton);
 
     await waitFor(() => expect(serviceOrderItemsApi.delete).toHaveBeenCalledWith({ id: 'item-1' }));
+  });
+
+  it('on a delivered order asks for a written reason before any change and sends it along', async () => {
+    vi.mocked(serviceOrderItemsApi.delete).mockResolvedValue({ item: baseServiceOrder.items![0] });
+    const user = userEvent.setup();
+    renderWithClient(<ServiceOrderItemsSection serviceOrder={{ ...baseServiceOrder, status: 'DELIVERED' }} />);
+
+    const [removeButton] = screen.getAllByRole('button', { name: /remover/i });
+    await user.click(removeButton);
+    expect(serviceOrderItemsApi.delete).not.toHaveBeenCalled();
+    expect(toastMock.error).toHaveBeenCalledWith('Informe o motivo da correção (mínimo 5 caracteres).');
+
+    await user.type(screen.getByLabelText('Motivo da correção'), 'Item lançado em duplicidade');
+    await user.click(removeButton);
+    await waitFor(() => expect(serviceOrderItemsApi.delete).toHaveBeenCalledWith({ id: 'item-1', editReason: 'Item lançado em duplicidade' }));
+  });
+
+  it('does not show the reason field while the order is still open', () => {
+    renderWithClient(<ServiceOrderItemsSection serviceOrder={baseServiceOrder} />);
+    expect(screen.queryByLabelText('Motivo da correção')).not.toBeInTheDocument();
+  });
+
+  it('shows subtotal, discount and net total, and applies a typed discount', async () => {
+    vi.mocked(serviceOrdersApi.update).mockResolvedValue({ serviceOrder: baseServiceOrder });
+    const user = userEvent.setup();
+    renderWithClient(<ServiceOrderItemsSection serviceOrder={{ ...baseServiceOrder, discountCents: 1500, totalAmountCents: 11500 }} />);
+
+    expect(screen.getByText('Subtotal dos itens')).toBeInTheDocument();
+    expect(screen.getByText('-R$ 15,00')).toBeInTheDocument();
+    const input = screen.getByLabelText('Desconto');
+    expect(input).toHaveValue('15.00');
+    await user.clear(input);
+    await user.type(input, '20,50');
+    await user.click(screen.getByRole('button', { name: 'Aplicar' }));
+    await waitFor(() => expect(serviceOrdersApi.update).toHaveBeenCalledWith({ id: 'so-1', discountCents: 2050 }));
+  });
+
+  it('refuses a discount above the items total without calling the API', async () => {
+    const user = userEvent.setup();
+    renderWithClient(<ServiceOrderItemsSection serviceOrder={baseServiceOrder} />);
+    await user.type(screen.getByLabelText('Desconto'), '999');
+    await user.click(screen.getByRole('button', { name: 'Aplicar' }));
+    expect(serviceOrdersApi.update).not.toHaveBeenCalled();
+    expect(toastMock.error).toHaveBeenCalledWith('O desconto não pode ser maior que o total dos itens.');
   });
 });
 

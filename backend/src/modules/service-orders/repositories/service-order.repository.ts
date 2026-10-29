@@ -37,6 +37,9 @@ export interface UpdateServiceOrderInput {
   expectedDeliveryAt?: Date | null;
   paymentMethod?: PaymentMethod | null;
   paymentInstallments?: number | null;
+  discountCents?: number;
+  warrantyDays?: number | null;
+  exitMileage?: number | null;
 }
 
 @Injectable()
@@ -175,6 +178,7 @@ export class ServiceOrderRepository {
         WHERE so.tenant_id = ${tenantId}::uuid AND so.deleted_at IS NULL
         AND COALESCE((SELECT SUM(ROUND(i.quantity * i.unit_price_cents)) FROM service_order_items i
           WHERE i.service_order_id = so.id AND i.deleted_at IS NULL), 0)
+          - LEAST(so.discount_cents, COALESCE((SELECT SUM(ROUND(i2.quantity * i2.unit_price_cents)) FROM service_order_items i2 WHERE i2.service_order_id = so.id AND i2.deleted_at IS NULL), 0))
           > COALESCE((SELECT SUM(r.amount_cents) FROM service_order_receipts r
           WHERE r.service_order_id = so.id AND r.tenant_id = ${tenantId}::uuid AND r.deleted_at IS NULL), 0)`;
       conditions.push({ id: { in: pending.map((order) => order.id) } });
@@ -236,12 +240,12 @@ export class ServiceOrderRepository {
   // Since when each order sits in `status`: the latest transition into it
   // (the order's own entry date when no history row exists).
   async waitingSince(status: 'AWAITING_APPROVAL' | 'COMPLETED') {
-    const orders = await this.prisma.client.serviceOrder.findMany({ where: { deletedAt: null, status }, select: { id: true, openedAt: true } });
+    const orders = await this.prisma.client.serviceOrder.findMany({ where: { deletedAt: null, status }, select: { id: true, openedAt: true, discountCents: true } });
     if (!orders.length) return [];
     const history = await this.prisma.client.serviceOrderStatusHistory.findMany({ where: { serviceOrderId: { in: orders.map((order) => order.id) }, toStatus: status }, orderBy: { changedAt: 'desc' }, select: { serviceOrderId: true, changedAt: true } });
     const latest = new Map<string, Date>();
     for (const row of history) if (!latest.has(row.serviceOrderId)) latest.set(row.serviceOrderId, row.changedAt);
-    return orders.map((order) => ({ id: order.id, since: latest.get(order.id) ?? order.openedAt }));
+    return orders.map((order) => ({ id: order.id, since: latest.get(order.id) ?? order.openedAt, discountCents: order.discountCents }));
   }
 
   async myOrders(userId: string, take: number) {

@@ -41,6 +41,9 @@ export interface UpdateTenantSettingsInput {
   waAkgApiKey?: string | null;
   waAkgWebhookSecret?: string | null;
   waAkgEnabled?: boolean;
+  photoRequireEntry?: boolean;
+  photoRequireExit?: boolean;
+  photoRequireItems?: boolean;
 }
 
 @Injectable()

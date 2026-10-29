@@ -35,6 +35,9 @@ export class CreateServiceOrderDto implements CreateServiceOrderRequest {
   @IsOptional() @IsISO8601() expectedDeliveryAt?: string | null;
   @IsOptional() @IsIn(PAYMENT_METHODS) paymentMethod?: CreateServiceOrderRequest['paymentMethod'];
   @IsOptional() @IsInt() @Min(1) @Max(24) paymentInstallments?: number | null;
+  @IsOptional() @IsInt() @Min(0) @Max(2_147_483_647) discountCents?: number;
+  @IsOptional() @IsInt() @Min(0) @Max(3650) warrantyDays?: number | null;
+  @IsOptional() @IsInt() @Min(0) @Max(2_147_483_647) exitMileage?: number | null;
 }
 
 export class UpdateServiceOrderDto implements UpdateServiceOrderRequest {
@@ -72,6 +75,9 @@ export class TransitionServiceOrderDto implements TransitionServiceOrderRequest 
 
   @IsIn(SERVICE_ORDER_STATUSES, { message: 'to_status must be a valid status' })
   toStatus!: TransitionServiceOrderRequest['toStatus'];
+
+  @IsOptional() @IsString() @MaxLength(300)
+  reason?: string;
 }
 
 export class DeleteServiceOrderDto implements DeleteServiceOrderRequest {

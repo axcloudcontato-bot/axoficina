@@ -59,11 +59,20 @@ const PAYMENT_LABELS = {
   PAID: 'Pago',
 } as const;
 
+// How long the order has been sitting in its current column.
 function elapsedSince(date: string) {
   const hours = Math.max(0, Math.floor((Date.now() - new Date(date).getTime()) / 3_600_000));
-  if (hours < 1) return 'aberta agora';
-  if (hours < 24) return `aberta há ${hours}h`;
-  return `aberta há ${Math.floor(hours / 24)}d`;
+  if (hours < 1) return 'nesta etapa agora';
+  if (hours < 24) return `nesta etapa há ${hours}h`;
+  return `nesta etapa há ${Math.floor(hours / 24)}d`;
+}
+
+// Overdue first, then the nearest promised delivery, then whoever waited longest.
+export function sortByUrgency(items: ServiceOrderListItemResponse[]): ServiceOrderListItemResponse[] {
+  const late = (item: ServiceOrderListItemResponse) => (isOverdueServiceOrder(item) ? 0 : 1);
+  const promised = (item: ServiceOrderListItemResponse) => (item.expectedDeliveryAt ? new Date(item.expectedDeliveryAt).getTime() : Number.POSITIVE_INFINITY);
+  const since = (item: ServiceOrderListItemResponse) => new Date(item.statusSince ?? item.openedAt).getTime();
+  return [...items].sort((a, b) => late(a) - late(b) || promised(a) - promised(b) || since(a) - since(b));
 }
 
 export function ServiceOrderBoard({ items, isLoading, isError, onRetry, canManage, canViewPrices }: ServiceOrderBoardProps) {
@@ -115,7 +124,7 @@ export function ServiceOrderBoard({ items, isLoading, isError, onRetry, canManag
         return <BoardColumn
           key={column.label}
           column={column}
-          items={items.filter((item) => column.statuses.includes(item.status))}
+          items={sortByUrgency(items.filter((item) => column.statuses.includes(item.status)))}
           canManage={canManage}
           canViewPrices={canViewPrices}
           dragging={Boolean(draggedItem)}
@@ -197,13 +206,13 @@ function BoardCard({ item, canManage, canViewPrices, onDragStart, onDragEnd }: {
           <InfoLine icon={CalendarDot}>{item.expectedDeliveryAt ? `Entrega: ${new Date(item.expectedDeliveryAt).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}` : 'Entrega sem previsão'}</InfoLine>
         </div>
         <div className="mt-3 flex items-center justify-between gap-2 text-[11px] font-semibold text-text-muted">
-          <span className="flex items-center gap-1"><Clock className="size-3.5" aria-hidden="true" />{elapsedSince(item.openedAt)}</span>
+          <span className="flex items-center gap-1"><Clock className="size-3.5" aria-hidden="true" />{elapsedSince(item.statusSince ?? item.openedAt)}</span>
           <ArrowRight className="size-3.5 shrink-0 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
         </div>
         {canViewPrices && <div className="mt-2 flex items-center justify-between border-t border-border pt-2 text-[11px]"><span className={item.paymentStatus === 'PAID' ? 'font-bold text-success' : 'font-semibold text-warning'}>{PAYMENT_LABELS[item.paymentStatus]}</span><span className="font-bold tabular-nums text-text">{formatCurrencyBRL(item.totalAmountCents)}</span></div>}
       </Link>
       {canManage && quickAction && <Link href={`/ordens-de-servico/${item.id}?step=${quickAction.step}`} className="mt-3 flex h-9 w-full items-center justify-center gap-1 rounded-button border border-primary/20 bg-primary-subtle px-2 text-xs font-bold text-primary-strong transition-colors hover:bg-primary/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">{quickAction.label}<CaretRight className="size-3.5" aria-hidden="true" /></Link>}
-      {canManage && SERVICE_ORDER_TRANSITIONS[item.status].length > 0 && <select value="" aria-label={`Mover OS #${item.orderNumber} para outra etapa`} className="mt-2 h-9 w-full rounded-button border border-input bg-background px-2 text-xs text-text" onChange={(event) => { if (event.target.value) { setSelectedStatus(event.target.value as ServiceOrderStatus); setConfirming(true); } }}><option value="" disabled>Mover para outra etapa...</option>{SERVICE_ORDER_TRANSITIONS[item.status].map((status) => <option key={status} value={status}>{SERVICE_ORDER_STATUS_LABELS[status]}</option>)}</select>}
+      {canManage && SERVICE_ORDER_TRANSITIONS[item.status].some((status) => status !== 'CANCELLED') && <select value="" aria-label={`Mover OS #${item.orderNumber} para outra etapa`} className="mt-2 h-9 w-full rounded-button border border-input bg-background px-2 text-xs text-text" onChange={(event) => { if (event.target.value) { setSelectedStatus(event.target.value as ServiceOrderStatus); setConfirming(true); } }}><option value="" disabled>Mover para outra etapa...</option>{SERVICE_ORDER_TRANSITIONS[item.status].filter((status) => status !== 'CANCELLED').map((status) => <option key={status} value={status}>{SERVICE_ORDER_STATUS_LABELS[status]}</option>)}</select>}
     </article>
 
     <Dialog open={confirming} onOpenChange={(open) => { setConfirming(open); if (!open) setSelectedStatus(null); }}>

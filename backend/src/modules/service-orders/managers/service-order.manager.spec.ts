@@ -23,6 +23,7 @@ function buildManager() {
   const statusHistoryRepository = {
     insert: jest.fn(),
     byServiceOrderId: jest.fn(),
+    statusSince: jest.fn().mockResolvedValue(new Map()),
   };
   const itemRepository = {
     insert: jest.fn(),
@@ -343,7 +344,7 @@ describe('ServiceOrderManager', () => {
       deps.vehicleRepository.byId.mockResolvedValue(baseVehicle);
       deps.customerRepository.byId.mockResolvedValue(baseCustomer);
 
-      const result = await deps.manager.transition(actingUser, { id: 'so-1', toStatus: toStatus as never });
+      const result = await deps.manager.transition(actingUser, { id: 'so-1', toStatus: toStatus as never, ...(toStatus === 'CANCELLED' ? { reason: 'Cliente desistiu do serviço' } : {}) });
 
       expect(result.serviceOrder.status).toBe(toStatus);
       expect(deps.statusHistoryRepository.insert).toHaveBeenCalledWith(
@@ -450,6 +451,53 @@ describe('ServiceOrderManager', () => {
       expect(result.serviceOrder.status).toBe('IN_PROGRESS');
     });
 
+    describe('workshop photo policy', () => {
+      const withPolicy = (deps: ReturnType<typeof buildManager>, policy: { photoRequireEntry: boolean; photoRequireExit: boolean; photoRequireItems: boolean }) => {
+        (deps.manager as unknown as { tenantRepository: unknown }).tenantRepository = { byId: jest.fn().mockResolvedValue(policy) };
+      };
+
+      it('lets an order start without entry photos when the workshop does not require them', async () => {
+        const deps = buildManager();
+        withPolicy(deps, { photoRequireEntry: false, photoRequireExit: true, photoRequireItems: true });
+        const existing = { ...baseServiceOrder, status: 'OPEN' };
+        deps.serviceOrderRepository.byId.mockResolvedValueOnce(existing).mockResolvedValueOnce({ ...existing, status: 'IN_PROGRESS' });
+        deps.serviceOrderRepository.transition.mockResolvedValue({ count: 1 });
+        deps.photoRepository.distinctAngles.mockResolvedValue([]);
+        deps.vehicleRepository.byId.mockResolvedValue(baseVehicle);
+        deps.customerRepository.byId.mockResolvedValue(baseCustomer);
+
+        const result = await deps.manager.transition(actingUser, { id: 'so-1', toStatus: 'IN_PROGRESS' as never });
+
+        expect(result.serviceOrder.status).toBe('IN_PROGRESS');
+        expect(deps.photoRepository.distinctAngles).not.toHaveBeenCalled();
+      });
+
+      it('still demands exit photos when only the entry requirement is off', async () => {
+        const deps = buildManager();
+        withPolicy(deps, { photoRequireEntry: false, photoRequireExit: true, photoRequireItems: false });
+        deps.serviceOrderRepository.byId.mockResolvedValue({ ...baseServiceOrder, status: 'IN_PROGRESS' });
+        deps.photoRepository.distinctAngles.mockResolvedValue([]);
+
+        await expect(deps.manager.transition(actingUser, { id: 'so-1', toStatus: 'COMPLETED' as never })).rejects.toMatchObject({ code: 'SERVICE_ORDER_MISSING_EXIT_PHOTO' });
+      });
+
+      it('completes without exit or part photos when neither is required', async () => {
+        const deps = buildManager();
+        withPolicy(deps, { photoRequireEntry: true, photoRequireExit: false, photoRequireItems: false });
+        const existing = { ...baseServiceOrder, status: 'IN_PROGRESS' };
+        deps.serviceOrderRepository.byId.mockResolvedValueOnce(existing).mockResolvedValueOnce({ ...existing, status: 'COMPLETED' });
+        deps.serviceOrderRepository.transition.mockResolvedValue({ count: 1 });
+        deps.photoRepository.distinctAngles.mockResolvedValue([]);
+        deps.itemRepository.byServiceOrderId.mockResolvedValue([buildItem({ id: 'item-1', description: 'Pastilha' })]);
+        deps.vehicleRepository.byId.mockResolvedValue(baseVehicle);
+        deps.customerRepository.byId.mockResolvedValue(baseCustomer);
+
+        const result = await deps.manager.transition(actingUser, { id: 'so-1', toStatus: 'COMPLETED' as never });
+
+        expect(result.serviceOrder.status).toBe('COMPLETED');
+      });
+    });
+
     it('rejects IN_PROGRESS -> COMPLETED with 400 when EXIT angles are missing', async () => {
       const deps = buildManager();
       deps.serviceOrderRepository.byId.mockResolvedValue({ ...baseServiceOrder, status: 'IN_PROGRESS' });
@@ -526,7 +574,7 @@ describe('ServiceOrderManager', () => {
       deps.vehicleRepository.byId.mockResolvedValue(baseVehicle);
       deps.customerRepository.byId.mockResolvedValue(baseCustomer);
 
-      const result = await deps.manager.transition(actingUser, { id: 'so-1', toStatus: 'CANCELLED' as never });
+      const result = await deps.manager.transition(actingUser, { id: 'so-1', toStatus: 'CANCELLED' as never, reason: 'Cliente desistiu do serviço' });
 
       expect(result.serviceOrder.status).toBe('CANCELLED');
       expect(deps.photoRepository.distinctAngles).not.toHaveBeenCalled();
@@ -534,9 +582,9 @@ describe('ServiceOrderManager', () => {
   });
 
   describe('delete', () => {
-    it('soft deletes regardless of status and records the audit log', async () => {
+    it('soft deletes an order with no money or delivery behind it and records the audit log', async () => {
       const deps = buildManager();
-      deps.serviceOrderRepository.byId.mockResolvedValue({ ...baseServiceOrder, status: 'DELIVERED' });
+      deps.serviceOrderRepository.byId.mockResolvedValue({ ...baseServiceOrder, status: 'CANCELLED' });
       deps.serviceOrderRepository.softDelete.mockResolvedValue({ count: 1 });
       deps.vehicleRepository.byId.mockResolvedValue(baseVehicle);
       deps.customerRepository.byId.mockResolvedValue(baseCustomer);
@@ -545,6 +593,24 @@ describe('ServiceOrderManager', () => {
 
       expect(deps.serviceOrderRepository.softDelete).toHaveBeenCalledWith('so-1');
       expect(deps.auditLog.record).toHaveBeenCalledWith(expect.objectContaining({ action: 'service_order.deleted' }));
+    });
+
+    it('refuses to erase a delivered order, an order with a receipt, or one with a paid installment', async () => {
+      const delivered = buildManager();
+      delivered.serviceOrderRepository.byId.mockResolvedValue({ ...baseServiceOrder, status: 'DELIVERED' });
+      await expect(delivered.manager.delete(actingUser, 'so-1')).rejects.toMatchObject({ status: HttpStatus.CONFLICT });
+      expect(delivered.serviceOrderRepository.softDelete).not.toHaveBeenCalled();
+
+      const received = buildManager();
+      received.serviceOrderRepository.byId.mockResolvedValue({ ...baseServiceOrder, status: 'IN_PROGRESS' });
+      received.receiptRepository.byServiceOrderId.mockResolvedValue([{ id: 'receipt-1' }]);
+      await expect(received.manager.delete(actingUser, 'so-1')).rejects.toMatchObject({ status: HttpStatus.CONFLICT });
+
+      const paid = buildManager();
+      paid.serviceOrderRepository.byId.mockResolvedValue({ ...baseServiceOrder, status: 'IN_PROGRESS' });
+      paid.prisma.client.serviceOrderInstallment.findFirst.mockResolvedValue({ id: 'installment-1' });
+      await expect(paid.manager.delete(actingUser, 'so-1')).rejects.toMatchObject({ status: HttpStatus.CONFLICT });
+      expect(paid.serviceOrderRepository.softDelete).not.toHaveBeenCalled();
     });
 
     it('rejects with 404 when deleted concurrently between byId and softDelete', async () => {
@@ -698,6 +764,73 @@ describe('ServiceOrderManager', () => {
       expect(result.accountsReceivableCents).toBe(5000);
       expect(result.overdueDeliveries).toBe(1);
       expect(result.technicianWorkload[0]).toMatchObject({ technicianName: 'Carlos Mecânico', activeOrders: 1 });
+    });
+  });
+
+  describe('cancellation reason', () => {
+    it('refuses to cancel without a written reason and records it when given', async () => {
+      const missing = buildManager();
+      missing.serviceOrderRepository.byId.mockResolvedValue({ ...baseServiceOrder, status: 'OPEN' });
+      await expect(missing.manager.transition(actingUser, { id: 'so-1', toStatus: 'CANCELLED' as never, reason: ' no ' })).rejects.toThrow('motivo do cancelamento');
+      expect(missing.serviceOrderRepository.transition).not.toHaveBeenCalled();
+
+      const deps = buildManager();
+      const existing = { ...baseServiceOrder, status: 'OPEN' };
+      deps.serviceOrderRepository.byId.mockResolvedValueOnce(existing).mockResolvedValueOnce({ ...existing, status: 'CANCELLED' });
+      deps.serviceOrderRepository.transition.mockResolvedValue({ count: 1 });
+      deps.vehicleRepository.byId.mockResolvedValue(baseVehicle);
+      deps.customerRepository.byId.mockResolvedValue(baseCustomer);
+      await deps.manager.transition(actingUser, { id: 'so-1', toStatus: 'CANCELLED' as never, reason: '  Cliente recusou o orçamento  ' });
+      expect(deps.auditLog.record).toHaveBeenCalledWith(expect.objectContaining({ metadata: expect.objectContaining({ toStatus: 'CANCELLED', reason: 'Cliente recusou o orçamento' }) }));
+    });
+  });
+
+  describe('order discount', () => {
+    const open = { ...baseServiceOrder, status: 'OPEN', discountCents: 0 };
+    const withItems = (deps: ReturnType<typeof buildManager>, order: Record<string, unknown> = open) => {
+      deps.serviceOrderRepository.byId.mockResolvedValue(order);
+      deps.itemRepository.byServiceOrderId.mockResolvedValue([buildItem({ quantity: 1, unitPriceCents: 20000 })]);
+      deps.vehicleRepository.byId.mockResolvedValue(baseVehicle);
+      deps.customerRepository.byId.mockResolvedValue(baseCustomer);
+    };
+
+    it('subtracts the discount from the total shown and owed', async () => {
+      const deps = buildManager();
+      withItems(deps, { ...open, discountCents: 5000 });
+      deps.serviceOrderRepository.update.mockResolvedValue({ count: 1 });
+      const result = await deps.manager.update(actingUser, { id: 'so-1' });
+      expect(result.serviceOrder).toMatchObject({ totalAmountCents: 15000, discountCents: 5000 });
+    });
+
+    it('rejects a discount bigger than the items, one below what was already received, and any change once closed', async () => {
+      const tooBig = buildManager();
+      withItems(tooBig);
+      await expect(tooBig.manager.update(actingUser, { id: 'so-1', discountCents: 20001 })).rejects.toThrow('maior que o total');
+
+      const received = buildManager();
+      withItems(received);
+      received.receiptRepository.byServiceOrderId.mockResolvedValue([{ amountCents: 18000 }]);
+      await expect(received.manager.update(actingUser, { id: 'so-1', discountCents: 5000 })).rejects.toThrow('abaixo do que já foi recebido');
+
+      const closed = buildManager();
+      withItems(closed, { ...open, status: 'DELIVERED' });
+      await expect(closed.manager.update(actingUser, { id: 'so-1', discountCents: 1000 })).rejects.toThrow('OS encerrada');
+      expect(closed.serviceOrderRepository.update).not.toHaveBeenCalled();
+    });
+
+    it('audits who changed the discount and from how much to how much', async () => {
+      const deps = buildManager();
+      withItems(deps);
+      deps.serviceOrderRepository.update.mockResolvedValue({ count: 1 });
+      await deps.manager.update(actingUser, { id: 'so-1', discountCents: 3000 });
+      expect(deps.serviceOrderRepository.update).toHaveBeenCalledWith('so-1', expect.objectContaining({ discountCents: 3000 }));
+      expect(deps.auditLog.record).toHaveBeenCalledWith(expect.objectContaining({ metadata: expect.objectContaining({ itemAction: 'discount', previousAmountCents: 0, amountCents: 3000 }) }));
+    });
+
+    it('rejects an exit mileage lower than the entry mileage', async () => {
+      const deps = buildManager();
+      withItems(deps, { ...open, entryMileage: 50000 });
+      await expect(deps.manager.update(actingUser, { id: 'so-1', exitMileage: 49000 })).rejects.toThrow('quilometragem de saída');
     });
   });
 
@@ -907,6 +1040,45 @@ describe('ServiceOrderManager', () => {
 
       expect(result.serviceOrder.totalAmountCents).toBe(0);
       expect(result.serviceOrder.items).toEqual([]);
+    });
+  });
+
+  describe('items of a closed order', () => {
+    const closed = { ...baseServiceOrder, status: 'DELIVERED' };
+    const newItem = { serviceOrderId: 'so-1', type: 'PART' as const, description: 'Pastilha', quantity: 1, unitPriceCents: 9000 };
+
+    it('requires a written reason to add, change or remove items once the order is delivered or cancelled', async () => {
+      const deps = buildManager();
+      deps.serviceOrderRepository.byId.mockResolvedValue(closed);
+      deps.itemRepository.byId.mockResolvedValue(buildItem());
+      await expect(deps.manager.addItem(newItem, actingUser)).rejects.toThrow('motivo da correção');
+      await expect(deps.manager.addItem({ ...newItem, editReason: '  ok ' }, actingUser)).rejects.toThrow('motivo da correção');
+      await expect(deps.manager.updateItem({ id: 'item-1', unitPriceCents: 100 }, actingUser)).rejects.toThrow('motivo da correção');
+      await expect(deps.manager.deleteItem('item-1', actingUser)).rejects.toThrow('motivo da correção');
+      expect(deps.itemRepository.insert).not.toHaveBeenCalled();
+      expect(deps.itemRepository.update).not.toHaveBeenCalled();
+      expect(deps.itemRepository.softDelete).not.toHaveBeenCalled();
+    });
+
+    it('applies the change with a reason and records who changed what, with the amount before and after', async () => {
+      const deps = buildManager();
+      deps.serviceOrderRepository.byId.mockResolvedValue(closed);
+      deps.itemRepository.insert.mockResolvedValue(buildItem({ id: 'item-9' }));
+      const existing = buildItem({ quantity: 1, unitPriceCents: 50000 });
+      deps.itemRepository.byServiceOrderId.mockResolvedValueOnce([existing]).mockResolvedValueOnce([existing, buildItem({ id: 'item-9', quantity: 1, unitPriceCents: 9000 })]);
+
+      await deps.manager.addItem({ ...newItem, editReason: '  Cliente aceitou pastilha extra  ' }, actingUser);
+
+      expect(deps.itemRepository.insert).toHaveBeenCalled();
+      expect(deps.auditLog.record).toHaveBeenCalledWith(expect.objectContaining({ action: 'service_order.closed_items_changed', userId: 'user-1', entityId: 'item-9', metadata: expect.objectContaining({ itemAction: 'add', reason: 'Cliente aceitou pastilha extra', status: 'DELIVERED', previousAmountCents: 50000, amountCents: 59000 }) }));
+    });
+
+    it('does not ask for a reason while the order is still open', async () => {
+      const deps = buildManager();
+      deps.serviceOrderRepository.byId.mockResolvedValue(baseServiceOrder);
+      deps.itemRepository.insert.mockResolvedValue(buildItem());
+      await expect(deps.manager.addItem(newItem, actingUser)).resolves.toBeDefined();
+      expect(deps.auditLog.record).not.toHaveBeenCalled();
     });
   });
 

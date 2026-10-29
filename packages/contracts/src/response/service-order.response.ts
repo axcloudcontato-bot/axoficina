@@ -54,6 +54,8 @@ export interface ServiceOrderResponse {
   technicianId?: string;
   technicianName?: string;
   openedAt: string;
+  // Since when the order sits in its current status (lists only).
+  statusSince?: string;
   closedAt?: string;
   createdAt: string;
   // Só populado por getById — ver spec: list não precisa do histórico
@@ -62,7 +64,11 @@ export interface ServiceOrderResponse {
   // Feature 8 (Itens e Preço da OS): soma de todos os itens não removidos,
   // sempre presente (list e getById). `items` só populado por getById,
   // mesmo padrão de `statusHistory`.
+  // Net total: items minus the order discount.
   totalAmountCents: number;
+  discountCents: number;
+  warrantyDays?: number;
+  exitMileage?: number;
   items?: ServiceOrderItemResponse[];
   receipts?: ServiceOrderReceiptResponse[];
   installments?: ServiceOrderInstallmentResponse[];

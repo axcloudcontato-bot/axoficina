@@ -23,3 +23,9 @@ export interface SendEmailRequest {
   subject: string;
   text: string;
 }
+
+export interface UpdatePhotoPolicyRequest {
+  entry: boolean;
+  exit: boolean;
+  items: boolean;
+}

@@ -17,6 +17,7 @@ const serviceOrder: ServiceOrderResponse = {
   openedAt: '2026-07-27T12:00:00Z',
   createdAt: '2026-07-27T12:00:00Z',
   totalAmountCents: 35_000,
+  discountCents: 0,
   receivedAmountCents: 0,
   outstandingAmountCents: 35_000,
   paymentStatus: 'AWAITING_PAYMENT',
@@ -38,6 +39,14 @@ describe('quote sharing', () => {
     expect(message).toContain('OS #00012');
     expect(message).toContain('Pastilha de freio');
     expect(message).toContain('R$ 350,00');
+  });
+
+  it('shows the discount before the net total', () => {
+    const message = buildQuoteMessage({ ...serviceOrder, discountCents: 5_000, totalAmountCents: 30_000 });
+    expect(message).toContain('Desconto');
+    expect(message).toMatch(/R\$\s50,00/);
+    expect(message).toMatch(/R\$\s300,00/);
+    expect(buildQuoteMessage(serviceOrder)).not.toContain('Desconto');
   });
 
   it('normalizes valid Brazilian phones and rejects invalid ones', () => {

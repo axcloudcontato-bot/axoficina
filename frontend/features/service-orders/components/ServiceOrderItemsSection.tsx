@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { DEFAULT_CARE_CAMPAIGNS, SERVICE_ORDER_ITEM_TYPES, SERVICE_ORDER_ITEM_TYPE_LABELS, type CareServiceKey, type ServiceOrderItemResponse, type ServiceOrderItemType, type ServiceOrderResponse } from '@oficina/contracts';
 import { Button } from '@/components/ui/button';
@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { formatCurrencyBRL } from '@/lib/format-currency';
 import { extractErrorMessage } from '@/lib/api/client';
 import { useCatalogItems } from '@/features/catalog/hooks/use-catalog';
+import { useUpdateServiceOrder } from '../hooks/use-service-orders';
 import { useAddServiceOrderItem, useDeleteServiceOrderItem, useUpdateServiceOrderItem } from '../hooks/use-service-order-items';
 
 interface ServiceOrderItemsSectionProps {
@@ -51,8 +52,8 @@ function isValidForm(form: ItemForm): boolean {
   return Boolean(form.description.trim()) && quantity > 0 && !Number.isNaN(unitPriceCents) && unitPriceCents >= 0;
 }
 
-// Sem trava por status da OS (spec: itens editáveis em qualquer status,
-// incluindo DELIVERED/CANCELLED) — este componente não checa serviceOrder.status.
+// Itens continuam editáveis em OS encerrada, mas só com um motivo escrito, que o
+// backend exige e registra na auditoria (DELIVERED/CANCELLED).
 export function ServiceOrderItemsSection({ serviceOrder, readOnly = false }: ServiceOrderItemsSectionProps) {
   const [form, setForm] = useState<ItemForm>(EMPTY_FORM);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -65,8 +66,28 @@ export function ServiceOrderItemsSection({ serviceOrder, readOnly = false }: Ser
   const catalogOptions = (catalog.data?.items ?? []).filter((entry) => entry.type === form.type);
   const items = serviceOrder.items ?? [];
   const careLocked = ['DELIVERED', 'CANCELLED'].includes(serviceOrder.status);
+  const [editReason, setEditReason] = useState('');
+  const updateOrder = useUpdateServiceOrder();
+  const [discountInput, setDiscountInput] = useState(serviceOrder.discountCents > 0 ? (serviceOrder.discountCents / 100).toFixed(2) : '');
+  useEffect(() => setDiscountInput(serviceOrder.discountCents > 0 ? (serviceOrder.discountCents / 100).toFixed(2) : ''), [serviceOrder.discountCents]);
+  const reasonPayload = careLocked ? { editReason: editReason.trim() } : {};
+  const reasonMissing = careLocked && editReason.trim().length < 5;
+
+  const subtotalCents = (serviceOrder.items ?? []).reduce((sum, item) => sum + item.lineTotalCents, 0);
+  const discountEditable = !readOnly && !careLocked && items.length > 0;
+
+  function applyDiscount() {
+    const cents = discountInput.trim() === '' ? 0 : parseUnitPriceCents(discountInput);
+    if (Number.isNaN(cents) || cents < 0) { toast.error('Informe um valor de desconto válido.'); return; }
+    if (cents > subtotalCents) { toast.error('O desconto não pode ser maior que o total dos itens.'); return; }
+    updateOrder.mutate({ id: serviceOrder.id, discountCents: cents }, {
+      onSuccess: () => toast.success(cents === 0 ? 'Desconto removido.' : 'Desconto aplicado.'),
+      onError: (error) => toast.error(extractErrorMessage(error)),
+    });
+  }
 
   function handleAdd() {
+    if (reasonMissing) { toast.error('Informe o motivo da correção (mínimo 5 caracteres).'); return; }
     if (!isValidForm(form)) {
       toast.error('Preencha descrição, quantidade e valor válidos.');
       return;
@@ -74,7 +95,7 @@ export function ServiceOrderItemsSection({ serviceOrder, readOnly = false }: Ser
     const quantity = Number(form.quantity.replace(',', '.'));
     const unitPriceCents = parseUnitPriceCents(form.unitPrice);
     addItem.mutate(
-      { serviceOrderId: serviceOrder.id, type: form.type, description: form.description.trim(), quantity, unitPriceCents, ...(!careLocked && form.careServiceKey ? { careServiceKey: form.careServiceKey } : {}) },
+      { serviceOrderId: serviceOrder.id, type: form.type, description: form.description.trim(), quantity, unitPriceCents, ...reasonPayload, ...(!careLocked && form.careServiceKey ? { careServiceKey: form.careServiceKey } : {}) },
       {
         onSuccess: () => {
           setForm(EMPTY_FORM);
@@ -103,6 +124,7 @@ export function ServiceOrderItemsSection({ serviceOrder, readOnly = false }: Ser
   }
 
   function handleSaveEdit() {
+    if (reasonMissing) { toast.error('Informe o motivo da correção (mínimo 5 caracteres).'); return; }
     if (!editingId || !isValidForm(editForm)) {
       toast.error('Preencha descrição, quantidade e valor válidos.');
       return;
@@ -110,7 +132,7 @@ export function ServiceOrderItemsSection({ serviceOrder, readOnly = false }: Ser
     const quantity = Number(editForm.quantity.replace(',', '.'));
     const unitPriceCents = parseUnitPriceCents(editForm.unitPrice);
     updateItem.mutate(
-      { id: editingId, type: editForm.type, description: editForm.description.trim(), quantity, unitPriceCents, ...(!careLocked && editForm.careServiceKey !== (items.find(item => item.id === editingId)?.careServiceKey ?? '') ? { careServiceKey: editForm.careServiceKey || null } : {}) },
+      { id: editingId, type: editForm.type, description: editForm.description.trim(), quantity, unitPriceCents, ...reasonPayload, ...(!careLocked && editForm.careServiceKey !== (items.find(item => item.id === editingId)?.careServiceKey ?? '') ? { careServiceKey: editForm.careServiceKey || null } : {}) },
       {
         onSuccess: () => {
           cancelEdit();
@@ -122,8 +144,9 @@ export function ServiceOrderItemsSection({ serviceOrder, readOnly = false }: Ser
   }
 
   function handleRemove(item: ServiceOrderItemResponse) {
+    if (reasonMissing) { toast.error('Informe o motivo da correção (mínimo 5 caracteres).'); return; }
     deleteItem.mutate(
-      { id: item.id },
+      { id: item.id, ...reasonPayload },
       {
         onSuccess: () => toast.success('Item removido.'),
         onError: (error) => toast.error(extractErrorMessage(error)),
@@ -140,6 +163,8 @@ export function ServiceOrderItemsSection({ serviceOrder, readOnly = false }: Ser
         </div>
         <p className="text-xl font-bold text-text">{formatCurrencyBRL(serviceOrder.totalAmountCents)}</p>
       </div>
+
+      {careLocked && !readOnly && <label className="mb-4 block space-y-1.5 rounded-button border border-warning/30 bg-warning-subtle p-3 text-xs font-semibold text-text"><span>Motivo da correção (obrigatório em OS encerrada)</span><Input aria-label="Motivo da correção" maxLength={300} placeholder="Ex.: cliente aceitou pastilha extra na retirada" value={editReason} onChange={(event) => setEditReason(event.target.value)} /><span className="block font-normal text-text-muted">Fica registrado com seu nome e o valor antes e depois. Não inclua dados pessoais do cliente.</span></label>}
 
       {items.length === 0 ? (
         <p className="py-6 text-center text-sm text-text-muted">Nenhum item lançado ainda.</p>
@@ -226,6 +251,9 @@ export function ServiceOrderItemsSection({ serviceOrder, readOnly = false }: Ser
           </table>
         </div>
       )}
+
+      {items.length > 0 && serviceOrder.discountCents > 0 && <div className="ml-auto mt-4 w-full max-w-xs space-y-1 text-sm"><div className="flex justify-between text-text-muted"><span>Subtotal dos itens</span><span className="tabular-nums">{formatCurrencyBRL(subtotalCents)}</span></div><div className="flex justify-between text-success"><span>Desconto</span><span className="tabular-nums">-{formatCurrencyBRL(serviceOrder.discountCents)}</span></div></div>}
+      {discountEditable && <div className="ml-auto mt-3 flex w-full max-w-xs items-end gap-2"><label className="flex-1 space-y-1.5 text-xs font-semibold text-text-muted">Desconto (R$)<Input aria-label="Desconto" inputMode="decimal" placeholder="0,00" value={discountInput} onChange={(event) => setDiscountInput(event.target.value)} /></label><Button variant="outline" onClick={applyDiscount} disabled={updateOrder.isPending}>{updateOrder.isPending ? 'Aplicando...' : 'Aplicar'}</Button></div>}
 
       {!readOnly && <><div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-5">
         {catalogOptions.length > 0 && <label className="col-span-2 space-y-1.5 text-xs font-semibold text-text-muted sm:col-span-5">Escolher do catálogo ({SERVICE_ORDER_ITEM_TYPE_LABELS[form.type].toLowerCase()})<select className="h-10 w-full rounded-button border border-input bg-background px-3 text-sm font-normal text-foreground" value="" onChange={(event) => pickCatalogItem(event.target.value)}><option value="">Selecione para preencher descrição e preço…</option>{catalogOptions.map((option) => <option key={option.id} value={option.id}>{option.name}{option.unitPriceCents > 0 ? ` — ${formatCurrencyBRL(option.unitPriceCents)}` : ''}</option>)}</select></label>}

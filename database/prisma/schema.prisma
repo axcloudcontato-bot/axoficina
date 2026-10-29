@@ -121,6 +121,9 @@ model Tenant {
   waAkgApiKey          String?   @map("wa_akg_api_key")
   waAkgWebhookSecret   String?   @map("wa_akg_webhook_secret")
   waAkgEnabled         Boolean   @default(false) @map("wa_akg_enabled")
+  photoRequireEntry    Boolean   @default(true) @map("photo_require_entry")
+  photoRequireExit     Boolean   @default(true) @map("photo_require_exit")
+  photoRequireItems    Boolean   @default(true) @map("photo_require_items")
   plan                String    @default("free")
   subscriptionStatus      String    @default("unconfigured") @map("subscription_status")
   subscriptionAmountCents Int       @default(0) @map("subscription_amount_cents")
@@ -321,6 +324,9 @@ model ServiceOrder {
   checklist     Json?
   diagnosis     String?
   entryMileage  Int?      @map("entry_mileage")
+  exitMileage   Int?      @map("exit_mileage")
+  discountCents Int       @default(0) @map("discount_cents")
+  warrantyDays  Int?      @map("warranty_days")
   customerComplaint String? @map("customer_complaint")
   receptionNotes String?  @map("reception_notes")
   recommendedService String? @map("recommended_service")

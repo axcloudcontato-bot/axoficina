@@ -28,12 +28,18 @@ export interface UpdateServiceOrderRequest {
   expectedDeliveryAt?: string | null;
   paymentMethod?: PaymentMethod | null;
   paymentInstallments?: number | null;
+  // Order-level discount in cents; not allowed once the order is closed.
+  discountCents?: number;
+  warrantyDays?: number | null;
+  exitMileage?: number | null;
 }
 
 export interface TransitionServiceOrderRequest {
   id: string;
   toStatus: ServiceOrderStatus;
   authorization?: 'CUSTOMER_MESSAGE' | 'MANUAL';
+  // Required (min. 5 characters) when cancelling.
+  reason?: string;
 }
 
 export interface DeleteServiceOrderRequest {

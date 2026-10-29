@@ -34,3 +34,11 @@ export interface TenantSettingsResponse {
   company: CompanySettingsResponse;
   email: EmailSettingsResponse;
 }
+
+// Photo evidence a workshop requires before an order moves on.
+export interface PhotoPolicy {
+  entry: boolean;
+  exit: boolean;
+  items: boolean;
+}
+export const DEFAULT_PHOTO_POLICY: PhotoPolicy = { entry: true, exit: true, items: true };

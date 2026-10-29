@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { CustomerMessageResponse, ServiceOrderResponse } from '@oficina/contracts';
-import { defaultWorkflowStep, quoteApprovalState } from '../service-order-workflow';
+import { defaultWorkflowStep, quoteApprovalState, workflowPhotoCoverage } from '../service-order-workflow';
 
 const item = { id: 'item', description: 'Revisão', type: 'LABOR', quantity: 1, unitPriceCents: 15000, lineTotalCents: 15000 };
 const order = { items: [item] } as ServiceOrderResponse;
@@ -26,5 +26,20 @@ describe('service order workflow', () => {
     expect(quoteApprovalState([{ ...message, channel: 'WHATSAPP', sentAt: undefined, deliveryMode: 'LINK' }], 0).state).toBe('prepared');
     expect(quoteApprovalState([{ ...message, channel: 'WHATSAPP', sentAt: undefined, deliveryMode: 'WA_AKG' }], 0).state).toBe('uncertain');
     expect(quoteApprovalState([{ ...message, expiresAt: '2020-01-01T00:00:00Z' }]).state).toBe('expired');
+  });
+  it('asks only for the photos the workshop requires', () => {
+    const part = { ...item, id: 'part', type: 'PART' } as never;
+    const withPart = { items: [part] } as unknown as ServiceOrderResponse;
+    const strict = workflowPhotoCoverage(withPart, []);
+    expect([strict.entry.length, strict.exit.length, strict.items.length]).toEqual([6, 6, 1]);
+    const relaxed = workflowPhotoCoverage(withPart, [], { entry: false, exit: false, items: false });
+    expect([relaxed.entry.length, relaxed.exit.length, relaxed.items.length]).toEqual([0, 0, 0]);
+    const onlyExit = workflowPhotoCoverage(withPart, [], { entry: false, exit: true, items: false });
+    expect([onlyExit.entry.length, onlyExit.exit.length, onlyExit.items.length]).toEqual([0, 6, 0]);
+  });
+  it('treats a changed discount as a changed quote, even with identical items', () => {
+    const approved = { ...message, answeredAt: '2026-10-24T13:00:00Z', selectedOption: 0 };
+    expect(quoteApprovalState([approved], 0, { ...order, discountCents: 0 } as ServiceOrderResponse).state).toBe('approved');
+    expect(quoteApprovalState([approved], 0, { ...order, discountCents: 1000 } as ServiceOrderResponse).state).toBe('changed');
   });
 });

@@ -1,4 +1,4 @@
-import { QUOTE_APPROVAL_QUESTION, SERVICE_ORDER_PHOTO_ANGLES, type CustomerMessageResponse, type ServiceOrderPhotoResponse, type ServiceOrderResponse, type ServiceOrderStatus } from '@oficina/contracts';
+import { DEFAULT_PHOTO_POLICY, QUOTE_APPROVAL_QUESTION, SERVICE_ORDER_PHOTO_ANGLES, type CustomerMessageResponse, type PhotoPolicy, type ServiceOrderPhotoResponse, type ServiceOrderResponse, type ServiceOrderStatus } from '@oficina/contracts';
 
 export const WORKFLOW_STEPS = [
   { id: 'entry', label: 'Entrada' }, { id: 'quote', label: 'Orçamento' }, { id: 'approval', label: 'Aprovação' }, { id: 'execution', label: 'Execução' }, { id: 'delivery', label: 'Entrega' },
@@ -12,11 +12,12 @@ export function defaultWorkflowStep(status: ServiceOrderStatus): WorkflowStep {
   return 'delivery';
 }
 
-export function workflowPhotoCoverage(order: ServiceOrderResponse, photos: ServiceOrderPhotoResponse[]) {
-  const angles = (category: 'ENTRY' | 'EXIT') => SERVICE_ORDER_PHOTO_ANGLES.filter(angle => !photos.some(photo => photo.category === category && photo.angle === angle));
+// Categories the workshop does not require come back empty, so nothing blocks the order.
+export function workflowPhotoCoverage(order: ServiceOrderResponse, photos: ServiceOrderPhotoResponse[], policy: PhotoPolicy = DEFAULT_PHOTO_POLICY) {
+  const angles = (category: 'ENTRY' | 'EXIT') => (category === 'ENTRY' ? !policy.entry : !policy.exit) ? [] : SERVICE_ORDER_PHOTO_ANGLES.filter(angle => !photos.some(photo => photo.category === category && photo.angle === angle));
   const itemIds = (category: 'ISSUE' | 'RESOLVED') => new Set(photos.filter(photo => photo.category === category).map(photo => photo.serviceOrderItemId));
   const before = itemIds('ISSUE'); const after = itemIds('RESOLVED');
-  return { entry: angles('ENTRY'), exit: angles('EXIT'), items: (order.items ?? []).filter(item => item.type === 'PART' && (!before.has(item.id) || !after.has(item.id))) };
+  return { entry: angles('ENTRY'), exit: angles('EXIT'), items: !policy.items ? [] : (order.items ?? []).filter(item => item.type === 'PART' && (!before.has(item.id) || !after.has(item.id))) };
 }
 
 export function quoteApprovalState(messages: CustomerMessageResponse[], now = Date.now(), order?: ServiceOrderResponse) {
@@ -24,7 +25,7 @@ export function quoteApprovalState(messages: CustomerMessageResponse[], now = Da
   if (!latest) return { state: 'not-sent' as const, latest };
   if (!latest.quote) return { state: 'legacy' as const, latest };
   const normalize = (items: NonNullable<ServiceOrderResponse['items']>) => JSON.stringify(items.map(({ id, description, type, quantity, unitPriceCents, lineTotalCents }) => ({ id, description, type, quantity, unitPriceCents, lineTotalCents })).sort((a, b) => a.id.localeCompare(b.id)));
-  if (latest.quoteIsCurrent === false || order && normalize(latest.quote.items as NonNullable<ServiceOrderResponse['items']>) !== normalize(order.items ?? [])) return { state: 'changed' as const, latest };
+  if (latest.quoteIsCurrent === false || order && (normalize(latest.quote.items as NonNullable<ServiceOrderResponse['items']>) !== normalize(order.items ?? []) || (latest.quote.discountCents ?? 0) !== (order.discountCents ?? 0))) return { state: 'changed' as const, latest };
   if (latest.answeredAt && latest.selectedOption !== undefined) return { state: latest.selectedOption === 0 ? 'approved' as const : latest.selectedOption === 1 ? 'declined' as const : 'contact' as const, latest };
   if (Date.parse(latest.expiresAt) <= now) return { state: 'expired' as const, latest };
   if (!latest.sentAt) return { state: latest.deliveryMode === 'WA_AKG' ? 'uncertain' as const : latest.channel === 'WHATSAPP' ? 'prepared' as const : 'waiting' as const, latest };

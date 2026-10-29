@@ -16,6 +16,7 @@ export function buildQuoteMessage(serviceOrder: ServiceOrderResponse, whatsapp =
     '',
     ...(lines.length ? lines : ['Nenhum item lançado no orçamento.']),
     '',
+    ...(serviceOrder.discountCents > 0 ? [`${whatsapp ? '💸 *Desconto:*' : 'Desconto:'} -${formatCurrencyBRL(serviceOrder.discountCents)}`] : []),
     `${whatsapp ? '💰 *Total:*' : 'Total:'} ${formatCurrencyBRL(serviceOrder.totalAmountCents)}`,
     '',
     `${whatsapp ? '💬 ' : ''}Por favor, confirme a aprovação para prosseguirmos com o serviço.`,
