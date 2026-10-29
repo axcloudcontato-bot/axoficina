@@ -325,7 +325,7 @@ describe('Service Orders (e2e)', () => {
     await request(app.getHttpServer())
       .post('/api/v1/service-orders/transition')
       .set('Authorization', `Bearer ${admin.access_token}`)
-      .send({ id, to_status: 'CANCELLED' });
+      .send({ id, to_status: 'CANCELLED', reason: 'Cliente desistiu do serviço' });
 
     const leaveTerminal = await request(app.getHttpServer())
       .post('/api/v1/service-orders/transition')
@@ -355,7 +355,7 @@ describe('Service Orders (e2e)', () => {
       request(app.getHttpServer())
         .post('/api/v1/service-orders/transition')
         .set('Authorization', `Bearer ${admin.access_token}`)
-        .send({ id, to_status: 'CANCELLED' }),
+        .send({ id, to_status: 'CANCELLED', reason: 'Cliente desistiu do serviço' }),
     ]);
 
     // Exatamente um dos dois vence: a invariante é "nunca os dois sucedem",

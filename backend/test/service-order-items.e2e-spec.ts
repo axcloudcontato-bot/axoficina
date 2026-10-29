@@ -338,29 +338,24 @@ describe('Service Order Items (e2e)', () => {
     expect(deleteAttempt.status).toBe(403);
   });
 
-  it('allows adding, editing, and removing items regardless of the service order status (no lock on DELIVERED or CANCELLED)', async () => {
-    const admin = await signupAdmin(`nolock-${Date.now()}`);
-    const serviceOrderId = await createServiceOrder(admin.access_token, 'nolock');
-    await transition(admin.access_token, serviceOrderId, 'IN_PROGRESS');
-    await transition(admin.access_token, serviceOrderId, 'COMPLETED');
-    await transition(admin.access_token, serviceOrderId, 'DELIVERED');
+  it('requires a written reason to add, edit or remove items once the service order is delivered, and accepts them with it', async () => {
+    const admin = await signupAdmin(`closed-${Date.now()}`);
+    const serviceOrderId = await createServiceOrder(admin.access_token, 'closed');
+    // Delivering through the API needs the photo evidence; this test is about the item rule only.
+    await prisma.unscoped.serviceOrder.update({ where: { id: serviceOrderId }, data: { status: 'DELIVERED', closedAt: new Date() } });
+    const send = (path: string, body: Record<string, unknown>) => request(app.getHttpServer()).post(`/api/v1/service-orders/${path}`).set('Authorization', `Bearer ${admin.access_token}`).send(body);
+    const reason = 'Cliente aceitou retrabalho na retirada';
 
-    const addAfterDelivered = await request(app.getHttpServer())
-      .post('/api/v1/service-orders/items')
-      .set('Authorization', `Bearer ${admin.access_token}`)
-      .send({ service_order_id: serviceOrderId, type: 'LABOR', description: 'Retrabalho', quantity: 1, unit_price_cents: 2000 });
-    expect(addAfterDelivered.status).toBe(201);
+    const withoutReason = await send('items', { service_order_id: serviceOrderId, type: 'LABOR', description: 'Retrabalho', quantity: 1, unit_price_cents: 2000 });
+    expect(withoutReason.status).toBe(400);
 
-    const updateAfterDelivered = await request(app.getHttpServer())
-      .post('/api/v1/service-orders/items/update')
-      .set('Authorization', `Bearer ${admin.access_token}`)
-      .send({ id: addAfterDelivered.body.item.id, quantity: 2 });
-    expect(updateAfterDelivered.status).toBe(200);
+    const added = await send('items', { service_order_id: serviceOrderId, type: 'LABOR', description: 'Retrabalho', quantity: 1, unit_price_cents: 2000, edit_reason: reason });
+    expect(added.status).toBe(201);
+    const itemId = added.body.item.id as string;
 
-    const deleteAfterDelivered = await request(app.getHttpServer())
-      .post('/api/v1/service-orders/items/delete')
-      .set('Authorization', `Bearer ${admin.access_token}`)
-      .send({ id: addAfterDelivered.body.item.id });
-    expect(deleteAfterDelivered.status).toBe(200);
+    expect((await send('items/update', { id: itemId, quantity: 2 })).status).toBe(400);
+    expect((await send('items/update', { id: itemId, quantity: 2, edit_reason: reason })).status).toBe(200);
+    expect((await send('items/delete', { id: itemId })).status).toBe(400);
+    expect((await send('items/delete', { id: itemId, edit_reason: reason })).status).toBe(200);
   });
 });

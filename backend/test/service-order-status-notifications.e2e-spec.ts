@@ -68,7 +68,7 @@ describe('Automatic WhatsApp status notices (HTTP + PostgreSQL)', () => {
     await post('customers/update', { id: customerId, notify_service_order_updates: 'true' }).expect(400);
     await post('customers/update', { id: customerId, notify_service_order_updates: null }).expect(400);
     const disabled = await opt(false); expect(disabled.body.customer.notify_service_order_updates).toBe(false);
-    await post('service-orders/transition', { id, to_status: 'CANCELLED' }).expect(200); await drain();
+    await post('service-orders/transition', { id, to_status: 'CANCELLED', reason: 'Cliente desistiu do serviço' }).expect(200); await drain();
     expect(whatsapp.sendNotice).not.toHaveBeenCalled(); expect((await list(id)).body.total).toBe(0);
   });
 
@@ -89,7 +89,7 @@ describe('Automatic WhatsApp status notices (HTTP + PostgreSQL)', () => {
 
   it('only notifies the winning transition and only once across concurrent dispatchers', async () => {
     await opt(true); const id = await open();
-    const changes = await Promise.all([post('service-orders/transition', { id, to_status: 'CANCELLED' }), post('service-orders/transition', { id, to_status: 'CANCELLED' })]);
+    const changes = await Promise.all([post('service-orders/transition', { id, to_status: 'CANCELLED', reason: 'Cliente desistiu do serviço' }), post('service-orders/transition', { id, to_status: 'CANCELLED', reason: 'Cliente desistiu do serviço' })]);
     expect(changes.filter(result => result.status === 200)).toHaveLength(1);
     await Promise.all([dispatcher.dispatchPending(), dispatcher.dispatchPending(), dispatcher.dispatchPending()]); await drain();
     expect(whatsapp.sendNotice).toHaveBeenCalledTimes(2); expect(whatsapp.sendNotice.mock.calls[0][2]).toContain('*ORDEM DE SERVIÇO ABERTA*'); expect(whatsapp.sendNotice.mock.calls[1][2]).toContain('*ORDEM DE SERVIÇO CANCELADA*');
@@ -112,7 +112,7 @@ describe('Automatic WhatsApp status notices (HTTP + PostgreSQL)', () => {
   it('rechecks revocation and changed phones before sending queued notices', async () => {
     await opt(true); const id = await open(); await opt(false); await drain();
     expect((await list(id)).body.items[0].status).toBe('SKIPPED'); expect(whatsapp.sendNotice).not.toHaveBeenCalled();
-    await opt(true); await post('service-orders/transition', { id, to_status: 'CANCELLED' }).expect(200);
+    await opt(true); await post('service-orders/transition', { id, to_status: 'CANCELLED', reason: 'Cliente desistiu do serviço' }).expect(200);
     await post('customers/update', { id: customerId, phone: '21988887777' }).expect(200); await drain();
     expect(whatsapp.sendNotice).not.toHaveBeenCalled();
     const history = await list(id); expect(history.body.items.every((record: { status: string }) => record.status === 'SKIPPED')).toBe(true);
@@ -121,7 +121,7 @@ describe('Automatic WhatsApp status notices (HTTP + PostgreSQL)', () => {
 
   it('starts with future movements only, isolates history and records disabled integration failures', async () => {
     const id = await open(); await opt(true); whatsapp.getConnection.mockResolvedValueOnce(null as never);
-    await post('service-orders/transition', { id, to_status: 'CANCELLED' }).expect(200); await drain();
+    await post('service-orders/transition', { id, to_status: 'CANCELLED', reason: 'Cliente desistiu do serviço' }).expect(200); await drain();
     const history = await list(id).expect(200); expect(history.body.total).toBe(1); expect(history.body.items[0].failure_reason).toContain('desativada');
     await list(id, tokens[1]).expect(404);
     await request(app.getHttpServer()).post('/api/v1/service-orders/status-notifications/list').send({ service_order_id: id }).expect(401);
@@ -138,7 +138,7 @@ describe('Automatic WhatsApp status notices (HTTP + PostgreSQL)', () => {
     await opt(true); const id = await open();
     const repo = app.get(ServiceOrderStatusNotificationRepository);
     const spy = jest.spyOn(repo, 'record').mockRejectedValueOnce(new Error('simulated storage failure'));
-    await post('service-orders/transition', { id, to_status: 'CANCELLED' }).expect(500); spy.mockRestore();
+    await post('service-orders/transition', { id, to_status: 'CANCELLED', reason: 'Cliente desistiu do serviço' }).expect(500); spy.mockRestore();
     expect((await prisma.unscoped.serviceOrder.findFirstOrThrow({ where: { id } })).status).toBe('OPEN');
     expect(await prisma.unscoped.serviceOrderStatusHistory.count({ where: { serviceOrderId: id } })).toBe(1);
     expect((await list(id)).body.total).toBe(1); expect(whatsapp.sendNotice).not.toHaveBeenCalled();
