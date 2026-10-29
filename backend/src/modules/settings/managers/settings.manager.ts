@@ -1,5 +1,5 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import type { AgendaHours, UpdateAgendaHoursRequest, PhotoPolicy, TenantSettingsResponse, UpdateCompanySettingsRequest, UpdateEmailSettingsRequest, UpdatePhotoPolicyRequest } from '@oficina/contracts';
+import type { UpdateLaborRateRequest, AgendaHours, UpdateAgendaHoursRequest, PhotoPolicy, TenantSettingsResponse, UpdateCompanySettingsRequest, UpdateEmailSettingsRequest, UpdatePhotoPolicyRequest } from '@oficina/contracts';
 import { AuditLogService } from '../../../shared/audit-log/audit-log.service';
 import type { AuthenticatedUser } from '../../../shared/guards/jwt-auth.guard';
 import { TenantRepository } from '../../iam/repositories/tenant.repository';
@@ -26,7 +26,14 @@ export class SettingsManager {
 
   async getBranding(user: AuthenticatedUser) {
     const tenant = await this.requireTenant(user.tenantId);
-    return { company: this.toResponse(tenant).company, whatsappEnabled: tenant.waAkgEnabled ?? false, photoPolicy: this.photoPolicy(tenant), agendaHours: this.agendaHours(tenant) };
+    return { company: this.toResponse(tenant).company, whatsappEnabled: tenant.waAkgEnabled ?? false, photoPolicy: this.photoPolicy(tenant), agendaHours: this.agendaHours(tenant), laborRateCents: tenant.laborRateCents ?? null };
+  }
+
+  async updateLaborRate(user: AuthenticatedUser, input: UpdateLaborRateRequest) {
+    const tenant = await this.tenants.updateSettings(user.tenantId, { laborRateCents: input.laborRateCents });
+    if (!tenant) throw new NotFoundException('Empresa não encontrada.');
+    await this.audit.record({ tenantId: user.tenantId, userId: user.userId, action: 'settings.labor_rate_updated', entity: 'tenant', entityId: user.tenantId, metadata: { itemAction: 'update', amountCents: input.laborRateCents ?? 0 } });
+    return { laborRateCents: tenant.laborRateCents ?? null };
   }
 
   async updateAgendaHours(user: AuthenticatedUser, input: UpdateAgendaHoursRequest) {

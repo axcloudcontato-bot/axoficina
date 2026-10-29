@@ -735,7 +735,14 @@ export class ServiceOrderManager {
     if (request.careServiceKey && ['DELIVERED', 'CANCELLED'].includes(serviceOrder.status)) throw new AppException(AppErrorCode.VALIDATION_ERROR, 'Para uma OS encerrada, registre o cuidado na central de relacionamento.');
     const closedReason = this.closedEditReason(serviceOrder.status, request.editReason);
     const previousTotal = closedReason ? await this.computeTotalAmountCents(serviceOrder.id) : 0;
+    // Picked from the catalog: remember which entry and what it cost now, so margins survive later catalog edits.
+    const catalogItem = request.catalogItemId ? await this.prisma.client.catalogItem.findFirst({ where: { id: request.catalogItemId, deletedAt: null } }) : null;
+    if (request.catalogItemId && !catalogItem) {
+      throw new AppException(AppErrorCode.VALIDATION_ERROR, 'Item do catálogo não encontrado.', HttpStatus.BAD_REQUEST);
+    }
     const created = await this.itemRepository.insert({
+      catalogItemId: catalogItem?.id ?? null,
+      costCents: catalogItem?.costCents ?? null,
       serviceOrderId: request.serviceOrderId,
       type: request.type,
       description: request.description,

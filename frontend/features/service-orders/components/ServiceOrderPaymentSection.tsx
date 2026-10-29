@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { formatCurrencyBRL } from '@/lib/format-currency';
+import { parseMoneyToCents } from '@/lib/parse-money';
 import { extractErrorMessage } from '@/lib/api/client';
 import { useConfigureServiceOrderPayment, useConfirmServiceOrderInstallment, useConfirmServiceOrderReceipt, useDeleteServiceOrderReceipt } from '../hooks/use-service-orders';
 
@@ -61,7 +62,7 @@ export function ServiceOrderPaymentSection({ serviceOrder }: { serviceOrder: Ser
     });
   }
   function confirmReceipt() {
-    const amountCents = Math.round(Number(amount.replace(',', '.')) * 100);
+    const amountCents = parseMoneyToCents(amount);
     if (!method || !Number.isFinite(amountCents) || amountCents <= 0) return toast.error('Informe método e valor recebidos.');
     confirm.mutate({ serviceOrderId: serviceOrder.id, method, amountCents, notes: notes.trim() || undefined }, {
       onSuccess: () => { toast.success('Recebimento confirmado e lançado no caixa.'); setNotes(''); },

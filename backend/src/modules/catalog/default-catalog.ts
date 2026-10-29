@@ -1,7 +1,27 @@
-import type { CatalogItemType } from '@oficina/contracts';
+import type { CareServiceKey, CatalogItemType } from '@oficina/contracts';
 
-type DefaultItem = { type: CatalogItemType; name: string; category: string };
-const build = (type: CatalogItemType, category: string, names: string[]): DefaultItem[] => names.map((name) => ({ type, name, category }));
+type DefaultItem = { type: CatalogItemType; name: string; category: string; careServiceKey?: CareServiceKey };
+
+// Services that already map to a customer-care campaign, so choosing them schedules the return.
+const CARE_BY_SERVICE: Record<string, CareServiceKey> = {
+  "Revisão preventiva": "PERIODIC_REVIEW",
+  "Troca de óleo e filtro": "OIL_CHANGE",
+  "Troca de filtro de ar": "AIR_FILTER",
+  "Troca de filtro de cabine (ar-condicionado)": "CABIN_FILTER",
+  "Troca de velas de ignição": "SPARK_PLUGS",
+  "Troca de correia dentada": "BELTS",
+  "Troca de correia do alternador": "BELTS",
+  "Troca de pastilhas de freio": "BRAKES",
+  "Troca de discos de freio": "BRAKES",
+  "Revisão do sistema de freios": "BRAKES",
+  "Sangria do sistema de freio": "BRAKE_FLUID",
+  "Troca de bateria": "BATTERY",
+  "Troca de pneus": "TIRES",
+  "Rodízio de pneus": "TIRES",
+  "Alinhamento de direção": "TIRES",
+  "Balanceamento de rodas": "TIRES"
+};
+const build = (type: CatalogItemType, category: string, names: string[]): DefaultItem[] => names.map((name) => ({ type, name, category, ...(type === 'LABOR' && CARE_BY_SERVICE[name] ? { careServiceKey: CARE_BY_SERVICE[name] } : {}) }));
 
 // Itens comuns de oficina mecânica. Entram com preço zero: cada oficina define o seu.
 export const DEFAULT_CATALOG: DefaultItem[] = [

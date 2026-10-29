@@ -61,6 +61,7 @@ function buildManager() {
     transaction: jest.fn((fn: (tx: unknown) => Promise<unknown>) => fn(FAKE_TX)),
     client: {
       appointment: { updateMany: jest.fn() },
+      catalogItem: { findFirst: jest.fn().mockResolvedValue(null) },
       serviceOrderInstallment: {
         findMany: jest.fn().mockResolvedValue([]),
         findFirst: jest.fn(),
@@ -1100,6 +1101,24 @@ describe('ServiceOrderManager', () => {
     });
   });
 
+  describe('addItem from the catalog', () => {
+    it('remembers the catalog entry and what it cost at that moment', async () => {
+      const deps = buildManager();
+      deps.serviceOrderRepository.byId.mockResolvedValue(baseServiceOrder);
+      deps.itemRepository.insert.mockResolvedValue(buildItem());
+      (deps.prisma.client.catalogItem.findFirst as jest.Mock).mockResolvedValue({ id: 'cat-1', costCents: 9000 });
+      await deps.manager.addItem({ serviceOrderId: 'so-1', type: 'PART', description: 'Pastilha', quantity: 1, unitPriceCents: 18000, catalogItemId: 'cat-1' });
+      expect(deps.itemRepository.insert).toHaveBeenCalledWith(expect.objectContaining({ catalogItemId: 'cat-1', costCents: 9000 }));
+    });
+
+    it('refuses a catalog entry that does not exist for this workshop', async () => {
+      const deps = buildManager();
+      deps.serviceOrderRepository.byId.mockResolvedValue(baseServiceOrder);
+      await expect(deps.manager.addItem({ serviceOrderId: 'so-1', type: 'PART', description: 'Pastilha', quantity: 1, unitPriceCents: 18000, catalogItemId: '00000000-0000-4000-8000-000000000009' })).rejects.toThrow('Item do catálogo não encontrado');
+      expect(deps.itemRepository.insert).not.toHaveBeenCalled();
+    });
+  });
+
   describe('addItem', () => {
     it('adds an item to an existing service order and returns its computed lineTotalCents', async () => {
       const deps = buildManager();
@@ -1120,6 +1139,8 @@ describe('ServiceOrderManager', () => {
         description: 'Filtro de óleo',
         quantity: 2,
         unitPriceCents: 5000,
+        catalogItemId: null,
+        costCents: null,
       });
       expect(result.item.lineTotalCents).toBe(10000);
     });

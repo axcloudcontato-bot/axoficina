@@ -27,7 +27,7 @@ export function useDeleteFinancialEntry() {
   const client = useQueryClient();
   return useMutation({ mutationFn: financialApi.deleteEntry, onSuccess: () => client.invalidateQueries({ queryKey: [KEY] }) });
 }
-export function useSuppliers() { return useQuery({ queryKey: [KEY, 'suppliers'], queryFn: financialApi.suppliers }); }
+export function useSuppliers(enabled = true) { return useQuery({ queryKey: [KEY, 'suppliers'], queryFn: financialApi.suppliers, enabled }); }
 export function useCreateSupplier() { const client = useQueryClient(); return useMutation({ mutationFn: (request: CreateSupplierRequest) => financialApi.createSupplier(request), onSuccess: () => client.invalidateQueries({ queryKey: [KEY, 'suppliers'] }) }); }
 export function useUpdateSupplier() { const client = useQueryClient(); return useMutation({ mutationFn: (request: UpdateSupplierRequest) => financialApi.updateSupplier(request), onSuccess: () => client.invalidateQueries({ queryKey: [KEY, 'suppliers'] }) }); }
 export function useDeleteSupplier() { const client = useQueryClient(); return useMutation({ mutationFn: financialApi.deleteSupplier, onSuccess: () => client.invalidateQueries({ queryKey: [KEY, 'suppliers'] }) }); }

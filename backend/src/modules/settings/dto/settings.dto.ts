@@ -1,4 +1,4 @@
-import type { UpdateAgendaHoursRequest, UpdatePhotoPolicyRequest } from '@oficina/contracts';
+import type { UpdateLaborRateRequest, UpdateAgendaHoursRequest, UpdatePhotoPolicyRequest } from '@oficina/contracts';
 import { ArrayMaxSize, ArrayMinSize, IsArray, IsBoolean, IsEmail, IsInt, IsOptional, IsString, Max, MaxLength, Min, ValidateIf } from 'class-validator';
 
 // `@IsOptional()` só pula a validação quando o valor é null/undefined — uma
@@ -61,4 +61,8 @@ export class UpdateAgendaHoursDto implements UpdateAgendaHoursRequest {
   @IsArray() @ArrayMinSize(1) @ArrayMaxSize(7) @IsInt({ each: true }) @Min(0, { each: true }) @Max(6, { each: true }) workDays!: number[];
   @IsOptional() @IsInt() @Min(1) @Max(100) bays?: number | null;
   @IsOptional() @IsBoolean() remindersEnabled?: boolean;
+}
+
+export class UpdateLaborRateDto implements UpdateLaborRateRequest {
+  @ValidateIf((_object, value) => value !== null) @IsInt() @Min(0) @Max(100_000_000) laborRateCents!: number | null;
 }

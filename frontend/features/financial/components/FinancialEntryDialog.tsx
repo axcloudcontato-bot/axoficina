@@ -14,6 +14,7 @@ import { CustomerFormModal } from '@/features/customers/components/CustomerFormM
 import { useCustomersList } from '@/features/customers/hooks/use-customers';
 import { hasPermission } from '@/features/auth/permissions';
 import { useAuthStore } from '@/stores/auth-store';
+import { parseMoneyToCents } from '@/lib/parse-money';
 import { extractErrorMessage } from '@/lib/api/client';
 import { useCreateFinancialEntry, useFinancialCategories, useSuppliers } from '../hooks/use-financial';
 import { SupplierFormModal } from './SupplierFormModal';
@@ -57,7 +58,7 @@ export function FinancialEntryDialog({ open, onOpenChange, categories, initialTy
   function submit(event: React.FormEvent) {
     event.preventDefault();
     if (create.isPending) return;
-    const amountCents = Math.round(Number(amount.replace(',', '.')) * 100);
+    const amountCents = parseMoneyToCents(amount);
     if (!categoryId || !description.trim() || !Number.isFinite(amountCents) || amountCents <= 0 || !dueAt) return toast.error('Preencha categoria, descrição, valor e vencimento.');
     if (type === 'EXPENSE' && !supplierId) return toast.error('Selecione o fornecedor.');
     if (type === 'INCOME' && !customerId) return toast.error('Selecione o cliente.');

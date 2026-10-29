@@ -10,6 +10,8 @@ export interface CreateServiceOrderItemRequest {
   unitPriceCents: number;
   // Required when the order is already delivered or cancelled.
   editReason?: string;
+  // The catalog entry this line was picked from; its cost is remembered with the line.
+  catalogItemId?: string;
 }
 
 export interface UpdateServiceOrderItemRequest {

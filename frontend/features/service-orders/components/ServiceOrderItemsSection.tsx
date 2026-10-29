@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { formatCurrencyBRL } from '@/lib/format-currency';
 import { extractErrorMessage } from '@/lib/api/client';
+import { parseMoneyToCents } from '@/lib/parse-money';
 import { useCatalogItems } from '@/features/catalog/hooks/use-catalog';
 import { useUpdateServiceOrder } from '../hooks/use-service-orders';
 import { useAddServiceOrderItem, useDeleteServiceOrderItem, useUpdateServiceOrderItem } from '../hooks/use-service-order-items';
@@ -18,6 +19,8 @@ interface ServiceOrderItemsSectionProps {
 }
 
 interface ItemForm {
+  // The catalog entry this line was picked from (cleared when the description is retyped).
+  catalogItemId: string;
   careServiceKey: CareServiceKey | '';
   type: ServiceOrderItemType;
   description: string;
@@ -25,10 +28,11 @@ interface ItemForm {
   unitPrice: string;
 }
 
-const EMPTY_FORM: ItemForm = { type: 'PART', description: '', quantity: '1', unitPrice: '', careServiceKey: '' };
+const EMPTY_FORM: ItemForm = { catalogItemId: '', type: 'PART', description: '', quantity: '1', unitPrice: '', careServiceKey: '' };
 
 function toEditForm(item: ServiceOrderItemResponse): ItemForm {
   return {
+    catalogItemId: '',
     careServiceKey: item.careServiceKey ?? '',
     type: item.type,
     description: item.description,
@@ -43,7 +47,7 @@ function parseUnitPriceCents(raw: string): number {
   if (raw.trim() === '') {
     return NaN;
   }
-  return Math.round(Number(raw.replace(',', '.')) * 100);
+  return parseMoneyToCents(raw);
 }
 
 function isValidForm(form: ItemForm): boolean {
@@ -67,6 +71,7 @@ export function ServiceOrderItemsSection({ serviceOrder, readOnly = false }: Ser
   const items = serviceOrder.items ?? [];
   const careLocked = ['DELIVERED', 'CANCELLED'].includes(serviceOrder.status);
   const [editReason, setEditReason] = useState('');
+  const [catalogSearch, setCatalogSearch] = useState('');
   const updateOrder = useUpdateServiceOrder();
   const [discountInput, setDiscountInput] = useState(serviceOrder.discountCents > 0 ? (serviceOrder.discountCents / 100).toFixed(2) : '');
   useEffect(() => setDiscountInput(serviceOrder.discountCents > 0 ? (serviceOrder.discountCents / 100).toFixed(2) : ''), [serviceOrder.discountCents]);
@@ -95,7 +100,7 @@ export function ServiceOrderItemsSection({ serviceOrder, readOnly = false }: Ser
     const quantity = Number(form.quantity.replace(',', '.'));
     const unitPriceCents = parseUnitPriceCents(form.unitPrice);
     addItem.mutate(
-      { serviceOrderId: serviceOrder.id, type: form.type, description: form.description.trim(), quantity, unitPriceCents, ...reasonPayload, ...(!careLocked && form.careServiceKey ? { careServiceKey: form.careServiceKey } : {}) },
+      { serviceOrderId: serviceOrder.id, type: form.type, description: form.description.trim(), quantity, unitPriceCents, ...reasonPayload, ...(form.catalogItemId ? { catalogItemId: form.catalogItemId } : {}), ...(!careLocked && form.careServiceKey ? { careServiceKey: form.careServiceKey } : {}) },
       {
         onSuccess: () => {
           setForm(EMPTY_FORM);
@@ -107,10 +112,20 @@ export function ServiceOrderItemsSection({ serviceOrder, readOnly = false }: Ser
   }
 
   // Preenche descrição e preço com o item do catálogo; os dois continuam editáveis.
-  function pickCatalogItem(id: string) {
-    const entry = catalogOptions.find((option) => option.id === id);
-    if (!entry) return;
-    setForm((prev) => ({ ...prev, description: entry.name, unitPrice: entry.unitPriceCents > 0 ? (entry.unitPriceCents / 100).toFixed(2) : prev.unitPrice }));
+  // Um item sem preço limpa o campo: nunca herda o valor do item escolhido antes.
+  function pickCatalogItem(entry: (typeof catalogOptions)[number]) {
+    setCatalogSearch('');
+    setForm((prev) => ({ ...prev, catalogItemId: entry.id, description: entry.name, unitPrice: entry.unitPriceCents > 0 ? (entry.unitPriceCents / 100).toFixed(2).replace('.', ',') : '',
+      // A service that schedules a return brings it already marked (not on closed orders).
+      careServiceKey: !careLocked && entry.careServiceKey ? entry.careServiceKey : prev.careServiceKey }));
+  }
+
+  // Typing the exact name (or picking it from the suggestions) selects the item.
+  function searchCatalog(value: string) {
+    setCatalogSearch(value);
+    const wanted = value.trim().toLowerCase();
+    const entry = catalogOptions.find((option) => option.name.toLowerCase() === wanted || (option.code && option.code.toLowerCase() === wanted));
+    if (entry) pickCatalogItem(entry);
   }
 
   function startEdit(item: ServiceOrderItemResponse) {
@@ -256,7 +271,7 @@ export function ServiceOrderItemsSection({ serviceOrder, readOnly = false }: Ser
       {discountEditable && <div className="ml-auto mt-3 flex w-full max-w-xs items-end gap-2"><label className="flex-1 space-y-1.5 text-xs font-semibold text-text-muted">Desconto (R$)<Input aria-label="Desconto" inputMode="decimal" placeholder="0,00" value={discountInput} onChange={(event) => setDiscountInput(event.target.value)} /></label><Button variant="outline" onClick={applyDiscount} disabled={updateOrder.isPending}>{updateOrder.isPending ? 'Aplicando...' : 'Aplicar'}</Button></div>}
 
       {!readOnly && <><div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-5">
-        {catalogOptions.length > 0 && <label className="col-span-2 space-y-1.5 text-xs font-semibold text-text-muted sm:col-span-5">Escolher do catálogo ({SERVICE_ORDER_ITEM_TYPE_LABELS[form.type].toLowerCase()})<select className="h-10 w-full rounded-button border border-input bg-background px-3 text-sm font-normal text-foreground" value="" onChange={(event) => pickCatalogItem(event.target.value)}><option value="">Selecione para preencher descrição e preço…</option>{catalogOptions.map((option) => <option key={option.id} value={option.id}>{option.name}{option.unitPriceCents > 0 ? ` — ${formatCurrencyBRL(option.unitPriceCents)}` : ''}</option>)}</select></label>}
+        {catalogOptions.length > 0 && <label className="col-span-2 space-y-1.5 text-xs font-semibold text-text-muted sm:col-span-5">Buscar no catálogo ({SERVICE_ORDER_ITEM_TYPE_LABELS[form.type].toLowerCase()})<Input list="catalog-suggestions" placeholder="Digite o nome para preencher descrição e preço…" value={catalogSearch} onChange={(event) => searchCatalog(event.target.value)} /><datalist id="catalog-suggestions">{catalogOptions.map((option) => <option key={option.id} value={option.name}>{[option.code, option.brand, option.unitPriceCents > 0 ? formatCurrencyBRL(option.unitPriceCents) : 'sem preço'].filter(Boolean).join(' · ')}</option>)}</datalist></label>}
         <label className="space-y-1.5 text-xs font-semibold text-text-muted">Tipo<Select value={form.type} onValueChange={(value) => setForm((prev) => ({ ...prev, type: value as ServiceOrderItemType }))}>
           <SelectTrigger>
             <SelectValue />
@@ -269,7 +284,7 @@ export function ServiceOrderItemsSection({ serviceOrder, readOnly = false }: Ser
           className="sm:col-span-2"
           placeholder="Descrição"
           value={form.description}
-          onChange={(event) => setForm((prev) => ({ ...prev, description: event.target.value }))}
+          onChange={(event) => setForm((prev) => ({ ...prev, description: event.target.value, catalogItemId: catalogOptions.find((option) => option.id === prev.catalogItemId)?.name === event.target.value ? prev.catalogItemId : '' }))}
         /></label>
         <label className="space-y-1.5 text-xs font-semibold text-text-muted">Quantidade<Input placeholder="Qtd." value={form.quantity} onChange={(event) => setForm((prev) => ({ ...prev, quantity: event.target.value }))} /></label>
         <label className="space-y-1.5 text-xs font-semibold text-text-muted">Valor unitário<Input

@@ -7,6 +7,11 @@ import { ServiceOrderItemsSection } from '../ServiceOrderItemsSection';
 import { serviceOrderItemsApi } from '../../api/service-order-items-api';
 import { serviceOrdersApi } from '../../api/service-orders-api';
 
+vi.mock('@/features/catalog/api/catalog-api', () => ({ catalogApi: { list: vi.fn().mockResolvedValue({ items: [
+  { id: 'c1', type: 'PART', name: 'Pastilha de freio', unitPriceCents: 18000 },
+  { id: 'c2', type: 'PART', name: 'Fluido de freio', unitPriceCents: 0 },
+  { id: 'c3', type: 'PART', name: 'Kit revisão de óleo', code: 'KIT-OLEO', unitPriceCents: 25000, careServiceKey: 'OIL_CHANGE' },
+] }) } }));
 vi.mock('../../api/service-orders-api', () => ({ serviceOrdersApi: { update: vi.fn() } }));
 vi.mock('../../api/service-order-items-api', () => ({
   serviceOrderItemsApi: { create: vi.fn(), update: vi.fn(), delete: vi.fn() },
@@ -217,6 +222,47 @@ describe('ServiceOrderItemsSection', () => {
     await user.click(screen.getByRole('button', { name: 'Aplicar' }));
     expect(serviceOrdersApi.update).not.toHaveBeenCalled();
     expect(toastMock.error).toHaveBeenCalledWith('O desconto não pode ser maior que o total dos itens.');
+  });
+
+  it('fills description and price from the catalog and never carries the previous price to a priceless item', async () => {
+    const user = userEvent.setup();
+    renderWithClient(<ServiceOrderItemsSection serviceOrder={baseServiceOrder} />);
+    const search = await screen.findByLabelText(/Buscar no catálogo/);
+    await user.type(search, 'Pastilha de freio');
+    expect(screen.getByPlaceholderText('Descrição')).toHaveValue('Pastilha de freio');
+    expect(screen.getByPlaceholderText('Valor unit. (R$)')).toHaveValue('180,00');
+
+    await user.type(screen.getByLabelText(/Buscar no catálogo/), 'Fluido de freio');
+    expect(screen.getByPlaceholderText('Descrição')).toHaveValue('Fluido de freio');
+    expect(screen.getByPlaceholderText('Valor unit. (R$)')).toHaveValue('');
+  });
+
+  it('reads a unit price typed with a dot as reais', async () => {
+    vi.mocked(serviceOrderItemsApi.create).mockResolvedValue({ item: baseServiceOrder.items![0] });
+    const user = userEvent.setup();
+    renderWithClient(<ServiceOrderItemsSection serviceOrder={baseServiceOrder} />);
+    await user.type(screen.getByPlaceholderText('Descrição'), 'Vela');
+    await user.type(screen.getByPlaceholderText('Valor unit. (R$)'), '12.50');
+    await user.click(screen.getByRole('button', { name: 'Adicionar item' }));
+    await waitFor(() => expect(vi.mocked(serviceOrderItemsApi.create).mock.calls[0]?.[0]).toMatchObject({ description: 'Vela', unitPriceCents: 1250 }));
+  });
+
+  it('sends which catalog entry the line came from, brings its scheduled care, and drops the link once the description is retyped', async () => {
+    vi.mocked(serviceOrderItemsApi.create).mockResolvedValue({ item: baseServiceOrder.items![0] });
+    const user = userEvent.setup();
+    renderWithClient(<ServiceOrderItemsSection serviceOrder={baseServiceOrder} />);
+    await user.type(await screen.findByLabelText(/Buscar no catálogo/), 'kit-oleo');
+    expect(screen.getByPlaceholderText('Descrição')).toHaveValue('Kit revisão de óleo');
+    expect(screen.getByLabelText(/Programar próximo cuidado/)).toHaveValue('OIL_CHANGE');
+    await user.click(screen.getByRole('button', { name: 'Adicionar item' }));
+    await waitFor(() => expect(vi.mocked(serviceOrderItemsApi.create).mock.calls[0]?.[0]).toMatchObject({ catalogItemId: 'c3', careServiceKey: 'OIL_CHANGE', unitPriceCents: 25000 }));
+
+    vi.mocked(serviceOrderItemsApi.create).mockClear();
+    await user.type(screen.getByLabelText(/Buscar no catálogo/), 'Pastilha de freio');
+    await user.type(screen.getByPlaceholderText('Descrição'), ' importada');
+    await user.click(screen.getByRole('button', { name: 'Adicionar item' }));
+    await waitFor(() => expect(vi.mocked(serviceOrderItemsApi.create).mock.calls[0]?.[0]).toMatchObject({ description: 'Pastilha de freio importada' }));
+    expect(vi.mocked(serviceOrderItemsApi.create).mock.calls[0]?.[0]).not.toHaveProperty('catalogItemId');
   });
 });
 

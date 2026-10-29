@@ -35,6 +35,9 @@ export class CreateServiceOrderItemDto implements CreateServiceOrderItemRequest 
 
   @IsOptional() @IsString() @MaxLength(300)
   editReason?: string;
+
+  @IsOptional() @IsUUID('4')
+  catalogItemId?: string;
 }
 
 export class UpdateServiceOrderItemDto implements UpdateServiceOrderItemRequest {

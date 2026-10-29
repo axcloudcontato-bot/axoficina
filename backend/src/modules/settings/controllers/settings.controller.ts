@@ -3,7 +3,7 @@ import { CurrentUser } from '../../../shared/decorators/current-user.decorator';
 import { Permissions } from '../../../shared/decorators/permissions.decorator';
 import { Roles } from '../../../shared/decorators/roles.decorator';
 import type { AuthenticatedUser } from '../../../shared/guards/jwt-auth.guard';
-import { SendEmailDto, TestEmailSettingsDto, UpdateCompanySettingsDto, UpdateAgendaHoursDto, UpdateEmailSettingsDto, UpdatePhotoPolicyDto } from '../dto/settings.dto';
+import { SendEmailDto, TestEmailSettingsDto, UpdateCompanySettingsDto, UpdateAgendaHoursDto, UpdateEmailSettingsDto, UpdateLaborRateDto, UpdatePhotoPolicyDto } from '../dto/settings.dto';
 import { SettingsManager } from '../managers/settings.manager';
 
 @Controller('api/v1/settings')
@@ -19,6 +19,9 @@ export class SettingsController {
 
   @Post('company') @HttpCode(HttpStatus.OK) @Permissions('settings.manage')
   updateCompany(@CurrentUser() user: AuthenticatedUser, @Body() body: UpdateCompanySettingsDto) { return this.manager.updateCompany(user, body); }
+
+  @Post('labor-rate') @HttpCode(HttpStatus.OK) @Permissions('service_orders.prices')
+  updateLaborRate(@CurrentUser() user: AuthenticatedUser, @Body() body: UpdateLaborRateDto) { return this.manager.updateLaborRate(user, body); }
 
   @Post('agenda-hours') @HttpCode(HttpStatus.OK) @Permissions('settings.manage')
   updateAgendaHours(@CurrentUser() user: AuthenticatedUser, @Body() body: UpdateAgendaHoursDto) { return this.manager.updateAgendaHours(user, body); }

@@ -1,7 +1,7 @@
 'use client';
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { DEFAULT_AGENDA_HOURS, DEFAULT_PHOTO_POLICY, type AgendaHours, type UpdateAgendaHoursRequest, type PhotoPolicy, type UpdateCompanySettingsRequest, type UpdateEmailSettingsRequest, type UpdatePhotoPolicyRequest } from '@oficina/contracts';
+import { type UpdateLaborRateRequest, DEFAULT_AGENDA_HOURS, DEFAULT_PHOTO_POLICY, type AgendaHours, type UpdateAgendaHoursRequest, type PhotoPolicy, type UpdateCompanySettingsRequest, type UpdateEmailSettingsRequest, type UpdatePhotoPolicyRequest } from '@oficina/contracts';
 import { settingsApi } from '../api/settings-api';
 
 export const SETTINGS_KEY = ['tenant-settings'] as const;
@@ -59,6 +59,19 @@ export function useUpdateAgendaHours() {
   const client = useQueryClient();
   return useMutation({
     mutationFn: (request: UpdateAgendaHoursRequest) => settingsApi.updateAgendaHours(request),
+    onSuccess: () => client.invalidateQueries({ queryKey: BRANDING_KEY }),
+  });
+}
+
+// Price of one technician hour, used to price services by their standard time.
+export function useLaborRate(): number | null {
+  return useBranding().data?.laborRateCents ?? null;
+}
+
+export function useUpdateLaborRate() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (request: UpdateLaborRateRequest) => settingsApi.updateLaborRate(request),
     onSuccess: () => client.invalidateQueries({ queryKey: BRANDING_KEY }),
   });
 }

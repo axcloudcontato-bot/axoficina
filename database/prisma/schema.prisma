@@ -129,6 +129,7 @@ model Tenant {
   agendaWorkDays       Int[]     @default([1, 2, 3, 4, 5, 6]) @map("agenda_work_days")
   agendaBays           Int?      @map("agenda_bays")
   appointmentRemindersEnabled Boolean @default(false) @map("appointment_reminders_enabled")
+  laborRateCents       Int?      @map("labor_rate_cents")
   plan                String    @default("free")
   subscriptionStatus      String    @default("unconfigured") @map("subscription_status")
   subscriptionAmountCents Int       @default(0) @map("subscription_amount_cents")
@@ -417,6 +418,8 @@ model ServiceOrderItem {
   careServiceKey String?  @map("care_service_key")
   quantity       Decimal   @db.Decimal(10, 2)
   unitPriceCents Int       @map("unit_price_cents")
+  catalogItemId  String?   @map("catalog_item_id") @db.Uuid
+  costCents      Int?      @map("cost_cents")
   createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz
   updatedAt      DateTime? @updatedAt @map("updated_at") @db.Timestamptz
   deletedAt      DateTime? @map("deleted_at") @db.Timestamptz
@@ -435,6 +438,13 @@ model CatalogItem {
   name           String
   category       String?
   unitPriceCents Int       @default(0) @map("unit_price_cents")
+  costCents      Int?      @map("cost_cents")
+  code           String?
+  brand          String?
+  unit           String    @default("un")
+  supplierId     String?   @map("supplier_id") @db.Uuid
+  standardMinutes Int?     @map("standard_minutes")
+  careServiceKey String?   @map("care_service_key")
   createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz
   updatedAt      DateTime? @updatedAt @map("updated_at") @db.Timestamptz
   deletedAt      DateTime? @map("deleted_at") @db.Timestamptz

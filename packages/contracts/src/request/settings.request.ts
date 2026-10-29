@@ -37,3 +37,8 @@ export interface UpdateAgendaHoursRequest {
   bays?: number | null;
   remindersEnabled?: boolean;
 }
+
+export interface UpdateLaborRateRequest {
+  // Price of one technician hour in cents; null clears it.
+  laborRateCents: number | null;
+}

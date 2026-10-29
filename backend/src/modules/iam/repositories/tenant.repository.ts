@@ -49,6 +49,7 @@ export interface UpdateTenantSettingsInput {
   agendaWorkDays?: number[];
   agendaBays?: number | null;
   appointmentRemindersEnabled?: boolean;
+  laborRateCents?: number | null;
 }
 
 @Injectable()

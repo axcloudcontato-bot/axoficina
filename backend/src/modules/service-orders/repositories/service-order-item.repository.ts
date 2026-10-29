@@ -10,6 +10,8 @@ export interface CreateServiceOrderItemInput {
   description: string;
   quantity: number;
   unitPriceCents: number;
+  catalogItemId?: string | null;
+  costCents?: number | null;
 }
 
 export interface UpdateServiceOrderItemInput {
@@ -37,6 +39,8 @@ export class ServiceOrderItemRepository {
         careServiceKey: input.careServiceKey,
         quantity: input.quantity,
         unitPriceCents: input.unitPriceCents,
+        catalogItemId: input.catalogItemId ?? null,
+        costCents: input.costCents ?? null,
       },
     });
   }
