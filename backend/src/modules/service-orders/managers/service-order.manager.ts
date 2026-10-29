@@ -346,15 +346,17 @@ export class ServiceOrderManager {
     if (missing.length) throw new AppException(AppErrorCode.SERVICE_ORDER_MISSING_ENTRY_PHOTO, `Complete as fotos de entrada antes de solicitar a aprovação: ${missing.join(', ')}.`);
   }
 
-  // Cada peça/serviço ativo da OS precisa de 1 foto ISSUE (o problema, antes)
-  // e 1 RESOLVED (a solução, depois) vinculadas a ele — ver
+  // Cada peça ativa da OS precisa de 1 foto ISSUE (o problema, antes)
+  // e 1 RESOLVED (a solução, depois) vinculadas a ela. Serviço (mão de obra)
+  // e produto não exigem foto — ver
   // ServiceOrderPhotoManager.upload, que já garante que toda foto ISSUE/
   // RESOLVED referencia um item real desta mesma OS.
   private async incompleteItemPhotos(serviceOrderId: string): Promise<string[]> {
-    const [items, coverage] = await Promise.all([
+    const [allItems, coverage] = await Promise.all([
       this.itemRepository.byServiceOrderId(serviceOrderId),
       this.photoRepository.itemCategoryCoverage(serviceOrderId),
     ]);
+    const items = allItems.filter((item) => item.type === 'PART');
     if (items.length === 0) {
       return [];
     }

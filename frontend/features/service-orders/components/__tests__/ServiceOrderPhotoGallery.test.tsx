@@ -46,6 +46,20 @@ describe('VehiclePhotoSection', () => {
 });
 
 describe('ItemPhotosSection', () => {
+  it('asks for photos only on parts, not on labor or products', () => {
+    const labor = { ...item, id: 'item-2', type: 'LABOR' as const, description: 'Alinhamento' };
+    const product = { ...item, id: 'item-3', type: 'PRODUCT' as const, description: 'Fluido de freio' };
+    render(<ItemPhotosSection serviceOrderId="order-1" items={[item, labor, product]} canManage />);
+    expect(screen.getByText('Pastilha de freio')).toBeInTheDocument();
+    expect(screen.queryByText('Alinhamento')).not.toBeInTheDocument();
+    expect(screen.queryByText('Fluido de freio')).not.toBeInTheDocument();
+  });
+
+  it('explains that no photo is needed when the order has only labor and products', () => {
+    render(<ItemPhotosSection serviceOrderId="order-1" items={[{ ...item, type: 'LABOR' as const }]} canManage />);
+    expect(screen.getByText(/serviços e produtos não exigem foto/i)).toBeInTheDocument();
+  });
+
   it('shows an empty state when the order has no items yet', () => {
     render(<ItemPhotosSection serviceOrderId="order-1" items={[]} canManage />);
     expect(screen.getByText(/nenhum item lançado nesta os ainda/i)).toBeInTheDocument();

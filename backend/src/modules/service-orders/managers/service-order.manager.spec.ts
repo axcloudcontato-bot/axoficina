@@ -476,6 +476,25 @@ describe('ServiceOrderManager', () => {
       expect(deps.serviceOrderRepository.transition).not.toHaveBeenCalled();
     });
 
+    it('does not ask for before/after photos on labor or product items, only on parts', async () => {
+      const deps = buildManager();
+      deps.serviceOrderRepository.byId.mockResolvedValue({ ...baseServiceOrder, status: 'IN_PROGRESS' });
+      deps.itemRepository.byServiceOrderId.mockResolvedValue([
+        buildItem({ id: 'item-1', type: 'LABOR', description: 'Alinhamento' }),
+        buildItem({ id: 'item-2', type: 'PRODUCT', description: 'Fluido de freio' }),
+        buildItem({ id: 'item-3', type: 'PART', description: 'Pastilha' }),
+      ]);
+      deps.photoRepository.itemCategoryCoverage.mockResolvedValue([]);
+
+      await expect(deps.manager.transition(actingUser, { id: 'so-1', toStatus: 'COMPLETED' as never })).rejects.toMatchObject({
+        code: 'SERVICE_ORDER_MISSING_ITEM_PHOTOS',
+        message: expect.stringMatching(/Pastilha/),
+      });
+      await expect(deps.manager.transition(actingUser, { id: 'so-1', toStatus: 'COMPLETED' as never })).rejects.toMatchObject({
+        message: expect.not.stringMatching(/Alinhamento|Fluido/),
+      });
+    });
+
     it('allows IN_PROGRESS -> COMPLETED when every item has both ISSUE and RESOLVED photos', async () => {
       const deps = buildManager();
       const existing = { ...baseServiceOrder, status: 'IN_PROGRESS' };

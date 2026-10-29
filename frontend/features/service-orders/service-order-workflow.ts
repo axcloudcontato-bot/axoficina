@@ -16,7 +16,7 @@ export function workflowPhotoCoverage(order: ServiceOrderResponse, photos: Servi
   const angles = (category: 'ENTRY' | 'EXIT') => SERVICE_ORDER_PHOTO_ANGLES.filter(angle => !photos.some(photo => photo.category === category && photo.angle === angle));
   const itemIds = (category: 'ISSUE' | 'RESOLVED') => new Set(photos.filter(photo => photo.category === category).map(photo => photo.serviceOrderItemId));
   const before = itemIds('ISSUE'); const after = itemIds('RESOLVED');
-  return { entry: angles('ENTRY'), exit: angles('EXIT'), items: (order.items ?? []).filter(item => !before.has(item.id) || !after.has(item.id)) };
+  return { entry: angles('ENTRY'), exit: angles('EXIT'), items: (order.items ?? []).filter(item => item.type === 'PART' && (!before.has(item.id) || !after.has(item.id))) };
 }
 
 export function quoteApprovalState(messages: CustomerMessageResponse[], now = Date.now(), order?: ServiceOrderResponse) {

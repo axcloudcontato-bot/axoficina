@@ -73,6 +73,8 @@ export function ItemPhotosSection({ serviceOrderId, items, canManage }: { servic
   const query = useServiceOrderPhotos(serviceOrderId);
   const [selected, setSelected] = useState<ServiceOrderPhotoResponse | null>(null);
   const photos = query.data?.photos ?? [];
+  // Só peças pedem foto de antes e depois; serviço e produto ficam de fora.
+  const partItems = items.filter((item) => item.type === 'PART');
 
   const byItem = useMemo(() => {
     const map = new Map<string, ServiceOrderPhotoResponse[]>();
@@ -90,17 +92,17 @@ export function ItemPhotosSection({ serviceOrderId, items, canManage }: { servic
       <div>
         <p className="text-xs font-bold uppercase tracking-[0.12em] text-primary">Evidências da OS</p>
         <h3 id="item-photos-title" className="mt-1 text-lg font-bold">Antes e depois por item</h3>
-        <p className="mt-1 text-sm text-text-muted">Para cada peça ou serviço lançado na OS, registre uma foto do problema e uma da solução.</p>
+        <p className="mt-1 text-sm text-text-muted">Para cada peça lançada na OS, registre uma foto do problema e uma da solução. Serviços e produtos não precisam de foto.</p>
         <p className="mt-2 text-xs leading-5 text-text-muted">Limite as imagens à peça e ao serviço; evite pessoas, documentos e objetos pessoais.</p>
       </div>
     </header>
     {query.isLoading && <div className="flex h-40 items-center justify-center text-text-muted"><CircleNotch className="size-6 animate-spin" /></div>}
     {query.isError && <p role="alert" className="py-4 text-center text-sm font-semibold text-danger">Não foi possível atualizar as fotos. <button type="button" className="underline" onClick={() => query.refetch()}>Tentar novamente</button></p>}
     {!query.isLoading && (!query.isError || query.data) && (
-      items.length === 0
-        ? <div className="mt-4 flex min-h-20 items-center justify-center rounded-button border border-dashed border-border bg-muted/30 px-4 text-center text-xs text-text-muted">Nenhum item lançado nesta OS ainda.</div>
+      partItems.length === 0
+        ? <div className="mt-4 flex min-h-20 items-center justify-center rounded-button border border-dashed border-border bg-muted/30 px-4 text-center text-xs text-text-muted">{items.length === 0 ? 'Nenhum item lançado nesta OS ainda.' : 'Nenhuma peça lançada: serviços e produtos não exigem foto.'}</div>
         : <div className="mt-4 space-y-3">
-          {items.map((item) => <div key={item.id} className="rounded-button border border-border bg-card p-3">
+          {partItems.map((item) => <div key={item.id} className="rounded-button border border-border bg-card p-3">
             <p className="mb-2 text-sm font-semibold text-text">{item.description}</p>
             <div className="grid grid-cols-2 gap-3">
               <PhotoSlot serviceOrderId={serviceOrderId} payload={{ category: 'ISSUE', serviceOrderItemId: item.id }} label="Antes (problema)" photos={byItem.get(`${item.id}:ISSUE`) ?? []} canManage={canManage} onSelect={setSelected} />
