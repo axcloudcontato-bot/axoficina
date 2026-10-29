@@ -103,8 +103,8 @@ export function Sidebar() {
 }
 
 function DesktopNavItem({ item, active, collapsed }: { item: NavItem; active: boolean; collapsed: boolean }) {
-  const pathname = usePathname();
   const user = useAuthStore((state) => state.user);
+  // As abas de Configurações ficam na própria página; aqui `children` só define o destino do link.
   const children = item.children?.filter((child) => hasPermission(user, child.permission)) ?? [];
-  return <div><Link href={children[0]?.href ?? item.href} aria-current={active ? 'page' : undefined} aria-label={item.label} title={collapsed ? item.label : undefined} className={cn('group flex min-h-10 items-center rounded-button text-sm font-semibold', collapsed ? 'justify-center' : 'gap-3 px-3', active ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted hover:text-foreground')}><AnimatedIcon icon={item.icon} active={active} className="size-[18px] shrink-0" />{!collapsed && item.label}</Link>{!collapsed && active && children.length > 0 && <div className="ml-5 mt-1 space-y-0.5 border-l border-border pl-3">{children.map((child) => { const childActive = isActive(pathname, child.href); return <Link key={child.href} href={child.href} aria-current={childActive ? 'page' : undefined} className={cn('group flex min-h-9 items-center gap-2 rounded-button px-2 text-xs font-semibold', childActive ? 'text-primary' : 'text-muted-foreground hover:bg-muted hover:text-foreground')}><AnimatedIcon icon={child.icon} active={childActive} className="size-3.5" />{child.label}</Link>; })}</div>}</div>;
+  return <div><Link href={children[0]?.href ?? item.href} aria-current={active ? 'page' : undefined} aria-label={item.label} title={collapsed ? item.label : undefined} className={cn('group flex min-h-10 items-center rounded-button text-sm font-semibold', collapsed ? 'justify-center' : 'gap-3 px-3', active ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted hover:text-foreground')}><AnimatedIcon icon={item.icon} active={active} className="size-[18px] shrink-0" />{!collapsed && item.label}</Link></div>;
 }
