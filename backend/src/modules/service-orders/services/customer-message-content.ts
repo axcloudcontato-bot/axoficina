@@ -1,4 +1,4 @@
-import type { CustomerMessagePurpose, ServiceOrderResponse } from '@oficina/contracts';
+import { SERVICE_ORDER_ITEM_TYPE_LABELS, type CustomerMessagePurpose, type ServiceOrderResponse } from '@oficina/contracts';
 
 const currency = (cents: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(cents / 100);
 export const escapeMessageHtml = (value: string) => value.replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' })[char]!);
@@ -9,14 +9,14 @@ export function customerMessageContent(order: ServiceOrderResponse, includeQuote
     return [
       `${title} · OS #${String(order.orderNumber).padStart(5, '0')}*`, '', `👋 Olá, ${order.customerName}!`, '',
       `🚗 *Veículo:* ${order.vehicleBrand} ${order.vehicleModel}`, `🔖 *Placa:* ${order.vehiclePlate}`,
-      ...(includeQuote ? ['', ...(order.items ?? []).map(item => `${item.type === 'PART' ? '🔩 *Peça:*' : '🔧 *Mão de obra:*'} ${item.description} — ${currency(item.lineTotalCents)}`), '', `💰 *Total:* ${currency(order.totalAmountCents)}`] : []),
+      ...(includeQuote ? ['', ...(order.items ?? []).map(item => `${item.type === 'PART' ? '🔩' : item.type === 'PRODUCT' ? '🧴' : '🔧'} *${SERVICE_ORDER_ITEM_TYPE_LABELS[item.type]}:* ${item.description} — ${currency(item.lineTotalCents)}`), '', `💰 *Total:* ${currency(order.totalAmountCents)}`] : []),
     ].join('\n');
   }
   return [
     `Olá, ${order.customerName}!`, '',
     `${includeQuote ? 'Orçamento da' : 'Sobre a'} OS #${String(order.orderNumber).padStart(5, '0')}.`,
     `Veículo: ${order.vehicleBrand} ${order.vehicleModel} · ${order.vehiclePlate}`,
-    ...(includeQuote ? ['', ...(order.items ?? []).map((item) => `• ${item.type === 'PART' ? 'Peça' : 'Mão de obra'}: ${item.description} — ${currency(item.lineTotalCents)}`), '', `Total: ${currency(order.totalAmountCents)}`] : []),
+    ...(includeQuote ? ['', ...(order.items ?? []).map((item) => `• ${SERVICE_ORDER_ITEM_TYPE_LABELS[item.type]}: ${item.description} — ${currency(item.lineTotalCents)}`), '', `Total: ${currency(order.totalAmountCents)}`] : []),
   ].join('\n');
 }
 

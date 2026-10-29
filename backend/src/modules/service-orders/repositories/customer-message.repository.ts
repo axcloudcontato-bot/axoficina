@@ -49,7 +49,7 @@ export class CustomerMessageRepository {
         this.prisma.unscoped.serviceOrderItem.findMany({ where: { serviceOrderId: order.id, deletedAt: null } }),
         this.prisma.unscoped.customerMessage.findFirst({ where: { tenantId: message.tenantId, serviceOrderId: order.id, purpose: 'QUOTE' }, orderBy: [{ createdAt: 'desc' }, { id: 'desc' }], select: { id: true } }),
       ]);
-      const lines = items.map((item) => ({ id: item.id, type: item.type, description: item.description, quantity: item.quantity.toNumber(), unitPriceCents: item.unitPriceCents, lineTotalCents: Math.round(item.quantity.toNumber() * item.unitPriceCents) }));
+      const lines = items.map((item) => ({ id: item.id, type: item.type as CustomerMessageQuote['items'][number]['type'], description: item.description, quantity: item.quantity.toNumber(), unitPriceCents: item.unitPriceCents, lineTotalCents: Math.round(item.quantity.toNumber() * item.unitPriceCents) }));
       const snapshot = message.quoteSnapshot as unknown as CustomerMessageQuote;
       quoteIsCurrent = quotesMatch(snapshot, { ...snapshot, items: lines, totalAmountCents: lines.reduce((sum, item) => sum + item.lineTotalCents, 0) });
       isLatestQuote = latest?.id === message.id;

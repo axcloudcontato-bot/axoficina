@@ -1,3 +1,4 @@
+import type { ServiceOrderItemType } from './response/service-order-item.response';
 export const CUSTOMER_MESSAGE_PURPOSES = ['QUOTE', 'SCHEDULE', 'PICKUP', 'CUSTOM', 'RATING'] as const;
 export type CustomerMessagePurpose = typeof CUSTOMER_MESSAGE_PURPOSES[number];
 
@@ -12,7 +13,7 @@ export interface CustomerMessageQuote {
   vehicle: string;
   plate: string;
   totalAmountCents: number;
-  items: { id: string; description: string; type: string; quantity: number; unitPriceCents: number; lineTotalCents: number }[];
+  items: { id: string; description: string; type: ServiceOrderItemType; quantity: number; unitPriceCents: number; lineTotalCents: number }[];
 }
 
 export type PublicCustomerMessageQuote = Omit<CustomerMessageQuote, 'items'> & { items: Omit<CustomerMessageQuote['items'][number], 'id'>[] };

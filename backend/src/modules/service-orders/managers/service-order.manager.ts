@@ -513,7 +513,7 @@ export class ServiceOrderManager {
     const outstanding = (order: typeof orders[number]) => Math.max(0, (totalsByOrderId.get(order.id) ?? 0) - (receivedByOrderId.get(order.id) ?? 0));
     const currentDeliveredIds = new Set(currentDelivered.map((order) => order.id));
     const currentItems = financialItems.filter((item) => currentDeliveredIds.has(item.serviceOrderId));
-    const revenueByType = (type: 'PART' | 'LABOR') => currentItems.filter((item) => item.type === type).reduce((sum, item) => sum + item.lineTotalCents, 0);
+    const revenueByType = (type: 'PART' | 'LABOR') => currentItems.filter((item) => (type === 'LABOR' ? item.type === 'LABOR' : item.type !== 'LABOR')).reduce((sum, item) => sum + item.lineTotalCents, 0);
     const serviceRanking = new Map<string, { count: number; revenueCents: number }>();
     currentItems.filter((item) => item.type === 'LABOR').forEach((item) => {
       const current = serviceRanking.get(item.description) ?? { count: 0, revenueCents: 0 };

@@ -1,4 +1,4 @@
-import type { CompanySettingsResponse, ServiceOrderResponse } from '@oficina/contracts';
+import { SERVICE_ORDER_ITEM_TYPE_LABELS, type CompanySettingsResponse, type ServiceOrderResponse } from '@oficina/contracts';
 import Image from 'next/image';
 import { parseChecklist, type InspectionStatus } from '../checklist';
 import { SERVICE_ORDER_STATUS_LABELS } from '../state-machine';
@@ -94,7 +94,7 @@ export function ServiceOrderPrintDocument({
             {serviceOrder.items?.length ? (
               <table className="w-full border-collapse text-left text-xs">
                 <thead><tr className="border-b border-slate-400"><th className="py-2 pr-3">Tipo</th><th className="py-2 pr-3">Descrição</th><th className="py-2 pr-3 text-right">Qtd.</th><th className="py-2 pr-3 text-right">Unitário</th><th className="py-2 text-right">Total</th></tr></thead>
-                <tbody>{serviceOrder.items.map((item) => <tr key={item.id} className="border-b border-slate-200"><td className="py-2 pr-3">{item.type === 'PART' ? 'Peça' : 'Serviço'}</td><td className="py-2 pr-3 font-medium">{item.description}</td><td className="py-2 pr-3 text-right">{item.quantity}</td><td className="py-2 pr-3 text-right">{formatCurrencyBRL(item.unitPriceCents)}</td><td className="py-2 text-right font-bold">{formatCurrencyBRL(item.lineTotalCents)}</td></tr>)}</tbody>
+                <tbody>{serviceOrder.items.map((item) => <tr key={item.id} className="border-b border-slate-200"><td className="py-2 pr-3">{item.type === 'LABOR' ? 'Serviço' : SERVICE_ORDER_ITEM_TYPE_LABELS[item.type]}</td><td className="py-2 pr-3 font-medium">{item.description}</td><td className="py-2 pr-3 text-right">{item.quantity}</td><td className="py-2 pr-3 text-right">{formatCurrencyBRL(item.unitPriceCents)}</td><td className="py-2 text-right font-bold">{formatCurrencyBRL(item.lineTotalCents)}</td></tr>)}</tbody>
               </table>
             ) : <p className="text-sm text-slate-500">Nenhum item lançado.</p>}
           </PrintSection>
@@ -132,7 +132,7 @@ function ApprovalCopy({
   cutLine?: boolean;
 }) {
   const items = serviceOrder.items ?? [];
-  const partsTotal = items.filter((item) => item.type === 'PART').reduce((total, item) => total + item.lineTotalCents, 0);
+  const partsTotal = items.filter((item) => item.type !== 'LABOR').reduce((total, item) => total + item.lineTotalCents, 0);
   const laborTotal = items.filter((item) => item.type === 'LABOR').reduce((total, item) => total + item.lineTotalCents, 0);
 
   return (
@@ -166,7 +166,7 @@ function ApprovalCopy({
           <tbody>
             {items.length ? items.map((item) => (
               <tr key={item.id} className="border-b border-slate-200">
-                <td className="py-1.5 pr-2">{item.type === 'PART' ? 'Peça' : 'Mão de obra'}</td>
+                <td className="py-1.5 pr-2">{SERVICE_ORDER_ITEM_TYPE_LABELS[item.type]}</td>
                 <td className="py-1.5 pr-2 font-medium">{item.description}</td>
                 <td className="py-1.5 pr-2 text-right">{item.quantity}</td>
                 <td className="py-1.5 text-right font-semibold">{formatCurrencyBRL(item.lineTotalCents)}</td>
@@ -178,7 +178,7 @@ function ApprovalCopy({
 
       <footer className="print-break-inside-avoid flex min-h-0 flex-1 flex-col">
         <div className="ml-auto grid w-full max-w-xs grid-cols-2 gap-x-5 gap-y-1 text-[13px]">
-          <span>Peças</span><strong className="text-right">{formatCurrencyBRL(partsTotal)}</strong>
+          <span>Peças e produtos</span><strong className="text-right">{formatCurrencyBRL(partsTotal)}</strong>
           <span>Mão de obra</span><strong className="text-right">{formatCurrencyBRL(laborTotal)}</strong>
           <span className="border-t border-slate-500 pt-1 font-black">Total</span><strong className="border-t border-slate-500 pt-1 text-right text-base">{formatCurrencyBRL(serviceOrder.totalAmountCents)}</strong>
         </div>

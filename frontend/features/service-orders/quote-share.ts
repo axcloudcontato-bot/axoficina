@@ -1,11 +1,11 @@
-import type { ServiceOrderResponse } from '@oficina/contracts';
+import { SERVICE_ORDER_ITEM_TYPE_LABELS, type ServiceOrderResponse } from '@oficina/contracts';
 import { formatCurrencyBRL } from '@/lib/format-currency';
 
 export function buildQuoteMessage(serviceOrder: ServiceOrderResponse, whatsapp = true): string {
   const items = serviceOrder.items ?? [];
   const lines = items.map((item) => {
-    const type = item.type === 'PART' ? 'Peça' : 'Mão de obra';
-    return whatsapp ? `${item.type === 'PART' ? '🔩' : '🔧'} *${type}:* ${item.description} — ${formatCurrencyBRL(item.lineTotalCents)}` : `• ${type}: ${item.description} — ${formatCurrencyBRL(item.lineTotalCents)}`;
+    const type = SERVICE_ORDER_ITEM_TYPE_LABELS[item.type];
+    return whatsapp ? `${item.type === 'PART' ? '🔩' : item.type === 'PRODUCT' ? '🧴' : '🔧'} *${type}:* ${item.description} — ${formatCurrencyBRL(item.lineTotalCents)}` : `• ${type}: ${item.description} — ${formatCurrencyBRL(item.lineTotalCents)}`;
   });
 
   return [

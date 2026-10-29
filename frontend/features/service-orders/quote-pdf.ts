@@ -1,4 +1,4 @@
-import type { ServiceOrderResponse } from '@oficina/contracts';
+import { SERVICE_ORDER_ITEM_TYPE_LABELS, type ServiceOrderResponse } from '@oficina/contracts';
 import { formatCurrencyBRL } from '@/lib/format-currency';
 
 export async function generateQuotePdf(serviceOrder: ServiceOrderResponse): Promise<void> {
@@ -57,7 +57,7 @@ export async function generateQuotePdf(serviceOrder: ServiceOrderResponse): Prom
     const rowHeight = Math.max(8, descriptionLines.length * 5 + 3);
     ensureSpace(rowHeight);
     pdf.setFont('helvetica', 'normal');
-    pdf.text(item.type === 'PART' ? 'Peça' : 'Mão de obra', margin + 2, y);
+    pdf.text(SERVICE_ORDER_ITEM_TYPE_LABELS[item.type], margin + 2, y);
     pdf.text(descriptionLines, margin + 29, y);
     pdf.text(item.quantity.toLocaleString('pt-BR'), 138, y, { align: 'right' });
     pdf.text(formatCurrencyBRL(item.lineTotalCents), pageWidth - margin - 2, y, { align: 'right' });
@@ -73,12 +73,12 @@ export async function generateQuotePdf(serviceOrder: ServiceOrderResponse): Prom
     y += 10;
   }
 
-  const partsTotal = (serviceOrder.items ?? []).filter((item) => item.type === 'PART').reduce((sum, item) => sum + item.lineTotalCents, 0);
+  const partsTotal = (serviceOrder.items ?? []).filter((item) => item.type !== 'LABOR').reduce((sum, item) => sum + item.lineTotalCents, 0);
   const laborTotal = (serviceOrder.items ?? []).filter((item) => item.type === 'LABOR').reduce((sum, item) => sum + item.lineTotalCents, 0);
   ensureSpace(35);
   y += 4;
   pdf.setFont('helvetica', 'normal');
-  pdf.text(`Peças: ${formatCurrencyBRL(partsTotal)}`, pageWidth - margin, y, { align: 'right' });
+  pdf.text(`Peças e produtos: ${formatCurrencyBRL(partsTotal)}`, pageWidth - margin, y, { align: 'right' });
   y += 6;
   pdf.text(`Mão de obra: ${formatCurrencyBRL(laborTotal)}`, pageWidth - margin, y, { align: 'right' });
   y += 7;

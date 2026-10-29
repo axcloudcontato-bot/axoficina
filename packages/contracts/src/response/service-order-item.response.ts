@@ -1,6 +1,14 @@
-export const SERVICE_ORDER_ITEM_TYPES = ['PART', 'LABOR'] as const;
+export const SERVICE_ORDER_ITEM_TYPES = ['PART', 'PRODUCT', 'LABOR'] as const;
 
 export type ServiceOrderItemType = (typeof SERVICE_ORDER_ITEM_TYPES)[number];
+
+// Rótulos de telas, impressão e mensagens. Só LABOR conta como serviço;
+// peça e produto somam como material.
+export const SERVICE_ORDER_ITEM_TYPE_LABELS: Record<ServiceOrderItemType, string> = {
+  PART: 'Peça',
+  PRODUCT: 'Produto',
+  LABOR: 'Mão de obra',
+};
 
 export interface ServiceOrderItemResponse {
   careServiceKey?: CareServiceKey;

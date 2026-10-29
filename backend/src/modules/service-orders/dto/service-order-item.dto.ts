@@ -14,7 +14,7 @@ export class CreateServiceOrderItemDto implements CreateServiceOrderItemRequest 
   @IsUUID('4', { message: 'service_order_id must be a valid id' })
   serviceOrderId!: string;
 
-  @IsIn(SERVICE_ORDER_ITEM_TYPES, { message: 'type must be PART or LABOR' })
+  @IsIn(SERVICE_ORDER_ITEM_TYPES, { message: 'type must be PART, PRODUCT or LABOR' })
   type!: CreateServiceOrderItemRequest['type'];
 
   @IsNotEmpty({ message: 'description is required' })
@@ -42,7 +42,7 @@ export class UpdateServiceOrderItemDto implements UpdateServiceOrderItemRequest 
   id!: string;
 
   @IsOptional()
-  @IsIn(SERVICE_ORDER_ITEM_TYPES, { message: 'type must be PART or LABOR' })
+  @IsIn(SERVICE_ORDER_ITEM_TYPES, { message: 'type must be PART, PRODUCT or LABOR' })
   type?: UpdateServiceOrderItemRequest['type'];
 
   @IsOptional()

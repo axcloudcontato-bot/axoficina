@@ -2,18 +2,14 @@
 
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { DEFAULT_CARE_CAMPAIGNS, type CareServiceKey, type ServiceOrderItemResponse, type ServiceOrderItemType, type ServiceOrderResponse } from '@oficina/contracts';
+import { DEFAULT_CARE_CAMPAIGNS, SERVICE_ORDER_ITEM_TYPES, SERVICE_ORDER_ITEM_TYPE_LABELS, type CareServiceKey, type ServiceOrderItemResponse, type ServiceOrderItemType, type ServiceOrderResponse } from '@oficina/contracts';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { formatCurrencyBRL } from '@/lib/format-currency';
 import { extractErrorMessage } from '@/lib/api/client';
+import { useCatalogItems } from '@/features/catalog/hooks/use-catalog';
 import { useAddServiceOrderItem, useDeleteServiceOrderItem, useUpdateServiceOrderItem } from '../hooks/use-service-order-items';
-
-const ITEM_TYPE_LABELS: Record<ServiceOrderItemType, string> = {
-  PART: 'Peça',
-  LABOR: 'Mão de obra',
-};
 
 interface ServiceOrderItemsSectionProps {
   serviceOrder: ServiceOrderResponse;
@@ -65,6 +61,8 @@ export function ServiceOrderItemsSection({ serviceOrder, readOnly = false }: Ser
   const updateItem = useUpdateServiceOrderItem(serviceOrder.id);
   const deleteItem = useDeleteServiceOrderItem(serviceOrder.id);
 
+  const catalog = useCatalogItems({ enabled: !readOnly });
+  const catalogOptions = (catalog.data?.items ?? []).filter((entry) => entry.type === form.type);
   const items = serviceOrder.items ?? [];
   const careLocked = ['DELIVERED', 'CANCELLED'].includes(serviceOrder.status);
 
@@ -85,6 +83,13 @@ export function ServiceOrderItemsSection({ serviceOrder, readOnly = false }: Ser
         onError: (error) => toast.error(extractErrorMessage(error)),
       },
     );
+  }
+
+  // Preenche descrição e preço com o item do catálogo; os dois continuam editáveis.
+  function pickCatalogItem(id: string) {
+    const entry = catalogOptions.find((option) => option.id === id);
+    if (!entry) return;
+    setForm((prev) => ({ ...prev, description: entry.name, unitPrice: entry.unitPriceCents > 0 ? (entry.unitPriceCents / 100).toFixed(2) : prev.unitPrice }));
   }
 
   function startEdit(item: ServiceOrderItemResponse) {
@@ -131,7 +136,7 @@ export function ServiceOrderItemsSection({ serviceOrder, readOnly = false }: Ser
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="text-lg font-bold tracking-tight text-text">Itens e valores</p>
-          <p className="mt-1 text-sm text-text-muted">Peças e mão de obra que compõem o orçamento.</p>
+          <p className="mt-1 text-sm text-text-muted">Peças, produtos e mão de obra que compõem o orçamento.</p>
         </div>
         <p className="text-xl font-bold text-text">{formatCurrencyBRL(serviceOrder.totalAmountCents)}</p>
       </div>
@@ -161,8 +166,7 @@ export function ServiceOrderItemsSection({ serviceOrder, readOnly = false }: Ser
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="PART">Peça</SelectItem>
-                          <SelectItem value="LABOR">Mão de obra</SelectItem>
+                          {SERVICE_ORDER_ITEM_TYPES.map((type) => <SelectItem key={type} value={type}>{SERVICE_ORDER_ITEM_TYPE_LABELS[type]}</SelectItem>)}
                         </SelectContent>
                       </Select>
                     </td>
@@ -202,7 +206,7 @@ export function ServiceOrderItemsSection({ serviceOrder, readOnly = false }: Ser
                   </tr>
                 ) : (
                   <tr key={item.id} className="border-b border-border last:border-0">
-                    <td className="py-2 pr-2">{ITEM_TYPE_LABELS[item.type]}</td>
+                    <td className="py-2 pr-2">{SERVICE_ORDER_ITEM_TYPE_LABELS[item.type]}</td>
                     <td className="py-2 pr-2">{item.description}{item.careServiceKey && <span className="mt-1 block text-xs font-semibold text-primary">💛 {DEFAULT_CARE_CAMPAIGNS.find(campaign => campaign.key === item.careServiceKey)?.name}</span>}</td>
                     <td className="py-2 pr-2 text-right">{item.quantity}</td>
                     <td className="py-2 pr-2 text-right">{formatCurrencyBRL(item.unitPriceCents)}</td>
@@ -224,13 +228,13 @@ export function ServiceOrderItemsSection({ serviceOrder, readOnly = false }: Ser
       )}
 
       {!readOnly && <><div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-5">
+        {catalogOptions.length > 0 && <label className="col-span-2 space-y-1.5 text-xs font-semibold text-text-muted sm:col-span-5">Escolher do catálogo ({SERVICE_ORDER_ITEM_TYPE_LABELS[form.type].toLowerCase()})<select className="h-10 w-full rounded-button border border-input bg-background px-3 text-sm font-normal text-foreground" value="" onChange={(event) => pickCatalogItem(event.target.value)}><option value="">Selecione para preencher descrição e preço…</option>{catalogOptions.map((option) => <option key={option.id} value={option.id}>{option.name}{option.unitPriceCents > 0 ? ` — ${formatCurrencyBRL(option.unitPriceCents)}` : ''}</option>)}</select></label>}
         <label className="space-y-1.5 text-xs font-semibold text-text-muted">Tipo<Select value={form.type} onValueChange={(value) => setForm((prev) => ({ ...prev, type: value as ServiceOrderItemType }))}>
           <SelectTrigger>
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="PART">Peça</SelectItem>
-            <SelectItem value="LABOR">Mão de obra</SelectItem>
+            {SERVICE_ORDER_ITEM_TYPES.map((type) => <SelectItem key={type} value={type}>{SERVICE_ORDER_ITEM_TYPE_LABELS[type]}</SelectItem>)}
           </SelectContent>
         </Select></label>
         <label className="space-y-1.5 text-xs font-semibold text-text-muted sm:col-span-2">Descrição<Input

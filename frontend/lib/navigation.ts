@@ -8,6 +8,7 @@ export const NAVIGATION_DESTINATIONS: Array<{ href: string; label: string; permi
   { href: '/clientes', label: 'Clientes', permission: 'customers.view' },
   { href: '/veiculos', label: 'Veículos', permission: 'vehicles.view' },
   { href: '/alertas-de-manutencao', label: 'Alertas de manutenção', permission: 'alerts.view' },
+  { href: '/catalogo', label: 'Catálogo de peças, produtos e serviços', permission: 'service_orders.prices' },
   { href: '/financeiro', label: 'Financeiro', permission: 'finance.view' },
   { href: '/financeiro/fornecedores', label: 'Fornecedores', permission: 'finance.manage' },
   { href: '/produtividade', label: 'Produtividade', permission: 'service_orders.prices' },

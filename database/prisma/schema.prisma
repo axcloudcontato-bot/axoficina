@@ -414,6 +414,24 @@ model ServiceOrderItem {
   @@map("service_order_items")
 }
 
+// Catálogo de peças, produtos e serviços (mão de obra) da oficina. Os itens da
+// OS copiam nome e preço no momento do lançamento: editar o catálogo não altera
+// orçamentos já feitos.
+model CatalogItem {
+  id             String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  tenantId       String    @map("tenant_id") @db.Uuid
+  type           String
+  name           String
+  category       String?
+  unitPriceCents Int       @default(0) @map("unit_price_cents")
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime? @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt      DateTime? @map("deleted_at") @db.Timestamptz
+
+  @@index([tenantId, type, name])
+  @@map("catalog_items")
+}
+
 // Feature: Integração FIPE. Catálogo global de marcas/modelos sincronizado
 // da API pública da FIPE — NÃO é dado de tenant (compartilhado por toda
 // oficina), por isso sem tenantId e NUNCA adicionado a TENANT_SCOPED_MODELS

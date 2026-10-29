@@ -21,6 +21,7 @@ import { ServiceOrdersModule } from './modules/service-orders/service-orders.mod
 import { FipeModule } from './modules/fipe/fipe.module';
 import { MaintenanceAlertsModule } from './modules/maintenance-alerts/maintenance-alerts.module';
 import { AppointmentsModule } from './modules/appointments/appointments.module';
+import { CatalogModule } from './modules/catalog/catalog.module';
 import { FinancialModule } from './modules/financial/financial.module';
 import { SettingsModule } from './modules/settings/settings.module';
 import { PrivacyModule } from './modules/privacy/privacy.module';
@@ -61,6 +62,7 @@ import { CustomerCareModule } from './modules/customer-care/customer-care.module
     MaintenanceAlertsModule,
     AppointmentsModule,
     FinancialModule,
+    CatalogModule,
     SettingsModule,
     PrivacyModule,
     SubscriptionsModule,
