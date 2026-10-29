@@ -147,4 +147,66 @@ describe('VehicleFormModal', () => {
     expect(vehiclesApi.update).not.toHaveBeenCalledWith(expect.objectContaining({ customerId: expect.anything() }));
     await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
   });
+
+  describe('plate and mileage rules', () => {
+    beforeEach(() => { vi.mocked(vehiclesApi.update).mockReset(); vi.mocked(vehiclesApi.update).mockResolvedValue({ vehicle: editingVehicle }); });
+
+    it('writes the plate upper case without hyphen or spaces while typing, and sends it that way', async () => {
+      const user = userEvent.setup();
+      renderWithClient(<VehicleFormModal open onOpenChange={() => {}} vehicle={editingVehicle} />);
+      const plateInput = screen.getByLabelText(/placa/i);
+      await user.clear(plateInput);
+      await user.type(plateInput, 'xyz-9w 88');
+      expect(plateInput).toHaveValue('XYZ9W88');
+      await user.click(screen.getByRole('button', { name: /salvar alterações/i }));
+      await waitFor(() => expect(vehiclesApi.update).toHaveBeenCalledWith(expect.objectContaining({ plate: 'XYZ9W88' })));
+    });
+
+    it('refuses a plate that is not in the old or Mercosul format', async () => {
+      const user = userEvent.setup();
+      renderWithClient(<VehicleFormModal open onOpenChange={() => {}} vehicle={editingVehicle} />);
+      const plateInput = screen.getByLabelText(/placa/i);
+      await user.clear(plateInput);
+      await user.type(plateInput, 'ABC12');
+      await user.click(screen.getByRole('button', { name: /salvar alterações/i }));
+      expect(await screen.findByText(/placa inválida/i)).toBeInTheDocument();
+      expect(vehiclesApi.update).not.toHaveBeenCalled();
+    });
+
+    it('refuses an impossible year and a malformed chassis', async () => {
+      const user = userEvent.setup();
+      renderWithClient(<VehicleFormModal open onOpenChange={() => {}} vehicle={editingVehicle} />);
+      await user.clear(screen.getByLabelText(/ano/i));
+      await user.type(screen.getByLabelText(/ano/i), '1850');
+      await user.type(screen.getByLabelText(/chassi/i), 'ABC123');
+      await user.click(screen.getByRole('button', { name: /salvar alterações/i }));
+      expect(await screen.findByText(/informe um ano entre 1900/i)).toBeInTheDocument();
+      expect(vehiclesApi.update).not.toHaveBeenCalled();
+    });
+
+    it('asks before lowering the mileage and sends the confirmation only after it', async () => {
+      const user = userEvent.setup();
+      renderWithClient(<VehicleFormModal open onOpenChange={() => {}} vehicle={{ ...editingVehicle, mileage: 98000 }} />);
+      const mileage = screen.getByLabelText(/quilometragem/i);
+      await user.clear(mileage);
+      await user.type(mileage, '9800');
+      await user.click(screen.getByRole('button', { name: /salvar alterações/i }));
+      expect(await screen.findByText(/quilometragem menor que a atual/i)).toBeInTheDocument();
+      expect(vehiclesApi.update).not.toHaveBeenCalled();
+
+      await user.click(screen.getByRole('button', { name: /corrigir mesmo assim/i }));
+      await waitFor(() => expect(vehiclesApi.update).toHaveBeenCalledWith(expect.objectContaining({ mileage: 9800, confirmMileageDecrease: true })));
+    });
+
+    it('does not ask when the mileage goes up', async () => {
+      const user = userEvent.setup();
+      renderWithClient(<VehicleFormModal open onOpenChange={() => {}} vehicle={{ ...editingVehicle, mileage: 98000 }} />);
+      const mileage = screen.getByLabelText(/quilometragem/i);
+      await user.clear(mileage);
+      await user.type(mileage, '99000');
+      await user.click(screen.getByRole('button', { name: /salvar alterações/i }));
+      await waitFor(() => expect(vehiclesApi.update).toHaveBeenCalledWith(expect.objectContaining({ mileage: 99000 })));
+      expect(vehiclesApi.update).not.toHaveBeenCalledWith(expect.objectContaining({ confirmMileageDecrease: true }));
+    });
+  });
 });

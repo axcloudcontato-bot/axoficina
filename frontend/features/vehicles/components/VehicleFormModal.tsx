@@ -1,11 +1,11 @@
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 import { z } from 'zod';
-import type { VehicleListItemResponse } from '@oficina/contracts';
+import { isValidChassis, isValidPlate, normalizePlate, type VehicleListItemResponse } from '@oficina/contracts';
 import { Car } from '@phosphor-icons/react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -27,12 +27,13 @@ const vehicleSchema = z.object({
   customerId: z.string().min(1, 'Selecione um cliente'),
   brand: z.string().min(1, 'Informe a marca'),
   model: z.string().min(1, 'Informe o modelo'),
-  plate: z.string().min(1, 'Informe a placa'),
+  plate: z.string().min(1, 'Informe a placa').refine((value) => isValidPlate(normalizePlate(value)), 'Placa inválida. Use o formato ABC1234 ou ABC1D23.'),
   year: z.string().optional(),
   engine: z.string().optional(),
   fuelType: z.string().optional(),
   chassis: z.string().optional(),
   mileage: z.string().optional(),
+  color: z.string().optional(),
 });
 
 export type VehicleFormValues = z.infer<typeof vehicleSchema>;
@@ -47,7 +48,10 @@ const EMPTY_VALUES: VehicleFormValues = {
   fuelType: '',
   chassis: '',
   mileage: '',
+  color: '',
 };
+
+const FUEL_TYPES = ['Flex', 'Gasolina', 'Etanol', 'Diesel', 'Elétrico', 'Híbrido', 'GNV'];
 
 function toOptionalNumber(value?: string): number | undefined {
   if (!value) {
@@ -73,6 +77,9 @@ export function VehicleFormModal({ open, onOpenChange, vehicle, initialCustomer,
   const create = useCreateVehicle();
   const update = useUpdateVehicle();
   const isPending = create.isPending || update.isPending;
+  // Lowering the odometer is almost always a typo: it asks first.
+  const [lowerMileage, setLowerMileage] = useState(false);
+  const pendingValues = useRef<VehicleFormValues | undefined>(undefined);
 
   // Só busca a lista de clientes quando o modal de criação está aberto —
   // em edição o cliente não é selecionável, não precisa da query.
@@ -93,18 +100,41 @@ export function VehicleFormModal({ open, onOpenChange, vehicle, initialCustomer,
             customerId: vehicle.customerId,
             brand: vehicle.brand,
             model: vehicle.model,
-            plate: vehicle.plate,
+            plate: normalizePlate(vehicle.plate),
             year: vehicle.year?.toString() ?? '',
             engine: vehicle.engine ?? '',
             fuelType: vehicle.fuelType ?? '',
             chassis: vehicle.chassis ?? '',
             mileage: vehicle.mileage?.toString() ?? '',
+            color: vehicle.color ?? '',
           }
         : { ...EMPTY_VALUES, ...initialValues, customerId: initialCustomer?.id ?? '' },
     );
   }, [open, vehicle, initialCustomer, initialValues, form]);
 
+  // Year and chassis are only checked when they changed, so a record saved before these rules can still be edited.
   function onSubmit(values: VehicleFormValues) {
+    const year = toOptionalNumber(values.year);
+    const latest = new Date().getFullYear() + 1;
+    if (year !== undefined && year !== vehicle?.year && (!Number.isInteger(year) || year < 1900 || year > latest)) {
+      form.setError('year', { message: `Informe um ano entre 1900 e ${latest}.` });
+      return;
+    }
+    const chassis = values.chassis?.trim().toUpperCase();
+    if (chassis && chassis !== (vehicle?.chassis ?? '').toUpperCase() && !isValidChassis(chassis)) {
+      form.setError('chassis', { message: 'O chassi tem 17 letras e números, sem I, O e Q.' });
+      return;
+    }
+    const mileage = toOptionalNumber(values.mileage);
+    if (isEditing && vehicle?.mileage != null && mileage !== undefined && mileage < vehicle.mileage) {
+      pendingValues.current = values;
+      setLowerMileage(true);
+      return;
+    }
+    submit(values, false);
+  }
+
+  function submit(values: VehicleFormValues, confirmMileageDecrease: boolean) {
     const onSuccess = (result?: { vehicle: VehicleListItemResponse }) => {
       if (!isEditing && result?.vehicle) onCreated?.(result.vehicle);
       toast.success(isEditing ? 'Veículo atualizado com sucesso!' : 'Veículo cadastrado com sucesso!');
@@ -124,16 +154,17 @@ export function VehicleFormModal({ open, onOpenChange, vehicle, initialCustomer,
     const commonFields = {
       brand: values.brand,
       model: values.model,
-      plate: values.plate,
+      plate: normalizePlate(values.plate),
       year: toOptionalNumber(values.year),
       engine: values.engine || undefined,
       fuelType: values.fuelType || undefined,
-      chassis: values.chassis || undefined,
+      chassis: values.chassis?.trim() ? values.chassis.trim().toUpperCase() : undefined,
       mileage: toOptionalNumber(values.mileage),
+      color: values.color?.trim() || (isEditing ? '' : undefined),
     };
 
     if (isEditing && vehicle) {
-      update.mutate({ id: vehicle.id, ...commonFields }, { onSuccess, onError });
+      update.mutate({ id: vehicle.id, ...commonFields, ...(confirmMileageDecrease ? { confirmMileageDecrease: true } : {}) }, { onSuccess, onError });
     } else {
       create.mutate({ customerId: values.customerId, ...commonFields }, { onSuccess, onError });
     }
@@ -205,7 +236,7 @@ export function VehicleFormModal({ open, onOpenChange, vehicle, initialCustomer,
                   <FormItem>
                     <FormLabel>Placa</FormLabel>
                     <FormControl>
-                      <Input placeholder="ABC1D23" {...field} />
+                      <Input placeholder="ABC1D23" maxLength={8} autoCapitalize="characters" {...field} onChange={(event) => field.onChange(normalizePlate(event.target.value).slice(0, 7))} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -246,7 +277,12 @@ export function VehicleFormModal({ open, onOpenChange, vehicle, initialCustomer,
                   <FormItem>
                     <FormLabel>Combustível (opcional)</FormLabel>
                     <FormControl>
-                      <Input placeholder="Flex" {...field} />
+                      {/* A value saved before the list existed stays selectable instead of silently disappearing. */}
+                      <select className="h-10 w-full rounded-button border border-input bg-background px-3 text-sm" {...field}>
+                        <option value="">Não informado</option>
+                        {field.value && !FUEL_TYPES.includes(field.value) && <option value={field.value}>{field.value}</option>}
+                        {FUEL_TYPES.map((fuel) => <option key={fuel} value={fuel}>{fuel}</option>)}
+                      </select>
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -265,6 +301,19 @@ export function VehicleFormModal({ open, onOpenChange, vehicle, initialCustomer,
                     <FormLabel>Chassi (opcional)</FormLabel>
                     <FormControl>
                       <Input placeholder="9BW..." {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="color"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Cor (opcional)</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Prata" maxLength={30} {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -296,6 +345,20 @@ export function VehicleFormModal({ open, onOpenChange, vehicle, initialCustomer,
           </form>
         </Form>
       </DialogContent>
+      <Dialog open={lowerMileage} onOpenChange={setLowerMileage}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Quilometragem menor que a atual</DialogTitle>
+            <DialogDescription>
+              O veículo está com {vehicle?.mileage?.toLocaleString('pt-BR')} km e você informou {toOptionalNumber(pendingValues.current?.mileage)?.toLocaleString('pt-BR')} km. Isso só faz sentido para corrigir um erro de digitação. Os lembretes de manutenção por km usam este valor.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2">
+            <Button type="button" variant="outline" onClick={() => setLowerMileage(false)}>Voltar e conferir</Button>
+            <Button type="button" onClick={() => { const values = pendingValues.current; setLowerMileage(false); if (values) submit(values, true); }}>Corrigir mesmo assim</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Dialog>
   );
 }

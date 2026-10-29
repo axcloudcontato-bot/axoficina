@@ -43,3 +43,4 @@ export * from './response/service-order-productivity.response';
 export * from './response/pagination.response';
 export * from './utils/case-convert';
 export * from './customer-care';
+export * from './vehicle-plate';

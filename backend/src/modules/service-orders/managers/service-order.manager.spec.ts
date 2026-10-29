@@ -4,6 +4,7 @@ import { ServiceOrderManager } from './service-order.manager';
 const actingUser = { userId: 'user-1', tenantId: 'tenant-1', role: 'ADMIN' as const };
 const TX = {
   appointment: { updateMany: jest.fn() },
+  vehicle: { updateMany: jest.fn() },
   serviceOrderItem: { findMany: jest.fn().mockResolvedValue([]) },
   stockMovement: { findFirst: jest.fn().mockResolvedValue(null), create: jest.fn() },
   catalogItem: { findFirst: jest.fn().mockResolvedValue(null), update: jest.fn() },
@@ -67,6 +68,7 @@ function buildManager() {
     transaction: jest.fn((fn: (tx: unknown) => Promise<unknown>) => fn(FAKE_TX)),
     client: {
       appointment: { updateMany: jest.fn() },
+      vehicle: { updateMany: jest.fn() },
       catalogItem: { findFirst: jest.fn().mockResolvedValue(null) },
       serviceOrderInstallment: {
         findMany: jest.fn().mockResolvedValue([]),
@@ -264,6 +266,43 @@ describe('ServiceOrderManager', () => {
         code: 'SERVICE_ORDER_TECHNICIAN_NOT_FOUND',
       });
       expect(deps.serviceOrderRepository.insert).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('vehicle mileage follows the order', () => {
+    const forward = { where: { id: 'vehicle-1', deletedAt: null, OR: [{ mileage: null }, { mileage: { lt: 125000 } }] }, data: { mileage: 125000 } };
+
+    it('moves the vehicle odometer forward with the entry mileage of a new order', async () => {
+      const deps = buildManager();
+      deps.vehicleRepository.byId.mockResolvedValue(baseVehicle);
+      deps.serviceOrderRepository.insert.mockResolvedValue(baseServiceOrder);
+      deps.customerRepository.byId.mockResolvedValue(baseCustomer);
+      TX.vehicle.updateMany.mockClear();
+      await deps.manager.create(actingUser, { vehicleId: 'vehicle-1', entryMileage: 125000 });
+      expect(TX.vehicle.updateMany).toHaveBeenCalledWith(forward);
+    });
+
+    it('does not touch the vehicle when the order has no mileage', async () => {
+      const deps = buildManager();
+      deps.vehicleRepository.byId.mockResolvedValue(baseVehicle);
+      deps.serviceOrderRepository.insert.mockResolvedValue(baseServiceOrder);
+      deps.customerRepository.byId.mockResolvedValue(baseCustomer);
+      TX.vehicle.updateMany.mockClear();
+      await deps.manager.create(actingUser, { vehicleId: 'vehicle-1' });
+      expect(TX.vehicle.updateMany).not.toHaveBeenCalled();
+    });
+
+    it('uses the highest reading when an order is edited, and never lowers the vehicle', async () => {
+      const deps = buildManager();
+      deps.serviceOrderRepository.byId.mockResolvedValueOnce(baseServiceOrder).mockResolvedValueOnce(baseServiceOrder);
+      deps.vehicleRepository.byId.mockResolvedValue(baseVehicle);
+      deps.customerRepository.byId.mockResolvedValue(baseCustomer);
+      const updateMany = deps.prisma.client.vehicle.updateMany as jest.Mock;
+      updateMany.mockClear();
+      await deps.manager.update(actingUser, { id: 'so-1', entryMileage: 120000, exitMileage: 125000 });
+      expect(updateMany).toHaveBeenCalledWith(forward);
+      // the guard is in the query itself: only a vehicle with no reading, or a lower one, is written
+      expect(JSON.stringify(updateMany.mock.calls[0][0].where.OR)).toContain('"lt":125000');
     });
   });
 

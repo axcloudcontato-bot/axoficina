@@ -16,6 +16,7 @@ export interface CreateVehicleInput {
   fuelType?: string;
   chassis?: string;
   mileage?: number;
+  color?: string;
   photos?: string[];
 }
 
@@ -28,7 +29,13 @@ export interface UpdateVehicleInput {
   plate?: string;
   chassis?: string;
   mileage?: number;
+  color?: string;
   photos?: string[];
+}
+
+export interface VehicleOrderSummary {
+  id: string; vehicleId: string; orderNumber: number; status: string; openedAt: Date; closedAt: Date | null;
+  entryMileage: number | null; exitMileage: number | null;
 }
 
 @Injectable()
@@ -51,6 +58,7 @@ export class VehicleRepository {
         fuelType: input.fuelType,
         chassis: input.chassis,
         mileage: input.mileage,
+        color: input.color,
         photos: input.photos ?? [],
       },
     });
@@ -85,6 +93,66 @@ export class VehicleRepository {
     return this.prisma.client.vehicle.updateMany({
       where: { id, deletedAt: null },
       data: patch,
+    });
+  }
+
+  async archivedById(id: string) {
+    return this.prisma.client.vehicle.findFirst({ where: { id, deletedAt: { not: null } } });
+  }
+
+  async restore(id: string) {
+    return this.prisma.client.vehicle.updateMany({ where: { id, deletedAt: { not: null } }, data: { deletedAt: null } });
+  }
+
+  // Open orders and appointments still ahead, for the confirmation before archiving.
+  async archiveImpact(id: string, now: Date): Promise<{ openServiceOrders: number; upcomingAppointments: number }> {
+    const [openServiceOrders, upcomingAppointments] = await Promise.all([
+      this.prisma.client.serviceOrder.count({ where: { vehicleId: id, deletedAt: null, status: { notIn: ['DELIVERED', 'CANCELLED'] } } }),
+      this.prisma.client.appointment.count({ where: { vehicleId: id, deletedAt: null, startsAt: { gte: now }, status: { in: ['SCHEDULED', 'CONFIRMED', 'IN_SERVICE'] } } }),
+    ]);
+    return { openServiceOrders, upcomingAppointments };
+  }
+
+  // Orders of a set of vehicles (cancelled ones included; the caller decides what counts).
+  async ordersOf(vehicleIds: string[]): Promise<VehicleOrderSummary[]> {
+    if (vehicleIds.length === 0) return [];
+    return this.prisma.client.serviceOrder.findMany({
+      where: { vehicleId: { in: vehicleIds }, deletedAt: null },
+      select: { id: true, vehicleId: true, orderNumber: true, status: true, openedAt: true, closedAt: true, entryMileage: true, exitMileage: true },
+    });
+  }
+
+  async carePlansOf(vehicleId: string) {
+    return this.prisma.client.customerCarePlan.findMany({ where: { vehicleId }, orderBy: { completedAt: 'desc' } });
+  }
+
+  async upcomingAppointmentsOf(vehicleId: string, from: Date) {
+    return this.prisma.client.appointment.findMany({
+      where: { vehicleId, deletedAt: null, startsAt: { gte: from }, status: { in: ['SCHEDULED', 'CONFIRMED', 'IN_SERVICE'] } },
+      select: { id: true, startsAt: true, status: true, serviceDescription: true },
+      orderBy: { startsAt: 'asc' },
+      take: 5,
+    });
+  }
+
+  // Vehicles that left the workshop after a delivered order since `since`.
+  async idsDeliveredSince(since: Date): Promise<string[]> {
+    const orders = await this.prisma.client.serviceOrder.findMany({ where: { status: 'DELIVERED', closedAt: { gte: since }, deletedAt: null }, select: { vehicleId: true } });
+    return [...new Set(orders.map((order) => order.vehicleId))];
+  }
+
+  async idsWithOpenOrders(): Promise<string[]> {
+    const orders = await this.prisma.client.serviceOrder.findMany({ where: { status: { notIn: ['DELIVERED', 'CANCELLED'] }, deletedAt: null }, select: { vehicleId: true } });
+    return [...new Set(orders.map((order) => order.vehicleId))];
+  }
+
+  // The car changes hands: it, its future appointments and its care plans go to the new owner, so reminders
+  // follow the car. Orders already made keep the owner of their time.
+  async transfer(id: string, customerId: string, now: Date) {
+    return this.prisma.transaction(async (tx) => {
+      await tx.vehicle.updateMany({ where: { id, deletedAt: null }, data: { customerId } });
+      await tx.appointment.updateMany({ where: { vehicleId: id, deletedAt: null, startsAt: { gte: now }, status: { in: ['SCHEDULED', 'CONFIRMED'] } }, data: { customerId } });
+      await tx.customerCarePlan.updateMany({ where: { vehicleId: id }, data: { customerId } });
     });
   }
 
@@ -135,6 +203,7 @@ export class VehicleRepository {
       { model: { contains: search, mode: 'insensitive' } },
       { plate: { contains: search, mode: 'insensitive' } },
       { chassis: { contains: search, mode: 'insensitive' } },
+      { color: { contains: search, mode: 'insensitive' } },
       ...(isPlate ? [plate, `${plate.slice(0, 3)}-${plate.slice(3)}`, `${plate.slice(0, 3)} ${plate.slice(3)}`].map((value): Prisma.VehicleWhereInput => ({ plate: { contains: value, mode: 'insensitive' } })) : []),
       ...(/^(19|20)\d{2}$/.test(search) ? [{ year: Number(search) }] : []),
     ];
@@ -144,9 +213,19 @@ export class VehicleRepository {
   // `search` (ver CustomerRepository.searchIdsByNameOrDocument) — sem
   // relação FK entre Vehicle e Customer, o casamento por dono é feito assim,
   // adicionado ao mesmo OR de marca/modelo/placa.
-  async listByTenant(offset: number, limit: number, search?: string, customerId?: string, matchingCustomerIds?: string[]) {
+  // Empty values go last whatever the direction, so the list never opens on a screenful of blanks.
+  private orderBy(archived: boolean, sort: 'recent' | 'plate' | 'year' | 'mileage' = 'recent', direction?: 'asc' | 'desc'): Prisma.VehicleOrderByWithRelationInput[] {
+    if (archived) return [{ deletedAt: 'desc' }];
+    if (sort === 'plate') return [{ plate: direction ?? 'asc' }];
+    if (sort === 'year') return [{ year: { sort: direction ?? 'desc', nulls: 'last' } }, { createdAt: 'desc' }];
+    if (sort === 'mileage') return [{ mileage: { sort: direction ?? 'desc', nulls: 'last' } }, { createdAt: 'desc' }];
+    return [{ createdAt: direction ?? 'desc' }];
+  }
+
+  async listByTenant(offset: number, limit: number, search?: string, customerId?: string, matchingCustomerIds?: string[], archived = false, ids?: { in?: string[]; notIn?: string[] }, sort?: 'recent' | 'plate' | 'year' | 'mileage', direction?: 'asc' | 'desc') {
     const where = {
-      deletedAt: null,
+      deletedAt: archived ? { not: null } : null,
+      ...(ids ? { id: ids } : {}),
       ...(customerId ? { customerId } : {}),
       ...(search
         ? {
@@ -161,7 +240,7 @@ export class VehicleRepository {
     const [items, total] = await Promise.all([
       this.prisma.client.vehicle.findMany({
         where,
-        orderBy: { createdAt: 'desc' },
+        orderBy: this.orderBy(archived, sort, direction),
         skip: offset,
         take: limit,
       }),

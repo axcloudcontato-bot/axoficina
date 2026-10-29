@@ -116,6 +116,7 @@ export class ServiceOrderManager {
 
     const openedAt = new Date();
     const serviceOrder = await this.prisma.transaction(async (tx) => {
+      await this.syncVehicleMileage(tx, vehicle.id, request.entryMileage);
       const created = await this.serviceOrderRepository.insert(
         {
           tenantId: actingUser.tenantId,
@@ -220,6 +221,8 @@ export class ServiceOrderManager {
           ? request.paymentInstallments
           : null,
     });
+
+    await this.syncVehicleMileage(this.prisma.client, existing.vehicleId, request.entryMileage, request.exitMileage);
 
     const updated = await this.serviceOrderRepository.byId(request.id);
     if (!updated) {
@@ -755,6 +758,14 @@ export class ServiceOrderManager {
 
     if (closedReason) await this.auditClosedItemChange(actingUser, serviceOrder, 'add', created.id, closedReason, previousTotal);
     return { item: this.toItemResponse(created) };
+  }
+
+  // The car's odometer only moves forward through orders: the vehicle keeps the highest reading it was given.
+  private async syncVehicleMileage(client: PrismaClient, vehicleId: string, ...readings: Array<number | null | undefined>) {
+    const known = readings.filter((value): value is number => typeof value === 'number');
+    if (known.length === 0) return;
+    const mileage = Math.max(...known);
+    await client.vehicle.updateMany({ where: { id: vehicleId, deletedAt: null, OR: [{ mileage: null }, { mileage: { lt: mileage } }] }, data: { mileage } });
   }
 
   // Parts and products picked from the catalog leave the stock when the car is delivered.

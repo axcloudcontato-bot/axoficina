@@ -307,6 +307,7 @@ model Vehicle {
   plate      String
   chassis    String?
   mileage    Int?
+  color      String?
   photos     String[]  @default([])
   createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz
   updatedAt  DateTime? @updatedAt @map("updated_at") @db.Timestamptz

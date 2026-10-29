@@ -1,5 +1,76 @@
 export const RELEASE_NOTES = [
   {
+    id: '2026-10-29-veiculos', date: '2026-10-29', title: "Veículos com ficha completa, troca de dono e planilhas",
+    items: [
+      "A placa passa a ser gravada no padrão ABC1D23 e validada (formato antigo e Mercosul). As placas já cadastradas foram corrigidas, e o mesmo carro não entra mais duas vezes com grafias diferentes.",
+      "A quilometragem registrada na OS atualiza o veículo. Informar um km menor que o atual pede confirmação antes de salvar.",
+      "Nova ficha do veículo: dono, quilometragem, histórico de OS, próximos cuidados (com os vencidos destacados), agendamentos e as leituras de km das OS. O cuidado já feito pode ser registrado ali mesmo.",
+      "Transferência de veículo para outro dono, com agendamentos e lembretes seguindo o carro e as OS antigas preservadas.",
+      "A lista mostra ano, km, número de OS e última visita; busca também pelo nome do dono; filtros de veículos em andamento e sem visita há 6 meses; ordenação por placa, ano ou km.",
+      "Arquivar avisa sobre OS em andamento e agendamentos futuros, e a aba Arquivados permite reativar. Cor do veículo e combustível em lista.",
+      "Importação de veículos por planilha CSV (o dono é encontrado pelo documento ou telefone) e exportação da lista em CSV.",
+    ],
+  },
+  {
+    id: '2026-10-29-clientes', date: '2026-10-29', title: "Clientes com ficha, planilhas e junção de cadastros duplicados",
+    items: [
+      "Novo cliente cadastra só o cliente, sem abrir uma OS. A busca por nome, telefone ou documento espera a digitação e a lista mostra documento e telefone formatados.",
+      "Nova ficha do cliente: veículos, ordens de serviço, última visita, total gasto, ticket médio, pendências, agendamentos e atalhos de WhatsApp, ligar e Nova OS. Os valores só aparecem para quem pode ver preços.",
+      "A lista mostra placas, última visita e total gasto, com filtros de clientes com valor a receber e sem visita há mais de 6 meses.",
+      "Arquivar um cliente avisa sobre OS em andamento e valores a receber, e a aba Arquivados permite reativar. O tipo pessoa física ou jurídica pode ser corrigido, conferido com o documento.",
+      "Aviso ao cadastrar um telefone que já existe, para evitar o mesmo cliente duas vezes.",
+      "Juntar cadastros duplicados (administrador e gerente): veículos, OS, agendamentos e mensagens passam para o cadastro mantido.",
+      "Importação de clientes por planilha CSV, sem duplicar quem já está cadastrado, e exportação da lista em CSV.",
+      "O registro da autorização de lembretes agora guarda como o cliente autorizou, a data e quem registrou.",
+    ],
+  },
+  {
+    id: '2026-10-29-catalogo', date: '2026-10-29', title: "Peças e serviços com custo, estoque, pacotes e relatório",
+    items: [
+      "Preço editado direto na lista, filtro de itens sem preço, valor da hora da oficina e preço calculado pelo tempo padrão do serviço.",
+      "Custo, margem de lucro, código, marca, unidade e fornecedor. O custo e a margem só aparecem para quem vê o financeiro.",
+      "Controle de estoque de peças e produtos: estoque mínimo, entradas, contagem, baixa automática na entrega da OS e aviso de estoque baixo.",
+      "Pacotes de serviço, como a revisão básica, lançados na OS com um clique pelos preços de hoje.",
+      "Importação de itens por planilha CSV e a aba Mais vendidos, com faturamento e lucro por período.",
+      "Ao lançar na OS um serviço do catálogo, o próximo cuidado do cliente já vem marcado para o Relacionamento.",
+    ],
+  },
+  {
+    id: '2026-10-29-agenda', date: '2026-10-29', title: "Agenda por horário, com capacidade e lembretes",
+    items: [
+      "Grade por horário com arrastar para remarcar, indicadores do dia e agendamento que acompanha a OS (entregue conclui, cancelada cancela).",
+      "Horário de funcionamento e capacidade de atendimentos ao mesmo tempo configuráveis nas configurações.",
+      "Lembretes e confirmação de agendamento enviados por WhatsApp quando a integração está ativa.",
+    ],
+  },
+  {
+    id: '2026-10-29-ordens-de-servico', date: '2026-10-29', title: "Ordens de serviço mais seguras e completas",
+    items: [
+      "Desconto na OS, com subtotal e desconto separados, e prazo de garantia.",
+      "Motivo obrigatório ao cancelar uma OS. Mudanças em itens de OS encerrada pedem um motivo e ficam registradas com o valor antes e depois.",
+      "Política de fotos configurável nas configurações e mais travas para impedir valores inconsistentes.",
+    ],
+  },
+  {
+    id: '2026-10-29-painel', date: '2026-10-29', title: "Visão da oficina com números exatos",
+    items: [
+      "Os números do dia passam a ser exatos e carregam juntos, mais rápido.",
+      "Novos blocos de OS aguardando e da fila de cada mecânico.",
+    ],
+  },
+  {
+    id: '2026-10-29-previsao-contatos', date: '2026-10-29', title: "Previsão de contatos no Relacionamento",
+    items: [
+      "Nova aba que mostra quantos clientes serão contactados no mês, na semana e no dia, com a estimativa de possíveis agendamentos.",
+    ],
+  },
+  {
+    id: '2026-10-29-equipe', date: '2026-10-29', title: "Renomear usuários da equipe",
+    items: [
+      "Administradores podem corrigir o nome de um usuário nas configurações da equipe.",
+    ],
+  },
+  {
     id: '2026-10-25-icones-whatsapp', date: '2026-10-25', title: 'Mensagens do WhatsApp com ícones por assunto',
     items: ['Emojis nas mensagens de abertura, orçamento, agendamento, execução, peças, retirada, entrega e avaliação.', 'Títulos em negrito e dados da OS organizados com ícones nativos do WhatsApp.'],
   },

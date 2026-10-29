@@ -16,7 +16,7 @@ export function useSaveCareSettings() {
 }
 export function useRecordCareService() {
   const client = useQueryClient();
-  return useMutation({ mutationFn: async (input: RecordCareServiceRequest) => apiClient.post('/api/v1/customer-care/services', input), onSuccess: () => client.invalidateQueries({ queryKey: ['customer-care'] }) });
+  return useMutation({ mutationFn: async (input: RecordCareServiceRequest) => apiClient.post('/api/v1/customer-care/services', input), onSuccess: () => { client.invalidateQueries({ queryKey: ['customer-care'] }); client.invalidateQueries({ queryKey: ['vehicle-overview'] }); } });
 }
 export function useCarePreview() { return useMutation({ mutationFn: async (input: CarePreviewRequest) => (await apiClient.post<CarePreviewResponse>('/api/v1/customer-care/preview', input)).data }); }
 export function useRetryCareDelivery() {
