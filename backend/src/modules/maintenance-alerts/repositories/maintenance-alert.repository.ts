@@ -3,6 +3,7 @@ import type { PrismaClient } from '@oficina/database';
 import type { MaintenanceAlertContactOutcome, MaintenanceAlertDismissReason, MaintenanceAlertFilter } from '@oficina/contracts';
 import type { Prisma } from '@oficina/database';
 import { PrismaService } from '../../../shared/prisma/prisma.service';
+import { careSettings } from '../../customer-care/care-policy';
 
 export interface UpsertOpenMaintenanceAlertInput {
   tenantId: string;
@@ -133,5 +134,10 @@ export class MaintenanceAlertRepository {
   async carePlansForVehicles(vehicleIds: string[]) {
     if (vehicleIds.length === 0) return [];
     return this.prisma.client.customerCarePlan.findMany({ where: { vehicleId: { in: vehicleIds } } });
+  }
+
+  // The workshop's care campaigns, with the intervals it chose in Cuidado com o cliente.
+  async careCampaigns() {
+    return careSettings(await this.prisma.client.customerCareSettings.findFirst()).campaigns;
   }
 }

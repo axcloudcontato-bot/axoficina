@@ -1,6 +1,6 @@
-import { ConflictException, Injectable, Logger } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, Logger } from '@nestjs/common';
 import { randomBytes } from 'node:crypto';
-import type { CareSettings } from '@oficina/contracts';
+import type { CareSettings, CareTestSendRequest } from '@oficina/contracts';
 import type { Customer, CustomerCareDelivery, Prisma, Tenant } from '@oficina/database';
 import { PrismaService } from '../../shared/prisma/prisma.service';
 import { WaAkgService } from '../settings/services/wa-akg.service';
@@ -8,7 +8,7 @@ import { TenantMailerService } from '../settings/services/tenant-mailer.service'
 import { SecretEncryptionService } from '../settings/services/secret-encryption.service';
 import { whatsappRecipient } from '../settings/services/whatsapp-recipient';
 import { CustomerCareService, hashCareToken } from './customer-care.service';
-import { birthdayToday, careSettings, contactWindow, DAY_MS, escapeHtml, localClock, localMidnight, maintenanceEvent, renderCareMessage, type CareEvent } from './care-policy';
+import { birthdayToday, careRecipient, careSettings, contactWindow, DAY_MS, escapeHtml, localClock, localMidnight, maintenanceEvent, renderCareMessage, type CareEvent } from './care-policy';
 
 const RESERVED_STATUSES = ['PENDING', 'SENDING', 'SENT', 'UNKNOWN'];
 
@@ -88,12 +88,9 @@ export class CustomerCareAutomationService {
   }
 
   private recipient(customer: Customer, settings: CareSettings, tenant: Tenant) {
-    const channel = customer.preferredContactChannel || settings.channel;
-    if (channel === 'WHATSAPP' && tenant.waAkgEnabled) { const recipient = whatsappRecipient(customer.phone); if (recipient) return { channel, recipient }; }
-    if (channel === 'EMAIL' && tenant.smtpEnabled && customer.email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customer.email)) return { channel, recipient: customer.email.trim().toLowerCase() };
-    return null;
+    const target = careRecipient(customer, settings, tenant);
+    return 'reason' in target ? null : target;
   }
-
   private async enqueue(tenant: Tenant, customer: Customer, settings: CareSettings, events: CareEvent[], now: Date) {
     const recipient = this.recipient(customer, settings, tenant); if (!recipient) return false;
     return this.prisma.unscoped.$transaction(async tx => {
@@ -209,5 +206,30 @@ export class CustomerCareAutomationService {
     const result = await this.prisma.unscoped.customerCareDelivery.updateMany({ where: { id, tenantId, status: 'FAILED' }, data: { ...recipient, status: 'PENDING', reason: null, scheduledAt: new Date(), attemptedAt: null } });
     if (!result.count) throw new ConflictException('Somente falhas anteriores ao envio podem ser tentadas novamente.');
     return { queued: true };
+  }
+
+  // UNKNOWN means the sending was interrupted and nobody knows if it arrived. The team checks the conversation:
+  // if it arrived it becomes SENT; if not it becomes FAILED, and the usual "try again" is offered.
+  async resolveUnknown(tenantId: string, id: string, outcome: 'DELIVERED' | 'NOT_DELIVERED', now = new Date()) {
+    const record = await this.prisma.unscoped.customerCareDelivery.findFirst({ where: { id, tenantId, status: 'UNKNOWN' } });
+    if (!record) throw new ConflictException('Só envios com resultado incerto podem ser conferidos.');
+    const data = outcome === 'DELIVERED'
+      ? { status: 'SENT', sentAt: record.attemptedAt ?? now, reason: 'Entrega confirmada pela equipe.' }
+      : { status: 'FAILED', reason: 'A equipe conferiu e a mensagem não chegou.' };
+    const result = await this.prisma.unscoped.customerCareDelivery.updateMany({ where: { id, tenantId, status: 'UNKNOWN' }, data });
+    if (!result.count) throw new ConflictException('Só envios com resultado incerto podem ser conferidos.');
+    return { status: data.status };
+  }
+
+  // Sends the real message of a campaign (with sample data) to a number of the team, marked as a test, so the
+  // workshop sees exactly what customers get before switching the automation on. Nothing is recorded as a delivery.
+  async testSend(tenantId: string, input: CareTestSendRequest) {
+    const recipient = whatsappRecipient(input.phone);
+    if (!recipient) throw new BadRequestException('Informe um WhatsApp com DDD, como (11) 99999-8888.');
+    const connection = await this.whatsapp.getConnection(tenantId);
+    if (!connection) throw new ConflictException('Conecte o WhatsApp da oficina antes de enviar um teste.');
+    const { message } = await this.care.preview(tenantId, { campaignKey: input.campaignKey, message: input.message });
+    await this.whatsapp.sendNotice(connection, recipient, `🧪 *Mensagem de teste*\n\n${message}`);
+    return { sent: true };
   }
 }

@@ -1,4 +1,5 @@
-import { DEFAULT_CARE_CAMPAIGNS, DEFAULT_CARE_SETTINGS, type CareCampaign, type CareCampaignKey, type CareSettings } from '@oficina/contracts';
+import { DEFAULT_CARE_CAMPAIGNS, DEFAULT_CARE_SETTINGS, type CareCampaign, type CareCampaignKey, type CareSettings, type CareUnreachableReason } from '@oficina/contracts';
+import { whatsappRecipient } from '../settings/services/whatsapp-recipient';
 
 export const DAY_MS = 86_400_000;
 export interface CareEvent { key: string; campaignKey: CareCampaignKey; planId?: string; vehicleId?: string; completedAt?: string; vehicleName?: string; plate?: string }
@@ -69,3 +70,19 @@ export function renderCareMessage(settings: CareSettings, events: CareEvent[], i
   return { subject: birthday ? `🎂 ${firstName}, um carinho da ${input.workshopName}!` : `💛 ${input.workshopName}: próximos cuidados com seu carro`, message: `${body}\n\n${birthday ? `Com carinho, ${input.workshopName}.\n\n` : ''}Preferências de contato: ${input.unsubscribeUrl}` };
 }
 export function escapeHtml(value: string) { return value.replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]!); }
+
+// Where a customer's care message can go: the customer's preferred channel, or the workshop's default. A customer who
+// prefers a phone call or SMS, or whose channel is not usable, cannot be reached, and the reason says why.
+export function careRecipient(customer: { phone: string; email: string | null; preferredContactChannel: string | null }, settings: Pick<CareSettings, 'channel'>, tenant: { waAkgEnabled: boolean | null; smtpEnabled: boolean | null }): { channel: 'WHATSAPP' | 'EMAIL'; recipient: string } | { reason: CareUnreachableReason } {
+  const channel = customer.preferredContactChannel || settings.channel;
+  if (channel === 'WHATSAPP') {
+    if (!tenant.waAkgEnabled) return { reason: 'CHANNEL_OFF' };
+    const recipient = whatsappRecipient(customer.phone);
+    return recipient ? { channel, recipient } : { reason: 'NO_WHATSAPP' };
+  }
+  if (channel === 'EMAIL') {
+    if (!tenant.smtpEnabled) return { reason: 'CHANNEL_OFF' };
+    return customer.email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customer.email) ? { channel, recipient: customer.email.trim().toLowerCase() } : { reason: 'NO_EMAIL' };
+  }
+  return { reason: 'PHONE_PREFERRED' };
+}

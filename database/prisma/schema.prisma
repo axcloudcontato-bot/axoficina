@@ -60,6 +60,20 @@ model CustomerCarePlan {
   @@map("customer_care_plans")
 }
 
+// One attempt by the team to reach, by hand, a customer about a care plan.
+model CustomerCareContact {
+  id        String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  tenantId  String   @map("tenant_id") @db.Uuid
+  planId    String   @map("plan_id") @db.Uuid
+  outcome   String
+  note      String?
+  createdBy String?  @map("created_by") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([tenantId, planId, createdAt])
+  @@map("customer_care_contacts")
+}
+
 model CustomerCareDelivery {
   id              String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
   tenantId        String    @map("tenant_id") @db.Uuid

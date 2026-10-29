@@ -1,3 +1,5 @@
+import type { MaintenanceAlertContactOutcome } from './response/maintenance-alert.response';
+
 export const CARE_SERVICE_KEYS = ['PERIODIC_REVIEW', 'OIL_CHANGE', 'BRAKES', 'BRAKE_FLUID', 'TIRES', 'AIR_FILTER', 'CABIN_FILTER', 'COOLING', 'BATTERY', 'WIPERS', 'BELTS', 'SPARK_PLUGS'] as const;
 export type CareServiceKey = (typeof CARE_SERVICE_KEYS)[number];
 export const CARE_CAMPAIGN_KEYS = ['BIRTHDAY', ...CARE_SERVICE_KEYS] as const;
@@ -48,12 +50,46 @@ export interface CareSettings {
 export const DEFAULT_CARE_SETTINGS: CareSettings = { enabled: false, channel: 'WHATSAPP', timeZone: 'America/Sao_Paulo', sendHour: 9, weekdaysOnly: true, minGapDays: 7, dailyLimit: 50, campaigns: DEFAULT_CARE_CAMPAIGNS };
 export interface UpdateCareSettingsRequest extends CareSettings {}
 export interface RecordCareServiceRequest { vehicleId: string; serviceKey: CareServiceKey; completedAt: string; mileage?: number; intervalMonths?: number; intervalKm?: number | null }
-export interface CarePlanResponse { id: string; customerId: string; customerName: string; vehicleId: string; vehicleName: string; plate: string; serviceKey: CareServiceKey; serviceName: string; completedAt: string; mileage?: number; dueAt: string; dueMileage?: number; intervalMonths: number; intervalKm: number | null }
+export interface CarePlanResponse { id: string; customerId: string; customerName: string; vehicleId: string; vehicleName: string; plate: string; serviceKey: CareServiceKey; serviceName: string; completedAt: string; mileage?: number; dueAt: string; dueMileage?: number; intervalMonths: number; intervalKm: number | null; customerCareEnabled?: boolean; overdue?: boolean; customerPhone?: string; contactCount?: number; lastContact?: CareContactSummary }
 export interface CareDeliveryResponse { id: string; customerName: string; campaignNames: string[]; channel: CareChannel; status: CareDeliveryStatus; message: string; reason?: string; scheduledAt: string; sentAt?: string }
-export interface CareDashboardResponse { settings: CareSettings; channels: { whatsapp: boolean; email: boolean }; stats: { optedIn: number; birthdaysThisMonth: number; dueThisMonth: number; sentThisMonth: number; pending: number; failed: number }; plans: CarePlanResponse[]; deliveries: CareDeliveryResponse[]; totalPlans: number; totalDeliveries: number }
+export interface CareDashboardResponse { settings: CareSettings; channels: { whatsapp: boolean; email: boolean }; stats: { optedIn: number; birthdaysThisMonth: number; dueThisMonth: number; sentThisMonth: number; pending: number; failed: number }; plans: CarePlanResponse[]; deliveries: CareDeliveryResponse[]; totalPlans: number; totalDeliveries: number; unreachable?: CareUnreachable }
 export interface CareForecastItem { vehicleId: string; vehicleName: string; plate: string; serviceKey: CareServiceKey; serviceName: string; dueAt: string; late: boolean }
 export interface CareForecastCustomer { customerId: string; customerName: string; kind: 'MAINTENANCE' | 'BIRTHDAY'; items: CareForecastItem[] }
 export interface CareForecastDay { date: string; customers: CareForecastCustomer[] }
 export interface CareForecastResponse { enabled: boolean; today: string; horizonDays: number; dailyLimit: number; withoutConsent: number; days: CareForecastDay[] }
 export interface CarePreviewRequest{ campaignKey: CareCampaignKey; customerId?: string; vehicleId?: string; message?: string }
 export interface CarePreviewResponse { message: string; subject: string }
+
+// Why a customer who authorized the reminders cannot receive them. Shown to the team so nobody assumes the customer is being looked after.
+export type CareUnreachableReason = 'CHANNEL_OFF' | 'NO_WHATSAPP' | 'NO_EMAIL' | 'PHONE_PREFERRED';
+export const CARE_UNREACHABLE_LABELS: Record<CareUnreachableReason, string> = {
+  CHANNEL_OFF: 'O canal preferido do cliente não está conectado na oficina',
+  NO_WHATSAPP: 'Telefone sem WhatsApp válido (falta o DDD ou está incompleto)',
+  NO_EMAIL: 'Prefere e-mail, mas não tem um e-mail válido',
+  PHONE_PREFERRED: 'Prefere ligação ou SMS, que o sistema não envia',
+};
+export interface CareUnreachable { total: number; customers: Array<{ id: string; name: string; reason: CareUnreachableReason }> }
+
+// A delivery whose result is unknown (the sending was interrupted): the team checked the conversation and says what happened.
+export interface ResolveCareDeliveryRequest { id: string; outcome: 'DELIVERED' | 'NOT_DELIVERED' }
+
+// DUE = overdue or due within 30 days (the "cuidados a acompanhar" number).
+export const CARE_PLAN_FILTERS = ['ALL', 'DUE', 'OVERDUE', 'UPCOMING'] as const;
+export type CarePlanFilter = (typeof CARE_PLAN_FILTERS)[number];
+export interface CarePlansRequest { offset?: number; limit?: number; search?: string; filter?: CarePlanFilter; consent?: 'GRANTED' | 'NOT_GRANTED' }
+export interface CarePlansResponse { plans: CarePlanResponse[]; total: number }
+
+// The team reaching a customer by hand (same outcomes as the maintenance alerts).
+export type CareContactOutcome = MaintenanceAlertContactOutcome;
+export interface CareContactSummary { outcome: CareContactOutcome; at: string; byName?: string; note?: string }
+export interface RecordCarePlanContactRequest { id: string; outcome: CareContactOutcome; note?: string }
+export interface CarePlanContactsResponse { contacts: Array<CareContactSummary & { id: string }> }
+
+// The history, filtered. NOT_SENT covers failures and skipped messages; CHECK the uncertain ones; QUEUED what is waiting.
+export const CARE_DELIVERY_FILTERS = ['SENT', 'NOT_SENT', 'CHECK', 'QUEUED'] as const;
+export type CareDeliveryFilter = (typeof CARE_DELIVERY_FILTERS)[number];
+export interface CareDeliveriesRequest { offset?: number; limit?: number; status?: CareDeliveryFilter; campaignKey?: CareCampaignKey; search?: string; from?: string; to?: string }
+export interface CareDeliveriesResponse { deliveries: CareDeliveryResponse[]; total: number }
+
+// The real message of a campaign, sent to the person setting it up, before switching the automation on.
+export interface CareTestSendRequest { campaignKey: CareCampaignKey; message?: string; phone: string }

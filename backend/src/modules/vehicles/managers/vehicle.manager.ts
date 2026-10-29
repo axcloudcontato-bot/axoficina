@@ -1,6 +1,6 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
 import { Prisma } from '@oficina/database';
-import { DEFAULT_CARE_CAMPAIGNS, isValidChassis, isValidPlate, normalizePlate } from '@oficina/contracts';
+import { isValidChassis, isValidPlate, normalizePlate } from '@oficina/contracts';
 import { addMonthsClamped } from '../../customer-care/care-policy';
 import type {
   CreateVehicleRequest,
@@ -310,10 +310,11 @@ export class VehicleManager {
   // Everything the vehicle's page needs in one call.
   async overview(id: string, now = new Date()): Promise<VehicleOverviewResponse> {
     if (!(await this.vehicleRepository.byId(id))) throw new AppException(AppErrorCode.VEHICLE_NOT_FOUND, 'Veículo não encontrado.', HttpStatus.NOT_FOUND);
-    const [orders, plans, appointments] = await Promise.all([
+    const [orders, plans, appointments, campaigns] = await Promise.all([
       this.vehicleRepository.ordersOf([id]),
       this.vehicleRepository.carePlansOf(id),
       this.vehicleRepository.upcomingAppointmentsOf(id, now),
+      this.vehicleRepository.careCampaigns(),
     ]);
     const stats = this.statsOf(orders);
     const live = orders.filter((order) => order.status !== 'CANCELLED');
@@ -323,7 +324,7 @@ export class VehicleManager {
       openServiceOrders: live.filter((order) => order.status !== 'DELIVERED').sort((a, b) => b.openedAt.getTime() - a.openedAt.getTime()).map((order) => ({ id: order.id, orderNumber: order.orderNumber, status: order.status })),
       upcomingAppointments: appointments.map((appointment) => ({ id: appointment.id, startsAt: appointment.startsAt.toISOString(), status: appointment.status, serviceDescription: appointment.serviceDescription })),
       care: plans.map((plan) => {
-        const campaign = DEFAULT_CARE_CAMPAIGNS.find((item) => item.key === plan.serviceKey);
+        const campaign = campaigns.find((item) => item.key === plan.serviceKey);
         const dueAt = addMonthsClamped(plan.completedAt, plan.intervalMonths ?? campaign?.intervalMonths ?? 12);
         const intervalKm = plan.intervalKm ?? campaign?.intervalKm ?? null;
         return { serviceKey: plan.serviceKey, serviceName: campaign?.name ?? plan.serviceKey, completedAt: plan.completedAt.toISOString(), dueAt: dueAt.toISOString(), dueMileage: plan.mileage !== null && intervalKm !== null ? plan.mileage + intervalKm : undefined, overdue: dueAt.getTime() < now.getTime() };

@@ -1,13 +1,13 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { createHash } from 'node:crypto';
-import { CARE_CAMPAIGN_KEYS, type CareDashboardResponse, type CareDeliveryResponse, type CarePreviewRequest, type CarePreviewResponse, type CareSettings, type UpdateCareSettingsRequest } from '@oficina/contracts';
+import { CARE_CAMPAIGN_KEYS, type CareDashboardResponse, type CareDeliveriesRequest, type CareDeliveriesResponse, type CareUnreachable, type CareDeliveryResponse, type CarePreviewRequest, type CarePreviewResponse, type CareSettings, type UpdateCareSettingsRequest } from '@oficina/contracts';
 import { Prisma } from '@oficina/database';
 import { PrismaService } from '../../shared/prisma/prisma.service';
 import type { AuthenticatedUser } from '../../shared/guards/jwt-auth.guard';
 import { AuditLogService } from '../../shared/audit-log/audit-log.service';
 import { CustomerCarePlansService } from './customer-care-plans.service';
-import { careSettings, DAY_MS, localClock, localMidnight, renderCareMessage } from './care-policy';
+import { careRecipient, careSettings, DAY_MS, localClock, localMidnight, renderCareMessage } from './care-policy';
 
 export const hashCareToken = (token: string) => createHash('sha256').update(token).digest('hex');
 
@@ -34,10 +34,9 @@ export class CustomerCareService {
     const month = localClock(now, settings.timeZone).month;
     const start = localMidnight(now, settings.timeZone);
     start.setUTCDate(start.getUTCDate() - localClock(now, settings.timeZone).day + 1);
-    const [tenant, plans, totalPlans, deliveries, totalDeliveries, optedIn, birthdayCount, sentThisMonth, pending, failed] = await Promise.all([
+    const [tenant, planPage, deliveries, totalDeliveries, optedIn, birthdayCount, sentThisMonth, pending, failed] = await Promise.all([
       this.prisma.unscoped.tenant.findFirst({ where: { id: tenantId, deletedAt: null } }),
-      this.prisma.unscoped.customerCarePlan.findMany({ where: { tenantId }, orderBy: [{ updatedAt: 'desc' }, { id: 'asc' }], skip: planOffset, take: 50 }),
-      this.prisma.unscoped.customerCarePlan.count({ where: { tenantId } }),
+      this.plans.page(tenantId, { offset: planOffset, limit: 50 }, now),
       this.prisma.unscoped.customerCareDelivery.findMany({ where: { tenantId }, orderBy: [{ createdAt: 'desc' }, { id: 'asc' }], skip: deliveryOffset, take: 30 }),
       this.prisma.unscoped.customerCareDelivery.count({ where: { tenantId } }),
       this.prisma.unscoped.customer.count({ where: { tenantId, deletedAt: null, careMessagesEnabled: true } }),
@@ -46,9 +45,8 @@ export class CustomerCareService {
       this.prisma.unscoped.customerCareDelivery.count({ where: { tenantId, status: { in: ['PENDING', 'SENDING'] } } }),
       this.prisma.unscoped.customerCareDelivery.count({ where: { tenantId, status: { in: ['FAILED', 'UNKNOWN'] } } }),
     ]);
-    const [customers, vehicles, dueCount] = await Promise.all([
-      this.prisma.unscoped.customer.findMany({ where: { tenantId, id: { in: plans.map(plan => plan.customerId) }, deletedAt: null } }),
-      this.prisma.unscoped.vehicle.findMany({ where: { tenantId, id: { in: plans.map(plan => plan.vehicleId) }, deletedAt: null } }),
+    const [unreachable, dueCount] = await Promise.all([
+      this.unreachable(tenantId, settings, tenant),
       this.prisma.unscoped.$queryRaw<Array<{ count: bigint }>>(Prisma.sql`SELECT count(*) FROM customer_care_plans p
         JOIN customers c ON c.id = p.customer_id AND c.tenant_id = p.tenant_id AND c.deleted_at IS NULL
         JOIN vehicles v ON v.id = p.vehicle_id AND v.tenant_id = p.tenant_id AND v.customer_id = p.customer_id AND v.deleted_at IS NULL
@@ -57,12 +55,42 @@ export class CustomerCareService {
           AND ((p.completed_at + make_interval(months => COALESCE(p.interval_months, (r->>'intervalMonths')::integer))) <= ${new Date(now.getTime() + 30 * DAY_MS)}
             OR (p.mileage IS NOT NULL AND v.mileage >= p.mileage + COALESCE(p.interval_km, (r->>'intervalKm')::integer)))`),
     ]);
-    const activePlans = plans.flatMap(plan => {
-      const customer = customers.find(item => item.id === plan.customerId); const vehicle = vehicles.find(item => item.id === plan.vehicleId && item.customerId === plan.customerId);
-      return customer && vehicle ? [this.plans.response(plan, settings, customer, vehicle)] : [];
+    return { settings, channels: { whatsapp: Boolean(tenant?.waAkgEnabled), email: Boolean(tenant?.smtpEnabled) }, stats: { optedIn, birthdaysThisMonth: Number(birthdayCount[0].count), dueThisMonth: Number(dueCount[0].count), sentThisMonth, pending, failed }, plans: planPage.plans, totalPlans: planPage.total, totalDeliveries, unreachable,
+      deliveries: deliveries.map(item => this.deliveryResponse(item, settings)) };
+  }
+
+  // Customers who authorized the reminders but whom the automation cannot reach, and why. Without this list they
+  // would silently never get anything while the workshop thinks they are being looked after.
+  private async unreachable(tenantId: string, settings: CareSettings, tenant: { waAkgEnabled: boolean | null; smtpEnabled: boolean | null } | null): Promise<CareUnreachable> {
+    const customers = await this.prisma.unscoped.customer.findMany({ where: { tenantId, deletedAt: null, careMessagesEnabled: true }, select: { id: true, name: true, phone: true, email: true, preferredContactChannel: true }, orderBy: { name: 'asc' } });
+    const blocked = customers.flatMap((customer) => {
+      const target = careRecipient(customer, settings, tenant ?? { waAkgEnabled: false, smtpEnabled: false });
+      return 'reason' in target ? [{ id: customer.id, name: customer.name, reason: target.reason }] : [];
     });
-    return { settings, channels: { whatsapp: Boolean(tenant?.waAkgEnabled), email: Boolean(tenant?.smtpEnabled) }, stats: { optedIn, birthdaysThisMonth: Number(birthdayCount[0].count), dueThisMonth: Number(dueCount[0].count), sentThisMonth, pending, failed }, plans: activePlans, totalPlans, totalDeliveries,
-      deliveries: deliveries.map(item => ({ id: item.id, customerName: item.customerName, campaignNames: item.campaignKeys.map(key => settings.campaigns.find(campaign => campaign.key === key)?.name ?? key), channel: item.channel as CareDeliveryResponse['channel'], status: item.status as CareDeliveryResponse['status'], message: item.message, reason: item.reason ?? undefined, scheduledAt: item.scheduledAt.toISOString(), sentAt: item.sentAt?.toISOString() })) };
+    return { total: blocked.length, customers: blocked.slice(0, 50) };
+  }
+
+  private deliveryResponse(item: { id: string; customerName: string; campaignKeys: string[]; channel: string; status: string; message: string; reason: string | null; scheduledAt: Date; sentAt: Date | null }, settings: CareSettings): CareDeliveryResponse {
+    return { id: item.id, customerName: item.customerName, campaignNames: item.campaignKeys.map(key => settings.campaigns.find(campaign => campaign.key === key)?.name ?? key), channel: item.channel as CareDeliveryResponse['channel'], status: item.status as CareDeliveryResponse['status'], message: item.message, reason: item.reason ?? undefined, scheduledAt: item.scheduledAt.toISOString(), sentAt: item.sentAt?.toISOString() };
+  }
+
+  // The history, filtered by result, campaign, customer and period (days in the workshop's time zone).
+  async deliveries(tenantId: string, request: CareDeliveriesRequest): Promise<CareDeliveriesResponse> {
+    const settings = await this.settings(tenantId);
+    const statuses = { SENT: ['SENT'], NOT_SENT: ['FAILED', 'SKIPPED'], CHECK: ['UNKNOWN'], QUEUED: ['PENDING', 'SENDING'] }[request.status ?? 'SENT'];
+    const dayStart = (day: string) => localMidnight(new Date(`${day}T12:00:00Z`), settings.timeZone);
+    const where: Prisma.CustomerCareDeliveryWhereInput = {
+      tenantId,
+      ...(request.status ? { status: { in: statuses } } : {}),
+      ...(request.campaignKey ? { campaignKeys: { has: request.campaignKey } } : {}),
+      ...(request.search?.trim() ? { customerName: { contains: request.search.trim(), mode: 'insensitive' } } : {}),
+      ...(request.from || request.to ? { createdAt: { ...(request.from ? { gte: dayStart(request.from) } : {}), ...(request.to ? { lt: new Date(dayStart(request.to).getTime() + DAY_MS) } : {}) } } : {}),
+    };
+    const [rows, total] = await Promise.all([
+      this.prisma.unscoped.customerCareDelivery.findMany({ where, orderBy: [{ createdAt: 'desc' }, { id: 'asc' }], skip: request.offset ?? 0, take: request.limit ?? 30 }),
+      this.prisma.unscoped.customerCareDelivery.count({ where }),
+    ]);
+    return { deliveries: rows.map((row) => this.deliveryResponse(row, settings)), total };
   }
 
   async preview(tenantId: string, input: CarePreviewRequest): Promise<CarePreviewResponse> {

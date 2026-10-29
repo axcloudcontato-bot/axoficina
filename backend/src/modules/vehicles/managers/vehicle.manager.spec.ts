@@ -1,5 +1,6 @@
 import { HttpStatus } from '@nestjs/common';
 import { Prisma } from '@oficina/database';
+import { DEFAULT_CARE_CAMPAIGNS } from '@oficina/contracts';
 import { VehicleManager } from './vehicle.manager';
 
 const actingUser = { userId: 'user-1', tenantId: 'tenant-1', role: 'ADMIN' as const };
@@ -14,6 +15,7 @@ function buildManager() {
     listByTenant: jest.fn(),
     ordersOf: jest.fn().mockResolvedValue([]),
     carePlansOf: jest.fn().mockResolvedValue([]),
+    careCampaigns: jest.fn().mockResolvedValue(DEFAULT_CARE_CAMPAIGNS),
     upcomingAppointmentsOf: jest.fn().mockResolvedValue([]),
     idsDeliveredSince: jest.fn().mockResolvedValue([]),
     idsWithOpenOrders: jest.fn().mockResolvedValue([]),
@@ -542,5 +544,14 @@ describe('VehicleManager', () => {
         [10, 'Já existe um veículo com esta placa.'],
       ]);
     });
+  });
+
+  it('shows the next care with the interval the workshop chose', async () => {
+    const deps = buildManager();
+    deps.vehicleRepository.byId.mockResolvedValue(baseVehicle);
+    deps.vehicleRepository.carePlansOf.mockResolvedValue([{ serviceKey: 'OIL_CHANGE', completedAt: new Date('2026-01-10T12:00:00Z'), mileage: null, intervalMonths: null, intervalKm: null }]);
+    deps.vehicleRepository.careCampaigns.mockResolvedValue(DEFAULT_CARE_CAMPAIGNS.map((campaign) => (campaign.key === 'OIL_CHANGE' ? { ...campaign, intervalMonths: 12, name: 'Óleo' } : campaign)));
+    const result = await deps.manager.overview('vehicle-1', new Date('2026-10-29T12:00:00Z'));
+    expect(result.care[0]).toMatchObject({ serviceName: 'Óleo', dueAt: '2027-01-10T12:00:00.000Z', overdue: false });
   });
 });

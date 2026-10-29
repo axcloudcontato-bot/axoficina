@@ -158,11 +158,12 @@ export class MaintenanceAlertManager {
     if (alerts.length === 0) return [];
     const vehicleIds = [...new Set(alerts.map((alert) => alert.vehicleId))];
     const customerIds = [...new Set(alerts.map((alert) => alert.customerId))];
-    const [vehicles, customers, plans, contacts] = await Promise.all([
+    const [vehicles, customers, plans, contacts, campaigns] = await Promise.all([
       this.vehicleRepository.byIds(vehicleIds),
       this.customerRepository.byIds(customerIds),
       this.maintenanceAlertRepository.carePlansForVehicles(vehicleIds),
       this.maintenanceAlertRepository.contactsForAlerts(alerts.map((alert) => alert.id)),
+      this.maintenanceAlertRepository.careCampaigns(),
     ]);
     const userIds = [...new Set([...alerts.map((alert) => alert.resolvedBy), ...contacts.map((contact) => contact.createdBy)].filter((id): id is string => Boolean(id)))];
     const users = userIds.length ? await this.userRepository.byIds(userIds) : ([] as UserEntity[]);
@@ -197,7 +198,7 @@ export class MaintenanceAlertManager {
         customerPhone: customer?.phone,
         customerCareEnabled: customer?.careMessagesEnabled ?? false,
         vehicleMileage: vehicle?.mileage ?? undefined,
-        overdueCare: overdueCare(plans.filter((plan) => plan.vehicleId === alert.vehicleId), vehicle?.mileage ?? null, now),
+        overdueCare: overdueCare(plans.filter((plan) => plan.vehicleId === alert.vehicleId), vehicle?.mileage ?? null, now, campaigns),
         contactCount: own.length,
         lastContact: last ? { outcome: last.outcome as MaintenanceAlertContactOutcome, at: last.createdAt.toISOString(), byName: last.createdBy ? userById.get(last.createdBy)?.name : undefined, note: last.note ?? undefined } : undefined,
       };

@@ -16,6 +16,8 @@ test('edits campaigns, previews safely, records care and fits mobile without rea
     const url = new URL(route.request().url()); let json: unknown = { items: [], total: 0, offset: 0, limit: 100, hasMore: false };
     if (url.pathname === '/api/v1/settings/branding') json = { company: { name: 'Oficina do Cuidado' } };
     else if (url.pathname === '/api/v1/customer-care') json = data;
+    else if (url.pathname === '/api/v1/customer-care/plans') json = { plans: data.plans, total: data.totalPlans };
+    else if (url.pathname === '/api/v1/customer-care/deliveries') json = { deliveries: data.deliveries, total: data.totalDeliveries };
     else if (url.pathname === '/api/v1/customer-care/settings') { data.settings = keysToCamel(route.request().postDataJSON()) as typeof data.settings; saved = true; json = data.settings; }
     else if (url.pathname === '/api/v1/customer-care/preview') json = { subject: 'Prévia', message: 'Olá, Mariana! 💛 Aqui é a equipe da Oficina do Cuidado.\n\n🛢️ Está chegando o cuidado com o óleo do seu Honda Fit.\n\nPreferências de contato: [link pessoal]' };
     else if (url.pathname === '/api/v1/customer-care/services') { recorded = route.request().postDataJSON(); json = { id: 'p1' }; }

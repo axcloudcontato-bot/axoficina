@@ -1,5 +1,5 @@
 import { DEFAULT_CARE_CAMPAIGNS, DEFAULT_CARE_SETTINGS } from '@oficina/contracts';
-import { addMonthsClamped, birthdayToday, contactWindow, localClock, localMidnight, maintenanceEvent, renderCareMessage } from './care-policy';
+import { careRecipient, addMonthsClamped, birthdayToday, contactWindow, localClock, localMidnight, maintenanceEvent, renderCareMessage } from './care-policy';
 
 describe('customer care policy', () => {
   const settings = structuredClone(DEFAULT_CARE_SETTINGS);
@@ -48,5 +48,24 @@ describe('customer care policy', () => {
     expect(content.message).toContain('Só indicamos a troca');
     expect(content.message.match(/Preferências de contato/g)).toHaveLength(1);
     expect(content.message).toContain('manual do veículo');
+  });
+
+  describe('careRecipient', () => {
+    const tenant = { waAkgEnabled: true, smtpEnabled: true };
+    const customer = { phone: '(11) 99999-8888', email: 'cliente@example.com', preferredContactChannel: null };
+
+    it('uses the customer preferred channel, or the workshop default', () => {
+      expect(careRecipient(customer, { channel: 'WHATSAPP' }, tenant)).toEqual({ channel: 'WHATSAPP', recipient: expect.any(String) });
+      expect(careRecipient({ ...customer, preferredContactChannel: 'EMAIL' }, { channel: 'WHATSAPP' }, tenant)).toEqual({ channel: 'EMAIL', recipient: 'cliente@example.com' });
+    });
+
+    it('says why a customer cannot be reached', () => {
+      expect(careRecipient(customer, { channel: 'WHATSAPP' }, { ...tenant, waAkgEnabled: false })).toEqual({ reason: 'CHANNEL_OFF' });
+      expect(careRecipient({ ...customer, phone: '9999' }, { channel: 'WHATSAPP' }, tenant)).toEqual({ reason: 'NO_WHATSAPP' });
+      expect(careRecipient({ ...customer, preferredContactChannel: 'EMAIL', email: null }, { channel: 'WHATSAPP' }, tenant)).toEqual({ reason: 'NO_EMAIL' });
+      expect(careRecipient({ ...customer, preferredContactChannel: 'EMAIL' }, { channel: 'WHATSAPP' }, { ...tenant, smtpEnabled: false })).toEqual({ reason: 'CHANNEL_OFF' });
+      expect(careRecipient({ ...customer, preferredContactChannel: 'PHONE' }, { channel: 'WHATSAPP' }, tenant)).toEqual({ reason: 'PHONE_PREFERRED' });
+      expect(careRecipient({ ...customer, preferredContactChannel: 'SMS' }, { channel: 'WHATSAPP' }, tenant)).toEqual({ reason: 'PHONE_PREFERRED' });
+    });
   });
 });

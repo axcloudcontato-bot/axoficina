@@ -186,7 +186,10 @@ describe('MaintenanceAlertsTable', () => {
       expect(text).toContain('cerca de 7 meses');
       await waitFor(() => expect(decodeURIComponent((screen.getByRole('link', { name: 'WhatsApp de João da Silva' }).getAttribute('href') ?? '').split('?text=')[1])).toContain('Auto Center Silva'));
       expect(screen.getByRole('link', { name: 'Ligar para João da Silva' })).toHaveAttribute('href', 'tel:11999998888');
-      expect(screen.getByRole('link', { name: 'Agendar ABC1D23' })).toHaveAttribute('href', '/agenda');
+      const schedule = screen.getByRole('link', { name: 'Agendar ABC1D23' }).getAttribute('href') ?? '';
+      expect(schedule).toContain('/agenda?');
+      expect(schedule).toContain('cliente=c1');
+      expect(schedule).toContain('veiculo=v1');
       const newOrder = screen.getByRole('link', { name: 'Nova OS para ABC1D23' }).getAttribute('href') ?? '';
       expect(newOrder).toContain('customerId=c1');
       expect(newOrder).toContain('vehicleId=v1');

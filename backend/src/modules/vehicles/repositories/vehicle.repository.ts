@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import type { Prisma } from '@oficina/database';
 import { PrismaService } from '../../../shared/prisma/prisma.service';
+import { careSettings } from '../../customer-care/care-policy';
 
 export interface CreateVehicleInput {
   // O Prisma Middleware sobrescreve isto com o tenant do contexto ativo em
@@ -120,6 +121,11 @@ export class VehicleRepository {
       where: { vehicleId: { in: vehicleIds }, deletedAt: null },
       select: { id: true, vehicleId: true, orderNumber: true, status: true, openedAt: true, closedAt: true, entryMileage: true, exitMileage: true },
     });
+  }
+
+  // The workshop's care campaigns, with the intervals it chose in Cuidado com o cliente.
+  async careCampaigns() {
+    return careSettings(await this.prisma.client.customerCareSettings.findFirst()).campaigns;
   }
 
   async carePlansOf(vehicleId: string) {

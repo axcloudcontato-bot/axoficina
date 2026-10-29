@@ -1,9 +1,10 @@
+import { DEFAULT_CARE_CAMPAIGNS } from '@oficina/contracts';
 import { MaintenanceAlertManager } from './maintenance-alert.manager';
 import { AppException } from '../../../shared/errors/app-exception';
 import { monthsSince } from '../utils/months-since';
 
 function buildManager() {
-  const maintenanceAlertRepository = { listByTenant: jest.fn(), byId: jest.fn(), resolve: jest.fn(), snooze: jest.fn(), dismiss: jest.fn(), reopen: jest.fn(), addContact: jest.fn(), contactsOf: jest.fn().mockResolvedValue([]), contactsForAlerts: jest.fn().mockResolvedValue([]), contactedAlertIds: jest.fn().mockResolvedValue([]), carePlansForVehicles: jest.fn().mockResolvedValue([]) };
+  const maintenanceAlertRepository = { listByTenant: jest.fn(), byId: jest.fn(), resolve: jest.fn(), snooze: jest.fn(), dismiss: jest.fn(), reopen: jest.fn(), addContact: jest.fn(), contactsOf: jest.fn().mockResolvedValue([]), contactsForAlerts: jest.fn().mockResolvedValue([]), contactedAlertIds: jest.fn().mockResolvedValue([]), carePlansForVehicles: jest.fn().mockResolvedValue([]), careCampaigns: jest.fn().mockResolvedValue(DEFAULT_CARE_CAMPAIGNS) };
   const vehicleRepository = { byIds: jest.fn().mockResolvedValue([]), byId: jest.fn(), searchIdsByPlateOrModel: jest.fn().mockResolvedValue([]) };
   const customerRepository = { byIds: jest.fn().mockResolvedValue([]), byId: jest.fn(), searchIdsByNameOrDocument: jest.fn().mockResolvedValue([]) };
   const userRepository = { byIds: jest.fn().mockResolvedValue([]), byId: jest.fn().mockResolvedValue(null) };
@@ -285,5 +286,18 @@ describe('MaintenanceAlertManager', () => {
       expect(await deps.manager.list({ offset: 0, limit: 20, contact: 'CONTACTED' }, now)).toMatchObject({ items: [], total: 0, hasMore: false });
       expect(deps.maintenanceAlertRepository.listByTenant).not.toHaveBeenCalled();
     });
+  });
+
+  it('judges an overdue care by the interval the workshop chose, not the default one', async () => {
+    const deps = buildManager();
+    const alert = { id: 'alert-1', tenantId: 'tenant-1', vehicleId: 'vehicle-1', customerId: 'customer-1', referenceDate: new Date('2026-01-01T00:00:00Z'), status: 'OPEN', resolvedAt: null, resolvedBy: null, snoozedUntil: null, dismissReason: null, dismissNote: null };
+    deps.maintenanceAlertRepository.listByTenant.mockResolvedValue({ items: [alert], total: 1 });
+    deps.vehicleRepository.byIds.mockResolvedValue([{ id: 'vehicle-1', brand: 'Fiat', model: 'Uno', plate: 'ABC1234', mileage: null }]);
+    // Oil done 8 months ago: due with the default 6 months, not yet with the workshop's 12.
+    deps.maintenanceAlertRepository.carePlansForVehicles.mockResolvedValue([{ vehicleId: 'vehicle-1', serviceKey: 'OIL_CHANGE', completedAt: new Date('2026-02-28T12:00:00Z'), mileage: null, intervalMonths: null, intervalKm: null }]);
+    const now = new Date('2026-10-29T12:00:00Z');
+    expect((await deps.manager.list({ offset: 0, limit: 20 }, now)).items[0].overdueCare).toHaveLength(1);
+    deps.maintenanceAlertRepository.careCampaigns.mockResolvedValue(DEFAULT_CARE_CAMPAIGNS.map((campaign) => (campaign.key === 'OIL_CHANGE' ? { ...campaign, intervalMonths: 12 } : campaign)));
+    expect((await deps.manager.list({ offset: 0, limit: 20 }, now)).items[0].overdueCare).toHaveLength(0);
   });
 });

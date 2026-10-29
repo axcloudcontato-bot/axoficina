@@ -1,5 +1,26 @@
 export const RELEASE_NOTES = [
   {
+    id: '2026-10-29-cuidado-cliente-equipe', date: '2026-10-29', title: "Cuidado com o cliente: lista para a equipe ligar e histórico com filtros",
+    items: [
+      "Nova aba Para a equipe ligar: os cuidados vencidos ou próximos de clientes que não autorizaram os lembretes automáticos, com WhatsApp (mensagem pronta para você editar), ligar, agendar já preenchido e registro de cada contato, mostrando o último e quantas tentativas houve.",
+      "Histórico dos disparos com filtros por resultado (enviados, não enviados, para conferir, na fila), campanha, cliente e período.",
+      "Botão Enviar teste para mim nas campanhas: a mensagem da tela chega no seu WhatsApp, marcada como teste, antes de ligar os envios para os clientes.",
+      "Os números do topo abrem a lista correspondente: cuidados a acompanhar, envios do mês e aniversários.",
+      "Canal, horários, limite diário e ativação dos envios agora ficam numa aba própria, Ajustes da régua, separada da apresentação.",
+    ],
+  },
+  {
+    id: '2026-10-29-cuidado-cliente', date: '2026-10-29', title: "Cuidado com o cliente: ninguém fica de fora sem aviso",
+    items: [
+      "Novo aviso de clientes que autorizaram os lembretes mas não vão receber, com o motivo de cada um: telefone sem WhatsApp válido, e-mail faltando, canal da oficina desconectado ou preferência por ligação. Antes eles ficavam de fora sem ninguém saber.",
+      "Envios com resultado incerto (\"Conferir envio\") agora podem ser resolvidos: depois de conferir a conversa, marque se a mensagem chegou ou não. O que não chegou pode ser enviado de novo.",
+      "Planos por veículo em ordem do que vence primeiro, com busca por placa, modelo ou cliente, filtro de vencidos e dos que vencem em 30 dias, e o total certo. Cada plano mostra se o cliente recebe o lembrete sozinho ou precisa de contato da equipe.",
+      "A ficha do veículo e os Alertas de manutenção passaram a usar os prazos que a oficina definiu em cada campanha, e não os prazos padrão.",
+      "O botão Agendar dos Alertas de manutenção já abre o agendamento com o cliente e o carro preenchidos.",
+      "O módulo passa a ter um nome só em todas as telas: Cuidado com o cliente.",
+    ],
+  },
+  {
     id: '2026-10-29-alertas-contato', date: '2026-10-29', title: "Alertas de manutenção: contato com o cliente e prazo da oficina",
     items: [
       "Cada alerta agora tem atalhos para falar com o cliente: WhatsApp com uma mensagem pronta (você lê e edita antes de enviar), ligar, agendar e abrir uma OS já com o cliente e o carro.",
