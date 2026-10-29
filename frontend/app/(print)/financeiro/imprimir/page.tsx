@@ -9,7 +9,7 @@ import { useAuthStore } from '@/stores/auth-store';
 import { AuthGuard } from '@/features/auth/components/AuthGuard';
 import { FinancialPrintDocument } from '@/features/financial/components/FinancialPrintDocument';
 import { FinancialAnalyticalPrintDocument } from '@/features/financial/components/FinancialAnalyticalPrintDocument';
-import { reportFiltersFromParams, reportRequest } from '@/features/financial/financial-report';
+import { currentReportMonth, monthFinancialRequest, reportFiltersFromParams, reportRequest } from '@/features/financial/financial-report';
 import { useCashFlow } from '@/features/financial/hooks/use-financial';
 import { useBranding } from '@/features/settings/hooks/use-settings';
 
@@ -19,9 +19,8 @@ function FinancialPrintContent() {
   const user = useAuthStore(state => state.user);
   const canView = hasPermission(user, 'finance.view');
   const filters = reportFiltersFromParams(params);
-  const month = /^\d{4}-(0[1-9]|1[0-2])$/.test(params.get('month') ?? '') ? params.get('month')! : new Date().toISOString().slice(0, 7);
-  const startAt = `${month}-01T00:00:00.000Z`; const end = new Date(startAt); end.setUTCMonth(end.getUTCMonth() + 1);
-  const request = mode === 'analytical' ? reportRequest(filters) : { startAt, endAt: end.toISOString() };
+  const month = /^\d{4}-(0[1-9]|1[0-2])$/.test(params.get('month') ?? '') ? params.get('month')! : currentReportMonth();
+  const request = mode === 'analytical' ? reportRequest(filters) : monthFinancialRequest(month, mode === 'transactions' ? 'PAID' : 'DUE');
   const flow = useCashFlow(request ?? { startAt: '', endAt: '' }, { enabled: canView && Boolean(request) });
   const branding = useBranding();
   return <AuthGuard><main id="main-content" tabIndex={-1} className="min-h-screen bg-slate-100 px-4 py-6 print:min-h-0 print:bg-white print:p-0">

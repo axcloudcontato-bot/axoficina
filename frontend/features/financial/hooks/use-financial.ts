@@ -7,10 +7,12 @@ import { financialApi } from '../api/financial-api';
 const KEY = 'financial-core';
 export function useFinancialCategories() { return useQuery({ queryKey: [KEY, 'categories'], queryFn: financialApi.categories }); }
 export function useCashFlow(request: ListFinancialEntriesRequest, options?: { enabled?: boolean }) { return useQuery({ queryKey: [KEY, 'cash-flow', request], queryFn: () => financialApi.cashFlow(request), enabled: options?.enabled }); }
+export function useSaveCashBaseline() { const client = useQueryClient(); return useMutation({ mutationFn: financialApi.saveCashBaseline, onSuccess: () => client.invalidateQueries({ queryKey: [KEY] }) }); }
 export function useCreateFinancialCategory() {
   const client = useQueryClient();
   return useMutation({ mutationFn: (request: CreateFinancialCategoryRequest) => financialApi.createCategory(request), onSuccess: () => client.invalidateQueries({ queryKey: [KEY] }) });
 }
+export function useUpdateFinancialCategory() { const client = useQueryClient(); return useMutation({ mutationFn: financialApi.updateCategory, onSuccess: () => client.invalidateQueries({ queryKey: [KEY] }) }); }
 export function useDeleteFinancialCategory() {
   const client = useQueryClient();
   return useMutation({ mutationFn: financialApi.deleteCategory, onSuccess: () => client.invalidateQueries({ queryKey: [KEY] }) });
@@ -19,10 +21,19 @@ export function useCreateFinancialEntry() {
   const client = useQueryClient();
   return useMutation({ mutationFn: (request: CreateFinancialEntryRequest) => financialApi.createEntry(request), onSuccess: () => client.invalidateQueries({ queryKey: [KEY] }) });
 }
+export function useUpdateFinancialEntry() {
+  const client = useQueryClient();
+  return useMutation({ mutationFn: financialApi.updateEntry, onSuccess: () => client.invalidateQueries({ queryKey: [KEY] }) });
+}
 export function useSettleFinancialEntry() {
   const client = useQueryClient();
   return useMutation({ mutationFn: financialApi.settleEntry, onSuccess: () => { client.invalidateQueries({ queryKey: [KEY] }); client.invalidateQueries({ queryKey: ['dashboard-business-summary'] }); } });
 }
+export function useAddFinancialPayment() { const client = useQueryClient(); return useMutation({ mutationFn: financialApi.addPayment, onSuccess: () => client.invalidateQueries({ queryKey: [KEY] }) }); }
+export function useReverseFinancialPayment() { const client = useQueryClient(); return useMutation({ mutationFn: financialApi.reversePayment, onSuccess: () => client.invalidateQueries({ queryKey: [KEY] }) }); }
+export function useReconcileFinancialMovement() { const client = useQueryClient(); return useMutation({ mutationFn: financialApi.reconcile, onSuccess: () => client.invalidateQueries({ queryKey: [KEY] }) }); }
+export function useFinancialAttachments(entryId?: string) { return useQuery({ queryKey: [KEY, 'attachments', entryId], queryFn: () => financialApi.attachments(entryId!), enabled: Boolean(entryId) }); }
+export function useUploadFinancialAttachment() { const client = useQueryClient(); return useMutation({ mutationFn: financialApi.uploadAttachment, onSuccess: (_data, request) => client.invalidateQueries({ queryKey: [KEY, 'attachments', request.entryId] }) }); }
 export function useDeleteFinancialEntry() {
   const client = useQueryClient();
   return useMutation({ mutationFn: financialApi.deleteEntry, onSuccess: () => client.invalidateQueries({ queryKey: [KEY] }) });

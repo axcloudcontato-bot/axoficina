@@ -7,6 +7,8 @@ export interface CreateFinancialCategoryRequest {
 }
 
 export interface DeleteFinancialCategoryRequest { id: string; }
+export interface UpdateFinancialCategoryRequest extends CreateFinancialCategoryRequest { id: string; }
+export interface SaveFinancialCashBaselineRequest { amountCents: number; asOf: string; }
 
 export interface CreateFinancialEntryRequest {
   categoryId: string;
@@ -19,6 +21,7 @@ export interface CreateFinancialEntryRequest {
   status?: FinancialEntryStatus;
   paidAt?: string;
   notes?: string;
+  recurrenceMonths?: number;
 }
 
 export interface ListFinancialEntriesRequest {
@@ -31,7 +34,13 @@ export interface ListFinancialEntriesRequest {
 }
 
 export interface SettleFinancialEntryRequest { id: string; paidAt?: string; }
-export interface DeleteFinancialEntryRequest { id: string; }
+export interface AddFinancialPaymentRequest { id: string; amountCents: number; paidAt: string; method?: string; }
+export interface ReverseFinancialPaymentRequest { id: string; reason: string; }
+export interface UploadFinancialAttachmentRequest { entryId: string; name: string; mimeType: string; dataBase64: string; }
+export interface FinancialAttachmentRequest { entryId: string; attachmentId: string; }
+export interface ReconcileFinancialMovementRequest { source: 'MANUAL' | 'PAYMENT' | 'SERVICE_ORDER'; sourceId: string; bankReference: string; }
+export interface UpdateFinancialEntryRequest extends CreateFinancialEntryRequest { id: string; }
+export interface DeleteFinancialEntryRequest { id: string; reason?: string; }
 
 export interface CreateSupplierRequest {
   name: string;

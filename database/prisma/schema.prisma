@@ -683,6 +683,8 @@ model FinancialEntry {
   type        String
   description String
   amountCents Int       @map("amount_cents")
+  paidCents   Int       @default(0) @map("paid_cents")
+  paymentManaged Boolean @default(false) @map("payment_managed")
   dueAt       DateTime  @map("due_at") @db.Timestamptz
   status      String    @default("PENDING")
   paidAt      DateTime? @map("paid_at") @db.Timestamptz
@@ -698,6 +700,59 @@ model FinancialEntry {
   @@index([supplierId])
   @@index([customerId])
   @@map("financial_entries")
+}
+
+model FinancialEntryPayment {
+  id          String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  tenantId    String    @map("tenant_id") @db.Uuid
+  entryId     String    @map("entry_id") @db.Uuid
+  amountCents Int       @map("amount_cents")
+  paidAt      DateTime  @map("paid_at") @db.Timestamptz
+  method      String?
+  reconciledAt DateTime? @map("reconciled_at") @db.Timestamptz
+  createdBy   String    @map("created_by") @db.Uuid
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  deletedAt   DateTime? @map("deleted_at") @db.Timestamptz
+
+  @@index([tenantId, paidAt])
+  @@index([entryId])
+  @@map("financial_entry_payments")
+}
+
+model FinancialEntryAttachment {
+  id        String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  tenantId  String   @map("tenant_id") @db.Uuid
+  entryId   String   @map("entry_id") @db.Uuid
+  name      String
+  mimeType  String   @map("mime_type")
+  content   Bytes
+  createdBy String   @map("created_by") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([tenantId, entryId])
+  @@map("financial_entry_attachments")
+}
+
+model FinancialReconciliation {
+  id           String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  tenantId     String   @map("tenant_id") @db.Uuid
+  source       String
+  sourceId     String   @map("source_id") @db.Uuid
+  bankReference String  @map("bank_reference")
+  reconciledBy String   @map("reconciled_by") @db.Uuid
+  reconciledAt DateTime @default(now()) @map("reconciled_at") @db.Timestamptz
+
+  @@unique([tenantId, source, sourceId])
+  @@map("financial_reconciliations")
+}
+
+model FinancialCashBaseline {
+  tenantId    String   @id @map("tenant_id") @db.Uuid
+  amountCents Int      @map("amount_cents")
+  asOf        DateTime @map("as_of") @db.Timestamptz
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@map("financial_cash_baselines")
 }
 
 model Supplier {

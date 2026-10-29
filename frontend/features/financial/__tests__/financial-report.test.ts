@@ -1,6 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import type { FinancialEntryResponse } from '@oficina/contracts';
-import { currentReportMonth, defaultReportFilters, filterReportEntries, monthReportRange, reportFiltersFromParams, reportPrintUrl, reportRequest, summarizeReport } from '../financial-report';
+import { currentReportMonth, defaultReportFilters, filterReportEntries, monthFinancialRequest, monthReportRange, reportFiltersFromParams, reportPrintUrl, reportRequest, summarizeReport } from '../financial-report';
+
+it('uses the same Brasília month for due and realized financial views', () => {
+  const due = monthFinancialRequest('2026-10');
+  const paid = monthFinancialRequest('2026-10', 'PAID');
+  expect(due.startAt).toBe('2026-10-01T03:00:00.000Z');
+  expect(due.endAt).toBe('2026-11-01T03:00:00.000Z');
+  expect(paid.dateField).toBe('PAID');
+  expect(paid.status).toBe('PAID');
+});
 
 const entry = (overrides: Partial<FinancialEntryResponse>): FinancialEntryResponse => ({ id: '1', categoryName: 'Serviços', description: 'Receita', type: 'INCOME', amountCents: 100, dueAt: '2026-10-10T12:00:00Z', status: 'PAID', source: 'MANUAL', ...overrides });
 describe('Analytical report filtering and totals', () => {

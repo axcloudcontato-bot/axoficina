@@ -14,7 +14,7 @@ const normalize = (value: string) => value.normalize('NFD').replace(/[\u0300-\u0
 const dayFormat = new Intl.DateTimeFormat('pt-BR', { timeZone: 'America/Sao_Paulo' });
 export const reportDate = (value?: string) => value && Number.isFinite(Date.parse(value)) ? dayFormat.format(new Date(value)) : '-';
 export const reportStatus = (entry: FinancialEntryResponse) => entry.status === 'PAID' ? entry.type === 'INCOME' ? 'Recebida' : 'Paga' : entry.type === 'INCOME' ? 'A receber' : 'A pagar';
-export const reportOrigin = (entry: FinancialEntryResponse) => entry.source === 'SERVICE_ORDER' ? entry.serviceOrderNumber !== undefined ? `OS #${String(entry.serviceOrderNumber).padStart(5, '0')}` : 'Ordem de serviço' : 'Manual';
+export const reportOrigin = (entry: FinancialEntryResponse) => entry.source === 'SERVICE_ORDER' ? entry.serviceOrderNumber !== undefined ? `OS #${String(entry.serviceOrderNumber).padStart(5, '0')}` : 'Ordem de serviço' : entry.source === 'PAYMENT' ? 'Baixa de lançamento' : 'Manual';
 
 export function currentReportMonth(now = new Date()) {
   const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit' }).formatToParts(now);
@@ -24,6 +24,10 @@ export function monthReportRange(month: string) {
   const valid = /^\d{4}-(0[1-9]|1[0-2])$/.test(month) ? month : currentReportMonth();
   const last = new Date(`${valid}-01T12:00:00Z`); last.setUTCMonth(last.getUTCMonth() + 1); last.setUTCDate(0);
   return { startDate: `${valid}-01`, endDate: last.toISOString().slice(0, 10) };
+}
+export function monthFinancialRequest(month: string, dateField: 'DUE' | 'PAID' = 'DUE'): ListFinancialEntriesRequest {
+  const { startDate, endDate } = monthReportRange(month);
+  return reportRequest({ startDate, endDate, dateField, type: 'ALL', status: 'ALL', category: '', search: '' })!;
 }
 export function defaultReportFilters(month = currentReportMonth()): FinancialReportFilters {
   return { ...monthReportRange(month), dateField: 'DUE', type: 'ALL', status: 'ALL', category: '', search: '' };

@@ -21,11 +21,16 @@ export interface FinancialEntryResponse {
   type: FinancialEntryType;
   description: string;
   amountCents: number;
+  originalAmountCents?: number;
+  paidTotalCents?: number;
+  reconciledAt?: string;
+  bankReference?: string;
+  parentEntryId?: string;
   dueAt: string;
   status: FinancialEntryStatus;
   paidAt?: string;
   notes?: string;
-  source: 'MANUAL' | 'SERVICE_ORDER';
+  source: 'MANUAL' | 'SERVICE_ORDER' | 'PAYMENT';
   serviceOrderId?: string;
   serviceOrderNumber?: number;
   vehiclePlate?: string;
@@ -33,6 +38,7 @@ export interface FinancialEntryResponse {
 }
 
 export interface CashFlowSummaryResponse {
+  openingBalanceCents?: number;
   realizedIncomeCents: number;
   realizedExpenseCents: number;
   projectedIncomeCents: number;

@@ -1,5 +1,5 @@
-import { IsHexColor, IsIn, IsInt, IsISO8601, IsNotEmpty, IsOptional, IsString, IsUUID, MaxLength, Min } from 'class-validator';
-import type { CreateFinancialCategoryRequest, CreateFinancialEntryRequest, CreateSupplierRequest, DeleteFinancialCategoryRequest, DeleteFinancialEntryRequest, DeleteSupplierRequest, ListFinancialEntriesRequest, SettleFinancialEntryRequest, UpdateSupplierRequest } from '@oficina/contracts';
+import { IsHexColor, IsIn, IsInt, IsISO8601, IsNotEmpty, IsOptional, IsString, IsUUID, Max, MaxLength, Min } from 'class-validator';
+import type { AddFinancialPaymentRequest, CreateFinancialCategoryRequest, CreateFinancialEntryRequest, CreateSupplierRequest, DeleteFinancialCategoryRequest, DeleteFinancialEntryRequest, DeleteSupplierRequest, FinancialAttachmentRequest, ListFinancialEntriesRequest, ReconcileFinancialMovementRequest, ReverseFinancialPaymentRequest, SaveFinancialCashBaselineRequest, SettleFinancialEntryRequest, UpdateFinancialCategoryRequest, UpdateFinancialEntryRequest, UpdateSupplierRequest, UploadFinancialAttachmentRequest } from '@oficina/contracts';
 
 const TYPES = ['INCOME', 'EXPENSE'] as const;
 const STATUSES = ['PENDING', 'PAID'] as const;
@@ -10,6 +10,8 @@ export class CreateFinancialCategoryDto implements CreateFinancialCategoryReques
   @IsOptional() @IsHexColor() color?: string;
 }
 export class DeleteFinancialCategoryDto implements DeleteFinancialCategoryRequest { @IsUUID() id!: string; }
+export class SaveFinancialCashBaselineDto implements SaveFinancialCashBaselineRequest { @IsInt() amountCents!: number; @IsISO8601() asOf!: string; }
+export class UpdateFinancialCategoryDto extends CreateFinancialCategoryDto implements UpdateFinancialCategoryRequest { @IsUUID() id!: string; }
 export class CreateFinancialEntryDto implements CreateFinancialEntryRequest {
   @IsUUID() categoryId!: string;
   @IsOptional() @IsUUID() supplierId?: string;
@@ -21,6 +23,7 @@ export class CreateFinancialEntryDto implements CreateFinancialEntryRequest {
   @IsOptional() @IsIn(STATUSES) status?: CreateFinancialEntryRequest['status'];
   @IsOptional() @IsISO8601() paidAt?: string;
   @IsOptional() @IsString() @MaxLength(500) notes?: string;
+  @IsOptional() @IsInt() @Min(1) @Max(24) recurrenceMonths?: number;
 }
 export class ListFinancialEntriesDto implements ListFinancialEntriesRequest {
   @IsISO8601() startAt!: string;
@@ -31,7 +34,14 @@ export class ListFinancialEntriesDto implements ListFinancialEntriesRequest {
   @IsOptional() @IsUUID() categoryId?: string;
 }
 export class SettleFinancialEntryDto implements SettleFinancialEntryRequest { @IsUUID() id!: string; @IsOptional() @IsISO8601() paidAt?: string; }
-export class DeleteFinancialEntryDto implements DeleteFinancialEntryRequest { @IsUUID() id!: string; }
+export class AddFinancialPaymentDto implements AddFinancialPaymentRequest { @IsUUID() id!: string; @IsInt() @Min(1) amountCents!: number; @IsISO8601() paidAt!: string; @IsOptional() @IsString() @MaxLength(40) method?: string; }
+export class ReverseFinancialPaymentDto implements ReverseFinancialPaymentRequest { @IsUUID() id!: string; @IsString() @IsNotEmpty() @MaxLength(500) reason!: string; }
+export class ReconcileFinancialMovementDto implements ReconcileFinancialMovementRequest { @IsIn(['MANUAL', 'PAYMENT', 'SERVICE_ORDER']) source!: ReconcileFinancialMovementRequest['source']; @IsUUID() sourceId!: string; @IsString() @IsNotEmpty() @MaxLength(120) bankReference!: string; }
+export class UploadFinancialAttachmentDto implements UploadFinancialAttachmentRequest { @IsUUID() entryId!: string; @IsString() @IsNotEmpty() @MaxLength(160) name!: string; @IsIn(['application/pdf', 'image/png', 'image/jpeg']) mimeType!: string; @IsString() @IsNotEmpty() @MaxLength(3_000_000) dataBase64!: string; }
+export class FinancialAttachmentDto implements FinancialAttachmentRequest { @IsUUID() entryId!: string; @IsUUID() attachmentId!: string; }
+export class ListFinancialAttachmentsDto { @IsUUID() entryId!: string; }
+export class UpdateFinancialEntryDto extends CreateFinancialEntryDto implements UpdateFinancialEntryRequest { @IsUUID() id!: string; }
+export class DeleteFinancialEntryDto implements DeleteFinancialEntryRequest { @IsUUID() id!: string; @IsOptional() @IsString() @MaxLength(500) reason?: string; }
 export class CreateSupplierDto implements CreateSupplierRequest {
   @IsString() @IsNotEmpty() @MaxLength(120) name!: string;
   @IsOptional() @IsString() @MaxLength(20) document?: string;
