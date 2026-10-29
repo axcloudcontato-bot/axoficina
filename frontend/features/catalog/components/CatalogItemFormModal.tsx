@@ -38,7 +38,7 @@ export function CatalogItemFormModal({ open, onOpenChange, item, defaultType = '
   const canSeeCost = hasPermission(user, 'finance.view');
   const suppliers = useSuppliers(canSeeCost);
   const laborRate = useLaborRate();
-  const [values, setValues] = useState({ type: defaultType as CatalogItemType, name: '', category: '', price: '', cost: '', code: '', brand: '', unit: 'un' as CatalogUnit, supplierId: '', minutes: '', care: '' });
+  const [values, setValues] = useState({ type: defaultType as CatalogItemType, name: '', category: '', price: '', cost: '', code: '', brand: '', unit: 'un' as CatalogUnit, supplierId: '', minutes: '', care: '', trackStock: false, minStock: '' });
   const pending = create.isPending || update.isPending;
   const service = values.type === 'LABOR';
   const set = <K extends keyof typeof values>(key: K, value: (typeof values)[K]) => setValues(previous => ({ ...previous, [key]: value }));
@@ -49,6 +49,7 @@ export function CatalogItemFormModal({ open, onOpenChange, item, defaultType = '
       type: item?.type ?? defaultType, name: item?.name ?? '', category: item?.category ?? '', price: toText(item?.unitPriceCents), cost: toText(item?.costCents),
       code: item?.code ?? '', brand: item?.brand ?? '', unit: item?.unit ?? (defaultType === 'LABOR' ? 'h' : 'un'), supplierId: item?.supplierId ?? '',
       minutes: item?.standardMinutes ? String(item.standardMinutes) : '', care: item?.careServiceKey ?? '',
+      trackStock: item?.trackStock ?? false, minStock: item?.minStock === undefined ? '' : String(item.minStock).replace('.', ','),
     });
   }, [open, item, defaultType]);
 
@@ -65,10 +66,13 @@ export function CatalogItemFormModal({ open, onOpenChange, item, defaultType = '
     if (costCents !== undefined && Number.isNaN(costCents)) return toast.error('Informe um custo válido, como 12,50 ou 1.234,56.');
     const minutes = values.minutes.trim() === '' ? null : Number(values.minutes);
     if (service && minutes !== null && (!Number.isInteger(minutes) || minutes < 1 || minutes > 1440)) return toast.error('Informe o tempo padrão em minutos, de 1 a 1440.');
+    const minStock = values.minStock.trim() === '' ? null : Number(values.minStock.replace(',', '.'));
+    if (!service && values.trackStock && minStock !== null && (!Number.isFinite(minStock) || minStock < 0 || Math.abs(Math.round(minStock * 100) / 100 - minStock) > 1e-9)) return toast.error('Informe o estoque mínimo com até duas casas decimais.');
     const request = {
       type: values.type, name: values.name.trim(), category: values.category.trim() || undefined, unitPriceCents: priceCents,
       code: values.code.trim() || undefined, brand: values.brand.trim() || undefined, unit: values.unit,
       ...(canSeeCost ? { costCents: costCents ?? null, supplierId: values.supplierId || null } : {}),
+      ...(!service ? { trackStock: values.trackStock, minStock: values.trackStock ? minStock : null } : {}),
       ...(service ? { standardMinutes: minutes, careServiceKey: (values.care || null) as CareServiceKey | null } : {}),
     };
     const options = {
@@ -105,6 +109,10 @@ export function CatalogItemFormModal({ open, onOpenChange, item, defaultType = '
           {canSeeCost && <div className="space-y-2"><Label htmlFor={`${id}-cost`}>Custo (R$)</Label><Input id={`${id}-cost`} inputMode="decimal" value={values.cost} onChange={event => set('cost', event.target.value)} placeholder="Quanto custa para a oficina" />
             {margin !== null && <p className={`text-xs font-semibold ${margin < 0 ? 'text-danger' : 'text-success'}`}>Margem: {margin}% · lucro de {formatCurrencyBRL(priceCents - (costCents ?? 0))}</p>}</div>}
           {canSeeCost && !service && <div className="space-y-2 sm:col-span-2"><Label htmlFor={`${id}-supplier`}>Fornecedor (opcional)</Label><select id={`${id}-supplier`} className={selectClass} value={values.supplierId} onChange={event => set('supplierId', event.target.value)}><option value="">Sem fornecedor definido</option>{suppliers.data?.suppliers.map(supplier => <option key={supplier.id} value={supplier.id}>{supplier.name}</option>)}</select></div>}
+          {!service && <div className="space-y-2 sm:col-span-2">
+            <label className="flex items-center gap-2 text-sm font-medium"><input type="checkbox" checked={values.trackStock} onChange={event => set('trackStock', event.target.checked)} className="size-4" />Controlar estoque deste item</label>
+            {values.trackStock && <div className="space-y-2"><Label htmlFor={`${id}-min`}>Avisar quando chegar a (estoque mínimo)</Label><Input id={`${id}-min`} inputMode="decimal" value={values.minStock} onChange={event => set('minStock', event.target.value)} placeholder="Ex.: 4" /><p className="text-xs text-text-muted">O saldo muda com as entradas que você lança e sai sozinho quando a OS é entregue. {item ? '' : 'Depois de salvar, lance a primeira entrada pela linha do item.'}</p></div>}
+          </div>}
           {service && <div className="space-y-2 sm:col-span-2"><Label htmlFor={`${id}-care`}>Programa o próximo cuidado (opcional)</Label><select id={`${id}-care`} className={selectClass} value={values.care} onChange={event => set('care', event.target.value)}><option value="">Nenhum</option>{CARE_OPTIONS.map(key => <option key={key} value={key}>{DEFAULT_CARE_CAMPAIGNS.find(campaign => campaign.key === key)?.name ?? key}</option>)}</select><p className="text-xs text-text-muted">Ao lançar este serviço numa OS, o retorno já vem marcado para o Relacionamento avisar o cliente.</p></div>}
         </fieldset>
         <DialogFooter className="gap-2"><Button type="button" variant="outline" disabled={pending} onClick={() => onOpenChange(false)}>Cancelar</Button><Button type="submit" disabled={pending}>{pending ? 'Salvando...' : 'Salvar item'}</Button></DialogFooter>

@@ -28,6 +28,7 @@ import {
 } from '@oficina/contracts';
 import type {
   Customer as CustomerEntity,
+  PrismaClient,
   ServiceOrder as ServiceOrderEntity,
   ServiceOrderItem as ServiceOrderItemEntity,
   ServiceOrderInstallment as ServiceOrderInstallmentEntity,
@@ -353,6 +354,7 @@ export class ServiceOrderManager {
       if (request.toStatus === 'DELIVERED') {
         await this.maintenanceAlertRepository.resolveOpenByVehicleId(tx, existing.vehicleId, changedAt);
         await this.carePlans?.recordDelivered(tx, existing, changedAt);
+        await this.deductStock(tx, existing.tenantId, existing.id, actingUser.userId);
       }
     });
 
@@ -753,6 +755,22 @@ export class ServiceOrderManager {
 
     if (closedReason) await this.auditClosedItemChange(actingUser, serviceOrder, 'add', created.id, closedReason, previousTotal);
     return { item: this.toItemResponse(created) };
+  }
+
+  // Parts and products picked from the catalog leave the stock when the car is delivered.
+  // A sale is written once per order and item (unique index), so it can never be taken twice.
+  private async deductStock(tx: PrismaClient, tenantId: string, serviceOrderId: string, userId: string) {
+    const items = await tx.serviceOrderItem.findMany({ where: { serviceOrderId, deletedAt: null, catalogItemId: { not: null }, type: { in: ['PART', 'PRODUCT'] } }, select: { catalogItemId: true, quantity: true } });
+    const wanted = new Map<string, number>();
+    for (const item of items) wanted.set(item.catalogItemId as string, (wanted.get(item.catalogItemId as string) ?? 0) + Number(item.quantity));
+    for (const [catalogItemId, quantity] of wanted) {
+      const already = await tx.stockMovement.findFirst({ where: { serviceOrderId, catalogItemId, kind: 'SALE' }, select: { id: true } });
+      if (already) continue;
+      const catalogItem = await tx.catalogItem.findFirst({ where: { id: catalogItemId, deletedAt: null, trackStock: true }, select: { id: true } });
+      if (!catalogItem) continue;
+      const updated = await tx.catalogItem.update({ where: { id: catalogItemId }, data: { stockQuantity: { decrement: quantity } }, select: { stockQuantity: true } });
+      await tx.stockMovement.create({ data: { tenantId, catalogItemId, serviceOrderId, kind: 'SALE', quantity: -quantity, balanceAfter: updated.stockQuantity, createdBy: userId } });
+    }
   }
 
   async updateItem(request: UpdateServiceOrderItemRequest, actingUser?: AuthenticatedUser): Promise<{ item: ServiceOrderItemResponse }> {

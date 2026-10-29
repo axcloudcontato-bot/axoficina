@@ -11,6 +11,9 @@ vi.mock('@/features/catalog/api/catalog-api', () => ({ catalogApi: { list: vi.fn
   { id: 'c1', type: 'PART', name: 'Pastilha de freio', unitPriceCents: 18000 },
   { id: 'c2', type: 'PART', name: 'Fluido de freio', unitPriceCents: 0 },
   { id: 'c3', type: 'PART', name: 'Kit revisão de óleo', code: 'KIT-OLEO', unitPriceCents: 25000, careServiceKey: 'OIL_CHANGE' },
+] }), packages: vi.fn().mockResolvedValue({ packages: [
+  { id: 'p1', name: 'Revisão básica', items: [{ catalogItemId: 'c1', quantity: 1 }, { catalogItemId: 'c3', quantity: 2 }] },
+  { id: 'p2', name: 'Com item sem preço', items: [{ catalogItemId: 'c1', quantity: 1 }, { catalogItemId: 'c2', quantity: 1 }] },
 ] }) } }));
 vi.mock('../../api/service-orders-api', () => ({ serviceOrdersApi: { update: vi.fn() } }));
 vi.mock('../../api/service-order-items-api', () => ({
@@ -263,6 +266,34 @@ describe('ServiceOrderItemsSection', () => {
     await user.click(screen.getByRole('button', { name: 'Adicionar item' }));
     await waitFor(() => expect(vi.mocked(serviceOrderItemsApi.create).mock.calls[0]?.[0]).toMatchObject({ description: 'Pastilha de freio importada' }));
     expect(vi.mocked(serviceOrderItemsApi.create).mock.calls[0]?.[0]).not.toHaveProperty('catalogItemId');
+  });
+
+  it('launches every line of a package at the current catalog prices', async () => {
+    vi.mocked(serviceOrderItemsApi.create).mockResolvedValue({ item: baseServiceOrder.items![0] });
+    const user = userEvent.setup();
+    renderWithClient(<ServiceOrderItemsSection serviceOrder={baseServiceOrder} />);
+    await user.selectOptions(await screen.findByLabelText('Pacote de serviço'), 'p1');
+    await user.click(screen.getByRole('button', { name: 'Lançar pacote' }));
+    await waitFor(() => expect(vi.mocked(serviceOrderItemsApi.create)).toHaveBeenCalledTimes(2));
+    expect(vi.mocked(serviceOrderItemsApi.create).mock.calls[0]?.[0]).toMatchObject({ serviceOrderId: 'so-1', type: 'PART', description: 'Pastilha de freio', quantity: 1, unitPriceCents: 18000, catalogItemId: 'c1' });
+    expect(vi.mocked(serviceOrderItemsApi.create).mock.calls[1]?.[0]).toMatchObject({ description: 'Kit revisão de óleo', quantity: 2, unitPriceCents: 25000, catalogItemId: 'c3', careServiceKey: 'OIL_CHANGE' });
+    await waitFor(() => expect(toastMock.success).toHaveBeenCalledWith('Pacote "Revisão básica" lançado: 2 itens.'));
+  });
+
+  it('launches nothing when a package item has no price', async () => {
+    vi.mocked(serviceOrderItemsApi.create).mockClear();
+    const user = userEvent.setup();
+    renderWithClient(<ServiceOrderItemsSection serviceOrder={baseServiceOrder} />);
+    await user.selectOptions(await screen.findByLabelText('Pacote de serviço'), 'p2');
+    await user.click(screen.getByRole('button', { name: 'Lançar pacote' }));
+    await waitFor(() => expect(toastMock.error).toHaveBeenCalledWith(expect.stringContaining('Fluido de freio')));
+    expect(vi.mocked(serviceOrderItemsApi.create)).not.toHaveBeenCalled();
+  });
+
+  it('does not offer packages on a closed order', async () => {
+    renderWithClient(<ServiceOrderItemsSection serviceOrder={{ ...baseServiceOrder, status: 'DELIVERED' }} />);
+    await screen.findByText('Filtro de óleo');
+    expect(screen.queryByLabelText('Pacote de serviço')).not.toBeInTheDocument();
   });
 });
 

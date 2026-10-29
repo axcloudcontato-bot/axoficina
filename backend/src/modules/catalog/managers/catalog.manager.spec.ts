@@ -2,10 +2,10 @@ import { DEFAULT_CATALOG } from '../default-catalog';
 import { CatalogManager } from './catalog.manager';
 
 const user = { tenantId: 'tenant-1', userId: 'user-1' } as never;
-const row = (over: Record<string, unknown> = {}) => ({ id: 'item-1', type: 'PART', name: 'Filtro de óleo', category: null, unitPriceCents: 0, costCents: null, code: null, brand: null, unit: 'un', supplierId: null, standardMinutes: null, careServiceKey: null, ...over });
+const row = (over: Record<string, unknown> = {}) => ({ id: 'item-1', type: 'PART', name: 'Filtro de óleo', category: null, unitPriceCents: 0, costCents: null, code: null, brand: null, unit: 'un', supplierId: null, standardMinutes: null, careServiceKey: null, trackStock: false, stockQuantity: 0, minStock: null, ...over });
 
 function setup() {
-  const repository = { supplierExists: jest.fn().mockResolvedValue(true), list: jest.fn().mockResolvedValue([]), byId: jest.fn(), findByName: jest.fn().mockResolvedValue(null), create: jest.fn(), createMany: jest.fn().mockResolvedValue({ count: 0 }), update: jest.fn(), remove: jest.fn() };
+  const repository = { adjustStock: jest.fn(), importRows: jest.fn(), reportLines: jest.fn().mockResolvedValue([]), listPackages: jest.fn().mockResolvedValue([]), packageById: jest.fn(), packageByName: jest.fn().mockResolvedValue(null), packageLines: jest.fn().mockResolvedValue([]), existingItemIds: jest.fn(), savePackage: jest.fn(), removePackage: jest.fn(), supplierExists: jest.fn().mockResolvedValue(true), list: jest.fn().mockResolvedValue([]), byId: jest.fn(), findByName: jest.fn().mockResolvedValue(null), create: jest.fn(), createMany: jest.fn().mockResolvedValue({ count: 0 }), update: jest.fn(), remove: jest.fn() };
   const audit = { record: jest.fn() };
   return { repository, audit, manager: new CatalogManager(repository as never, audit as never) };
 }
@@ -109,6 +109,98 @@ describe('CatalogManager', () => {
       const [, batch] = repository.createMany.mock.calls[0];
       expect(batch.find((item: { name: string }) => item.name === 'Troca de óleo e filtro')).toMatchObject({ careServiceKey: 'OIL_CHANGE' });
       expect(batch.find((item: { name: string }) => item.name === 'Pastilha de freio dianteira')).toMatchObject({ careServiceKey: null });
+    });
+  });
+
+  describe('stock', () => {
+    it('tracks stock only for parts and products', async () => {
+      const { manager, repository } = setup();
+      repository.create.mockImplementation(async (_t: string, input: Record<string, unknown>) => row(input));
+      await manager.create(user, { type: 'PART', name: 'Filtro', unitPriceCents: 3000, trackStock: true, minStock: 4 });
+      expect(repository.create).toHaveBeenLastCalledWith('tenant-1', expect.objectContaining({ trackStock: true, minStock: 4 }));
+      await manager.create(user, { type: 'LABOR', name: 'Troca', unitPriceCents: 3000, trackStock: true, minStock: 4 });
+      expect(repository.create).toHaveBeenLastCalledWith('tenant-1', expect.objectContaining({ trackStock: false, minStock: null }));
+    });
+
+    it('refuses a movement on an item without stock control, and a zero purchase', async () => {
+      const { manager, repository } = setup();
+      repository.byId.mockResolvedValue(row());
+      await expect(manager.adjustStock(user, { id: 'item-1', kind: 'PURCHASE', quantity: 5 })).rejects.toThrow('Ative o controle de estoque');
+      repository.byId.mockResolvedValue(row({ trackStock: true }));
+      await expect(manager.adjustStock(user, { id: 'item-1', kind: 'PURCHASE', quantity: 0 })).rejects.toThrow('maior que zero');
+      expect(repository.adjustStock).not.toHaveBeenCalled();
+    });
+
+    it('records a purchase and a counted adjustment', async () => {
+      const { manager, repository, audit } = setup();
+      repository.byId.mockResolvedValue(row({ trackStock: true, stockQuantity: 2 }));
+      repository.adjustStock.mockResolvedValue(row({ trackStock: true, stockQuantity: 12 }));
+      const result = await manager.adjustStock(user, { id: 'item-1', kind: 'PURCHASE', quantity: 10, note: ' NF 123 ' });
+      expect(repository.adjustStock).toHaveBeenCalledWith('tenant-1', 'item-1', 'user-1', 'PURCHASE', 10, 'NF 123');
+      expect(result.item).toMatchObject({ trackStock: true, stockQuantity: 12 });
+      expect(audit.record).toHaveBeenCalledWith(expect.objectContaining({ action: 'catalog.stock_adjusted' }));
+    });
+  });
+
+  describe('spreadsheet import', () => {
+    it('creates new items, updates the price of existing ones and keeps the rest of the row', async () => {
+      const { manager, repository } = setup();
+      repository.list.mockResolvedValue([row({ id: 'item-1', name: 'Filtro de óleo' })]);
+      const result = await manager.importRows(user, { rows: [
+        { type: 'PART', name: ' filtro de óleo ', unitPriceCents: 4500, costCents: 2000, code: 'F-1' },
+        { type: 'PART', name: 'Vela', unitPriceCents: 3000 },
+        { type: 'PART', name: 'Vela', unitPriceCents: 3200 },
+      ] }, { canSeeCost: false });
+      expect(result).toEqual({ created: 1, updated: 1 });
+      const [, create, update] = repository.importRows.mock.calls[0];
+      expect(create).toEqual([expect.objectContaining({ name: 'Vela', unitPriceCents: 3200, costCents: null })]);
+      expect(update).toEqual([{ id: 'item-1', data: { unitPriceCents: 4500, code: 'F-1' } }]);
+    });
+
+    it('takes the cost from the sheet only for people who see the financial data', async () => {
+      const { manager, repository } = setup();
+      repository.list.mockResolvedValue([row({ id: 'item-1', name: 'Filtro de óleo' })]);
+      await manager.importRows(user, { rows: [{ type: 'PART', name: 'Filtro de óleo', unitPriceCents: 4500, costCents: 2000 }, { type: 'PART', name: 'Vela', unitPriceCents: 3000, costCents: 1000 }] }, { canSeeCost: true });
+      const [, create, update] = repository.importRows.mock.calls[0];
+      expect(create[0]).toMatchObject({ costCents: 1000 });
+      expect(update[0].data).toMatchObject({ costCents: 2000 });
+    });
+  });
+
+  describe('packages', () => {
+    it('merges repeated items, refuses unknown ones and duplicate names', async () => {
+      const { manager, repository } = setup();
+      repository.existingItemIds.mockResolvedValue(new Set(['a', 'b']));
+      repository.savePackage.mockResolvedValue({ id: 'pack-1', name: 'Revisão' });
+      const result = await manager.savePackage(user, { name: ' Revisão ', items: [{ catalogItemId: 'a', quantity: 1 }, { catalogItemId: 'a', quantity: 3 }, { catalogItemId: 'b', quantity: 1 }] });
+      expect(repository.savePackage).toHaveBeenCalledWith('tenant-1', undefined, 'Revisão', [{ catalogItemId: 'a', quantity: 4 }, { catalogItemId: 'b', quantity: 1 }]);
+      expect(result.package.items).toHaveLength(2);
+
+      repository.existingItemIds.mockResolvedValue(new Set(['a']));
+      await expect(manager.savePackage(user, { name: 'Outro', items: [{ catalogItemId: 'b', quantity: 1 }] })).rejects.toThrow('não existe mais');
+      repository.packageByName.mockResolvedValue({ id: 'other', name: 'Revisão' });
+      await expect(manager.savePackage(user, { name: 'Revisão', items: [{ catalogItemId: 'a', quantity: 1 }] })).rejects.toThrow('Já existe um pacote');
+    });
+  });
+
+  describe('best sellers report', () => {
+    const line = (over: Record<string, unknown>) => ({ serviceOrderId: 'so-1', catalogItemId: 'cat-1', type: 'PART', description: 'Filtro', quantity: 1, unitPriceCents: 5000, costCents: 2000, ...over });
+
+    it('adds up lines by item, counts orders and sorts by revenue', async () => {
+      const { manager, repository } = setup();
+      repository.reportLines.mockResolvedValue([line({}), line({ serviceOrderId: 'so-2', quantity: 2 }), line({ catalogItemId: null, description: 'Lavagem', type: 'LABOR', unitPriceCents: 40000, costCents: null })]);
+      const result = await manager.report(user, 90, { canSeeCost: true });
+      expect(result.rows[0]).toMatchObject({ name: 'Lavagem', revenueCents: 40000, orders: 1 });
+      expect(result.rows[0]).not.toHaveProperty('marginCents');
+      expect(result.rows[1]).toMatchObject({ catalogItemId: 'cat-1', quantity: 3, orders: 2, revenueCents: 15000, costCents: 6000, marginCents: 9000 });
+    });
+
+    it('hides cost and margin from people without finance access', async () => {
+      const { manager, repository } = setup();
+      repository.reportLines.mockResolvedValue([line({})]);
+      const result = await manager.report(user, 30);
+      expect(result.rows[0]).not.toHaveProperty('costCents');
+      expect(result.rows[0]).not.toHaveProperty('marginCents');
     });
   });
 });

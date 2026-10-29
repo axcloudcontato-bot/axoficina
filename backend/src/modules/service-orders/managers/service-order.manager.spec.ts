@@ -2,7 +2,13 @@ import { HttpStatus } from '@nestjs/common';
 import { ServiceOrderManager } from './service-order.manager';
 
 const actingUser = { userId: 'user-1', tenantId: 'tenant-1', role: 'ADMIN' as const };
-const FAKE_TX = { appointment: { updateMany: jest.fn() } } as never;
+const TX = {
+  appointment: { updateMany: jest.fn() },
+  serviceOrderItem: { findMany: jest.fn().mockResolvedValue([]) },
+  stockMovement: { findFirst: jest.fn().mockResolvedValue(null), create: jest.fn() },
+  catalogItem: { findFirst: jest.fn().mockResolvedValue(null), update: jest.fn() },
+};
+const FAKE_TX = TX as never;
 
 function buildManager() {
   const serviceOrderRepository = {
@@ -396,6 +402,37 @@ describe('ServiceOrderManager', () => {
       await deps.manager.transition(actingUser, { id: 'so-1', toStatus: 'DELIVERED' as never });
 
       expect(deps.maintenanceAlertRepository.resolveOpenByVehicleId).toHaveBeenCalledWith(FAKE_TX, 'vehicle-1', expect.any(Date));
+    });
+
+    describe('stock on delivery', () => {
+      const deliver = async () => {
+        const deps = buildManager();
+        const existing = { ...baseServiceOrder, status: 'COMPLETED' };
+        deps.serviceOrderRepository.byId.mockResolvedValueOnce(existing).mockResolvedValueOnce({ ...existing, status: 'DELIVERED' });
+        deps.serviceOrderRepository.transition.mockResolvedValue({ count: 1 });
+        deps.vehicleRepository.byId.mockResolvedValue(baseVehicle);
+        deps.customerRepository.byId.mockResolvedValue(baseCustomer);
+        await deps.manager.transition(actingUser, { id: 'so-1', toStatus: 'DELIVERED' as never });
+      };
+      beforeEach(() => { TX.stockMovement.create.mockClear(); TX.catalogItem.update.mockClear(); });
+
+      it('takes the sold quantity out of tracked items, adding up lines of the same item', async () => {
+        TX.serviceOrderItem.findMany.mockResolvedValueOnce([{ catalogItemId: 'cat-1', quantity: 2 }, { catalogItemId: 'cat-1', quantity: 1.5 }]);
+        TX.catalogItem.findFirst.mockResolvedValueOnce({ id: 'cat-1' });
+        TX.catalogItem.update.mockResolvedValueOnce({ stockQuantity: 6.5 });
+        await deliver();
+        expect(TX.catalogItem.update).toHaveBeenCalledWith(expect.objectContaining({ where: { id: 'cat-1' }, data: { stockQuantity: { decrement: 3.5 } } }));
+        expect(TX.stockMovement.create).toHaveBeenCalledWith({ data: expect.objectContaining({ catalogItemId: 'cat-1', serviceOrderId: 'so-1', kind: 'SALE', quantity: -3.5, balanceAfter: 6.5 }) });
+      });
+
+      it('leaves untracked items alone and never takes the same sale twice', async () => {
+        TX.serviceOrderItem.findMany.mockResolvedValueOnce([{ catalogItemId: 'cat-1', quantity: 1 }, { catalogItemId: 'cat-2', quantity: 1 }]);
+        TX.stockMovement.findFirst.mockResolvedValueOnce({ id: 'mov-1' });
+        TX.catalogItem.findFirst.mockResolvedValueOnce(null);
+        await deliver();
+        expect(TX.catalogItem.update).not.toHaveBeenCalled();
+        expect(TX.stockMovement.create).not.toHaveBeenCalled();
+      });
     });
 
     it('does not touch maintenance alerts for transitions other than DELIVERED', async () => {

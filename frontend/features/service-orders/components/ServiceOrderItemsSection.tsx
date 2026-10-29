@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { formatCurrencyBRL } from '@/lib/format-currency';
 import { extractErrorMessage } from '@/lib/api/client';
 import { parseMoneyToCents } from '@/lib/parse-money';
-import { useCatalogItems } from '@/features/catalog/hooks/use-catalog';
+import { useCatalogItems, useCatalogPackages } from '@/features/catalog/hooks/use-catalog';
 import { useUpdateServiceOrder } from '../hooks/use-service-orders';
 import { useAddServiceOrderItem, useDeleteServiceOrderItem, useUpdateServiceOrderItem } from '../hooks/use-service-order-items';
 
@@ -70,6 +70,9 @@ export function ServiceOrderItemsSection({ serviceOrder, readOnly = false }: Ser
   const catalogOptions = (catalog.data?.items ?? []).filter((entry) => entry.type === form.type);
   const items = serviceOrder.items ?? [];
   const careLocked = ['DELIVERED', 'CANCELLED'].includes(serviceOrder.status);
+  const packages = useCatalogPackages({ enabled: !readOnly && !careLocked }).data?.packages ?? [];
+  const [packageId, setPackageId] = useState('');
+  const [addingPackage, setAddingPackage] = useState(false);
   const [editReason, setEditReason] = useState('');
   const [catalogSearch, setCatalogSearch] = useState('');
   const updateOrder = useUpdateServiceOrder();
@@ -89,6 +92,31 @@ export function ServiceOrderItemsSection({ serviceOrder, readOnly = false }: Ser
       onSuccess: () => toast.success(cents === 0 ? 'Desconto removido.' : 'Desconto aplicado.'),
       onError: (error) => toast.error(extractErrorMessage(error)),
     });
+  }
+
+  // Every line of the package goes in at today's catalog price. Checked first, so a package never lands half-filled for a known reason.
+  async function handleAddPackage() {
+    const pack = packages.find((entry) => entry.id === packageId);
+    if (!pack) return;
+    const lines = pack.items.map((line) => ({ line, entry: catalog.data?.items.find((item) => item.id === line.catalogItemId) }));
+    if (lines.some(({ entry }) => !entry)) { toast.error('Algum item do pacote saiu do catálogo. Edite o pacote antes de lançar.'); return; }
+    const unpriced = lines.find(({ entry }) => entry && entry.unitPriceCents === 0);
+    if (unpriced?.entry) { toast.error(`"${unpriced.entry.name}" está sem preço no catálogo. Defina o preço antes de lançar o pacote.`); return; }
+    setAddingPackage(true);
+    let added = 0;
+    try {
+      for (const { line, entry } of lines) {
+        if (!entry) continue;
+        await addItem.mutateAsync({ serviceOrderId: serviceOrder.id, type: entry.type, description: entry.name, quantity: line.quantity, unitPriceCents: entry.unitPriceCents, catalogItemId: entry.id, ...(entry.careServiceKey ? { careServiceKey: entry.careServiceKey } : {}) });
+        added += 1;
+      }
+      toast.success(`Pacote "${pack.name}" lançado: ${added} ${added === 1 ? 'item' : 'itens'}.`);
+      setPackageId('');
+    } catch (error) {
+      toast.error(added > 0 ? `Só ${added} de ${lines.length} itens foram lançados: ${extractErrorMessage(error)}` : extractErrorMessage(error));
+    } finally {
+      setAddingPackage(false);
+    }
   }
 
   function handleAdd() {
@@ -269,6 +297,8 @@ export function ServiceOrderItemsSection({ serviceOrder, readOnly = false }: Ser
 
       {items.length > 0 && serviceOrder.discountCents > 0 && <div className="ml-auto mt-4 w-full max-w-xs space-y-1 text-sm"><div className="flex justify-between text-text-muted"><span>Subtotal dos itens</span><span className="tabular-nums">{formatCurrencyBRL(subtotalCents)}</span></div><div className="flex justify-between text-success"><span>Desconto</span><span className="tabular-nums">-{formatCurrencyBRL(serviceOrder.discountCents)}</span></div></div>}
       {discountEditable && <div className="ml-auto mt-3 flex w-full max-w-xs items-end gap-2"><label className="flex-1 space-y-1.5 text-xs font-semibold text-text-muted">Desconto (R$)<Input aria-label="Desconto" inputMode="decimal" placeholder="0,00" value={discountInput} onChange={(event) => setDiscountInput(event.target.value)} /></label><Button variant="outline" onClick={applyDiscount} disabled={updateOrder.isPending}>{updateOrder.isPending ? 'Aplicando...' : 'Aplicar'}</Button></div>}
+
+      {!readOnly && !careLocked && packages.length > 0 && <div className="mt-4 flex flex-wrap items-end gap-2 rounded-button border border-border bg-surface p-3"><label className="min-w-48 flex-1 space-y-1.5 text-xs font-semibold text-text-muted">Pacote de serviço<select aria-label="Pacote de serviço" className="h-10 w-full rounded-button border border-input bg-background px-3 text-sm text-foreground" value={packageId} onChange={(event) => setPackageId(event.target.value)}><option value="">Escolha um pacote</option>{packages.map((entry) => <option key={entry.id} value={entry.id}>{entry.name}</option>)}</select></label><Button variant="outline" disabled={!packageId || addingPackage} onClick={handleAddPackage}>{addingPackage ? 'Lançando...' : 'Lançar pacote'}</Button></div>}
 
       {!readOnly && <><div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-5">
         {catalogOptions.length > 0 && <label className="col-span-2 space-y-1.5 text-xs font-semibold text-text-muted sm:col-span-5">Buscar no catálogo ({SERVICE_ORDER_ITEM_TYPE_LABELS[form.type].toLowerCase()})<Input list="catalog-suggestions" placeholder="Digite o nome para preencher descrição e preço…" value={catalogSearch} onChange={(event) => searchCatalog(event.target.value)} /><datalist id="catalog-suggestions">{catalogOptions.map((option) => <option key={option.id} value={option.name}>{[option.code, option.brand, option.unitPriceCents > 0 ? formatCurrencyBRL(option.unitPriceCents) : 'sem preço'].filter(Boolean).join(' · ')}</option>)}</datalist></label>}

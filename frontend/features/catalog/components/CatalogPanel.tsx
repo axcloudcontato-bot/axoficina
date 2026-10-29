@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import { CATALOG_ITEM_TYPES, type CatalogItemResponse, type CatalogItemType } from '@oficina/contracts';
-import { MagnifyingGlass, PencilSimple, Plus, Trash } from '@phosphor-icons/react';
+import { MagnifyingGlass, PencilSimple, Plus, Trash, UploadSimple } from '@phosphor-icons/react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -13,10 +13,17 @@ import { normalizeNavigationSearch } from '@/lib/navigation';
 import { parseMoneyToCents } from '@/lib/parse-money';
 import { useLaborRate, useUpdateLaborRate } from '@/features/settings/hooks/use-settings';
 import { marginPercent } from '../catalog-pricing';
+import { formatStock, isLowStock } from '../catalog-stock';
 import { useCatalogItems, useDeleteCatalogItem, useSeedCatalogDefaults, useUpdateCatalogItem } from '../hooks/use-catalog';
+import { CatalogImportModal } from './CatalogImportModal';
 import { CatalogItemFormModal } from './CatalogItemFormModal';
+import { CatalogPackages } from './CatalogPackages';
+import { CatalogReport } from './CatalogReport';
+import { StockDialog } from './StockDialog';
 
 const TAB_LABELS: Record<CatalogItemType, string> = { PART: 'Peças', PRODUCT: 'Produtos', LABOR: 'Serviços' };
+const VIEWS = [{ key: 'items', label: 'Itens' }, { key: 'packages', label: 'Pacotes' }, { key: 'report', label: 'Mais vendidos' }] as const;
+type View = (typeof VIEWS)[number]['key'];
 
 export function CatalogPanel() {
   const query = useCatalogItems();
@@ -27,6 +34,10 @@ export function CatalogPanel() {
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('ALL');
   const [onlyUnpriced, setOnlyUnpriced] = useState(false);
+  const [onlyLow, setOnlyLow] = useState(false);
+  const [view, setView] = useState<View>('items');
+  const [importing, setImporting] = useState(false);
+  const [stocking, setStocking] = useState<CatalogItemResponse>();
   const [editing, setEditing] = useState<CatalogItemResponse | null | undefined>(undefined);
   const [deleting, setDeleting] = useState<CatalogItemResponse>();
   const [pricing, setPricing] = useState<{ id: string; text: string }>();
@@ -39,10 +50,11 @@ export function CatalogPanel() {
   const categories = useMemo(() => [...new Set(items.map(item => item.category).filter((value): value is string => Boolean(value)))].sort((a, b) => a.localeCompare(b, 'pt-BR')), [items]);
   const tabCategories = useMemo(() => [...new Set(items.filter(item => item.type === tab).map(item => item.category).filter((value): value is string => Boolean(value)))].sort((a, b) => a.localeCompare(b, 'pt-BR')), [items, tab]);
   const unpriced = items.filter(item => item.type === tab && item.unitPriceCents === 0).length;
+  const lowStock = items.filter(isLowStock).length;
   const visible = useMemo(() => {
     const term = normalizeNavigationSearch(search);
-    return items.filter(item => item.type === tab && (category === 'ALL' || item.category === category) && (!onlyUnpriced || item.unitPriceCents === 0) && (!term || normalizeNavigationSearch(`${item.name} ${item.category ?? ''}`).includes(term)));
-  }, [items, tab, search, category, onlyUnpriced]);
+    return items.filter(item => item.type === tab && (category === 'ALL' || item.category === category) && (!onlyUnpriced || item.unitPriceCents === 0) && (!onlyLow || isLowStock(item)) && (!term || normalizeNavigationSearch(`${item.name} ${item.category ?? ''}`).includes(term)));
+  }, [items, tab, search, category, onlyUnpriced, onlyLow]);
 
   function loadDefaults() {
     seed.mutate(undefined, {
@@ -58,7 +70,7 @@ export function CatalogPanel() {
     const cents = parseMoneyToCents(text);
     if (Number.isNaN(cents)) return void toast.error('Informe um preço válido, como 12,50 ou 1.234,56.');
     if (cents === item.unitPriceCents) return;
-    update.mutate({ id: item.id, type: item.type, name: item.name, category: item.category, unitPriceCents: cents, code: item.code, brand: item.brand, unit: item.unit, supplierId: item.supplierId, standardMinutes: item.standardMinutes, careServiceKey: item.careServiceKey, ...(item.costCents !== undefined ? { costCents: item.costCents } : {}) }, {
+    update.mutate({ id: item.id, type: item.type, name: item.name, category: item.category, unitPriceCents: cents, code: item.code, brand: item.brand, unit: item.unit, supplierId: item.supplierId, standardMinutes: item.standardMinutes, careServiceKey: item.careServiceKey, trackStock: item.trackStock, minStock: item.minStock ?? null, ...(item.costCents !== undefined ? { costCents: item.costCents } : {}) }, {
       onSuccess: () => toast.success(`Preço de "${item.name}" atualizado.`),
       onError: error => toast.error(extractErrorMessage(error)),
     });
@@ -93,6 +105,7 @@ export function CatalogPanel() {
         <p className="mt-1 text-sm text-text-muted">Cadastre o que a oficina vende e escolha na ordem de serviço, sem digitar de novo.</p>
       </div>
       <div className="flex flex-wrap gap-2">
+        <Button variant="outline" onClick={() => setImporting(true)}><UploadSimple className="size-4" />Importar planilha</Button>
         <Button variant="outline" onClick={loadDefaults} disabled={seed.isPending}>{seed.isPending ? 'Carregando...' : 'Carregar itens padrão de oficina'}</Button>
         <Button onClick={() => setEditing(null)}><Plus className="size-4" />Novo item</Button>
       </div>
@@ -105,6 +118,14 @@ export function CatalogPanel() {
         : <button type="button" aria-label="Alterar valor da hora" onClick={() => setRateText(laborRate === null ? '' : (laborRate / 100).toFixed(2).replace('.', ','))} className="rounded-button px-2 py-1 font-bold tabular-nums hover:bg-muted">{laborRate === null ? <span className="font-medium text-warning">Definir</span> : `${formatCurrencyBRL(laborRate)}/h`}</button>}
     </div>
 
+    <div role="tablist" aria-label="Seção do catálogo" className="flex gap-1 border-b border-border">
+      {VIEWS.map(option => <button key={option.key} role="tab" aria-selected={view === option.key} onClick={() => setView(option.key)} className={`-mb-px border-b-2 px-4 py-2 text-sm font-semibold transition-colors ${view === option.key ? 'border-primary text-text' : 'border-transparent text-text-muted hover:text-text'}`}>{option.label}</button>)}
+    </div>
+
+    {view === 'packages' && <CatalogPackages items={items} />}
+    {view === 'report' && <CatalogReport />}
+
+    {view === 'items' && <>
     <div className="flex flex-wrap items-center justify-between gap-3">
       <div role="tablist" aria-label="Tipo de item" className="flex gap-1 rounded-button bg-muted p-1">
         {CATALOG_ITEM_TYPES.map(type => <button key={type} role="tab" aria-selected={tab === type} onClick={() => { setTab(type); setCategory('ALL'); }} className={`rounded-button px-4 py-1.5 text-sm font-semibold transition-colors ${tab === type ? 'bg-card text-text shadow-sm' : 'text-text-muted hover:text-text'}`}>{TAB_LABELS[type]} <span className="text-xs font-normal text-text-muted">{counts[type]}</span></button>)}
@@ -118,6 +139,8 @@ export function CatalogPanel() {
       </div>
     </div>
 
+    {lowStock > 0 && <div className="flex flex-wrap items-center justify-between gap-2 rounded-button border border-danger/30 bg-danger-subtle p-3 text-sm"><span>{lowStock} {lowStock === 1 ? 'item com estoque baixo' : 'itens com estoque baixo'}. Hora de repor.</span><button type="button" className="font-semibold underline" onClick={() => { setOnlyLow(current => !current); }}>{onlyLow ? 'Ver todos' : 'Mostrar só os de estoque baixo'}</button></div>}
+
     {unpriced > 0 && <div className="flex flex-wrap items-center justify-between gap-2 rounded-button border border-warning/30 bg-warning-subtle p-3 text-sm"><span>{unpriced} {unpriced === 1 ? 'item sem preço' : 'itens sem preço'} em {TAB_LABELS[tab].toLowerCase()}. Clique no valor de cada linha para preencher.</span><button type="button" className="font-semibold underline" onClick={() => setOnlyUnpriced(current => !current)}>{onlyUnpriced ? 'Ver todos' : 'Mostrar só os sem preço'}</button></div>}
 
     <section className="overflow-hidden rounded-card border border-border bg-card shadow-sm">
@@ -127,6 +150,7 @@ export function CatalogPanel() {
           <p className="text-xs text-text-muted">{[item.category, item.code, item.brand, item.type === 'LABOR' ? (item.standardMinutes ? `${item.standardMinutes} min` : undefined) : `por ${item.unit}`].filter(Boolean).join(' · ')}</p>
         </div>
         <div className="flex items-center gap-3">
+          {item.trackStock && <button type="button" aria-label={`Estoque de ${item.name}`} onClick={() => setStocking(item)} className={`rounded-full px-2 py-0.5 text-xs font-bold hover:opacity-80 ${isLowStock(item) ? 'bg-danger-subtle text-danger' : 'bg-muted text-text'}`}>{formatStock(item.stockQuantity)} {item.unit}{isLowStock(item) ? ' · baixo' : ''}</button>}
           {item.costCents !== undefined && item.unitPriceCents > 0 && (() => { const margin = marginPercent(item.unitPriceCents, item.costCents); return margin === null ? null : <span title={`Custo ${formatCurrencyBRL(item.costCents)}`} className={`rounded-full px-2 py-0.5 text-xs font-bold ${margin < 0 ? 'bg-danger-subtle text-danger' : margin < 20 ? 'bg-warning-subtle text-warning' : 'bg-success-subtle text-success'}`}>{margin}%</span>; })()}
           {pricing?.id === item.id
             ? <Input autoFocus aria-label={`Preço de ${item.name}`} inputMode="decimal" className="h-9 w-28 text-right" placeholder="0,00" value={pricing.text} onChange={event => setPricing({ id: item.id, text: event.target.value })} onBlur={() => savePrice(item)} onKeyDown={event => { if (event.key === 'Enter') event.currentTarget.blur(); if (event.key === 'Escape') setPricing(undefined); }} />
@@ -137,7 +161,10 @@ export function CatalogPanel() {
       </div>)}
       {!query.isLoading && visible.length === 0 && <p className="p-10 text-center text-sm text-text-muted">{items.length === 0 ? 'Catálogo vazio. Use "Carregar itens padrão de oficina" ou cadastre o primeiro item.' : 'Nenhum item encontrado nesta aba.'}</p>}
     </section>
+    </>}
 
+    <CatalogImportModal open={importing} existing={items} onOpenChange={setImporting} />
+    <StockDialog item={stocking} onClose={() => setStocking(undefined)} />
     <CatalogItemFormModal open={editing !== undefined} item={editing ?? undefined} defaultType={tab} categories={categories} onOpenChange={open => { if (!open) setEditing(undefined); }} />
     <Dialog open={Boolean(deleting)} onOpenChange={open => { if (!open && !remove.isPending) setDeleting(undefined); }}><DialogContent className="sm:max-w-md"><DialogHeader><DialogTitle>Excluir do catálogo</DialogTitle><DialogDescription>"{deleting?.name}" deixa de aparecer para novos lançamentos. As ordens de serviço já lançadas não mudam.</DialogDescription></DialogHeader><DialogFooter><Button variant="outline" disabled={remove.isPending} onClick={() => setDeleting(undefined)}>Voltar</Button><Button variant="destructive" disabled={remove.isPending} onClick={confirmDelete}>{remove.isPending ? 'Excluindo...' : 'Excluir'}</Button></DialogFooter></DialogContent></Dialog>
   </div>;

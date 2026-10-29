@@ -445,12 +445,54 @@ model CatalogItem {
   supplierId     String?   @map("supplier_id") @db.Uuid
   standardMinutes Int?     @map("standard_minutes")
   careServiceKey String?   @map("care_service_key")
+  trackStock     Boolean   @default(false) @map("track_stock")
+  stockQuantity  Decimal   @default(0) @map("stock_quantity") @db.Decimal(10, 2)
+  minStock       Decimal?  @map("min_stock") @db.Decimal(10, 2)
   createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz
   updatedAt      DateTime? @updatedAt @map("updated_at") @db.Timestamptz
   deletedAt      DateTime? @map("deleted_at") @db.Timestamptz
 
   @@index([tenantId, type, name])
   @@map("catalog_items")
+}
+
+// Every change of a catalog item's stock balance. SALE is written once per order and item.
+model StockMovement {
+  id             String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  tenantId       String   @map("tenant_id") @db.Uuid
+  catalogItemId  String   @map("catalog_item_id") @db.Uuid
+  serviceOrderId String?  @map("service_order_id") @db.Uuid
+  kind           String
+  quantity       Decimal  @db.Decimal(10, 2)
+  balanceAfter   Decimal  @map("balance_after") @db.Decimal(10, 2)
+  note           String?
+  createdBy      String?  @map("created_by") @db.Uuid
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([tenantId, catalogItemId, createdAt])
+  @@map("stock_movements")
+}
+
+// A named set of catalog items added to an order in one go, at today's prices.
+model CatalogPackage {
+  id        String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  tenantId  String    @map("tenant_id") @db.Uuid
+  name      String
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime? @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt DateTime? @map("deleted_at") @db.Timestamptz
+
+  @@map("catalog_packages")
+}
+
+model CatalogPackageItem {
+  id            String  @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  packageId     String  @map("package_id") @db.Uuid
+  catalogItemId String  @map("catalog_item_id") @db.Uuid
+  quantity      Decimal @default(1) @db.Decimal(10, 2)
+
+  @@index([packageId])
+  @@map("catalog_package_items")
 }
 
 // Feature: Integração FIPE. Catálogo global de marcas/modelos sincronizado
