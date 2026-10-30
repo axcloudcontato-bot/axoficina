@@ -32,10 +32,10 @@ export function SettingsShell({ children }: { children: React.ReactNode }) {
       <p className="mt-1 text-sm text-text-muted">{privacy ? 'Sua senha, seus dados e seus pedidos de privacidade.' : 'Personalize a oficina, as comunicações e o acesso da equipe.'}</p>
       {privacy && (hasPermission(user, 'settings.view') || hasPermission(user, 'team.view')) && <Link href="/configuracoes" className="mt-3 inline-block text-sm font-semibold text-primary hover:underline">Voltar às configurações</Link>}
     </header>
-    <nav aria-label="Seções das configurações" className="flex gap-1 overflow-x-auto border-b border-border">
+    <nav aria-label="Seções das configurações" className="flex flex-wrap gap-x-0.5 border-b border-border">
       {tabs.map(({ href, label, icon: Icon }) => {
         const active = pathname === href;
-        return <Link key={href} href={href} aria-current={active ? 'page' : undefined} className={cn('-mb-px flex shrink-0 items-center gap-2 border-b-2 px-4 py-3 text-sm font-bold transition-colors', active ? 'border-primary text-primary-strong' : 'border-transparent text-text-muted hover:border-border hover:text-text')}>
+        return <Link key={href} href={href} aria-current={active ? 'page' : undefined} className={cn('-mb-px flex items-center gap-2 border-b-2 px-3 py-3 text-sm font-bold transition-colors', active ? 'border-primary text-primary-strong' : 'border-transparent text-text-muted hover:border-border hover:text-text')}>
           <Icon className="size-[18px] shrink-0" aria-hidden="true" />
           {label}
         </Link>;
