@@ -2,6 +2,7 @@ import { COMPANY, COMPANY_POSTAL_ADDRESS, PARENT_SITE, SAME_AS, SITE_DESCRIPTION
 import { FAQ } from '@/components/landing/faq';
 import { STEPS } from '@/components/landing/steps';
 import { SPEC } from '@/components/landing/facts';
+import { PLANS, PLAN_CODES } from '@oficina/contracts';
 import type { ContentPage } from '@/components/landing/content-pages';
 
 export function JsonLd({ data }: { data: Record<string, unknown> }) {
@@ -55,6 +56,16 @@ export function HomeJsonLd() {
         publisher: { '@id': ORGANIZATION_ID },
         image: `${SITE_URL}/opengraph-image`,
         featureList: SPEC.map(([name, value]) => `${name}: ${value}`),
+        offers: PLAN_CODES.map((code) => ({
+          '@type': 'Offer',
+          name: `Ofix ${PLANS[code].name}`,
+          description: PLANS[code].tagline,
+          price: (PLANS[code].monthlyPriceCents / 100).toFixed(2),
+          priceCurrency: 'BRL',
+          priceSpecification: { '@type': 'UnitPriceSpecification', price: (PLANS[code].monthlyPriceCents / 100).toFixed(2), priceCurrency: 'BRL', unitCode: 'MON', billingDuration: 1 },
+          url: `${SITE_URL}/#planos`,
+          availability: 'https://schema.org/InStock',
+        })),
       },
       {
         '@type': 'HowTo',

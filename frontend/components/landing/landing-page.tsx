@@ -1,9 +1,11 @@
 import Link from 'next/link';
 import type { ComponentType, ReactNode } from 'react';
 import {
-  ArrowRight, BellRinging, Buildings, CalendarCheck, Camera, Car, ChartLineUp, Check, ClipboardText,
-  CurrencyCircleDollar, Gauge, Lock, Printer, ShieldCheck, Star, UsersThree, WhatsappLogo, X,
+  ArrowRight, Buildings, CalendarCheck, Camera, Car, ChartLineUp, Check, ClipboardText, ClockCounterClockwise,
+  CurrencyCircleDollar, FileText, Gauge, Heart, Lock, Package, Printer, ShieldCheck, Star, UsersThree, WhatsappLogo, X,
 } from '@phosphor-icons/react/dist/ssr';
+import { MODULE_KEYS, MODULES, PLANS, PLAN_CODES, YEARLY_MONTHS_CHARGED, planPriceCents, type ModuleKey } from '@oficina/contracts';
+import { formatCurrencyBRL } from '@/lib/format-currency';
 import { OfixLogo } from '@/components/brand/ofix-logo';
 import { DashboardMock, QuoteChatMock, StatusFlowMock } from './product-mock';
 import { FAQ } from './faq';
@@ -50,15 +52,19 @@ const PAINS = [
   ['Cliente que some depois do serviço', 'Sem lembrete de revisão, a próxima troca de óleo e as manutenções preventivas vão para o concorrente.'],
 ] as const;
 
-const FEATURES: Array<{ icon: IconType; title: string; text: string; span?: string; chat?: boolean; flow?: boolean }> = [
-  { icon: ClipboardText, title: 'Ordens de serviço completas', text: 'Itens, peças, serviços, fotos e histórico de status em um só lugar, do check-in à entrega, com impressão em A4.', span: 'lg:col-span-2', flow: true },
-  { icon: WhatsappLogo, title: 'Orçamento aprovado pelo WhatsApp', text: 'O cliente recebe o orçamento e responde com um toque. Você acompanha a resposta direto na ordem de serviço.', chat: true },
-  { icon: CalendarCheck, title: 'Agenda da oficina', text: 'Horários organizados para recepção e equipe, sem conflito e sem papel.' },
-  { icon: Car, title: 'Veículo com dados da FIPE', text: 'Marca, modelo e valor puxados da tabela FIPE. Cadastro rápido, histórico completo por veículo.' },
-  { icon: BellRinging, title: 'Alertas de manutenção', text: 'O sistema avisa quando o veículo de um cliente está perto da próxima revisão. Retorno sem depender de memória.' },
-  { icon: CurrencyCircleDollar, title: 'Financeiro sem planilha', text: 'Contas a pagar e a receber, parcelas das OS, fornecedores, fluxo de caixa e relatórios analíticos.' },
-  { icon: Gauge, title: 'Produtividade da equipe', text: 'Veja o que cada ordem rende e onde o trabalho está parado para decidir com dados.' },
+// `module` marks what is sold from a given plan on; the badge reads the catalog, so it never drifts from the prices.
+const FEATURES: Array<{ icon: IconType; title: string; text: string; span?: string; chat?: boolean; flow?: boolean; module?: ModuleKey }> = [
+  { icon: ClipboardText, title: 'Ordens de serviço completas', text: 'Itens, peças, serviços, fotos e histórico de status em um só lugar, do check-in à entrega, com desconto, garantia e impressão em A4.', span: 'lg:col-span-2', flow: true },
+  { icon: WhatsappLogo, title: 'Orçamento aprovado pelo WhatsApp', text: 'O cliente recebe o orçamento e responde com um toque. Você acompanha a resposta direto na ordem de serviço.', chat: true, module: 'whatsapp' },
+  { icon: CalendarCheck, title: 'Agenda com capacidade', text: 'Grade por horário, arraste para remarcar, capacidade de atendimentos ao mesmo tempo e horário por dia da semana, com feriados e férias.' },
+  { icon: Car, title: 'Clientes e veículos com ficha', text: 'Histórico, total gasto e próximos cuidados de cada um. Veículo com dados da FIPE, importação por planilha e junção de cadastros duplicados.' },
+  { icon: Heart, title: 'Cuidado com o cliente', text: 'Alertas de manutenção, lembretes automáticos de revisão e aniversário, e uma lista para a equipe ligar para quem não autorizou mensagens.', module: 'cuidado' },
+  { icon: Package, title: 'Catálogo e estoque', text: 'Peças e serviços com custo, margem e estoque mínimo, baixa automática na entrega, pacotes de serviço e relatório dos mais vendidos.' },
+  { icon: CurrencyCircleDollar, title: 'Financeiro sem planilha', text: 'Contas a pagar e a receber, parcelas das OS, fornecedores, fluxo de caixa e relatórios analíticos.', module: 'financeiro' },
+  { icon: Gauge, title: 'Produtividade e comissões', text: 'Tempo por técnico, eficiência, valor por hora, ocupação, metas, comissão e retornos em garantia, para decidir com dados.', module: 'produtividade' },
+  { icon: FileText, title: 'Documentos com a sua marca', text: 'Orçamento em PDF e OS impressa com logo, CPF/CNPJ, validade, garantia e os termos da sua oficina.' },
   { icon: Star, title: 'Avaliação depois da entrega', text: 'Peça a nota de cinco estrelas ao cliente quando o carro sai e construa reputação com fatos.' },
+  { icon: ClockCounterClockwise, title: 'Histórico e seus dados', text: 'Veja quem alterou o quê e quando, e exporte clientes, veículos, ordens de serviço e financeiro em planilha.', module: 'governanca' },
 ];
 
 const ROLES: Array<[IconType, string, string]> = [
@@ -85,7 +91,9 @@ const COMPARE: Array<[string, string]> = [
   ['Orçamento e aprovação perdidos em conversas', 'Aprovação por botão no WhatsApp, registrada na OS'],
   ['Histórico do carro na memória de quem atendeu', 'Histórico por veículo, com fotos e status'],
   ['Financeiro em planilhas soltas', 'Pagar, receber, parcelas e relatórios no mesmo sistema'],
-  ['Cliente só volta se lembrar', 'Alertas de manutenção para chamar na hora certa'],
+  ['Cliente só volta se lembrar', 'Lembretes de revisão e alertas de manutenção na hora certa'],
+  ['Ninguém sabe quanto cada mecânico rende', 'Tempo, eficiência, valor por hora e comissão por técnico'],
+  ['Estoque conferido só no olho', 'Estoque com baixa automática e aviso de estoque baixo'],
   ['Todo mundo vê tudo, ou ninguém vê nada', 'Perfis de acesso por função e por permissão'],
 ];
 
@@ -96,12 +104,13 @@ export function LandingPage() {
       <header className="dark sticky top-0 z-50 border-b border-white/10 bg-[#0f171f]/90 text-foreground backdrop-blur">
         <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between px-5 sm:px-8">
           <Link href="/" aria-label="Ofix, página inicial"><OfixLogo className="w-24 text-white" /></Link>
-          <nav aria-label="Seções" className="hidden items-center gap-8 text-sm font-semibold text-white/70 md:flex">
+          <nav aria-label="Seções" className="hidden items-center gap-5 whitespace-nowrap text-sm font-semibold text-white/70 md:flex lg:gap-8">
             <a href="#funcionalidades" className="hover:text-white">Funcionalidades</a>
             <a href="#como-funciona" className="hover:text-white">Como funciona</a>
-            <a href="#equipe" className="hover:text-white">Para sua equipe</a>
+            <a href="#equipe" className="hidden hover:text-white lg:inline">Para sua equipe</a>
+            <a href="#planos" className="hover:text-white">Planos</a>
             <a href="#duvidas" className="hover:text-white">Dúvidas</a>
-            <a href="#sobre" className="hover:text-white">Sobre</a>
+            <a href="#sobre" className="hidden hover:text-white lg:inline">Sobre</a>
           </nav>
           <div className="flex items-center gap-2">
             <Link href="/entrar" className="rounded-button px-3 py-2 text-sm font-semibold text-white/80 hover:text-white">Entrar</Link>
@@ -123,14 +132,14 @@ export function LandingPage() {
                 Mais controle<br />para <span className={Y}>sua oficina.</span>
               </h1>
               <p className="mt-6 max-w-xl text-lg leading-relaxed text-white/70">
-                <strong className="font-semibold text-white">O Ofix é um sistema de gestão para oficinas mecânicas que reúne</strong> ordens de serviço, orçamento aprovado pelo WhatsApp, agenda, clientes, veículos e financeiro em um só lugar, simples e rápido, feito para quem vive o dia a dia do pátio.
+                <strong className="font-semibold text-white">O Ofix é um sistema de gestão para oficinas mecânicas que reúne</strong> ordens de serviço, orçamento aprovado pelo WhatsApp, agenda, clientes, veículos, estoque, financeiro e produtividade da equipe em um só lugar, simples e rápido, feito para quem vive o dia a dia do pátio.
               </p>
               <div className="mt-9 flex flex-col gap-3 sm:flex-row sm:items-center">
                 <CtaButton />
                 <a href="#funcionalidades" className="inline-flex h-12 items-center justify-center rounded-button border border-white/20 px-6 text-base font-semibold text-white hover:bg-white/5">Ver o que o Ofix faz</a>
               </div>
               <ul className="mt-9 flex flex-wrap gap-x-6 gap-y-2 text-sm text-white/60">
-                {['Funciona no navegador', 'Sem instalar nada', 'Do orçamento ao financeiro'].map((t) => <li key={t} className="flex items-center gap-2"><Check weight="bold" className={`size-4 ${Y}`} />{t}</li>)}
+                {['Funciona no navegador', 'Sem instalar nada', `A partir de ${formatCurrencyBRL(PLANS.essencial.monthlyPriceCents)} por mês`].map((t) => <li key={t} className="flex items-center gap-2"><Check weight="bold" className={`size-4 ${Y}`} />{t}</li>)}
               </ul>
             </div>
             <DashboardMock className="relative" />
@@ -167,10 +176,11 @@ export function LandingPage() {
             Tudo o que sua oficina precisa, <span className="rounded-md bg-[#ffbe00] px-2 text-[#0f171f] [box-decoration-break:clone]">em um só lugar.</span>
           </Heading>
           <div className="mt-14 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            {FEATURES.map(({ icon: Icon, title, text, span = '', chat, flow }) => (
+            {FEATURES.map(({ icon: Icon, title, text, span = '', chat, flow, module }) => (
               <article key={title} className={`rounded-card border border-border bg-card p-7 shadow-card transition-[box-shadow,transform] duration-normal hover:-translate-y-0.5 hover:shadow-card-hover ${span}`}>
                 <span className="flex size-11 items-center justify-center rounded-button bg-[#0f171f] text-[#ffbe00]"><Icon weight="duotone" className="size-6" /></span>
                 <h3 className="mt-5 text-lg font-bold">{title}</h3>
+                {module && <p className="mt-2 inline-block rounded-full bg-muted px-2.5 py-0.5 text-xs font-semibold text-muted-foreground">A partir do plano {PLANS[MODULES[module].minPlan].name}</p>}
                 <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{text}</p>
                 {flow && <StatusFlowMock />}
                 {chat && <div className="mt-6"><QuoteChatMock /></div>}
@@ -282,6 +292,43 @@ export function LandingPage() {
               ))}
             </ul>
           </div>
+        </Section>
+
+        <Section id="planos" className="border-t border-border">
+          <Eyebrow>Planos</Eyebrow>
+          <Heading sub="Três planos, o mesmo sistema. Você começa pelo que precisa e sobe quando a oficina crescer, sem trocar de ferramenta e sem perder nada.">
+            Escolha o plano da <span className="rounded-md bg-[#ffbe00] px-2 text-[#0f171f] [box-decoration-break:clone]">sua oficina.</span>
+          </Heading>
+          <div className="mt-14 grid gap-5 lg:grid-cols-3">
+            {PLAN_CODES.map((code) => {
+              const plan = PLANS[code];
+              return (
+                <article key={code} className="flex flex-col rounded-card border border-border bg-card p-7 shadow-card">
+                  <h3 className="text-xl font-extrabold">{plan.name}</h3>
+                  <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{plan.tagline}</p>
+                  <p className="mt-6 text-4xl font-extrabold">{formatCurrencyBRL(plan.monthlyPriceCents)}<span className="text-base font-semibold text-muted-foreground"> por mês</span></p>
+                  <p className="mt-1 text-sm text-muted-foreground">ou {formatCurrencyBRL(planPriceCents(code, 'yearly'))} por ano, com {12 - YEARLY_MONTHS_CHARGED} meses grátis</p>
+                  <ul className="mt-6 flex-1 space-y-2.5 text-sm">
+                    <li className="flex gap-3"><Check weight="bold" aria-hidden className="mt-0.5 size-4 shrink-0 text-success" /><span><strong>Ordens de serviço, clientes, veículos, agenda e catálogo</strong></span></li>
+                    <li className="flex gap-3"><Check weight="bold" aria-hidden className="mt-0.5 size-4 shrink-0 text-success" />{plan.limits.users === null ? 'Usuários sem limite' : `Até ${plan.limits.users} usuários`}</li>
+                    <li className="flex gap-3"><Check weight="bold" aria-hidden className="mt-0.5 size-4 shrink-0 text-success" />{plan.limits.ordersPerMonth === null ? 'Ordens de serviço sem limite' : `Até ${plan.limits.ordersPerMonth} ordens de serviço por mês`}</li>
+                    <li className="flex gap-3"><Check weight="bold" aria-hidden className="mt-0.5 size-4 shrink-0 text-success" />{(plan.limits.photoStorageMb ?? 0) / 1024} GB de fotos</li>
+                    {MODULE_KEYS.map((key) => {
+                      const included = plan.modules.includes(key);
+                      return (
+                        <li key={key} className={`flex gap-3 ${included ? '' : 'text-muted-foreground'}`}>
+                          {included ? <Check weight="bold" aria-hidden className="mt-0.5 size-4 shrink-0 text-success" /> : <X weight="bold" aria-hidden className="mt-0.5 size-4 shrink-0" />}
+                          <span>{MODULES[key].label}<span className="sr-only">{included ? ' (incluído)' : ' (não incluído)'}</span></span>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                  <div className="mt-8"><CtaButton>Começar no {plan.name}</CtaButton></div>
+                </article>
+              );
+            })}
+          </div>
+          <p className="mx-auto mt-8 max-w-3xl text-center text-sm leading-relaxed text-muted-foreground">Valores por oficina. O cadastro não gera cobrança: você escolhe o plano dentro do sistema e paga com cartão, na página segura do Stripe. Cancele quando quiser: o sistema segue até o fim do período pago e seus dados continuam guardados.</p>
         </Section>
 
         <Section id="duvidas">

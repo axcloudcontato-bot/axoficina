@@ -2,7 +2,7 @@ export const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || 'https://ofix.axclo
 export const SITE_NAME = 'Ofix';
 export const SITE_TAGLINE = 'Mais controle para sua oficina';
 export const SITE_DESCRIPTION =
-  'Ordens de serviço, orçamento aprovado pelo WhatsApp, agenda, alertas de manutenção e financeiro em um só sistema para oficinas mecânicas.';
+  'Ordens de serviço, orçamento aprovado pelo WhatsApp, agenda, estoque, financeiro e produtividade da equipe em um só sistema para oficinas mecânicas.';
 
 /** Identidade da empresa responsável. As variáveis NEXT_PUBLIC_LEGAL_* / NEXT_PUBLIC_PRIVACY_EMAIL sobrescrevem. */
 const DEFAULT_ADDRESS = {
