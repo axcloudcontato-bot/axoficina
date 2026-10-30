@@ -81,3 +81,26 @@ describe('BillingWebhookController', () => {
     await expect(controller.receive(sign(body), request(undefined))).rejects.toThrow('indisponível');
   });
 });
+
+describe('StripeClient portal session', () => {
+  const body = (call: unknown[]) => new URLSearchParams(String((call[1] as { body: string }).body));
+  afterEach(() => jest.restoreAllMocks());
+
+  function client(env: Record<string, string>) {
+    const fetchMock = jest.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify({ url: 'https://billing.stripe.com/p/session/abc' }), { status: 200 }));
+    return { stripe: new StripeClient(new ConfigService({ STRIPE_SECRET_KEY: 'sk_test_x', STRIPE_WEBHOOK_SECRET: 'whsec_x', ...env })), fetchMock };
+  }
+
+  it('uses the Ofix portal configuration when one is set, so the shared default is left alone', async () => {
+    const { stripe, fetchMock } = client({ STRIPE_PORTAL_CONFIGURATION: 'bpc_ofix' });
+    await expect(stripe.portalSession('cus_1', 'https://ofix.test/x')).resolves.toBe('https://billing.stripe.com/p/session/abc');
+    expect(body(fetchMock.mock.calls[0]).get('configuration')).toBe('bpc_ofix');
+    expect(body(fetchMock.mock.calls[0]).get('customer')).toBe('cus_1');
+  });
+
+  it('falls back to the account default when none is set', async () => {
+    const { stripe, fetchMock } = client({});
+    await stripe.portalSession('cus_1', 'https://ofix.test/x');
+    expect(body(fetchMock.mock.calls[0]).has('configuration')).toBe(false);
+  });
+});

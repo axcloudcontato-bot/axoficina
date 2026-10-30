@@ -84,9 +84,11 @@ export class StripeClient {
     return end ? new Date(end * 1000) : null;
   }
 
-  // Stripe's own page to update the card and see receipts.
+  // Stripe's own page to update the card and see receipts. The account's default portal is shared with every other
+  // product on it, so the Ofix uses its own configuration (STRIPE_PORTAL_CONFIGURATION) when one is set.
   async portalSession(customerId: string, returnUrl: string): Promise<string> {
-    const session = await this.request<{ url?: string }>('POST', '/billing_portal/sessions', { customer: customerId, return_url: returnUrl });
+    const configuration = this.config.get<string>('STRIPE_PORTAL_CONFIGURATION') || undefined;
+    const session = await this.request<{ url?: string }>('POST', '/billing_portal/sessions', { customer: customerId, return_url: returnUrl, configuration });
     if (!session.url) throw new BadGatewayException('O serviço de cobrança não devolveu a página.');
     return session.url;
   }
