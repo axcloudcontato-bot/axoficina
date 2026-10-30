@@ -64,7 +64,10 @@ describe('Global SaaS subscriptions (e2e)', () => {
     expect(response.status).toBe(200);
     expect(response.body.total).toBe(2);
     expect(response.body.items).toHaveLength(1);
-    expect(response.body.items[0].subscription_status).toBe('unconfigured');
+    expect(response.body.items[0].subscription_status).toBe('trial');
+    const trialDays = (new Date(response.body.items[0].subscription_due_at).getTime() - Date.now()) / 86_400_000;
+    expect(trialDays).toBeGreaterThan(13);
+    expect(trialDays).toBeLessThanOrEqual(14);
     expect(response.body.items[0]).not.toHaveProperty('smtp_password');
     expect(response.body.items[0]).not.toHaveProperty('wa_akg_api_key');
     expect((await api().get('/api/v1/admin/subscriptions').query({ limit: 101 }).set('Authorization', auth())).status).toBe(400);
