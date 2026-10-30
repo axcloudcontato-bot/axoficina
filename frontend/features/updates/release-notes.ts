@@ -1,5 +1,11 @@
 export const RELEASE_NOTES = [
   {
+    id: '2026-10-30-configuracoes-visao-geral', date: '2026-10-30', title: "Configurações: visão geral mais enxuta",
+    items: [
+      "A visão geral das Configurações não repete mais os atalhos que já estão nas abas do topo. Ficam o andamento da implantação, os ajustes de outras telas e os alertas de lembretes.",
+    ],
+  },
+  {
     id: '2026-10-30-conta-historico', date: '2026-10-30', title: "Conta da oficina: aparelhos conectados, assinatura, exportação e histórico",
     items: [
       "Minha conta mostra os aparelhos em que a sua conta está aberta. Dá para desconectar um deles ou sair de todos os outros de uma vez, útil depois de perder um celular.",
