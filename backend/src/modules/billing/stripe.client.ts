@@ -1,4 +1,4 @@
-import { BadGatewayException, Injectable, ServiceUnavailableException } from '@nestjs/common';
+import { BadGatewayException, Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { createHmac, timingSafeEqual } from 'node:crypto';
 
@@ -36,6 +36,8 @@ interface StripeSubscription { id: string; current_period_end?: number; items: {
 // The only place that talks to Stripe. The secret key comes from the server environment and goes nowhere else.
 @Injectable()
 export class StripeClient {
+  private readonly logger = new Logger(StripeClient.name);
+
   constructor(private readonly config: ConfigService) {}
 
   get enabled(): boolean {
@@ -103,10 +105,16 @@ export class StripeClient {
         headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/x-www-form-urlencoded', ...(idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : {}) },
         body: body ? formEncode(body).join('&') : undefined,
       });
-    } catch {
+    } catch (error) {
+      this.logger.warn(`${method} ${path} sem resposta: ${error instanceof Error ? error.name : 'erro'}`);
       throw new BadGatewayException('Não foi possível falar com o serviço de cobrança agora. Tente novamente em instantes.');
     }
     const payload = (await response.json().catch(() => null)) as (T & { error?: { message?: string } }) | null;
+    if (!response.ok || !payload) {
+      // The provider's reason goes to the server log (never the key or the body we sent), so a failed call can be diagnosed.
+      const reason = (payload as { error?: { code?: string; message?: string } } | null)?.error;
+      this.logger.warn(`${method} ${path} -> ${response.status} ${reason?.code ?? ''} ${reason?.message ?? ''}`.trim());
+    }
     if (!response.ok || !payload) throw new BadGatewayException(payload?.error?.message ?? 'O serviço de cobrança recusou a operação.');
     return payload;
   }
