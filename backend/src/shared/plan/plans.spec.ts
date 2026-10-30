@@ -17,3 +17,13 @@ describe('plans', () => {
     expect(entitledModules('profissional', ['financeiro'])).toEqual(['financeiro', 'produtividade', 'cuidado']);
   });
 });
+
+describe('cancelled subscriptions', () => {
+  const { accessStatus } = jest.requireActual('@oficina/contracts');
+  it('keep working until the period that was paid for ends', () => {
+    const now = new Date('2026-10-30T12:00:00Z');
+    expect(accessStatus({ status: 'canceled', dueAt: '2026-11-15T12:00:00Z' }, now).state).toBe('active');
+    expect(accessStatus({ status: 'canceled', dueAt: '2026-10-20T12:00:00Z' }, now).state).toBe('suspended');
+    expect(accessStatus({ status: 'canceled', dueAt: null }, now).state).toBe('suspended');
+  });
+});

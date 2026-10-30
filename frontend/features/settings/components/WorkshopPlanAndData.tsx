@@ -28,7 +28,7 @@ const DATASETS: Record<DataExportDataset, { title: string; detail: string }> = {
 };
 
 // The workshop's plan and a way to take its own records away: no one is locked in.
-export function WorkshopPlanAndData() {
+export function WorkshopPlanAndData({ children }: { children?: React.ReactNode }) {
   const query = useWorkshopSubscription();
   const entitlements = useEntitlements();
   const [busy, setBusy] = useState<DataExportDataset | null>(null);
@@ -54,16 +54,17 @@ export function WorkshopPlanAndData() {
         <div className="mt-3 flex flex-wrap items-center gap-3"><span className="text-xl font-bold capitalize">{resolvePlan(plan.plan).name}</span><span className={`rounded-full px-2.5 py-1 text-xs font-bold ${STATUS[plan.status].tone}`}>{STATUS[plan.status].label}</span></div>
         <dl className="mt-4 grid gap-4 text-sm sm:grid-cols-3">
           <div><dt className="text-xs font-semibold text-text-muted">Valor</dt><dd className="mt-1 font-semibold">{plan.amountCents > 0 ? `${formatCurrencyBRL(plan.amountCents)} por ${plan.cycle === 'yearly' ? 'ano' : 'mês'}` : 'A definir'}</dd></div>
-          <div><dt className="text-xs font-semibold text-text-muted">{plan.status === 'trial' ? 'O teste termina em' : 'Próximo vencimento'}</dt><dd className="mt-1 font-semibold">{plan.dueAt ? new Date(plan.dueAt).toLocaleDateString('pt-BR') : '—'}</dd></div>
+          <div><dt className="text-xs font-semibold text-text-muted">{plan.status === 'trial' ? 'O teste termina em' : plan.status === 'canceled' ? 'Acesso até' : 'Próximo vencimento'}</dt><dd className="mt-1 font-semibold">{plan.dueAt ? new Date(plan.dueAt).toLocaleDateString('pt-BR') : '—'}</dd></div>
           <div><dt className="text-xs font-semibold text-text-muted">Cliente desde</dt><dd className="mt-1 font-semibold">{new Date(plan.customerSince).toLocaleDateString('pt-BR')}</dd></div>
         </dl>
         {plan.status === 'past_due' && <p role="alert" className="mt-4 rounded-button bg-danger-subtle p-3 text-sm text-danger">O pagamento está em atraso. Fale com o suporte do Ofix para regularizar e evitar a suspensão do acesso.</p>}
         {entitlements.data && <section aria-label="Uso do plano" className="mt-4"><h3 className="text-xs font-semibold text-text-muted">Uso do plano</h3><dl className="mt-2 grid gap-3 text-sm sm:grid-cols-3">{usageRows(entitlements.data).map((row) => <div key={row.kind}><dt className="text-xs text-text-muted">{row.label}</dt><dd className={`mt-0.5 font-semibold ${row.status === 'over' ? 'text-danger' : row.status === 'near' ? 'text-warning-strong' : ''}`}>{usageText(row)}</dd></div>)}</dl></section>}
         <section aria-label="O que o plano inclui" className="mt-4"><h3 className="text-xs font-semibold text-text-muted">O que o seu plano inclui</h3><ul className="mt-2 grid gap-1.5 text-sm sm:grid-cols-2">{MODULE_KEYS.map((key) => { const included = entitlements.hasModule(key); return <li key={key} className={`flex items-center gap-2 ${included ? '' : 'text-text-muted'}`}><span aria-hidden="true">{included ? '✓' : '🔒'}</span><span>{MODULES[key].label}</span><span className="sr-only">{included ? ' (incluído)' : ' (fora do plano)'}</span></li>; })}</ul></section>
-        <p className="mt-4 text-xs text-text-muted">Para mudar de plano, ver faturas ou cancelar, fale com o suporte do Ofix.</p>
+        <p className="mt-4 text-xs text-text-muted">Troca de plano, faturas e cancelamento ficam logo abaixo. Se algo não funcionar, fale com o suporte do Ofix.</p>
       </>}
     </section>
 
+    {children}
     {!entitlements.hasModule('governanca') ? <ModuleLocked module="governanca" /> : <section aria-label="Exportar dados" className="rounded-card border border-border bg-card p-5 shadow-sm">
       <h2 className="text-base font-bold">Exportar os dados da oficina</h2>
       <p className="mt-1 text-sm text-text-muted">Baixe os seus registros em planilha (CSV, abre no Excel e no Google Planilhas). Os dados são seus: faça uma cópia quando quiser.</p>

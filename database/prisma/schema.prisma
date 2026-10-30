@@ -162,6 +162,9 @@ model Tenant {
   maintenanceAlertMonths Int @default(6) @map("maintenance_alert_months")
   plan                String    @default("completo")
   extraModules        String[]  @default([]) @map("extra_modules")
+  billingCustomerId     String? @map("billing_customer_id")
+  billingSubscriptionId String? @map("billing_subscription_id")
+  pendingPlan           String? @map("pending_plan")
   subscriptionStatus      String    @default("unconfigured") @map("subscription_status")
   subscriptionAmountCents Int       @default(0) @map("subscription_amount_cents")
   subscriptionCycle       String    @default("monthly") @map("subscription_cycle")
@@ -947,4 +950,21 @@ model Appointment {
   @@index([customerId])
   @@index([vehicleId])
   @@map("appointments")
+}
+
+// What the payment provider says about each charge of a workshop's subscription, kept to show invoices without asking the provider.
+model BillingInvoice {
+  id                String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  tenantId          String    @map("tenant_id") @db.Uuid
+  providerPaymentId String    @unique @map("provider_payment_id")
+  amountCents       Int       @map("amount_cents")
+  dueDate           DateTime  @map("due_date") @db.Date
+  status            String
+  paidAt            DateTime? @map("paid_at") @db.Timestamptz
+  invoiceUrl        String?   @map("invoice_url")
+  createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt         DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@index([tenantId, dueDate(sort: Desc)], map: "billing_invoices_tenant_due_idx")
+  @@map("billing_invoices")
 }

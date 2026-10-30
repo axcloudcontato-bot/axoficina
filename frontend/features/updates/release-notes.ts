@@ -1,5 +1,14 @@
 export const RELEASE_NOTES = [
   {
+    id: '2026-10-30-planos-cobranca', date: '2026-10-30', title: "Contratar e trocar de plano pelo sistema",
+    items: [
+      "Assinatura e dados: o administrador escolhe o plano (Essencial, Profissional ou Completo), mensal ou anual, e paga na página segura do Stripe, com cartão.",
+      "Subir de plano vale na hora e o valor proporcional é cobrado. Descer de plano vale a partir do próximo pagamento, sem perder nada antes.",
+      "As faturas ficam listadas na tela, com a situação de cada uma e o link para o recibo. Em Forma de pagamento e recibos dá para trocar o cartão.",
+      "Cancelar a assinatura mantém o sistema funcionando até o fim do período já pago.",
+    ],
+  },
+  {
     id: '2026-10-30-planos-limites', date: '2026-10-30', title: "Planos: limites, avisos e Cuidado com o cliente",
     items: [
       "Assinatura e dados mostra quanto do plano você já usou: usuários, ordens de serviço do mês e espaço de fotos. O sistema avisa a todos os administradores quando passa de 80% e quando o limite é atingido.",

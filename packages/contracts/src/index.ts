@@ -48,3 +48,4 @@ export * from './document';
 export * from './agenda';
 export * from './workshop-account';
 export * from './plans';
+export * from './billing';

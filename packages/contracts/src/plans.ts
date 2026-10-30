@@ -61,7 +61,10 @@ export interface AccessStatus {
 }
 
 export function accessStatus(subscription: { status: string; dueAt: Date | string | null }, now: Date = new Date()): AccessStatus {
-  if (subscription.status === 'canceled') return { state: 'suspended', daysLeft: null, reason: 'canceled' };
+  if (subscription.status === 'canceled') {
+    const paidUntil = subscription.dueAt ? new Date(subscription.dueAt).getTime() : 0;
+    return paidUntil > now.getTime() ? { state: 'active', daysLeft: null, reason: null } : { state: 'suspended', daysLeft: null, reason: 'canceled' };
+  }
   if (subscription.status !== 'past_due' && subscription.status !== 'trial') return { state: 'active', daysLeft: null, reason: null };
   const reason = subscription.status === 'trial' ? 'trial_ended' : 'past_due';
   if (!subscription.dueAt) return subscription.status === 'trial' ? { state: 'active', daysLeft: null, reason: null } : { state: 'grace', daysLeft: null, reason };
@@ -86,3 +89,9 @@ export function limitStatus(used: number, limit: number | null): LimitStatus {
 }
 
 export interface PlanStatusResponse extends EntitlementsResponse { access: AccessStatus; usage: PlanUsage }
+
+// A year is charged as ten months: two are on the house.
+export const YEARLY_MONTHS_CHARGED = 10;
+export function planPriceCents(code: PlanCode, cycle: 'monthly' | 'yearly'): number {
+  return PLANS[code].monthlyPriceCents * (cycle === 'yearly' ? YEARLY_MONTHS_CHARGED : 1);
+}
