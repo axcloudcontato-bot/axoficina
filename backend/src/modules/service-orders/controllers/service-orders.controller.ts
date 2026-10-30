@@ -35,6 +35,7 @@ import { ConfigureServiceOrderPaymentDto, ConfirmServiceOrderInstallmentDto, Lis
 import { DeleteServiceOrderPhotoDto, GetServiceOrderPhotoDto, ListServiceOrderPhotosDto, UploadServiceOrderPhotoDto } from '../dto/service-order-photo.dto';
 import { ServiceOrderPhotoManager } from '../managers/service-order-photo.manager';
 import { ProductivityService } from '../services/productivity.service';
+import { PlanLimit } from '../../../shared/decorators/plan-limit.decorator';
 
 // Todos os 4 papéis têm acesso total a todo endpoint — divergência
 // deliberada do padrão de Clientes/Veículos (spec: "todos os papéis fazem
@@ -52,6 +53,7 @@ export class ServiceOrdersController {
 
   @Roles(...ALL_ROLES)
   @Permissions('service_orders.manage')
+  @PlanLimit('orders')
   @Post('service-orders')
   async create(@CurrentUser() actingUser: AuthenticatedUser, @Body() body: CreateServiceOrderDto): Promise<{ serviceOrder: ServiceOrderResponse }> {
     return this.serviceOrderManager.create(actingUser, body);
@@ -346,6 +348,7 @@ export class ServiceOrdersController {
 
   @Roles(...ALL_ROLES)
   @Permissions('service_orders.manage')
+  @PlanLimit('photos')
   @Post('service-orders/photos')
   @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 8 * 1024 * 1024, files: 1 } }))
   uploadPhoto(@CurrentUser() user: AuthenticatedUser, @Body() body: UploadServiceOrderPhotoDto, @UploadedFile() file?: Express.Multer.File) {

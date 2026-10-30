@@ -7,6 +7,7 @@ import { TenantRepository } from '../../iam/repositories/tenant.repository';
 import { SecretEncryptionService } from './secret-encryption.service';
 import type { AuthenticatedUser } from '../../../shared/guards/jwt-auth.guard';
 import { AuditLogService } from '../../../shared/audit-log/audit-log.service';
+import { EntitlementsService } from '../../../shared/plan/entitlements.service';
 
 export interface WaAkgConnection { baseUrl: string; sessionId: string; apiKey: string }
 const clean = (value?: string) => value?.trim() || null;
@@ -18,6 +19,7 @@ export class WaAkgService {
     private readonly secrets: SecretEncryptionService,
     private readonly config: ConfigService,
     private readonly audit: AuditLogService,
+    private readonly entitlements: EntitlementsService,
   ) {}
 
   async getSettings(tenantId: string): Promise<WhatsAppSettingsResponse> {
@@ -59,6 +61,8 @@ export class WaAkgService {
   async getConnection(tenantId: string, requireEnabled = true): Promise<WaAkgConnection | null> {
     const tenant = await this.requireTenant(tenantId);
     if (requireEnabled && !tenant.waAkgEnabled) return null;
+    // Every automatic or manual send asks for the connection here, so a plan without WhatsApp stops them all in one place.
+    if (requireEnabled && !(await this.entitlements.forTenant(tenantId)).modules.includes('whatsapp')) return null;
     if (!tenant.waAkgBaseUrl || !tenant.waAkgSessionId || !tenant.waAkgApiKey) throw new BadRequestException('Configure a conexão com o WA-AKG antes de continuar.');
     return { baseUrl: this.normalizeBaseUrl(tenant.waAkgBaseUrl), sessionId: tenant.waAkgSessionId, apiKey: this.secrets.decrypt(tenant.waAkgApiKey) };
   }

@@ -9,6 +9,7 @@ import { AUTH_THROTTLE } from '../../../shared/constants/throttle.constants';
 import type { AuthenticatedUser } from '../../../shared/guards/jwt-auth.guard';
 import { UserManager } from '../managers/user.manager';
 import { AcceptInviteDto, InviteUserDto, ManageUserAccessDto, RenameUserDto, UserListDto } from '../dto/user.dto';
+import { PlanLimit } from '../../../shared/decorators/plan-limit.decorator';
 
 @Controller('api/v1/users')
 export class UsersController {
@@ -16,6 +17,7 @@ export class UsersController {
 
   @Roles('ADMIN', 'MANAGER')
   @Permissions('team.manage')
+  @PlanLimit('users')
   @Post('invite')
   async invite(@CurrentUser() actingUser: AuthenticatedUser, @Body() body: InviteUserDto): Promise<InviteUserResponse> {
     return this.userManager.invite(actingUser, body);
@@ -53,7 +55,7 @@ export class UsersController {
     return this.userManager.disable(actingUser, body);
   }
 
-  @Roles('ADMIN', 'MANAGER') @Permissions('team.manage') @HttpCode(HttpStatus.OK) @Post('enable')
+  @Roles('ADMIN', 'MANAGER') @Permissions('team.manage') @PlanLimit('users') @HttpCode(HttpStatus.OK) @Post('enable')
   enable(@CurrentUser() actingUser: AuthenticatedUser, @Body() body: ManageUserAccessDto) { return this.userManager.enable(actingUser, body); }
 
   @Roles('ADMIN', 'MANAGER') @Permissions('team.manage') @HttpCode(HttpStatus.OK) @Post('resend-invite')

@@ -8,6 +8,7 @@ import { CustomerManager, type CustomerViewer } from '../managers/customer.manag
 import { RoleRepository } from '../../iam/repositories/role.repository';
 import { UserRepository } from '../../iam/repositories/user.repository';
 import { CreateCustomerDto, CustomerArchiveImpactDto, CustomerListDto, CustomerOverviewDto, ImportCustomersDto, MergeCustomersDto, DeleteCustomerDto, GetCustomerDto, RestoreCustomerDto, UpdateCustomerDto } from '../dto/customer.dto';
+import { PlanLimit } from '../../../shared/decorators/plan-limit.decorator';
 
 // Um único controller sob /api/v1 (não /api/v1/customers) porque a rota de
 // leitura individual é singular (`/customer`) e as demais são plurais
@@ -27,6 +28,7 @@ export class CustomersController {
 
   @Roles('ADMIN', 'MANAGER', 'FRONT_DESK')
   @Permissions('customers.manage')
+  @PlanLimit('write')
   @Post('customers')
   async create(@CurrentUser() actingUser: AuthenticatedUser, @Body() body: CreateCustomerDto): Promise<{ customer: CustomerResponse }> {
     return this.customerManager.create(actingUser, body);
@@ -60,6 +62,7 @@ export class CustomersController {
   @Roles('ADMIN', 'MANAGER', 'FRONT_DESK')
   @Permissions('customers.manage')
   @HttpCode(HttpStatus.OK)
+  @PlanLimit('write')
   @Post('customers/import')
   async importRows(@CurrentUser() actingUser: AuthenticatedUser, @Body() body: ImportCustomersDto): Promise<ImportCustomersResponse> {
     return this.customerManager.importRows(actingUser, body);

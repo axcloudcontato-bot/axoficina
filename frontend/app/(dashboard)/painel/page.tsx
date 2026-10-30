@@ -11,6 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { todayRange } from '@/features/dashboard/dashboard-model';
 import { useDashboardBusinessSummary, useDashboardToday } from '@/features/dashboard/hooks/use-dashboard-summary';
 import { useAppointments } from '@/features/appointments/hooks/use-appointments';
+import { useEntitlements } from '@/features/plan/use-entitlements';
 import { useCareForecast } from '@/features/customer-care/use-customer-care';
 import { StatusBadge } from '@/features/service-orders/components/StatusBadge';
 import { NewServiceOrderQuickStart } from '@/features/service-orders/components/NewServiceOrderQuickStart';
@@ -37,7 +38,8 @@ export default function DashboardPage() {
   const canManageReceipts = hasPermission(user, 'receipts.manage');
   const canManageServiceOrders = hasPermission(user, 'service_orders.manage');
   const canViewFinance = hasPermission(user, 'finance.view');
-  const canViewAlerts = hasPermission(user, 'alerts.view');
+  const { hasModule } = useEntitlements();
+  const canViewAlerts = hasPermission(user, 'alerts.view') && hasModule('cuidado');
   const [range, setRange] = useState(() => todayRange());
   // One request carries the exact counts, the prioritized rows and the workload.
   const today = useDashboardToday(range);

@@ -6,10 +6,11 @@ import { maintenanceAlertsApi } from '../api/maintenance-alerts-api';
 
 const MAINTENANCE_ALERTS_LIST_KEY = 'maintenance-alerts-list';
 
-export function useMaintenanceAlertsList(request: MaintenanceAlertListRequest) {
+export function useMaintenanceAlertsList(request: MaintenanceAlertListRequest, enabled = true) {
   return useQuery({
     queryKey: [MAINTENANCE_ALERTS_LIST_KEY, request],
     queryFn: () => maintenanceAlertsApi.list(request),
+    enabled,
     placeholderData: (previousData) => previousData,
   });
 }

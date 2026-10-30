@@ -12,6 +12,7 @@ vi.mock('@/features/service-orders/hooks/use-service-orders', () => ({
   useDueServiceOrderInstallments: () => ({ data: { items: [], total: 0 } }),
   useServiceOrdersList: () => ({ data: undefined, isFetching: false }),
 }));
+vi.mock('@/features/plan/use-entitlements', () => ({ useEntitlements: () => ({ hasModule: () => true, data: undefined }) }));
 vi.mock('@/features/auth/hooks/use-auth', () => ({ useLogout: () => ({ mutate: vi.fn() }) }));
 vi.mock('@/features/notifications/hooks/use-customer-reply-notifications', () => ({ useCustomerReplyNotifications: () => ({ enabled: false, unreadCount: 0 }) }));
 

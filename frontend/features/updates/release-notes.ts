@@ -1,5 +1,14 @@
 export const RELEASE_NOTES = [
   {
+    id: '2026-10-30-planos-limites', date: '2026-10-30', title: "Planos: limites, avisos e Cuidado com o cliente",
+    items: [
+      "Assinatura e dados mostra quanto do plano você já usou: usuários, ordens de serviço do mês e espaço de fotos. O sistema avisa a todos os administradores quando passa de 80% e quando o limite é atingido.",
+      "Cuidado com o cliente (alertas de manutenção e lembretes) agora faz parte dos planos Profissional e Completo.",
+      "Pagamento em atraso: o administrador vê um aviso com os dias que faltam. Passados 7 dias do vencimento, o sistema fica só para consulta: nada novo pode ser cadastrado, mas os dados continuam guardados e podem ser exportados.",
+      "O WhatsApp só envia mensagens para as oficinas cujo plano inclui o módulo.",
+    ],
+  },
+  {
     id: '2026-10-30-planos', date: '2026-10-30', title: "Planos Essencial, Profissional e Completo",
     items: [
       "Assinatura e dados mostra o nome do seu plano e quais módulos ele inclui: Financeiro, Produtividade, Cuidado com o cliente, WhatsApp e Histórico e exportação.",

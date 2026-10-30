@@ -6,6 +6,7 @@ import { ArrowLeft, ArrowsLeftRight, ClipboardText, PencilSimple } from '@phosph
 import { formatPlate, type CareServiceKey, type VehicleResponse } from '@oficina/contracts';
 import { Button } from '@/components/ui/button';
 import { hasPermission } from '@/features/auth/permissions';
+import { useEntitlements } from '@/features/plan/use-entitlements';
 import { CareServiceDialog } from '@/features/customer-care/CareServiceDialog';
 import { newServiceOrderHref } from '@/features/customers/format-customer';
 import { ServiceOrdersTable } from '@/features/service-orders/components/ServiceOrdersTable';
@@ -33,7 +34,8 @@ export function VehicleProfile({ vehicle }: { vehicle: VehicleResponse }) {
   const [editing, setEditing] = useState(false);
   const [transferring, setTransferring] = useState(false);
   // Registering a care already done (also the way to correct a deadline for this car). Needs the care permission.
-  const canRecordCare = hasPermission(user, 'alerts.manage');
+  const { hasModule } = useEntitlements();
+  const canRecordCare = hasPermission(user, 'alerts.manage') && hasModule('cuidado');
   const [recording, setRecording] = useState<{ serviceKey?: CareServiceKey } | undefined>();
   const history = useServiceOrdersList({ vehicleId: vehicle.id, offset, limit: HISTORY_PAGE_SIZE });
   const data = overview.data;

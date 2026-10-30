@@ -7,6 +7,8 @@ import { planApi } from './plan-api';
 const MODULE_ROUTES: ReadonlyArray<readonly [string, ModuleKey]> = [
   ['/financeiro', 'financeiro'],
   ['/produtividade', 'produtividade'],
+  ['/alertas-de-manutencao', 'cuidado'],
+  ['/relacionamento', 'cuidado'],
   ['/configuracoes/whatsapp', 'whatsapp'],
   ['/configuracoes/historico', 'governanca'],
 ];

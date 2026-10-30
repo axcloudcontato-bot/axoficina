@@ -1,16 +1,18 @@
 import { Controller, Get, Header } from '@nestjs/common';
-import type { EntitlementsResponse } from '@oficina/contracts';
+import type { PlanStatusResponse } from '@oficina/contracts';
 import { CurrentUser } from '../decorators/current-user.decorator';
 import type { AuthenticatedUser } from '../guards/jwt-auth.guard';
 import { EntitlementsService } from './entitlements.service';
+import { PlanUsageService } from './plan-usage.service';
 
 @Controller('api/v1/plan')
 export class PlanController {
-  constructor(private readonly entitlements: EntitlementsService) {}
+  constructor(private readonly entitlements: EntitlementsService, private readonly usage: PlanUsageService) {}
 
-  // Every signed-in person: the menu uses it to show what the plan includes.
+  // Every signed-in person: the menu shows what the plan includes, the banners show how much of it is used.
   @Get() @Header('Cache-Control', 'no-store')
-  current(@CurrentUser() user: AuthenticatedUser): Promise<EntitlementsResponse> {
-    return this.entitlements.forTenant(user.tenantId);
+  async current(@CurrentUser() user: AuthenticatedUser): Promise<PlanStatusResponse> {
+    const [entitlements, usage] = await Promise.all([this.entitlements.forTenant(user.tenantId), this.usage.usage(user.tenantId)]);
+    return { ...entitlements, usage };
   }
 }

@@ -11,12 +11,14 @@ import { CustomerCarePlansService } from './customer-care-plans.service';
 import { CustomerCareAutomationService } from './customer-care-automation.service';
 import { CustomerCareForecastService } from './customer-care-forecast.service';
 import { CareDeliveriesDto, CareIdDto, CarePlansDto, CareTestSendDto, RecordCarePlanContactDto, CarePreviewDto, CareUnsubscribeDto, RecordCareServiceDto, ResolveCareDeliveryDto, UpdateCareSettingsDto } from './customer-care.dto';
+import { RequiresModule } from '../../shared/decorators/requires-module.decorator';
 
 class CarePageDto {
   @IsOptional() @Type(() => Number) @IsInt() @Min(0) @Max(10000000) planOffset: number = 0;
   @IsOptional() @Type(() => Number) @IsInt() @Min(0) @Max(10000000) deliveryOffset: number = 0;
 }
 @Controller('api/v1/customer-care')
+@RequiresModule('cuidado')
 @Roles('ADMIN', 'MANAGER', 'FRONT_DESK', 'MECHANIC')
 export class CustomerCareController {
   constructor(private readonly care: CustomerCareService, private readonly plans: CustomerCarePlansService, private readonly automation: CustomerCareAutomationService, private readonly forecast: CustomerCareForecastService) {}

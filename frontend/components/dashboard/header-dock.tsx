@@ -11,6 +11,7 @@ import { focusableElements, isTextInput, restoreFocus } from '@/lib/keyboard';
 import { NAVIGATION_DESTINATIONS, normalizeNavigationSearch } from '@/lib/navigation';
 import { hasPermission } from '@/features/auth/permissions';
 import { useLogout } from '@/features/auth/hooks/use-auth';
+import { useEntitlements } from '@/features/plan/use-entitlements';
 import { useMaintenanceAlertsList } from '@/features/maintenance-alerts/hooks/use-maintenance-alerts';
 import { useDueServiceOrderInstallments, useServiceOrdersList } from '@/features/service-orders/hooks/use-service-orders';
 import { useAuthStore } from '@/stores/auth-store';
@@ -89,7 +90,8 @@ export function HeaderDock() {
     return () => { document.removeEventListener('mousedown', clickOutside); document.removeEventListener('keydown', shortcut); };
   }, [view, closePanel, openPanel]);
 
-  const alerts = useMaintenanceAlertsList({ offset: 0, limit: 1, status: 'OPEN' });
+  const { hasModule } = useEntitlements();
+  const alerts = useMaintenanceAlertsList({ offset: 0, limit: 1, status: 'OPEN' }, hasModule('cuidado'));
   const openNotifications = useCallback(() => openPanel('alerts'), [openPanel]);
   const replies = useCustomerReplyNotifications(openNotifications);
   const canManageReceipts = hasPermission(user, 'receipts.manage');

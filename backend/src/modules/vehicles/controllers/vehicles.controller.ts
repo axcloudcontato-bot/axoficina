@@ -6,6 +6,7 @@ import { Permissions } from '../../../shared/decorators/permissions.decorator';
 import type { AuthenticatedUser } from '../../../shared/guards/jwt-auth.guard';
 import { VehicleManager } from '../managers/vehicle.manager';
 import { CreateVehicleDto, DeleteVehicleDto, GetVehicleDto, ImportVehiclesDto, RestoreVehicleDto, TransferVehicleDto, UpdateVehicleDto, VehicleArchiveImpactDto, VehicleListDto, VehicleOverviewDto } from '../dto/vehicle.dto';
+import { PlanLimit } from '../../../shared/decorators/plan-limit.decorator';
 
 // Mesmo padrão de agrupamento de CustomersController: um único controller
 // sob /api/v1 porque a rota de leitura individual é singular (/vehicle) e
@@ -16,6 +17,7 @@ export class VehiclesController {
 
   @Roles('ADMIN', 'MANAGER', 'FRONT_DESK')
   @Permissions('vehicles.manage')
+  @PlanLimit('write')
   @Post('vehicles')
   async create(@CurrentUser() actingUser: AuthenticatedUser, @Body() body: CreateVehicleDto): Promise<{ vehicle: VehicleResponse }> {
     return this.vehicleManager.create(actingUser, body);
@@ -56,6 +58,7 @@ export class VehiclesController {
   @Roles('ADMIN', 'MANAGER', 'FRONT_DESK')
   @Permissions('vehicles.manage')
   @HttpCode(HttpStatus.OK)
+  @PlanLimit('write')
   @Post('vehicles/import')
   async importRows(@CurrentUser() actingUser: AuthenticatedUser, @Body() body: ImportVehiclesDto): Promise<ImportVehiclesResponse> {
     return this.vehicleManager.importRows(actingUser, body);

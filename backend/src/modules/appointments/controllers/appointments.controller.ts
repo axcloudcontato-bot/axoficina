@@ -2,6 +2,7 @@ import { Body, Controller, Get, HttpCode, HttpStatus, Post } from '@nestjs/commo
 import { Roles } from '../../../shared/decorators/roles.decorator';
 import { CurrentUser } from '../../../shared/decorators/current-user.decorator';
 import { Permissions } from '../../../shared/decorators/permissions.decorator';
+import { PlanLimit } from '../../../shared/decorators/plan-limit.decorator';
 import type { AuthenticatedUser } from '../../../shared/guards/jwt-auth.guard';
 import { AppointmentManager } from '../managers/appointment.manager';
 import { AppointmentNotificationService } from '../services/appointment-notification.service';
@@ -33,6 +34,7 @@ export class AppointmentsController {
 
   @Roles(...ALL_ROLES)
   @Permissions('appointments.manage')
+  @PlanLimit('write')
   @Post()
   create(@CurrentUser() user: AuthenticatedUser, @Body() body: CreateAppointmentDto) {
     return this.manager.create(user, body);

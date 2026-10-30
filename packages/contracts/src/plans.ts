@@ -49,3 +49,40 @@ export interface EntitlementsResponse {
   modules: ModuleKey[];
   limits: PlanLimits;
 }
+
+// A late or ended subscription is not cut off at once: the workshop gets a few days, then can only look at what it has.
+export const ACCESS_GRACE_DAYS = 7;
+export type AccessState = 'active' | 'grace' | 'suspended';
+export interface AccessStatus {
+  state: AccessState;
+  /** Days left before it turns to view-only; only while in grace and when a due date is known. */
+  daysLeft: number | null;
+  reason: 'past_due' | 'trial_ended' | 'canceled' | null;
+}
+
+export function accessStatus(subscription: { status: string; dueAt: Date | string | null }, now: Date = new Date()): AccessStatus {
+  if (subscription.status === 'canceled') return { state: 'suspended', daysLeft: null, reason: 'canceled' };
+  if (subscription.status !== 'past_due' && subscription.status !== 'trial') return { state: 'active', daysLeft: null, reason: null };
+  const reason = subscription.status === 'trial' ? 'trial_ended' : 'past_due';
+  if (!subscription.dueAt) return subscription.status === 'trial' ? { state: 'active', daysLeft: null, reason: null } : { state: 'grace', daysLeft: null, reason };
+  const lateDays = (now.getTime() - new Date(subscription.dueAt).getTime()) / 86_400_000;
+  if (lateDays <= 0) return { state: 'active', daysLeft: null, reason: null };
+  if (lateDays >= ACCESS_GRACE_DAYS) return { state: 'suspended', daysLeft: null, reason };
+  return { state: 'grace', daysLeft: Math.ceil(ACCESS_GRACE_DAYS - lateDays), reason };
+}
+
+export const LIMIT_KINDS = ['users', 'orders', 'photos'] as const;
+export type LimitKind = (typeof LIMIT_KINDS)[number];
+
+export interface PlanUsage { users: number; ordersThisMonth: number; photoStorageMb: number }
+
+export const NEAR_LIMIT_RATIO = 0.8;
+export type LimitStatus = 'ok' | 'near' | 'over';
+
+export function limitStatus(used: number, limit: number | null): LimitStatus {
+  if (limit === null) return 'ok';
+  if (used >= limit) return 'over';
+  return used >= limit * NEAR_LIMIT_RATIO ? 'near' : 'ok';
+}
+
+export interface PlanStatusResponse extends EntitlementsResponse { access: AccessStatus; usage: PlanUsage }

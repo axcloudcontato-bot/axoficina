@@ -6,6 +6,7 @@ import { Permissions } from '../../../shared/decorators/permissions.decorator';
 import type { AuthenticatedUser } from '../../../shared/guards/jwt-auth.guard';
 import { MaintenanceAlertManager } from '../managers/maintenance-alert.manager';
 import { DismissMaintenanceAlertDto, MaintenanceAlertContactsDto, MaintenanceAlertListDto, RecordMaintenanceAlertContactDto, ReopenMaintenanceAlertDto, ResolveMaintenanceAlertDto, SnoozeMaintenanceAlertDto } from '../dto/maintenance-alert.dto';
+import { RequiresModule } from '../../../shared/decorators/requires-module.decorator';
 
 // Todos os 4 papéis têm acesso total — mesmo padrão de Ordem de Serviço
 // (spec: recepção, gerente e mecânico todos precisam ver quem está devendo
@@ -13,6 +14,7 @@ import { DismissMaintenanceAlertDto, MaintenanceAlertContactsDto, MaintenanceAle
 const ALL_ROLES = ['ADMIN', 'MANAGER', 'FRONT_DESK', 'MECHANIC'] as const;
 
 @Controller('api/v1')
+@RequiresModule('cuidado')
 export class MaintenanceAlertsController {
   constructor(private readonly maintenanceAlertManager: MaintenanceAlertManager) {}
 

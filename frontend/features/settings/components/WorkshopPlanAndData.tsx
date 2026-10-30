@@ -5,6 +5,7 @@ import { DownloadSimple } from '@phosphor-icons/react';
 import { toast } from 'sonner';
 import { DATA_EXPORT_DATASETS, MODULES, MODULE_KEYS, resolvePlan, type DataExportDataset, type WorkshopSubscriptionResponse } from '@oficina/contracts';
 import { useEntitlements } from '@/features/plan/use-entitlements';
+import { usageRows, usageText } from '@/features/plan/usage';
 import { ModuleLocked } from '@/features/plan/ModuleLocked';
 import { Button } from '@/components/ui/button';
 import { extractErrorMessage } from '@/lib/api/client';
@@ -57,6 +58,7 @@ export function WorkshopPlanAndData() {
           <div><dt className="text-xs font-semibold text-text-muted">Cliente desde</dt><dd className="mt-1 font-semibold">{new Date(plan.customerSince).toLocaleDateString('pt-BR')}</dd></div>
         </dl>
         {plan.status === 'past_due' && <p role="alert" className="mt-4 rounded-button bg-danger-subtle p-3 text-sm text-danger">O pagamento está em atraso. Fale com o suporte do Ofix para regularizar e evitar a suspensão do acesso.</p>}
+        {entitlements.data && <section aria-label="Uso do plano" className="mt-4"><h3 className="text-xs font-semibold text-text-muted">Uso do plano</h3><dl className="mt-2 grid gap-3 text-sm sm:grid-cols-3">{usageRows(entitlements.data).map((row) => <div key={row.kind}><dt className="text-xs text-text-muted">{row.label}</dt><dd className={`mt-0.5 font-semibold ${row.status === 'over' ? 'text-danger' : row.status === 'near' ? 'text-warning-strong' : ''}`}>{usageText(row)}</dd></div>)}</dl></section>}
         <section aria-label="O que o plano inclui" className="mt-4"><h3 className="text-xs font-semibold text-text-muted">O que o seu plano inclui</h3><ul className="mt-2 grid gap-1.5 text-sm sm:grid-cols-2">{MODULE_KEYS.map((key) => { const included = entitlements.hasModule(key); return <li key={key} className={`flex items-center gap-2 ${included ? '' : 'text-text-muted'}`}><span aria-hidden="true">{included ? '✓' : '🔒'}</span><span>{MODULES[key].label}</span><span className="sr-only">{included ? ' (incluído)' : ' (fora do plano)'}</span></li>; })}</ul></section>
         <p className="mt-4 text-xs text-text-muted">Para mudar de plano, ver faturas ou cancelar, fale com o suporte do Ofix.</p>
       </>}

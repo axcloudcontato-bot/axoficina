@@ -11,8 +11,9 @@ function setup() {
   let tenant = { id: 'tenant-a', waAkgBaseUrl: 'https://chat.axcloud.com.br/api', waAkgSessionId: 'oficina', waAkgEnabled: true, waAkgApiKey: secrets.encrypt('private-api-key'), waAkgWebhookSecret: secrets.encrypt(secret) };
   const tenants = { byId: jest.fn(async () => tenant), updateSettings: jest.fn(async (_id, changes) => { tenant = { ...tenant, ...changes }; return tenant; }) };
   const audit = { record: jest.fn() };
-  const service = new WaAkgService(tenants as never, secrets, config, audit as never);
-  return { service, tenants, tenant, secrets };
+  const entitlements = { forTenant: jest.fn(async () => ({ modules: ['whatsapp'] })) };
+  const service = new WaAkgService(tenants as never, secrets, config, audit as never, entitlements as never);
+  return { service, tenants, tenant, secrets, entitlements };
 }
 
 describe('WA-AKG connection', () => {
@@ -118,5 +119,17 @@ describe('WA-AKG connection', () => {
     const { service, tenant } = setup();
     tenant.waAkgEnabled = false;
     await expect(service.getConnection('tenant-a')).resolves.toBeNull();
+  });
+
+  it('sends nothing when the plan does not include WhatsApp, even with the integration on', async () => {
+    const { service, entitlements } = setup();
+    entitlements.forTenant.mockResolvedValueOnce({ modules: ['financeiro'] });
+    await expect(service.getConnection('tenant-a')).resolves.toBeNull();
+  });
+
+  it('still lets the settings screen test the connection of a plan without WhatsApp', async () => {
+    const { service, entitlements } = setup();
+    entitlements.forTenant.mockResolvedValue({ modules: [] });
+    await expect(service.getConnection('tenant-a', false)).resolves.not.toBeNull();
   });
 });

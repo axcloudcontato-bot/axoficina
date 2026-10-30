@@ -11,6 +11,7 @@ import { JwtAuthGuard } from './shared/guards/jwt-auth.guard';
 import { RolesGuard } from './shared/guards/roles.guard';
 import { PermissionsGuard } from './shared/guards/permissions.guard';
 import { ModulesGuard } from './shared/guards/modules.guard';
+import { PlanLimitGuard } from './shared/guards/plan-limit.guard';
 import { PlanModule } from './shared/plan/plan.module';
 import { TenantContextInterceptor } from './shared/interceptors/tenant-context.interceptor';
 import { CaseConversionInterceptor } from './shared/interceptors/case-conversion.interceptor';
@@ -80,6 +81,7 @@ import { CustomerCareModule } from './modules/customer-care/customer-care.module
     { provide: APP_GUARD, useClass: RolesGuard },
     { provide: APP_GUARD, useClass: PermissionsGuard },
     { provide: APP_GUARD, useClass: ModulesGuard },
+    { provide: APP_GUARD, useClass: PlanLimitGuard },
     // Interceptors rodam depois dos guards no pipeline do Nest — por isso o
     // TenantContextInterceptor (que lê request.user) é seguro aqui.
     { provide: APP_INTERCEPTOR, useClass: TenantContextInterceptor },
