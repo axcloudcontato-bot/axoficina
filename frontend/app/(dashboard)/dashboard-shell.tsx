@@ -10,9 +10,9 @@ import { AuthGuard } from '@/features/auth/components/AuthGuard';
 
 // A page of a module the plan does not include shows the offer instead of failing with a refused request.
 function ModuleGate({ children }: { children: React.ReactNode }) {
-  const module = moduleForPath(usePathname());
+  const moduleKey = moduleForPath(usePathname());
   const { hasModule } = useEntitlements();
-  return module && !hasModule(module) ? <ModuleLocked module={module} /> : <>{children}</>;
+  return moduleKey && !hasModule(moduleKey) ? <ModuleLocked module={moduleKey} /> : <>{children}</>;
 }
 
 export function DashboardShell({ children }: { children: React.ReactNode }) {

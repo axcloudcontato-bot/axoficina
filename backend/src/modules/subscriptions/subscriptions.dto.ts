@@ -1,5 +1,5 @@
 import { Transform, Type } from 'class-transformer';
-import { ArrayUnique, IsArray, IsDateString, IsIn, IsInt, IsOptional, IsString, Max, MaxLength, Min, MinLength } from 'class-validator';
+import { ArrayUnique, IsArray, IsDateString, IsIn, IsInt, IsOptional, IsString, Max, MaxLength, Min } from 'class-validator';
 import { BILLING_CYCLES, MODULE_KEYS, PLAN_CODES, SUBSCRIPTION_STATUSES } from '@oficina/contracts';
 import type { BillingCycle, ModuleKey, SubscriptionStatus, UpdateSubscriptionRequest } from '@oficina/contracts';
 
