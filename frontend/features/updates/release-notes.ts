@@ -1,5 +1,13 @@
 export const RELEASE_NOTES = [
   {
+    id: '2026-10-30-planos', date: '2026-10-30', title: "Planos Essencial, Profissional e Completo",
+    items: [
+      "Assinatura e dados mostra o nome do seu plano e quais módulos ele inclui: Financeiro, Produtividade, Cuidado com o cliente, WhatsApp e Histórico e exportação.",
+      "Um módulo fora do plano aparece no menu com um cadeado. Ao abrir, a tela explica o que ele faz e a partir de qual plano está disponível. Seus dados continuam guardados.",
+      "Quem já usa o Ofix continua com todos os módulos.",
+    ],
+  },
+  {
     id: '2026-10-30-configuracoes-visao-geral', date: '2026-10-30', title: "Configurações: visão geral mais enxuta",
     items: [
       "A visão geral das Configurações não repete mais os atalhos que já estão nas abas do topo. Ficam o andamento da implantação, os ajustes de outras telas e os alertas de lembretes.",

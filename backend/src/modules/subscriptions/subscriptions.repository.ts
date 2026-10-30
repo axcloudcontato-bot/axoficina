@@ -5,7 +5,7 @@ import { PrismaService } from '../../shared/prisma/prisma.service';
 import type { SubscriptionListDto, UpdateSubscriptionDto } from './subscriptions.dto';
 
 export const SUBSCRIPTION_SELECT = {
-  id: true, name: true, document: true, email: true, plan: true,
+  id: true, name: true, document: true, email: true, plan: true, extraModules: true,
   subscriptionStatus: true, subscriptionAmountCents: true, subscriptionCycle: true,
   subscriptionDueAt: true, subscriptionNotes: true, createdAt: true, updatedAt: true,
 } satisfies Prisma.TenantSelect;
@@ -49,7 +49,7 @@ export class SubscriptionsRepository {
       const result = await tx.tenant.updateMany({
         where: { id, deletedAt: null, updatedAt: input.expectedUpdatedAt ? new Date(input.expectedUpdatedAt) : null },
         data: {
-          plan: input.plan, subscriptionStatus: input.subscriptionStatus,
+          plan: input.plan, extraModules: input.extraModules, subscriptionStatus: input.subscriptionStatus,
           subscriptionAmountCents: input.subscriptionAmountCents, subscriptionCycle: input.subscriptionCycle,
           subscriptionDueAt: input.subscriptionDueAt ? new Date(input.subscriptionDueAt) : null,
           subscriptionNotes: input.subscriptionNotes?.trim() || null,
@@ -60,8 +60,8 @@ export class SubscriptionsRepository {
       await tx.auditLog.create({ data: {
         tenantId: id, userId: actor.userId, action: 'subscription.updated', entity: 'tenant', entityId: id,
         metadata: {
-          before: { plan: before.plan, status: before.subscriptionStatus, amountCents: before.subscriptionAmountCents, cycle: before.subscriptionCycle, dueAt: before.subscriptionDueAt?.toISOString() ?? null },
-          after: { plan: input.plan, status: input.subscriptionStatus, amountCents: input.subscriptionAmountCents, cycle: input.subscriptionCycle, dueAt: input.subscriptionDueAt },
+          before: { plan: before.plan, extraModules: before.extraModules, status: before.subscriptionStatus, amountCents: before.subscriptionAmountCents, cycle: before.subscriptionCycle, dueAt: before.subscriptionDueAt?.toISOString() ?? null },
+          after: { plan: input.plan, extraModules: input.extraModules, status: input.subscriptionStatus, amountCents: input.subscriptionAmountCents, cycle: input.subscriptionCycle, dueAt: input.subscriptionDueAt },
         },
       } });
       return tx.tenant.findFirstOrThrow({ where: { id, deletedAt: null }, select: SUBSCRIPTION_SELECT });

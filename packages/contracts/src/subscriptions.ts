@@ -1,3 +1,4 @@
+import type { ModuleKey } from './plans';
 export const SUBSCRIPTION_STATUSES = ['unconfigured', 'trial', 'active', 'past_due', 'canceled'] as const;
 export type SubscriptionStatus = (typeof SUBSCRIPTION_STATUSES)[number];
 export const BILLING_CYCLES = ['monthly', 'yearly'] as const;
@@ -9,6 +10,7 @@ export interface SubscriptionResponse {
   document: string;
   email: string | null;
   plan: string;
+  extraModules: ModuleKey[];
   subscriptionStatus: SubscriptionStatus;
   subscriptionAmountCents: number;
   subscriptionCycle: BillingCycle;
@@ -39,6 +41,7 @@ export interface SubscriptionListResponse {
 
 export interface UpdateSubscriptionRequest {
   plan: string;
+  extraModules: ModuleKey[];
   subscriptionStatus: SubscriptionStatus;
   subscriptionAmountCents: number;
   subscriptionCycle: BillingCycle;

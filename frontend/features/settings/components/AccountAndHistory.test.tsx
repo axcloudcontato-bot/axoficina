@@ -5,7 +5,7 @@ import { AuditHistory } from './AuditHistory';
 import { WorkshopPlanAndData } from './WorkshopPlanAndData';
 import { auditLabel } from '../audit-labels';
 
-const mocks = vi.hoisted(() => ({ auditRequests: [] as unknown[], plan: {} as Record<string, unknown>, exportData: vi.fn() }));
+const mocks = vi.hoisted(() => ({ auditRequests: [] as unknown[], plan: {} as Record<string, unknown>, modules: [] as string[], exportData: vi.fn() }));
 vi.mock('../hooks/use-settings', () => ({
   useAuditLog: (request: unknown) => { mocks.auditRequests.push(request); return { data: { items: [
     { id: 'a1', action: 'settings.order_defaults_updated', entity: 'tenant', entityId: 't', userId: 'u1', userName: 'Ana', metadata: {}, createdAt: '2026-10-30T12:00:00.000Z' },
@@ -13,6 +13,7 @@ vi.mock('../hooks/use-settings', () => ({
   ], total: 2, offset: 0, limit: 30 }, isLoading: false, isError: false, isFetching: false, refetch: vi.fn() }; },
   useWorkshopSubscription: () => ({ data: mocks.plan, isLoading: false, isError: false, refetch: vi.fn() }),
 }));
+vi.mock('@/features/plan/use-entitlements', () => ({ useEntitlements: () => ({ hasModule: (key: string) => mocks.modules.includes(key) }) }));
 vi.mock('../api/settings-api', () => ({ settingsApi: { exportData: (dataset: string) => mocks.exportData(dataset) } }));
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
@@ -42,13 +43,29 @@ describe('audit history', () => {
 });
 
 describe('plan and data export', () => {
-  beforeEach(() => { mocks.exportData.mockReset(); mocks.plan = { plan: 'pro', status: 'past_due', amountCents: 19900, cycle: 'monthly', dueAt: '2026-11-10T12:00:00.000Z', customerSince: '2026-07-24T12:00:00.000Z' }; });
+  beforeEach(() => { mocks.exportData.mockReset(); mocks.modules = ['financeiro', 'produtividade', 'cuidado', 'whatsapp', 'governanca']; mocks.plan = { plan: 'completo', status: 'past_due', amountCents: 19990, cycle: 'monthly', dueAt: '2026-11-10T12:00:00.000Z', customerSince: '2026-07-24T12:00:00.000Z' }; });
 
   it('shows the plan and warns when payment is late', () => {
     render(<WorkshopPlanAndData />);
     expect(screen.getByText('Pagamento em atraso')).toBeInTheDocument();
     expect(screen.getByRole('alert')).toHaveTextContent('Fale com o suporte');
-    expect(screen.getByText(/R\$\s*199,00 por mês/)).toBeInTheDocument();
+    expect(screen.getByText(/R\$\s*199,90 por mês/)).toBeInTheDocument();
+  });
+
+  it('shows the plan name and which modules it includes', () => {
+    mocks.modules = ['financeiro'];
+    mocks.plan = { ...mocks.plan, plan: 'essencial' };
+    render(<WorkshopPlanAndData />);
+    expect(screen.getByText('Essencial')).toBeInTheDocument();
+    expect(screen.getByText('Financeiro').closest('li')).toHaveTextContent('(incluído)');
+    expect(screen.getByText('WhatsApp').closest('li')).toHaveTextContent('(fora do plano)');
+  });
+
+  it('offers the plan instead of the export when it is not included', () => {
+    mocks.modules = [];
+    render(<WorkshopPlanAndData />);
+    expect(screen.queryByRole('button', { name: 'Baixar Clientes' })).not.toBeInTheDocument();
+    expect(screen.getByText('Histórico e exportação não faz parte do seu plano')).toBeInTheDocument();
   });
 
   it('downloads each dataset as a spreadsheet', async () => {

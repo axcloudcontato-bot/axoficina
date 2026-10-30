@@ -2,6 +2,7 @@ import { Body, Controller, Get, HttpCode, HttpStatus, Post } from '@nestjs/commo
 import { CurrentUser } from '../../../shared/decorators/current-user.decorator';
 import { Permissions } from '../../../shared/decorators/permissions.decorator';
 import { Roles } from '../../../shared/decorators/roles.decorator';
+import { RequiresModule } from '../../../shared/decorators/requires-module.decorator';
 import type { AuthenticatedUser } from '../../../shared/guards/jwt-auth.guard';
 import { AddFinancialPaymentDto, CreateFinancialCategoryDto, CreateFinancialEntryDto, CreateSupplierDto, DeleteFinancialCategoryDto, DeleteFinancialEntryDto, DeleteSupplierDto, FinancialAttachmentDto, ListFinancialAttachmentsDto, ListFinancialEntriesDto, ReconcileFinancialMovementDto, ReverseFinancialPaymentDto, SaveFinancialCashBaselineDto, SettleFinancialEntryDto, UpdateFinancialCategoryDto, UpdateFinancialEntryDto, UpdateSupplierDto, UploadFinancialAttachmentDto } from '../dto/financial.dto';
 import { FinancialManager } from '../managers/financial.manager';
@@ -9,6 +10,7 @@ import { FinancialManager } from '../managers/financial.manager';
 const ROLES = ['ADMIN', 'MANAGER'] as const;
 
 @Controller('api/v1/financial')
+@RequiresModule('financeiro')
 export class FinancialController {
   constructor(private readonly manager: FinancialManager) {}
 

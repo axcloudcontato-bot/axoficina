@@ -80,7 +80,7 @@ export class TenantRepository {
       data: {
         name: input.name,
         document: input.document,
-        plan: input.plan ?? 'free',
+        plan: input.plan ?? 'completo',
         status: input.status ?? 'active',
       },
     });

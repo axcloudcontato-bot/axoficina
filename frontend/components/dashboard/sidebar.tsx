@@ -1,8 +1,8 @@
 'use client';
 
-import type { PermissionKey } from '@oficina/contracts';
+import type { ModuleKey, PermissionKey } from '@oficina/contracts';
 import type { Icon as PhosphorIcon } from '@phosphor-icons/react';
-import { Bell, Buildings, CalendarBlank, Car, ChartBar, ChartLine, ClipboardText, Envelope, Package, Gear, Heart, SidebarSimple, SignOut, SquaresFour, Users, UsersThree, WhatsappLogo, Clock } from '@phosphor-icons/react';
+import { Bell, Buildings, CalendarBlank, Car, ChartBar, ChartLine, ClipboardText, Envelope, Package, Gear, Heart, Lock, SidebarSimple, SignOut, SquaresFour, Users, UsersThree, WhatsappLogo, Clock } from '@phosphor-icons/react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -14,6 +14,7 @@ import { OfixLogo } from '@/components/brand/ofix-logo';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/stores/auth-store';
 import { useBranding } from '@/features/settings/hooks/use-settings';
+import { useEntitlements } from '@/features/plan/use-entitlements';
 import { useSaasAdminAccess } from '@/features/subscriptions/hooks/use-subscriptions';
 
 interface NavItem {
@@ -21,6 +22,7 @@ interface NavItem {
   icon: PhosphorIcon;
   permission: PermissionKey;
   group: 'Operação' | 'Relacionamento' | 'Gestão';
+  module?: ModuleKey;
   children?: Array<{ href: string; label: string; icon: PhosphorIcon; permission: PermissionKey }>;
 }
 
@@ -33,8 +35,8 @@ const NAV_ITEMS: NavItem[] = [
   { href: '/alertas-de-manutencao', label: 'Alertas de manutenção', shortLabel: 'Alertas', icon: Bell, permission: 'alerts.view', group: 'Relacionamento' },
   { href: '/relacionamento', label: 'Cuidado com o cliente', shortLabel: 'Cuidados', icon: Heart, permission: 'alerts.view', group: 'Relacionamento' },
   { href: '/catalogo', label: 'Peças e serviços', shortLabel: 'Catálogo', icon: Package, permission: 'service_orders.prices', group: 'Operação' },
-  { href: '/financeiro', label: 'Financeiro', shortLabel: 'Financeiro', icon: ChartLine, permission: 'finance.view', group: 'Gestão' },
-  { href: '/produtividade', label: 'Produtividade', shortLabel: 'Produtiv.', icon: ChartBar, permission: 'service_orders.view', group: 'Gestão' },
+  { href: '/financeiro', label: 'Financeiro', shortLabel: 'Financeiro', icon: ChartLine, permission: 'finance.view', group: 'Gestão', module: 'financeiro' },
+  { href: '/produtividade', label: 'Produtividade', shortLabel: 'Produtiv.', icon: ChartBar, permission: 'service_orders.view', group: 'Gestão', module: 'produtividade' },
   { href: '/configuracoes', label: 'Configurações', shortLabel: 'Config.', icon: Gear, permission: 'team.view', group: 'Gestão', children: [
     { href: '/configuracoes/empresa', label: 'Empresa e marca', icon: Buildings, permission: 'settings.view' },
     { href: '/configuracoes/operacao', label: 'Operação', icon: Clock, permission: 'settings.view' },
@@ -61,6 +63,7 @@ export function Sidebar() {
   useEffect(() => {
     if (restoreToggleFocus.current) { toggleRef.current?.focus(); restoreToggleFocus.current = false; }
   }, [collapsed]);
+  const { hasModule } = useEntitlements();
   const visibleItems = NAV_ITEMS.filter((item) => hasPermission(user, item.permission) || item.children?.some((child) => hasPermission(user, child.permission)));
 
   useEffect(() => {
@@ -94,7 +97,7 @@ export function Sidebar() {
         {saasAccess.data?.allowed && <Link href="/admin/assinaturas" aria-current={isActive(pathname, '/admin/assinaturas') ? 'page' : undefined} title={collapsed ? 'Assinaturas do SaaS' : undefined} className={cn('mb-3 flex min-h-10 items-center rounded-button text-sm font-semibold', collapsed ? 'justify-center' : 'gap-3 px-3', isActive(pathname, '/admin/assinaturas') ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted hover:text-foreground')}><Buildings className="size-[18px] shrink-0" aria-hidden="true" />{!collapsed && 'Assinaturas do SaaS'}</Link>}
         {groups.map((group) => {
           const items = visibleItems.filter((item) => item.group === group);
-          return items.length ? <div key={group}>{!collapsed && <p className="px-3 pb-2 pt-4 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">{group}</p>}{items.map((item) => <DesktopNavItem key={item.href} item={item} active={isActive(pathname, item.href)} collapsed={collapsed} />)}</div> : null;
+          return items.length ? <div key={group}>{!collapsed && <p className="px-3 pb-2 pt-4 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">{group}</p>}{items.map((item) => <DesktopNavItem key={item.href} item={item} active={isActive(pathname, item.href)} collapsed={collapsed} locked={!hasModule(item.module)} />)}</div> : null;
         })}
       </nav>
       {user && <div className={cn('flex items-center border-t border-border py-4', collapsed ? 'justify-center px-3' : 'gap-2.5 px-4')}><div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">{initials(user.name)}</div>{!collapsed && <div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold">{user.name}</p><p className="text-xs text-muted-foreground">{ROLE_LABELS[user.profileName ?? ''] ?? user.profileName ?? ROLE_LABELS[user.role] ?? user.role}</p></div>}<button type="button" aria-label="Sair" onClick={() => logout.mutate()} className="group flex size-9 items-center justify-center rounded-button text-muted-foreground hover:text-danger"><AnimatedIcon icon={SignOut} className="size-[18px]" /></button></div>}
@@ -104,6 +107,6 @@ export function Sidebar() {
   </>;
 }
 
-function DesktopNavItem({ item, active, collapsed }: { item: NavItem; active: boolean; collapsed: boolean }) {
-  return <div><Link href={item.href} aria-current={active ? 'page' : undefined} aria-label={item.label} title={collapsed ? item.label : undefined} className={cn('group flex min-h-10 items-center rounded-button text-sm font-semibold', collapsed ? 'justify-center' : 'gap-3 px-3', active ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted hover:text-foreground')}><AnimatedIcon icon={item.icon} active={active} className="size-[18px] shrink-0" />{!collapsed && item.label}</Link></div>;
+function DesktopNavItem({ item, active, collapsed, locked }: { item: NavItem; active: boolean; collapsed: boolean; locked: boolean }) {
+  return <div><Link href={item.href} aria-current={active ? 'page' : undefined} aria-label={item.label} title={collapsed ? item.label : undefined} className={cn('group flex min-h-10 items-center rounded-button text-sm font-semibold', collapsed ? 'justify-center' : 'gap-3 px-3', active ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted hover:text-foreground')}><AnimatedIcon icon={item.icon} active={active} className="size-[18px] shrink-0" />{!collapsed && item.label}{locked && <Lock className="ml-auto size-3.5 shrink-0" aria-label="Fora do plano" />}</Link></div>;
 }

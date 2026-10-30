@@ -13,7 +13,7 @@ vi.mock('sonner', () => ({ toast: { success: vi.fn() } }));
 
 const row = {
   id: 'tenant-a', name: 'Oficina Exemplo', document: '12345678000199', email: null,
-  plan: 'Profissional', subscriptionStatus: 'active', subscriptionAmountCents: 14990,
+  plan: 'profissional', extraModules: [], subscriptionStatus: 'active', subscriptionAmountCents: 15990,
   subscriptionCycle: 'monthly', subscriptionDueAt: '2026-11-10T12:00:00.000Z',
   subscriptionNotes: null, createdAt: '2026-10-25T12:00:00.000Z', updatedAt: null,
 };
@@ -55,6 +55,27 @@ describe('Global subscription management', () => {
     await user.click(screen.getByRole('button', { name: 'Salvar alterações' }));
     await waitFor(() => expect(mocks.save).toHaveBeenCalledWith({ id: row.id, input: expect.objectContaining({ subscriptionAmountCents: 120050, subscriptionCycle: 'yearly', expectedUpdatedAt: null }) }));
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+  });
+
+  it('fills in the price of the chosen plan and sells a module on top of it', async () => {
+    const user = userEvent.setup();
+    render(<SubscriptionsWorkspace />);
+    await user.click(screen.getByRole('button', { name: 'Gerenciar assinatura de Oficina Exemplo' }));
+    await user.selectOptions(screen.getByLabelText('Plano'), 'essencial');
+    expect(screen.getByLabelText('Valor por período (R$)')).toHaveValue('129,90');
+    await user.click(screen.getByRole('checkbox', { name: 'WhatsApp' }));
+    await user.click(screen.getByRole('button', { name: 'Salvar alterações' }));
+    await waitFor(() => expect(mocks.save).toHaveBeenCalledWith({ id: row.id, input: expect.objectContaining({ plan: 'essencial', extraModules: ['whatsapp'], subscriptionAmountCents: 12990 }) }));
+  });
+
+  it('keeps a negotiated price when the plan changes', async () => {
+    const user = userEvent.setup();
+    render(<SubscriptionsWorkspace />);
+    await user.click(screen.getByRole('button', { name: 'Gerenciar assinatura de Oficina Exemplo' }));
+    const amount = screen.getByLabelText('Valor por período (R$)');
+    await user.clear(amount); await user.type(amount, '140,00');
+    await user.selectOptions(screen.getByLabelText('Plano'), 'completo');
+    expect(amount).toHaveValue('140,00');
   });
 
   it('keeps the dialog open when saving fails and rejects invalid amounts', async () => {

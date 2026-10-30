@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import type { SubscriptionListResponse, SubscriptionResponse } from '@oficina/contracts';
 import type { AuthenticatedUser } from '../../shared/guards/jwt-auth.guard';
+import { EntitlementsService } from '../../shared/plan/entitlements.service';
 import type { SubscriptionListDto, UpdateSubscriptionDto } from './subscriptions.dto';
 import { SubscriptionsRepository } from './subscriptions.repository';
 
@@ -9,6 +10,7 @@ type SubscriptionRecord = Awaited<ReturnType<SubscriptionsRepository['update']>>
 function serialize(item: SubscriptionRecord): SubscriptionResponse {
   return {
     ...item,
+    extraModules: item.extraModules as SubscriptionResponse['extraModules'],
     subscriptionStatus: item.subscriptionStatus as SubscriptionResponse['subscriptionStatus'],
     subscriptionCycle: item.subscriptionCycle as SubscriptionResponse['subscriptionCycle'],
     subscriptionDueAt: item.subscriptionDueAt?.toISOString() ?? null,
@@ -18,7 +20,7 @@ function serialize(item: SubscriptionRecord): SubscriptionResponse {
 
 @Injectable()
 export class SubscriptionsManager {
-  constructor(private readonly repository: SubscriptionsRepository) {}
+  constructor(private readonly repository: SubscriptionsRepository, private readonly entitlements: EntitlementsService) {}
 
   async list(query: SubscriptionListDto): Promise<SubscriptionListResponse> {
     const { items, total, groups } = await this.repository.list(query);
@@ -38,6 +40,8 @@ export class SubscriptionsManager {
   }
 
   async update(id: string, input: UpdateSubscriptionDto, actor: AuthenticatedUser) {
-    return serialize(await this.repository.update(id, input, actor));
+    const updated = serialize(await this.repository.update(id, input, actor));
+    this.entitlements.forget(id);
+    return updated;
   }
 }

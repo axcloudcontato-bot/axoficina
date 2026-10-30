@@ -1,7 +1,7 @@
 import { Transform, Type } from 'class-transformer';
-import { IsDateString, IsIn, IsInt, IsOptional, IsString, Max, MaxLength, Min, MinLength } from 'class-validator';
-import { BILLING_CYCLES, SUBSCRIPTION_STATUSES } from '@oficina/contracts';
-import type { BillingCycle, SubscriptionStatus, UpdateSubscriptionRequest } from '@oficina/contracts';
+import { ArrayUnique, IsArray, IsDateString, IsIn, IsInt, IsOptional, IsString, Max, MaxLength, Min, MinLength } from 'class-validator';
+import { BILLING_CYCLES, MODULE_KEYS, PLAN_CODES, SUBSCRIPTION_STATUSES } from '@oficina/contracts';
+import type { BillingCycle, ModuleKey, SubscriptionStatus, UpdateSubscriptionRequest } from '@oficina/contracts';
 
 export class SubscriptionListDto {
   @IsOptional() @Type(() => Number) @IsInt() @Min(0)
@@ -19,8 +19,11 @@ export class SubscriptionListDto {
 
 export class UpdateSubscriptionDto implements UpdateSubscriptionRequest {
   @Transform(({ value }: { value: unknown }) => typeof value === 'string' ? value.trim() : value)
-  @IsString() @MinLength(1) @MaxLength(80)
+  @IsIn(PLAN_CODES)
   plan!: string;
+
+  @IsArray() @ArrayUnique() @IsIn(MODULE_KEYS, { each: true })
+  extraModules!: ModuleKey[];
 
   @IsIn(SUBSCRIPTION_STATUSES)
   subscriptionStatus!: SubscriptionStatus;

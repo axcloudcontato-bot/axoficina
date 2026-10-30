@@ -3,6 +3,7 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import type { Response } from 'express';
 import type { DashboardBusinessSummaryResponse, DashboardTodayResponse, DueServiceOrderInstallmentsResponse, ServiceOrderInstallmentResponse, ServiceOrderItemResponse, ServiceOrderListResponse, ServiceOrderReceiptResponse, ServiceOrderResponse, TechnicianProductivityResponse, TechnicianProductivityOrdersResponse } from '@oficina/contracts';
 import { Roles } from '../../../shared/decorators/roles.decorator';
+import { RequiresModule } from '../../../shared/decorators/requires-module.decorator';
 import { CurrentUser } from '../../../shared/decorators/current-user.decorator';
 import { Permissions } from '../../../shared/decorators/permissions.decorator';
 import type { AuthenticatedUser } from '../../../shared/guards/jwt-auth.guard';
@@ -120,6 +121,7 @@ export class ServiceOrdersController {
   @Roles(...ITEM_ROLES)
   @Permissions('service_orders.prices')
   @HttpCode(HttpStatus.OK)
+  @RequiresModule('produtividade')
   @Post('service-orders/technician-productivity')
   async technicianProductivity(@CurrentUser() user: AuthenticatedUser, @Body() body: TechnicianProductivityDto): Promise<TechnicianProductivityResponse> {
     return this.productivity.report(body, user.tenantId);
@@ -128,6 +130,7 @@ export class ServiceOrdersController {
   @Roles(...ITEM_ROLES)
   @Permissions('service_orders.prices')
   @HttpCode(HttpStatus.OK)
+  @RequiresModule('produtividade')
   @Post('service-orders/technician-productivity/trend')
   async productivityTrend(@CurrentUser() user: AuthenticatedUser, @Body() body: ProductivityTrendDto) {
     return this.productivity.trend(body, user.tenantId);
@@ -153,6 +156,7 @@ export class ServiceOrdersController {
   @Roles('ADMIN', 'MANAGER')
   @Permissions('service_orders.prices')
   @HttpCode(HttpStatus.OK)
+  @RequiresModule('produtividade')
   @Post('service-orders/technician-productivity/commissions')
   async commissions(@CurrentUser() user: AuthenticatedUser, @Body() body: TechnicianProductivityDto) {
     return this.productivity.commissions(body, user.tenantId);
@@ -161,6 +165,7 @@ export class ServiceOrdersController {
   @Roles('ADMIN', 'MANAGER')
   @Permissions('service_orders.prices')
   @HttpCode(HttpStatus.OK)
+  @RequiresModule('produtividade')
   @Post('service-orders/technician-productivity/commission-rule')
   async setCommissionRule(@CurrentUser() user: AuthenticatedUser, @Body() body: SetCommissionRuleDto) {
     return this.productivity.setCommissionRule(body, user);
@@ -204,6 +209,7 @@ export class ServiceOrdersController {
   @Roles('ADMIN', 'MANAGER')
   @Permissions('service_orders.prices')
   @HttpCode(HttpStatus.OK)
+  @RequiresModule('produtividade')
   @Post('service-orders/productivity-target/copy')
   async copyProductivityTargets(@CurrentUser() user: AuthenticatedUser, @Body() body: CopyProductivityTargetsDto) {
     return this.productivity.copyTargets(body, user);
@@ -221,6 +227,7 @@ export class ServiceOrdersController {
   @Roles(...ITEM_ROLES)
   @Permissions('service_orders.prices')
   @HttpCode(HttpStatus.OK)
+  @RequiresModule('produtividade')
   @Post('service-orders/technician-productivity/orders')
   async technicianProductivityOrders(@CurrentUser() user: AuthenticatedUser, @Body() body: TechnicianProductivityOrdersDto): Promise<TechnicianProductivityOrdersResponse> {
     return this.productivity.orders(body, user.tenantId);
@@ -229,6 +236,7 @@ export class ServiceOrdersController {
   @Roles('ADMIN', 'MANAGER')
   @Permissions('service_orders.prices')
   @HttpCode(HttpStatus.OK)
+  @RequiresModule('produtividade')
   @Post('service-orders/productivity-target')
   async setProductivityTarget(@CurrentUser() user: AuthenticatedUser, @Body() body: ProductivityTargetDto) {
     return this.productivity.setTarget(body, user);
