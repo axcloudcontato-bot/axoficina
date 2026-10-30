@@ -51,9 +51,10 @@ export function PlanSwitcher() {
     {billing.data?.pendingPlan && <p role="status" className="mt-3 rounded-button bg-selection p-3 text-sm">Troca para o plano {PLANS[billing.data.pendingPlan].name} agendada para o próximo pagamento.</p>}
     <ul className="mt-4 grid gap-3 md:grid-cols-3">{PLAN_CODES.map((code) => {
       const plan = PLANS[code];
-      const isCurrent = code === current && (subscription.data?.cycle ?? 'monthly') === cycle && subscription.data?.status !== 'canceled';
+      const paying = Boolean(billing.data?.hasSubscription);
+      const isCurrent = paying && code === current && (subscription.data?.cycle ?? 'monthly') === cycle;
       return <li key={code} className={`flex flex-col rounded-card border p-4 ${code === current ? 'border-primary' : 'border-border'}`}>
-        <h3 className="font-bold">{plan.name}{code === current && <span className="ml-2 text-xs font-semibold text-primary">seu plano</span>}</h3>
+        <h3 className="font-bold">{plan.name}{code === current && <span className="ml-2 text-xs font-semibold text-primary">{paying ? 'seu plano' : subscription.data?.status === 'trial' ? 'em teste' : 'em uso'}</span>}</h3>
         <p className="mt-1 text-2xl font-bold">{formatCurrencyBRL(planPriceCents(code, cycle))}<span className="text-xs font-normal text-text-muted"> por mês</span></p>
         <p className="mt-2 text-xs text-text-muted">{plan.tagline}</p>
         <ul className="mt-3 flex-1 space-y-1 text-xs"><li>{plan.limits.users ?? 'Usuários sem limite'}{plan.limits.users ? ' usuários' : ''}</li><li>{plan.limits.ordersPerMonth ? `${plan.limits.ordersPerMonth} OS por mês` : 'OS sem limite'}</li>{plan.modules.map((key) => <li key={key}>✓ {MODULES[key].label}</li>)}</ul>

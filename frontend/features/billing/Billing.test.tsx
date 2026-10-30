@@ -38,6 +38,16 @@ describe('PlanSwitcher', () => {
     expect(screen.queryByRole('button', { name: /Anual/ })).not.toBeInTheDocument();
   });
 
+  it('lets a workshop on the free trial hire the Completo it is already trying', async () => {
+    mocks.checkout.mockResolvedValue({ checkoutUrl: null, appliedNow: false });
+    const user = userEvent.setup();
+    render(<PlanSwitcher />);
+    expect(screen.getByText('em teste')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Plano atual' })).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Contratar Completo' }));
+    await waitFor(() => expect(mocks.checkout).toHaveBeenCalledWith({ plan: 'completo', cycle: 'monthly' }));
+  });
+
   it('sends the chosen plan and period, then goes to the payment page', async () => {
     const assign = vi.fn();
     Object.defineProperty(window, 'location', { value: { ...window.location, assign }, writable: true });
