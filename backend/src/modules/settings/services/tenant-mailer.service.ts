@@ -8,6 +8,7 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 import * as nodemailer from 'nodemailer';
 import { TenantRepository } from '../../iam/repositories/tenant.repository';
 import { SecretEncryptionService } from './secret-encryption.service';
+import { resolvePublicSmtpHost } from './smtp-host-guard';
 
 @Injectable()
 export class TenantMailerService {
@@ -21,8 +22,12 @@ export class TenantMailerService {
     if (!tenant?.smtpEnabled || !tenant.smtpHost || !tenant.smtpFromEmail) {
       throw new BadRequestException('Configure e ative o envio de e-mail antes de continuar.');
     }
+    // The workshop types the SMTP server: connect only to a public address, never to the internal network.
+    const address = await resolvePublicSmtpHost(tenant.smtpHost, tenant.smtpPort);
     const transporter = nodemailer.createTransport({
-      host: tenant.smtpHost,
+      host: address,
+      // TLS still checks the certificate against the name typed, not the IP.
+      tls: { servername: tenant.smtpHost.trim().replace(/\.$/, '') },
       port: tenant.smtpPort,
       secure: tenant.smtpSecure,
       auth: tenant.smtpUsername && tenant.smtpPassword

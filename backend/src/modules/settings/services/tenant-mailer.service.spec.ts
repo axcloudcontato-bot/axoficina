@@ -7,6 +7,10 @@ jest.mock('nodemailer', () => {
   return { createTransport, default: { createTransport } };
 });
 
+// The SMTP name is resolved before connecting; tests never touch real DNS.
+const lookup = jest.fn();
+jest.mock('node:dns', () => ({ promises: { lookup: (...args: unknown[]) => lookup(...args) } }));
+
 const tenant = {
   id: 'tenant-1', smtpEnabled: true, smtpHost: 'smtp.titan.email', smtpPort: 465, smtpSecure: true,
   smtpUsername: 'contato@axcloud.com.br', smtpPassword: 'encrypted-pass', smtpFromName: 'Oficina',
@@ -20,7 +24,7 @@ function build() {
 }
 
 describe('TenantMailerService', () => {
-  beforeEach(() => sendMail.mockReset());
+  beforeEach(() => { sendMail.mockReset(); lookup.mockReset().mockResolvedValue([{ address: '203.0.113.10', family: 4 }]); });
 
   it('sends through nodemailer when the SMTP server accepts it', async () => {
     sendMail.mockResolvedValue({ messageId: 'abc' });
@@ -53,5 +57,20 @@ describe('TenantMailerService', () => {
     await expect(service.send('tenant-1', { to: 'a@b.com', subject: 'Oi' })).rejects.toMatchObject({
       message: expect.stringContaining('not owned by user'),
     });
+  });
+
+  it('connects to the checked public address and keeps the typed name for TLS', async () => {
+    sendMail.mockResolvedValue({ messageId: 'abc' });
+    const { service } = build();
+    await service.send('tenant-1', { to: 'a@b.com', subject: 'Oi' });
+    const nodemailer = jest.requireMock('nodemailer') as { createTransport: jest.Mock };
+    expect(nodemailer.createTransport).toHaveBeenLastCalledWith(expect.objectContaining({ host: '203.0.113.10', tls: { servername: 'smtp.titan.email' } }));
+  });
+
+  it('never connects when the SMTP server points at the internal network', async () => {
+    lookup.mockResolvedValue([{ address: '172.18.0.4', family: 4 }]);
+    const { service } = build();
+    await expect(service.send('tenant-1', { to: 'a@b.com', subject: 'Oi' })).rejects.toBeInstanceOf(BadRequestException);
+    expect(sendMail).not.toHaveBeenCalled();
   });
 });

@@ -79,10 +79,14 @@ services:
       UPLOAD_DIR: /app/uploads
       BACKEND_PORT: 3001
       SAAS_ADMIN_USER_IDS: ${SAAS_ADMIN_USER_IDS:-}
+      # Real client IP for rate limits, set by Cloudflare. Safe because the API port is bound to 127.0.0.1.
+      CLIENT_IP_HEADER: ${CLIENT_IP_HEADER:-cf-connecting-ip}
     volumes:
       - service_order_uploads:/app/uploads
     ports:
-      - "${BACKEND_HOST_PORT:-3006}:3001"
+      # Only on the host itself: from outside, everything goes through Cloudflare and Caddy (headers, real client IP).
+      # Docker publishes ports past UFW, so 0.0.0.0 here would expose the API directly to the internet.
+      - "${BACKEND_BIND_ADDRESS:-127.0.0.1}:${BACKEND_HOST_PORT:-3006}:3001"
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:3001/health"]
       interval: 10s
@@ -110,7 +114,7 @@ services:
       NODE_ENV: production
       PORT: 3000
     ports:
-      - "${FRONTEND_HOST_PORT:-3005}:3000"
+      - "${FRONTEND_BIND_ADDRESS:-127.0.0.1}:${FRONTEND_HOST_PORT:-3005}:3000"
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:3000/login"]
       interval: 10s

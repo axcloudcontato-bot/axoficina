@@ -1,4 +1,5 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { assertSmtpHostShape } from '../services/smtp-host-guard';
 import type { UpdateMaintenanceAlertMonthsRequest, UpdateLaborRateRequest, AgendaHours, UpdateAgendaHoursRequest, PhotoPolicy, TenantSettingsResponse, UpdateCompanySettingsRequest, UpdateEmailSettingsRequest, UpdatePhotoPolicyRequest } from '@oficina/contracts';
 import { AuditLogService } from '../../../shared/audit-log/audit-log.service';
 import type { AuthenticatedUser } from '../../../shared/guards/jwt-auth.guard';
@@ -114,6 +115,7 @@ export class SettingsManager {
     if (input.enabled && (!input.host?.trim() || !input.fromEmail?.trim())) {
       throw new BadRequestException('Informe servidor SMTP e e-mail remetente antes de ativar.');
     }
+    if (input.host?.trim()) assertSmtpHostShape(input.host, input.port);
     const tenant = await this.tenants.updateSettings(user.tenantId, {
       smtpHost: clean(input.host),
       smtpPort: input.port,

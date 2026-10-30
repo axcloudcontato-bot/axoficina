@@ -1,7 +1,8 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
-import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { ThrottlerModule } from '@nestjs/throttler';
+import { ClientIpThrottlerGuard } from './shared/guards/client-ip-throttler.guard';
 import { HealthModule } from './health/health.module';
 import { PrismaModule } from './shared/prisma/prisma.module';
 import { TenantContextModule } from './shared/tenant-context/tenant-context.module';
@@ -71,7 +72,7 @@ import { CustomerCareModule } from './modules/customer-care/customer-care.module
   providers: [
     // Ordem importa: ThrottlerGuard e JwtAuthGuard rodam antes do RolesGuard
     // (que depende de request.user já populado pelo JwtAuthGuard).
-    { provide: APP_GUARD, useClass: ThrottlerGuard },
+    { provide: APP_GUARD, useClass: ClientIpThrottlerGuard },
     { provide: APP_GUARD, useClass: JwtAuthGuard },
     { provide: APP_GUARD, useClass: RolesGuard },
     { provide: APP_GUARD, useClass: PermissionsGuard },

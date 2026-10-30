@@ -1,5 +1,13 @@
 export const RELEASE_NOTES = [
   {
+    id: '2026-10-30-seguranca', date: '2026-10-30', title: "Segurança: e-mail, login e atualizações",
+    items: [
+      "O servidor de e-mail (SMTP) agora precisa ser o endereço público do seu provedor, nas portas 25, 465, 587 ou 2525. Se o teste de e-mail passar a recusar a configuração, confira o endereço e a porta indicados pelo provedor.",
+      "O limite de tentativas de login passa a valer para cada aparelho separadamente, então o erro de senha de uma pessoa não bloqueia o acesso de outras.",
+      "Atualizações de segurança nos componentes do sistema e proteções extras no navegador.",
+    ],
+  },
+  {
     id: '2026-10-29-produtividade-retrabalho-comissao', date: '2026-10-29', title: "Produtividade: retornos em garantia, comissões e tempo parado",
     items: [
       "Retorno em garantia: quando o veículo volta e tem uma OS entregue ainda na garantia, a nova OS pergunta se é retorno. Marcado, conta como retrabalho para os técnicos da OS original, na coluna Retornos da Produtividade.",

@@ -19,8 +19,15 @@
 
 	header {
 		-Server
+		-X-Powered-By
 		X-Content-Type-Options nosniff
 		X-Frame-Options SAMEORIGIN
 		Referrer-Policy strict-origin-when-cross-origin
+		# The public site is HTTPS only (Cloudflare); browsers stop trying plain HTTP for a year.
+		Strict-Transport-Security "max-age=31536000"
+		Permissions-Policy "camera=(self), microphone=(), geolocation=(), payment=(), usb=()"
+		# No scripts restricted here (Next.js inline scripts); this blocks plugins, <base> hijacking, framing and
+		# forms posting elsewhere.
+		Content-Security-Policy "object-src 'none'; base-uri 'self'; frame-ancestors 'self'; form-action 'self'"
 	}
 }

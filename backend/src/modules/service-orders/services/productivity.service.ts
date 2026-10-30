@@ -463,7 +463,7 @@ export class ProductivityService {
       this.prisma.client.serviceOrder.findMany({ where: { status: 'DELIVERED', closedAt: { gte: start, lt: end }, deletedAt: null }, select: { id: true, orderNumber: true, technicianId: true, closedAt: true, discountCents: true } }),
       this.prisma.client.serviceOrder.findMany({ where: { status: { in: ['IN_PROGRESS', 'WAITING_PARTS', 'COMPLETED'] }, deletedAt: null }, select: { technicianId: true } }),
       this.prisma.client.serviceOrderProductivityShare.findMany({ where: { deliveredAt: { gte: start, lt: end } } }),
-      this.prisma.client.role.findMany({ where: { baseRole: 'MECHANIC', deletedAt: null }, select: { id: true } }),
+      this.prisma.client.role.findMany({ where: { baseRole: 'MECHANIC', deletedAt: null, ...(tenantId ? { OR: [{ tenantId: null }, { tenantId }] } : {}) }, select: { id: true } }),
       this.prisma.client.technicianProductivityTarget.findMany({ where: { month } }),
     ]);
     const recordedOrders = [...new Set(shares.filter(share => share.basis === 'RECORDED').map(share => share.serviceOrderId))];
