@@ -110,7 +110,7 @@ export function LandingPage() {
           <Link href="/" aria-label="Ofix, página inicial"><OfixLogo className="w-24 text-white" /></Link>
           <nav aria-label="Seções" className="hidden items-center gap-5 whitespace-nowrap text-sm font-semibold text-white/70 md:flex lg:gap-8">
             <a href="#funcionalidades" className="hover:text-white">Funcionalidades</a>
-            <a href="#como-funciona" className="hover:text-white">Como funciona</a>
+            <a href="#como-funciona" className="hover:text-white">Passo a passo</a>
             <a href="#equipe" className="hidden hover:text-white lg:inline">Para sua equipe</a>
             <a href="#planos" className="hover:text-white">Planos</a>
             <a href="#duvidas" className="hover:text-white">Dúvidas</a>
@@ -194,7 +194,7 @@ export function LandingPage() {
         </Section>
 
         <Section id="como-funciona" dark>
-          <Eyebrow>Como funciona</Eyebrow>
+          <Eyebrow>Passo a passo</Eyebrow>
           <Heading sub="Um caminho único e sem retrabalho: o que você registra no balcão já chega pronto para o mecânico e para o financeiro.">
             Do cliente na porta ao <span className={Y}>carro entregue.</span>
           </Heading>
