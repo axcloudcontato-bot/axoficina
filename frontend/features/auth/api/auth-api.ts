@@ -1,6 +1,9 @@
 import { apiClient } from '@/lib/api/client';
 import type {
   AuthResponse,
+  ChangePasswordRequest,
+  ForgotPasswordRequest,
+  ResetPasswordRequest,
   LoginRequest,
   LogoutRequest,
   RefreshRequest,
@@ -10,6 +13,15 @@ import type {
 } from '@oficina/contracts';
 
 export const authApi = {
+  async forgotPassword(request: ForgotPasswordRequest): Promise<{ success: true }> {
+    return (await apiClient.post('/api/v1/auth/forgot-password', request)).data;
+  },
+  async resetPassword(request: ResetPasswordRequest): Promise<{ success: true }> {
+    return (await apiClient.post('/api/v1/auth/reset-password', request)).data;
+  },
+  async changePassword(request: ChangePasswordRequest): Promise<RefreshResponse> {
+    return (await apiClient.post('/api/v1/auth/change-password', request)).data;
+  },
   async signup(request: SignupRequest): Promise<SignupResponse> {
     const response = await apiClient.post<SignupResponse>('/api/v1/auth/signup', request);
     return response.data;

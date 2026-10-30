@@ -36,6 +36,17 @@ export class HttpExceptionFilter implements ExceptionFilter {
       return;
     }
 
+    // Body parser errors are not HttpExceptions: a file too big must say so, not 'internal error'.
+    const parserError = exception as { type?: string; status?: number } | null;
+    if (parserError?.type === 'entity.too.large') {
+      response.status(HttpStatus.PAYLOAD_TOO_LARGE).json({ error: { code: 'PAYLOAD_TOO_LARGE', message: 'O arquivo é grande demais. Envie um arquivo menor.', status: HttpStatus.PAYLOAD_TOO_LARGE } });
+      return;
+    }
+    if (parserError?.type === 'entity.parse.failed') {
+      response.status(HttpStatus.BAD_REQUEST).json({ error: { code: 'VALIDATION_ERROR', message: 'Dados inválidos.', status: HttpStatus.BAD_REQUEST } });
+      return;
+    }
+
     this.logger.error('Unhandled exception', exception instanceof Error ? exception.stack : String(exception));
     response.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
       error: {

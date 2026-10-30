@@ -142,7 +142,7 @@ export class SettingsManager {
         subject: `Teste de e-mail — ${tenant.name}`,
         text: `O envio de e-mail da ${tenant.name} foi configurado corretamente.`,
         html: `<p>O envio de e-mail da <strong>${escapeHtml(tenant.name)}</strong> foi configurado corretamente.</p>`,
-      });
+      }, { allowDisabled: true });
       await this.tenants.updateSettings(user.tenantId, { smtpTestedAt: testedAt, smtpTestSuccessAt: testedAt, smtpTestError: null });
       return { sent: true };
     } catch (error) {

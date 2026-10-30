@@ -10,6 +10,7 @@ import { UserRepository } from './repositories/user.repository';
 import { RefreshTokenRepository } from './repositories/refresh-token.repository';
 import { RoleRepository } from './repositories/role.repository';
 import { PasswordService } from './services/password.service';
+import { PasswordResetService } from './services/password-reset.service';
 import { TokenService } from './services/token.service';
 // Instanciados aqui (em vez de importar SettingsModule) para evitar
 // dependência circular: SettingsModule já importa IamModule por causa do
@@ -31,6 +32,7 @@ import { TenantMailerService } from '../settings/services/tenant-mailer.service'
     RefreshTokenRepository,
     RoleRepository,
     PasswordService,
+    PasswordResetService,
     TokenService,
     SecretEncryptionService,
     TenantMailerService,

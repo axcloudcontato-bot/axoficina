@@ -203,6 +203,21 @@ export class AuthManager {
     return { accessToken, refreshToken: newRefreshToken };
   }
 
+  async changePassword(userId: string, currentPassword: string, newPassword: string): Promise<RefreshResponse> {
+    const user = await this.userRepository.byId(userId);
+    if (!user || user.status !== 'active' || !user.passwordHash) throw new AppException(AppErrorCode.USER_NOT_FOUND, 'Usuário não encontrado.', HttpStatus.NOT_FOUND);
+    if (!(await this.passwordService.verify(currentPassword, user.passwordHash))) throw new AppException(AppErrorCode.INVALID_CREDENTIALS, 'A senha atual não confere.', HttpStatus.BAD_REQUEST);
+    if (newPassword.length < MIN_PASSWORD_LENGTH) throw new AppException(AppErrorCode.VALIDATION_ERROR, `A senha deve ter pelo menos ${MIN_PASSWORD_LENGTH} caracteres.`);
+    if (newPassword === currentPassword) throw new AppException(AppErrorCode.VALIDATION_ERROR, 'A nova senha precisa ser diferente da atual.');
+    const role = await this.roleRepository.byId(user.roleId);
+    if (!role) throw new AppException(AppErrorCode.ROLE_NOT_FOUND, 'Papel do usuário não encontrado.', HttpStatus.INTERNAL_SERVER_ERROR);
+    await this.userRepository.update(user.id, { passwordHash: await this.passwordService.hash(newPassword), passwordResetTokenHash: null, passwordResetExpiresAt: null });
+    await this.refreshTokenRepository.revokeAllForUser(user.id);
+    const { accessToken, refreshToken } = await this.issueTokens(user, role);
+    await this.auditLog.record({ tenantId: user.tenantId, userId: user.id, action: 'auth.password_changed', entity: 'user', entityId: user.id, metadata: {} });
+    return { accessToken, refreshToken };
+  }
+
   async logout(input: LogoutRequest): Promise<void> {
     const tokenHash = this.tokenService.hashToken(input.refreshToken);
     const existing = await this.refreshTokenRepository.byTokenHash(tokenHash);

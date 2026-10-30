@@ -23,6 +23,8 @@ export interface UpdateUserInput {
   status?: 'active' | 'invited' | 'disabled';
   inviteTokenHash?: string | null;
   inviteExpiresAt?: Date | null;
+  passwordResetTokenHash?: string | null;
+  passwordResetExpiresAt?: Date | null;
   roleId?: string;
 }
 
@@ -91,6 +93,13 @@ export class UserRepository {
   async byInviteTokenHash(inviteTokenHash: string) {
     return this.prisma.unscoped.user.findFirst({
       where: { inviteTokenHash, deletedAt: null },
+    });
+  }
+
+  // Global de propósito — redefinir a senha acontece sem o usuário autenticado.
+  async byPasswordResetTokenHash(passwordResetTokenHash: string) {
+    return this.prisma.unscoped.user.findFirst({
+      where: { passwordResetTokenHash, deletedAt: null },
     });
   }
 

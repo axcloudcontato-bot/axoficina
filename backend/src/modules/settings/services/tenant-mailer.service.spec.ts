@@ -73,4 +73,12 @@ describe('TenantMailerService', () => {
     await expect(service.send('tenant-1', { to: 'a@b.com', subject: 'Oi' })).rejects.toBeInstanceOf(BadRequestException);
     expect(sendMail).not.toHaveBeenCalled();
   });
+
+  it('lets the configuration be tested before the sending is switched on, but not used', async () => {
+    sendMail.mockResolvedValue({ messageId: 'abc' });
+    const tenants = { byId: jest.fn().mockResolvedValue({ ...tenant, smtpEnabled: false }) };
+    const service = new TenantMailerService(tenants as never, { decrypt: jest.fn().mockReturnValue('plain-pass') } as never);
+    await expect(service.send('tenant-1', { to: 'a@b.com', subject: 'Oi' })).rejects.toThrow('Configure e ative');
+    await expect(service.send('tenant-1', { to: 'a@b.com', subject: 'Oi' }, { allowDisabled: true })).resolves.toEqual({ messageId: 'abc' });
+  });
 });

@@ -81,6 +81,8 @@ services:
       SAAS_ADMIN_USER_IDS: ${SAAS_ADMIN_USER_IDS:-}
       # Real client IP for rate limits, set by Cloudflare. Safe because the API port is bound to 127.0.0.1.
       CLIENT_IP_HEADER: ${CLIENT_IP_HEADER:-cf-connecting-ip}
+      PLATFORM_SMTP_URL: ${PLATFORM_SMTP_URL:-}
+      PLATFORM_MAIL_FROM: ${PLATFORM_MAIL_FROM:-}
     volumes:
       - service_order_uploads:/app/uploads
     ports:

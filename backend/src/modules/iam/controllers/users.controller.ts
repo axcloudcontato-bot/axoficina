@@ -59,6 +59,9 @@ export class UsersController {
   @Roles('ADMIN', 'MANAGER') @Permissions('team.manage') @HttpCode(HttpStatus.OK) @Post('resend-invite')
   resendInvite(@CurrentUser() actingUser: AuthenticatedUser, @Body() body: ManageUserAccessDto) { return this.userManager.resendInvite(actingUser, body); }
 
+  @Roles('ADMIN', 'MANAGER') @Permissions('team.manage') @HttpCode(HttpStatus.OK) @Post('password-reset-link')
+  passwordResetLink(@CurrentUser() actingUser: AuthenticatedUser, @Body() body: ManageUserAccessDto) { return this.userManager.passwordResetLink(actingUser, body); }
+
   @Roles('ADMIN', 'MANAGER')
   @Permissions('team.manage')
   @HttpCode(HttpStatus.OK)

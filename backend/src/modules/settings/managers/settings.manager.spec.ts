@@ -45,7 +45,8 @@ describe('SettingsManager', () => {
   it('sends a real test through the tenant mailer', async () => {
     const { manager, mailer, tenants } = build();
     await manager.sendTest(user as never, 'owner@test.com');
-    expect(mailer.send).toHaveBeenCalledWith('tenant-1', expect.objectContaining({ to: 'owner@test.com' }));
+    // The test runs even before the sending is switched on.
+    expect(mailer.send).toHaveBeenCalledWith('tenant-1', expect.objectContaining({ to: 'owner@test.com' }), { allowDisabled: true });
     expect(tenants.updateSettings).toHaveBeenCalledWith('tenant-1', expect.objectContaining({ smtpTestSuccessAt: expect.any(Date), smtpTestError: null }));
   });
 

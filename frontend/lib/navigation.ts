@@ -15,6 +15,7 @@ export const NAVIGATION_DESTINATIONS: Array<{ href: string; label: string; permi
   { href: '/configuracoes/empresa', label: 'Configurações: empresa e marca', permission: 'settings.view' },
   { href: '/configuracoes/email', label: 'Configurações: e-mail', permission: 'settings.view' },
   { href: '/configuracoes/equipe', label: 'Equipe e acesso', permission: 'team.view' },
+  { href: '/configuracoes/conta', label: 'Minha conta: trocar senha' },
   { href: '/configuracoes/privacidade', label: 'Privacidade e solicitações' },
 ];
 

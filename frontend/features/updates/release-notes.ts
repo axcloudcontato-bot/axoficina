@@ -1,5 +1,17 @@
 export const RELEASE_NOTES = [
   {
+    id: '2026-10-30-configuracoes-senha', date: '2026-10-30', title: "Configurações: recuperação de senha, Minha conta e envio da logo",
+    items: [
+      "Esqueci minha senha: na tela de login, informe o e-mail e receba um link para criar uma nova senha, válido por 1 hora.",
+      "Minha conta, no menu do seu perfil: troque a sua senha informando a atual. Os outros aparelhos conectados à sua conta saem na hora.",
+      "Em Configurações, Equipe, o administrador gera um link de nova senha para quem esqueceu e não recebe e-mail. Ele vale por 24 horas e pode ser enviado pelo WhatsApp.",
+      "A logo da oficina (até 500 KB) e os comprovantes do financeiro (até 2 MB) voltam a ser enviados. Antes, arquivos acima de uns 70 KB eram recusados. Quando um arquivo passa do limite, a mensagem agora diz isso.",
+      "E-mail: a porta virou uma lista com as opções que os provedores usam, a opção SSL acompanha a porta escolhida e o teste funciona antes de ligar o envio para os clientes.",
+      "O CPF/CNPJ da empresa é conferido pelos dígitos já na tela, antes de ir para os documentos.",
+      "A visão geral das Configurações mostra o que falta nos dados da empresa, o horário e as fotos exigidas, e lista os ajustes que ficam em outras telas: valor da hora, alertas, régua do Cuidado com o cliente, metas e comissões.",
+    ],
+  },
+  {
     id: '2026-10-30-seguranca', date: '2026-10-30', title: "Segurança: e-mail, login e atualizações",
     items: [
       "O servidor de e-mail (SMTP) agora precisa ser o endereço público do seu provedor, nas portas 25, 465, 587 ou 2525. Se o teste de e-mail passar a recusar a configuração, confira o endereço e a porta indicados pelo provedor.",

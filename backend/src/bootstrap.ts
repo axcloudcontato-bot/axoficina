@@ -31,11 +31,13 @@ function flattenValidationErrors(errors: ValidationError[], parentPath = ''): Ap
 // snake_case sem o snakeToCamelMiddleware, testando um caminho que a
 // aplicação real nunca exercita.
 export function configureApp(app: INestApplication): void {
-  app.use(json({ verify: (req, _res, buffer) => {
+  // The logo (up to 500 KiB) and payment receipts (up to 2 MB) travel as base64 inside JSON, a third bigger than
+  // the file. The 100 KB default refused anything past ~70 KB; each endpoint still checks its own file size.
+  app.use(json({ limit: '4mb', verify: (req, _res, buffer) => {
     // HMAC must use the exact bytes signed by WA-AKG, before key conversion.
     if (req.url?.startsWith('/api/v1/webhooks/wa-akg/')) (req as { rawBody?: Buffer }).rawBody = Buffer.from(buffer);
   } }));
-  app.use(urlencoded({ extended: true }));
+  app.use(urlencoded({ extended: true, limit: '1mb' }));
 
   // snake_case (rede) -> camelCase (DTOs) ANTES do ValidationPipe;
   // camelCase -> snake_case na volta é o CaseConversionInterceptor global

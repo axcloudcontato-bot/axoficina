@@ -41,6 +41,10 @@ export const usersApi = {
     return (await apiClient.post('/api/v1/users/resend-invite', request)).data;
   },
 
+  async passwordResetLink(request: ManageUserAccessRequest): Promise<{ resetLink: string }> {
+    return (await apiClient.post('/api/v1/users/password-reset-link', request)).data;
+  },
+
   async delete(request: ManageUserAccessRequest): Promise<{ success: true }> {
     return (await apiClient.post('/api/v1/users/delete', request)).data;
   },

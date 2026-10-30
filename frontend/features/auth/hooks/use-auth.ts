@@ -1,7 +1,7 @@
 'use client';
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import type { LoginRequest, SignupRequest } from '@oficina/contracts';
+import type { ChangePasswordRequest, ForgotPasswordRequest, LoginRequest, ResetPasswordRequest, SignupRequest } from '@oficina/contracts';
 import { useAuthStore } from '@/stores/auth-store';
 import { authApi } from '../api/auth-api';
 
@@ -47,4 +47,18 @@ export function useLogout() {
       logout();
     },
   });
+}
+
+export function useForgotPassword() {
+  return useMutation({ mutationFn: (request: ForgotPasswordRequest) => authApi.forgotPassword(request) });
+}
+
+export function useResetPassword() {
+  return useMutation({ mutationFn: (request: ResetPasswordRequest) => authApi.resetPassword(request) });
+}
+
+// Every other device is signed out; this one keeps going with the new tokens.
+export function useChangePassword() {
+  const updateTokens = useAuthStore((state) => state.updateTokens);
+  return useMutation({ mutationFn: (request: ChangePasswordRequest) => authApi.changePassword(request), onSuccess: (tokens) => updateTokens(tokens) });
 }

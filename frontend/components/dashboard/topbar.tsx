@@ -2,7 +2,7 @@
 
 import { usePathname } from 'next/navigation';
 import type { Icon as PhosphorIcon } from '@phosphor-icons/react';
-import { Bell, Buildings, Car, CalendarBlank, ChartBar, ChartLine, ClipboardText, Clock, Envelope, Gear, Heart, Package, ShieldCheck, SquaresFour, Users, UsersThree, WhatsappLogo } from '@phosphor-icons/react';
+import { Bell, Buildings, Car, CalendarBlank, ChartBar, ChartLine, ClipboardText, Clock, Envelope, Gear, Heart, Package, ShieldCheck, SquaresFour, Users, UsersThree, UserCircle, WhatsappLogo } from '@phosphor-icons/react';
 import { HeaderDock } from '@/components/dashboard/header-dock';
 
 interface PageMeta { title: string; description: string; icon: PhosphorIcon }
@@ -27,6 +27,7 @@ const PAGE_META: Record<string, PageMeta> = {
   '/configuracoes/whatsapp': { title: 'WhatsApp', description: 'Conexão e recebimento de respostas.', icon: WhatsappLogo },
   '/configuracoes/equipe': { title: 'Equipe e acesso', description: 'Gerencie usuários, convites e permissões.', icon: UsersThree },
   '/configuracoes/privacidade-da-oficina': { title: 'Privacidade da oficina', description: 'Acompanhe os protocolos dos clientes.', icon: ShieldCheck },
+  '/configuracoes/conta': { title: 'Minha conta', description: 'Seus dados de acesso e a sua senha.', icon: UserCircle },
   '/configuracoes/privacidade': { title: 'Privacidade e solicitações', description: 'Seus dados, direitos e protocolos de atendimento.', icon: ShieldCheck },
 };
 

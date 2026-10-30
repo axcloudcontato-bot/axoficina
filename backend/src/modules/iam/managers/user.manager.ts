@@ -1,4 +1,5 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
+import { PasswordResetService } from '../services/password-reset.service';
 import { ConfigService } from '@nestjs/config';
 import { LEGAL_VERSION, MIN_PASSWORD_LENGTH } from '@oficina/contracts';
 import type {
@@ -39,6 +40,7 @@ export class UserManager {
     private readonly mailer: TenantMailerService,
     private readonly auditLog: AuditLogService,
     private readonly config: ConfigService,
+    private readonly passwordReset: PasswordResetService,
   ) {}
 
   async invite(actingUser: AuthenticatedUser, request: InviteUserRequest): Promise<InviteUserResponse> {
@@ -257,6 +259,13 @@ export class UserManager {
     const emailSent = await this.sendInviteEmail(actingUser.tenantId, user, inviteLink);
     await this.auditLog.record({ tenantId: actingUser.tenantId, userId: actingUser.userId, action: 'user.invite_resent', entity: 'user', entityId: user.id, metadata: { emailSent } });
     return { inviteLink, emailSent };
+  }
+
+  // For someone who forgot the password and cannot receive e-mail: the administrator copies the link and sends it.
+  async passwordResetLink(actingUser: AuthenticatedUser, request: ManageUserAccessRequest): Promise<{ resetLink: string }> {
+    const user = await this.getManageableUser(actingUser, request.id);
+    if (user.status !== 'active') throw new AppException(AppErrorCode.VALIDATION_ERROR, 'Só é possível criar uma nova senha para quem já ativou a conta. Para convites, reenvie o convite.', HttpStatus.BAD_REQUEST);
+    return { resetLink: await this.passwordReset.linkFor(user.id, actingUser) };
   }
 
   async delete(actingUser: AuthenticatedUser, request: ManageUserAccessRequest): Promise<{ success: true }> {

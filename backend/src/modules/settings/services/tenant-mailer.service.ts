@@ -17,9 +17,10 @@ export class TenantMailerService {
     private readonly secrets: SecretEncryptionService,
   ) {}
 
-  async send(tenantId: string, input: { to: string; subject: string; text?: string; html?: string }) {
+  // The test may run before the sending is switched on: the point is to know it works before customers depend on it.
+  async send(tenantId: string, input: { to: string; subject: string; text?: string; html?: string }, options: { allowDisabled?: boolean } = {}) {
     const tenant = await this.tenants.byId(tenantId);
-    if (!tenant?.smtpEnabled || !tenant.smtpHost || !tenant.smtpFromEmail) {
+    if (!tenant?.smtpHost || !tenant.smtpFromEmail || (!tenant.smtpEnabled && !options.allowDisabled)) {
       throw new BadRequestException('Configure e ative o envio de e-mail antes de continuar.');
     }
     // The workshop types the SMTP server: connect only to a public address, never to the internal network.

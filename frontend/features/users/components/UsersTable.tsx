@@ -41,12 +41,13 @@ interface UsersTableProps {
   onDisable?: (user: UserListItemResponse) => void;
   onEnable?: (user: UserListItemResponse) => void;
   onResendInvite?: (user: UserListItemResponse) => void;
+  onPasswordReset?: (user: UserListItemResponse) => void;
   onDelete?: (user: UserListItemResponse) => void;
   onRename?: (user: UserListItemResponse, name: string) => void;
   renaming?: boolean;
 }
 
-export function UsersTable({ items, isLoading, isError, onRetry, profiles = [], onAssignProfile, currentUserId, canManage, canManageAdmins = false, onDisable, onEnable, onResendInvite, onDelete, onRename, renaming }: UsersTableProps) {
+export function UsersTable({ items, isLoading, isError, onRetry, profiles = [], onAssignProfile, currentUserId, canManage, canManageAdmins = false, onDisable, onEnable, onResendInvite, onPasswordReset, onDelete, onRename, renaming }: UsersTableProps) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draftName, setDraftName] = useState('');
   function startRename(user: UserListItemResponse) { setEditingId(user.id); setDraftName(user.name); }
@@ -132,6 +133,7 @@ export function UsersTable({ items, isLoading, isError, onRetry, profiles = [], 
                   {user.status !== 'disabled' && <Button variant="outline" size="sm" onClick={() => onDisable?.(user)}>Bloquear</Button>}
                   {user.status === 'disabled' && <Button variant="outline" size="sm" onClick={() => onEnable?.(user)}>Reativar</Button>}
                   {user.status === 'invited' && <Button variant="outline" size="sm" onClick={() => onResendInvite?.(user)}>Reenviar convite</Button>}
+                  {user.status === 'active' && onPasswordReset && <Button variant="outline" size="sm" onClick={() => onPasswordReset(user)}>Link de nova senha</Button>}
                   <Button variant="outline" size="sm" className="border-danger/30 text-danger hover:bg-danger/10" onClick={() => onDelete?.(user)}>Excluir</Button>
                 </div>}
               </TableCell>}

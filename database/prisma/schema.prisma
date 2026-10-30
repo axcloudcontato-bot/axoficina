@@ -178,6 +178,8 @@ model User {
   status          String    @default("invited")
   inviteTokenHash String?   @map("invite_token_hash")
   inviteExpiresAt DateTime? @map("invite_expires_at") @db.Timestamptz
+  passwordResetTokenHash String?   @map("password_reset_token_hash")
+  passwordResetExpiresAt DateTime? @map("password_reset_expires_at") @db.Timestamptz
   mfaEnabled      Boolean   @default(false) @map("mfa_enabled")
   mfaSecret       String?   @map("mfa_secret")
   legalVersion    String?   @map("legal_version")

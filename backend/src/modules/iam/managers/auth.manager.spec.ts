@@ -363,4 +363,25 @@ describe('AuthManager', () => {
       expect(deps.refreshTokenRepository.revoke).not.toHaveBeenCalled();
     });
   });
+
+  describe('changePassword', () => {
+    const user = { id: 'u1', tenantId: 't1', email: 'ana@oficina.com', name: 'Ana', roleId: 'role-admin', status: 'active', passwordHash: 'hashed:senha-antiga' };
+
+    it('checks the current password, signs other devices out and keeps this one signed in', async () => {
+      const deps = buildManager();
+      deps.userRepository.byId.mockResolvedValue(user);
+      deps.roleRepository.byId.mockResolvedValue({ id: 'role-admin', name: 'ADMIN', baseRole: 'ADMIN' });
+      await expect(deps.manager.changePassword('u1', 'senha-antiga', 'senha-nova-123')).resolves.toEqual({ accessToken: 'access-token', refreshToken: 'raw-refresh-token' });
+      expect(deps.userRepository.update).toHaveBeenCalledWith('u1', expect.objectContaining({ passwordHash: 'hashed:senha-nova-123' }));
+      expect(deps.refreshTokenRepository.revokeAllForUser).toHaveBeenCalledWith('u1');
+    });
+
+    it('refuses a wrong current password or the same password', async () => {
+      const deps = buildManager();
+      deps.userRepository.byId.mockResolvedValue(user);
+      await expect(deps.manager.changePassword('u1', 'errada', 'senha-nova-123')).rejects.toThrow('A senha atual não confere');
+      await expect(deps.manager.changePassword('u1', 'senha-antiga', 'senha-antiga')).rejects.toThrow('diferente da atual');
+      expect(deps.userRepository.update).not.toHaveBeenCalled();
+    });
+  });
 });

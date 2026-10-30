@@ -51,6 +51,7 @@ function buildManager() {
   };
   const auditLog = { record: jest.fn() };
   const config = new ConfigService();
+  const passwordReset = { linkFor: jest.fn().mockResolvedValue('https://ofix.test/redefinir-senha/raw') };
 
   const manager = new UserManager(
     userRepository as never,
@@ -61,9 +62,10 @@ function buildManager() {
     mailer as never,
     auditLog as never,
     config,
+    passwordReset as never,
   );
 
-  return { manager, userRepository, roleRepository, tenantRepository, tokenService, passwordService, mailer, auditLog };
+  return { manager, userRepository, roleRepository, tenantRepository, tokenService, passwordService, mailer, auditLog, passwordReset };
 }
 
 const invitedUser = {
@@ -321,6 +323,30 @@ describe('UserManager', () => {
       await expect(deps.manager.list({ offset: 0, limit: 100 })).rejects.toMatchObject({
         status: HttpStatus.INTERNAL_SERVER_ERROR,
       });
+    });
+  });
+
+  describe('passwordResetLink', () => {
+    it('hands the administrator a link for an active team member', async () => {
+      const deps = buildManager();
+      deps.userRepository.byId.mockResolvedValue({ ...invitedUser, status: 'active', passwordHash: 'hash' });
+      await expect(deps.manager.passwordResetLink(actingAdmin, { id: invitedUser.id })).resolves.toEqual({ resetLink: 'https://ofix.test/redefinir-senha/raw' });
+      expect(deps.passwordReset.linkFor).toHaveBeenCalledWith(invitedUser.id, actingAdmin);
+    });
+
+    it('points pending invitations to the invite instead', async () => {
+      const deps = buildManager();
+      deps.userRepository.byId.mockResolvedValue(invitedUser);
+      await expect(deps.manager.passwordResetLink(actingAdmin, { id: invitedUser.id })).rejects.toThrow('reenvie o convite');
+      expect(deps.passwordReset.linkFor).not.toHaveBeenCalled();
+    });
+
+    it('does not let a manager take over an administrator account', async () => {
+      const deps = buildManager();
+      deps.userRepository.byId.mockResolvedValue({ ...invitedUser, status: 'active', passwordHash: 'hash' });
+      deps.roleRepository.byId.mockResolvedValue({ id: 'role-admin', name: 'ADMIN', baseRole: 'ADMIN' });
+      await expect(deps.manager.passwordResetLink({ ...actingAdmin, role: 'MANAGER' as never }, { id: invitedUser.id })).rejects.toThrow('Somente um administrador');
+      expect(deps.passwordReset.linkFor).not.toHaveBeenCalled();
     });
   });
 });

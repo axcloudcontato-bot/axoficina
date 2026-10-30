@@ -1,6 +1,6 @@
-import { Equals, IsEmail, IsNotEmpty, MinLength } from 'class-validator';
+import { Equals, IsEmail, IsNotEmpty, IsString, MaxLength, MinLength } from 'class-validator';
 import { LEGAL_VERSION, MIN_PASSWORD_LENGTH } from '@oficina/contracts';
-import type { LoginRequest, LogoutRequest, RefreshRequest, SignupRequest } from '@oficina/contracts';
+import type { ChangePasswordRequest, ForgotPasswordRequest, LoginRequest, LogoutRequest, RefreshRequest, ResetPasswordRequest, SignupRequest } from '@oficina/contracts';
 
 export class SignupDto implements SignupRequest {
   @Equals(true, { message: 'Aceite os Termos de uso para continuar.' })
@@ -41,4 +41,25 @@ export class RefreshDto implements RefreshRequest {
 export class LogoutDto implements LogoutRequest {
   @IsNotEmpty({ message: 'refresh_token is required' })
   refreshToken!: string;
+}
+
+export class ForgotPasswordDto implements ForgotPasswordRequest {
+  @IsEmail({}, { message: 'Informe um e-mail válido.' }) @MaxLength(250)
+  email!: string;
+}
+
+export class ResetPasswordDto implements ResetPasswordRequest {
+  @IsString() @IsNotEmpty() @MaxLength(200)
+  token!: string;
+
+  @IsString() @MinLength(MIN_PASSWORD_LENGTH, { message: `A senha deve ter pelo menos ${MIN_PASSWORD_LENGTH} caracteres.` }) @MaxLength(200)
+  password!: string;
+}
+
+export class ChangePasswordDto implements ChangePasswordRequest {
+  @IsString() @IsNotEmpty() @MaxLength(200)
+  currentPassword!: string;
+
+  @IsString() @MinLength(MIN_PASSWORD_LENGTH, { message: `A senha deve ter pelo menos ${MIN_PASSWORD_LENGTH} caracteres.` }) @MaxLength(200)
+  newPassword!: string;
 }

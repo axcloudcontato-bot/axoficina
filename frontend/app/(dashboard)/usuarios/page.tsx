@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { AuthGuard } from '@/features/auth/components/AuthGuard';
 import { InviteUserModal } from '@/features/users/components/InviteUserModal';
 import { UsersTable } from '@/features/users/components/UsersTable';
-import { useDeleteUser, useDisableUser, useEnableUser, useRenameUser, useResendInvite, useUsersList } from '@/features/users/hooks/use-users';
+import { useDeleteUser, useDisableUser, useEnableUser, useRenameUser, usePasswordResetLink, useResendInvite, useUsersList } from '@/features/users/hooks/use-users';
 import type { UserListItemResponse } from '@oficina/contracts';
 import { extractErrorMessage } from '@/lib/api/client';
 import { AccessProfilesPanel } from '@/features/access-profiles/components/AccessProfilesPanel';
@@ -32,7 +32,9 @@ function UsersPageContent() {
   const disableUser = useDisableUser();
   const enableUser = useEnableUser();
   const resendInvite = useResendInvite();
+  const passwordReset = usePasswordResetLink();
   const [inviteLink, setInviteLink] = useState('');
+  const [resetLink, setResetLink] = useState<{ name: string; link: string } | null>(null);
   const deleteUser = useDeleteUser();
   const renameUser = useRenameUser();
   const canManageTeam = hasPermission(user, 'team.manage');
@@ -77,7 +79,8 @@ function UsersPageContent() {
       </div>
       {inviteLink && <div className="rounded-card border border-primary/20 bg-primary-subtle p-4 text-sm"><p className="font-semibold">Link do convite renovado</p><p className="mt-1 break-all">{inviteLink}</p><div className="mt-2 flex gap-2"><Button size="sm" variant="outline" onClick={async () => { try { await navigator.clipboard.writeText(inviteLink); toast.success('Link copiado.'); } catch { toast.error('Copie o link manualmente.'); } }}>Copiar link</Button><Button size="sm" variant="ghost" onClick={() => setInviteLink('')}>Fechar</Button></div></div>}
 
-      <UsersTable items={data?.items ?? []} isLoading={isLoading} isError={isError} onRetry={refetch} profiles={visibleProfiles} onAssignProfile={canManageProfiles ? assign : undefined} currentUserId={user?.id} canManage={canManageTeam} canManageAdmins={user?.role === 'ADMIN'} onDisable={block} onEnable={(employee) => enableUser.mutate({ id: employee.id }, { onSuccess: (result) => { if (result.inviteLink) setInviteLink(result.inviteLink); toast.success(result.inviteLink ? (result.emailSent ? `Convite reenviado para ${employee.name}.` : `Convite renovado para ${employee.name}. Copie o link.`) : `${employee.name} foi reativado.`); }, onError: (error) => toast.error(extractErrorMessage(error)) })} onResendInvite={(employee) => resendInvite.mutate({ id: employee.id }, { onSuccess: (result) => { setInviteLink(result.inviteLink); toast.success(result.emailSent ? 'Convite reenviado por e-mail.' : 'Convite renovado. Copie o link para enviar.'); }, onError: (error) => toast.error(extractErrorMessage(error)) })} onDelete={remove} onRename={rename} renaming={renameUser.isPending} />
+      {resetLink && <div className="rounded-card border border-primary/20 bg-primary-subtle p-4 text-sm"><p className="font-semibold">Link de nova senha para {resetLink.name}</p><p className="mt-1 text-text-muted">Envie para a pessoa por WhatsApp ou em mãos. Vale por 24 horas e só pode ser usado uma vez; a senha atual continua valendo até ela criar a nova.</p><p className="mt-2 break-all">{resetLink.link}</p><div className="mt-2 flex gap-2"><Button size="sm" variant="outline" onClick={async () => { try { await navigator.clipboard.writeText(resetLink.link); toast.success('Link copiado.'); } catch { toast.error('Copie o link manualmente.'); } }}>Copiar link</Button><Button size="sm" variant="ghost" onClick={() => setResetLink(null)}>Fechar</Button></div></div>}
+      <UsersTable onPasswordReset={(employee) => passwordReset.mutate({ id: employee.id }, { onSuccess: (result) => setResetLink({ name: employee.name, link: result.resetLink }), onError: (error) => toast.error(extractErrorMessage(error, 'Não foi possível gerar o link.')) })} items={data?.items ?? []} isLoading={isLoading} isError={isError} onRetry={refetch} profiles={visibleProfiles} onAssignProfile={canManageProfiles ? assign : undefined} currentUserId={user?.id} canManage={canManageTeam} canManageAdmins={user?.role === 'ADMIN'} onDisable={block} onEnable={(employee) => enableUser.mutate({ id: employee.id }, { onSuccess: (result) => { if (result.inviteLink) setInviteLink(result.inviteLink); toast.success(result.inviteLink ? (result.emailSent ? `Convite reenviado para ${employee.name}.` : `Convite renovado para ${employee.name}. Copie o link.`) : `${employee.name} foi reativado.`); }, onError: (error) => toast.error(extractErrorMessage(error)) })} onResendInvite={(employee) => resendInvite.mutate({ id: employee.id }, { onSuccess: (result) => { setInviteLink(result.inviteLink); toast.success(result.emailSent ? 'Convite reenviado por e-mail.' : 'Convite renovado. Copie o link para enviar.'); }, onError: (error) => toast.error(extractErrorMessage(error)) })} onDelete={remove} onRename={rename} renaming={renameUser.isPending} />
 
       {data && data.total > PAGE_SIZE && (
         <div className="flex items-center justify-between text-sm text-text-muted">

@@ -1,6 +1,7 @@
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
@@ -58,7 +59,7 @@ export function LoginForm() {
           name="password"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Senha</FormLabel>
+              <div className="flex items-center justify-between gap-2"><FormLabel>Senha</FormLabel><Link href="/esqueci-a-senha" className="text-xs font-semibold text-primary hover:underline">Esqueci minha senha</Link></div>
               <FormControl>
                 <Input type="password" placeholder="Sua senha" {...field} />
               </FormControl>

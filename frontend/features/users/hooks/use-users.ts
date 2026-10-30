@@ -67,3 +67,7 @@ export function useResendInvite() {
   const queryClient = useQueryClient();
   return useMutation({ mutationFn: usersApi.resendInvite, onSuccess: () => queryClient.invalidateQueries({ queryKey: [USERS_LIST_KEY] }) });
 }
+
+export function usePasswordResetLink() {
+  return useMutation({ mutationFn: usersApi.passwordResetLink });
+}
