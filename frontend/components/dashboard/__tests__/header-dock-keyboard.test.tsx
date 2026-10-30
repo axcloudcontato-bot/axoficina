@@ -24,7 +24,8 @@ describe('header keyboard navigation', () => {
     expect(screen.getByRole('textbox', { name: 'Buscar páginas e ordens de serviço' })).toBeVisible();
     const updates = screen.getByRole('button', { name: 'Novidades do sistema' });
     await user.click(updates);
-    expect(screen.getByRole('dialog', { name: 'Novidades do sistema' })).toBeVisible();
+    // The panel fades in (opacity 0 to 1); on a slow machine the check can run before the animation ends.
+    await waitFor(() => expect(screen.getByRole('dialog', { name: 'Novidades do sistema' })).toBeVisible());
     expect(screen.getByRole('heading', { name: 'Envio de fotos pelo celular' })).toBeVisible();
     expect(screen.queryByTestId('unread-updates-indicator')).not.toBeInTheDocument();
     await user.keyboard('{Escape}');
