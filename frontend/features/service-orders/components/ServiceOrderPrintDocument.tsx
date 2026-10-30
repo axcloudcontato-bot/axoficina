@@ -1,4 +1,4 @@
-import { SERVICE_ORDER_ITEM_TYPE_LABELS, type CompanySettingsResponse, type ServiceOrderResponse } from '@oficina/contracts';
+import { SERVICE_ORDER_ITEM_TYPE_LABELS, type CompanySettingsResponse, type OrderDefaults, type ServiceOrderResponse } from '@oficina/contracts';
 import Image from 'next/image';
 import { parseChecklist, type InspectionStatus } from '../checklist';
 import { SERVICE_ORDER_STATUS_LABELS } from '../state-machine';
@@ -18,16 +18,18 @@ export function ServiceOrderPrintDocument({
   serviceOrder,
   mode,
   company,
+  defaults,
 }: {
   serviceOrder: ServiceOrderResponse;
   mode: ServiceOrderPrintMode;
   company?: CompanySettingsResponse;
+  defaults?: OrderDefaults;
 }) {
   if (mode === 'summary') {
     return (
       <article className="print-summary-sheet mx-auto grid max-w-4xl bg-white text-slate-950 shadow-sm">
-        <ApprovalCopy serviceOrder={serviceOrder} company={company} copyLabel="Via da oficina" />
-        <ApprovalCopy serviceOrder={serviceOrder} company={company} copyLabel="Via do cliente" cutLine />
+        <ApprovalCopy serviceOrder={serviceOrder} company={company} defaults={defaults} copyLabel="Via da oficina" />
+        <ApprovalCopy serviceOrder={serviceOrder} company={company} defaults={defaults} copyLabel="Via do cliente" cutLine />
       </article>
     );
   }
@@ -113,10 +115,13 @@ export function ServiceOrderPrintDocument({
       </section>
       {serviceOrder.warrantyDays !== undefined && <p className="print-break-inside-avoid mt-3 text-sm"><strong>Garantia:</strong> {serviceOrder.warrantyDays === 0 ? 'sem garantia adicional' : `${serviceOrder.warrantyDays} ${serviceOrder.warrantyDays === 1 ? 'dia' : 'dias'}${serviceOrder.status === 'DELIVERED' && serviceOrder.closedAt ? `, válida até ${new Date(new Date(serviceOrder.closedAt).getTime() + serviceOrder.warrantyDays * 86_400_000).toLocaleDateString('pt-BR')}` : ', a contar da entrega'}`}</p>}
 
+      {defaults?.documentTerms && <section className="print-break-inside-avoid mt-4 text-xs leading-5"><p className="font-bold">Termos e condições</p><p className="whitespace-pre-line text-slate-700">{defaults.documentTerms}</p></section>}
+
       <section className="print-break-inside-avoid mt-14 grid grid-cols-2 gap-12 text-center text-xs">
         <p className="border-t border-slate-600 pt-2">Assinatura do cliente</p>
         <p className="border-t border-slate-600 pt-2">Responsável pela oficina</p>
       </section>
+      {company?.documentFooter && <p className="print-break-inside-avoid mt-6 border-t border-slate-200 pt-2 text-center text-[11px] text-slate-600">{company.documentFooter}</p>}
     </article>
   );
 }
@@ -124,11 +129,13 @@ export function ServiceOrderPrintDocument({
 function ApprovalCopy({
   serviceOrder,
   company,
+  defaults,
   copyLabel,
   cutLine = false,
 }: {
   serviceOrder: ServiceOrderResponse;
   company?: CompanySettingsResponse;
+  defaults?: OrderDefaults;
   copyLabel: string;
   cutLine?: boolean;
 }) {
@@ -184,10 +191,12 @@ function ApprovalCopy({
           {serviceOrder.discountCents > 0 && <><span>Desconto</span><strong className="text-right">-{formatCurrencyBRL(serviceOrder.discountCents)}</strong></>}
           <span className="border-t border-slate-500 pt-1 font-black">Total</span><strong className="border-t border-slate-500 pt-1 text-right text-base">{formatCurrencyBRL(serviceOrder.totalAmountCents)}</strong>
         </div>
+        {(defaults?.quoteValidityDays || defaults?.documentTerms) && <div className="mt-2 space-y-0.5 text-[10px] leading-4 text-slate-700">{defaults?.quoteValidityDays ? <p><strong>Validade do orçamento:</strong> {quoteValidity(defaults.quoteValidityDays)}</p> : null}{defaults?.documentTerms && <p className="line-clamp-3 whitespace-pre-line">{defaults.documentTerms}</p>}</div>}
         <div className="mt-auto grid grid-cols-2 gap-10 pb-1 text-center text-[11px]">
           <p className="border-t border-slate-600 pt-1.5">Assinatura do cliente — aprovação</p>
           <p className="border-t border-slate-600 pt-1.5">Data</p>
         </div>
+        {company?.documentFooter && <p className="mt-1 text-center text-[9px] text-slate-500">{company.documentFooter}</p>}
       </footer>
     </section>
   );
@@ -207,4 +216,10 @@ function TextValue({ value }: { value?: string }) {
 
 function formatDateTime(value: string): string {
   return new Date(value).toLocaleString('pt-BR');
+}
+
+// "7 dias (até 06/11/2026)", counted from the day it is printed.
+export function quoteValidity(days: number, from = new Date()): string {
+  const until = new Date(from); until.setDate(until.getDate() + days);
+  return `${days} ${days === 1 ? 'dia' : 'dias'} (até ${until.toLocaleDateString('pt-BR')})`;
 }

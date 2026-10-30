@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import type { PrismaClient } from '@oficina/database';
+import { Prisma, type PrismaClient } from '@oficina/database';
 import { PrismaService } from '../../../shared/prisma/prisma.service';
 
 export interface CreateTenantInput {
@@ -60,6 +60,12 @@ export interface UpdateTenantSettingsInput {
   appointmentRemindersEnabled?: boolean;
   laborRateCents?: number | null;
   maintenanceAlertMonths?: number;
+  defaultWarrantyDays?: number | null;
+  quoteValidityDays?: number | null;
+  documentTerms?: string | null;
+  acceptedPaymentMethods?: string[];
+  agendaDayHours?: Record<string, { openHour: number; closeHour: number }> | null;
+  agendaClosedDates?: string[];
 }
 
 @Injectable()
@@ -87,7 +93,9 @@ export class TenantRepository {
   }
 
   async updateSettings(id: string, data: UpdateTenantSettingsInput) {
-    await this.prisma.unscoped.tenant.updateMany({ where: { id, deletedAt: null }, data });
+    // Prisma needs JsonNull to clear a JSON column.
+    const { agendaDayHours, ...rest } = data;
+    await this.prisma.unscoped.tenant.updateMany({ where: { id, deletedAt: null }, data: { ...rest, ...(agendaDayHours !== undefined ? { agendaDayHours: agendaDayHours ?? Prisma.JsonNull } : {}) } });
     return this.byId(id);
   }
 

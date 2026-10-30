@@ -64,6 +64,7 @@ function buildManager() {
     listByTenant: jest.fn().mockResolvedValue({ items: [], total: 0 }),
   };
   const prisma = {
+    unscoped: { tenant: { findFirst: jest.fn().mockResolvedValue({ defaultWarrantyDays: 90 }) } },
     transaction: jest.fn((fn: (tx: unknown) => Promise<unknown>) => fn(FAKE_TX)),
     client: {
       appointment: { updateMany: jest.fn() },
@@ -214,6 +215,8 @@ describe('ServiceOrderManager', () => {
 
       expect(result.serviceOrder.customerId).toBe('customer-1');
       expect(result.serviceOrder.status).toBe('OPEN');
+      // A new order starts with the workshop's default warranty.
+      expect(deps.serviceOrderRepository.insert).toHaveBeenCalledWith(expect.objectContaining({ warrantyDays: 90 }), FAKE_TX);
       expect(deps.statusHistoryRepository.insert).toHaveBeenCalledWith(
         expect.objectContaining({ fromStatus: null, toStatus: 'OPEN' }),
         FAKE_TX,

@@ -26,19 +26,55 @@ export default function SettingsPage() {
     if (!window.confirm('Confira o histórico do WhatsApp antes de reenviar: uma tentativa anterior pode ter chegado ao cliente sem confirmação do provedor. Continuar?')) return;
     retryReminder.mutate(id);
   }
+  const company = settings.data?.company;
+  const missingCompany = company ? [!company.logoDataUrl && 'logo', !company.document && 'CPF/CNPJ', !company.addressStreet && 'endereço', !(company.phone || company.whatsapp) && 'telefone'].filter(Boolean) as string[] : [];
+  const agenda = branding.data?.agendaHours;
+  const DAY = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+  const days = agenda ? [1, 2, 3, 4, 5, 6, 0].filter(day => agenda.workDays.includes(day)) : [];
+  const dayRange = days.length > 2 && days.every((day, index) => index === 0 || day === (days[index - 1] + 1) % 7) ? `${DAY[days[0]]} a ${DAY[days[days.length - 1]]}` : days.map(day => DAY[day]).join(', ');
+  const photos = branding.data?.photoPolicy ? [branding.data.photoPolicy.entry && 'entrada', branding.data.photoPolicy.exit && 'saída', branding.data.photoPolicy.items && 'peças'].filter(Boolean) : [];
+  const operation = agenda ? `${dayRange} · ${agenda.openHour}h às ${agenda.closeHour}h${photos.length ? ` · fotos exigidas: ${photos.join(', ')}` : ' · fotos opcionais'}` : 'Horários, capacidade, lembretes e fotos da OS';
   const cards = [
-    { href: '/configuracoes/empresa', title: 'Empresa e marca', detail: settings.data?.company.name ? `${settings.data.company.name} · dados cadastrais e documentos` : 'Complete os dados da oficina', icon: Buildings, status: settings.isError ? 'Falha ao carregar' : settings.isPending ? 'Carregando' : settings.data?.company.document ? 'Configurado' : 'Pendente', show: canView },
-    { href: '/configuracoes/operacao', title: 'Operação', detail: 'Horários, capacidade, lembretes e fotos da OS', icon: Clock, status: branding.isError ? 'Falha ao carregar' : reminders.data?.failed ? `${reminders.data.failed} lembrete(s) com falha` : branding.data?.agendaHours?.remindersEnabled && !whatsapp.data?.enabled ? 'Lembretes sem WhatsApp' : 'Consultar regras', show: canView },
+    { href: '/configuracoes/empresa', title: 'Empresa e marca', detail: settings.data?.company.name ? `${settings.data.company.name} · dados cadastrais e documentos` : 'Complete os dados da oficina', icon: Buildings, status: settings.isError ? 'Falha ao carregar' : settings.isPending ? 'Carregando' : missingCompany.length ? `Falta: ${missingCompany.join(', ')}` : 'Completo', show: canView },
+    { href: '/configuracoes/operacao', title: 'Operação', detail: operation, icon: Clock, status: branding.isError ? 'Falha ao carregar' : reminders.data?.failed ? `${reminders.data.failed} lembrete(s) com falha` : agenda?.remindersEnabled && !whatsapp.data?.enabled ? 'Lembretes ligados, mas o WhatsApp está desligado' : agenda?.remindersEnabled ? 'Lembretes na véspera ligados' : 'Lembretes na véspera desligados', show: canView },
     { href: '/configuracoes/email', title: 'E-mail', detail: 'Servidor, remetente e teste de envio', icon: Envelope, status: settings.isError ? 'Falha ao carregar' : settings.isPending ? 'Carregando' : settings.data?.email.lastTestError ? 'Último teste falhou' : settings.data?.email.enabled ? settings.data?.email.lastSuccessAt ? 'Ativo e testado' : 'Ativo · teste pendente' : 'Inativo', show: canView },
     { href: '/configuracoes/whatsapp', title: 'WhatsApp', detail: 'Conexão, webhook e respostas dos clientes', icon: WhatsappLogo, status: whatsapp.isError ? 'Falha ao carregar' : whatsapp.isPending ? 'Carregando' : whatsapp.data?.connectionTestError || whatsapp.data?.webhookTestError ? 'Teste com falha' : whatsapp.data?.enabled ? whatsapp.data?.connectionSuccessAt && whatsapp.data?.webhookSuccessAt ? 'Ativo e testado' : 'Ativo · teste pendente' : 'Inativo', show: canView },
     { href: '/configuracoes/equipe', title: 'Equipe e acesso', detail: 'Convites, usuários e perfis', icon: UsersThree, status: hasPermission(user, 'team.manage') ? 'Gerenciar equipe' : 'Consultar equipe', show: canViewTeam },
     { href: '/configuracoes/privacidade-da-oficina', title: 'Privacidade da oficina', detail: 'Pedidos e protocolos dos clientes', icon: ShieldCheck, status: 'Acompanhar solicitações', show: user?.role === 'ADMIN' && hasPermission(user, 'settings.manage') },
   ].filter((card) => card.show);
 
+  // What a workshop needs before its customers see the system: each step links to where it is done.
+  const defaults = branding.data?.orderDefaults;
+  const checklist = canView && settings.data && branding.data ? [
+    { label: 'Dados da empresa completos', done: missingCompany.length === 0, href: '/configuracoes/empresa' },
+    { label: 'Logo enviada', done: Boolean(company?.logoDataUrl), href: '/configuracoes/empresa' },
+    { label: 'Horário de funcionamento conferido', done: Boolean(agenda && (agenda.openHour !== 8 || agenda.closeHour !== 18 || agenda.workDays.join() !== '1,2,3,4,5,6' || Object.keys(agenda.dayHours ?? {}).length || (agenda.closedDates ?? []).length)), href: '/configuracoes/operacao' },
+    { label: 'Garantia e termos dos documentos', done: Boolean(defaults?.defaultWarrantyDays != null && defaults?.documentTerms), href: '/configuracoes/operacao' },
+    { label: 'E-mail testado', done: Boolean(settings.data.email.lastSuccessAt), href: '/configuracoes/email' },
+    { label: 'WhatsApp conectado', done: Boolean(whatsapp.data?.enabled && whatsapp.data?.connectionSuccessAt), href: '/configuracoes/whatsapp' },
+  ] : [];
+  const doneSteps = checklist.filter((step) => step.done).length;
+  const nextStep = checklist.find((step) => !step.done);
+
+  // Settings that live next to the work they change, listed here so nobody has to hunt for them.
+  const elsewhere = [
+    { href: '/catalogo', label: 'Valor da hora da oficina', where: 'Peças e serviços', show: hasPermission(user, 'service_orders.prices') },
+    { href: '/alertas-de-manutencao', label: 'Prazo dos alertas de manutenção', where: 'Alertas de manutenção', show: hasPermission(user, 'alerts.view') },
+    { href: '/relacionamento', label: 'Régua de lembretes e aniversários', where: 'Cuidado com o cliente, aba Ajustes da régua', show: hasPermission(user, 'alerts.view') },
+    { href: '/produtividade', label: 'Metas e comissões dos técnicos', where: 'Produtividade', show: hasPermission(user, 'service_orders.prices') && Boolean(user && ['ADMIN', 'MANAGER'].includes(user.role)) },
+  ].filter(entry => entry.show);
+
   return <div className="space-y-5">
     <div><h2 className="text-xl font-bold">Estado da oficina</h2><p className="mt-1 text-sm text-text-muted">Acesse a área que deseja configurar e confira os pontos que pedem atenção.</p></div>
+    {checklist.length > 0 && <section aria-label="Implantação da oficina" className="rounded-card border border-border bg-card p-5">
+      <div className="flex flex-wrap items-baseline justify-between gap-2"><h2 className="font-bold">{doneSteps === checklist.length ? 'Sua oficina está pronta' : `Sua oficina está ${Math.round(doneSteps * 100 / checklist.length)}% pronta`}</h2><span className="text-xs text-text-muted">{doneSteps} de {checklist.length} passos</span></div>
+      <div className="mt-3 h-2 rounded-full bg-surface" role="progressbar" aria-label="Passos concluídos" aria-valuenow={doneSteps} aria-valuemin={0} aria-valuemax={checklist.length}><div className="h-2 rounded-full bg-primary" style={{ width: `${doneSteps * 100 / checklist.length}%` }} /></div>
+      <ul className="mt-3 grid gap-1.5 text-sm sm:grid-cols-2">{checklist.map((step) => <li key={step.label}><Link href={step.href} className={`flex items-center gap-2 ${step.done ? 'text-text-muted' : 'font-semibold hover:text-primary'}`}><span aria-hidden="true" className={`flex size-4 shrink-0 items-center justify-center rounded-full border text-[10px] ${step.done ? 'border-success bg-success text-white' : 'border-border'}`}>{step.done ? '✓' : ''}</span><span>{step.label}</span><span className="sr-only">{step.done ? ' (feito)' : ' (pendente)'}</span></Link></li>)}</ul>
+      {nextStep && <Button asChild size="sm" className="mt-4"><Link href={nextStep.href}>Próximo passo: {nextStep.label.toLowerCase()}</Link></Button>}
+    </section>}
     {canView && reminders.isError && <div role="alert" className="rounded-card border border-danger/30 p-4 text-sm text-danger">Não foi possível consultar os lembretes. <button type="button" className="font-bold underline" onClick={() => reminders.refetch()}>Tentar novamente</button></div>}
     <div className="grid gap-3 md:grid-cols-2">{cards.map(({ href, title, detail, icon: Icon, status }) => <Link key={href} href={href} className="rounded-card border border-border bg-card p-5 shadow-sm transition-colors hover:border-primary/40"><div className="flex items-start gap-3"><Icon className="mt-0.5 size-5 shrink-0 text-primary" aria-hidden="true" /><div className="min-w-0 flex-1"><h3 className="font-bold">{title}</h3><p className="mt-1 text-sm text-text-muted">{detail}</p><p className="mt-3 text-xs font-semibold text-primary">{status}</p></div><ArrowRight className="size-4 shrink-0 text-text-muted" aria-hidden="true" /></div></Link>)}</div>
+    {elsewhere.length > 0 && <section className="rounded-card border border-border bg-card p-5"><h2 className="font-bold">Ajustes em outras telas</h2><p className="mt-1 text-sm text-text-muted">Estas regras ficam junto do trabalho que elas mudam.</p><ul className="mt-3 divide-y divide-border text-sm">{elsewhere.map(entry => <li key={entry.href}><Link href={entry.href} className="flex items-center justify-between gap-3 py-2.5 hover:text-primary"><span><span className="font-semibold">{entry.label}</span><span className="block text-xs text-text-muted">{entry.where}</span></span><ArrowRight className="size-4 shrink-0 text-text-muted" aria-hidden="true" /></Link></li>)}</ul><p className="mt-2 text-xs text-text-muted">O horário de fechamento, em Operação, também é onde o cronômetro dos técnicos para de contar.</p></section>}
     {canView && reminders.data && <section className="rounded-card border border-border bg-card p-5"><h2 className="font-bold">Lembretes de agendamento</h2><p className="mt-2 text-sm text-text-muted">{reminders.data.failed ? `${reminders.data.failed} lembrete(s) aguardam nova tentativa ou precisam de atenção.` : 'Nenhuma falha pendente em agendamentos futuros.'}</p><p className="mt-1 text-xs text-text-muted">Último envio confirmado: {reminders.data.lastSentAt ? new Date(reminders.data.lastSentAt).toLocaleString('pt-BR') : 'nenhum ainda'}.</p>{reminders.data.items.length > 0 && <ul className="mt-3 space-y-2 text-sm">{reminders.data.items.map((item) => <li key={item.id} className="rounded-button border border-danger/20 p-3"><strong>Agendamento de {new Date(item.startsAt).toLocaleString('pt-BR')}</strong><span className="ml-2 text-text-muted">{item.attempts} tentativa(s)</span><p className="mt-1 text-danger">{item.error ?? 'Envio sem confirmação; uma nova tentativa será feita quando possível.'}</p>{item.attempts >= 4 && <p className="mt-1 text-xs text-text-muted">As tentativas automáticas pararam. Confira o histórico antes de reenviar.</p>}{canRetry && <Button variant="outline" size="sm" className="mt-2" disabled={retryReminder.isPending} onClick={() => retry(item.id)}>Tentar agora</Button>}</li>)}</ul>}</section>}
   </div>;
 }

@@ -95,6 +95,7 @@ export function UsersTable({ items, isLoading, isError, onRetry, profiles = [], 
             <TableHead>Papel</TableHead>
             {profiles.length > 0 && <TableHead>Perfil de acesso</TableHead>}
             <TableHead>Status</TableHead>
+            <TableHead>Último acesso</TableHead>
             {canManage && <TableHead className="text-right">Ações</TableHead>}
           </TableRow>
         </TableHeader>
@@ -128,6 +129,7 @@ export function UsersTable({ items, isLoading, isError, onRetry, profiles = [], 
                   {STATUS_LABELS[user.status] ?? user.status}
                 </Badge>
               </TableCell>
+              <TableCell className="whitespace-nowrap text-sm text-text-muted" title={user.lastLoginAt ? new Date(user.lastLoginAt).toLocaleString('pt-BR') : undefined}>{lastAccess(user.lastLoginAt, user.status)}</TableCell>
               {canManage && <TableCell className="text-right">
                 {user.id !== currentUserId && (user.role !== 'ADMIN' || canManageAdmins) && <div className="flex justify-end gap-2">
                   {user.status !== 'disabled' && <Button variant="outline" size="sm" onClick={() => onDisable?.(user)}>Bloquear</Button>}
@@ -143,4 +145,16 @@ export function UsersTable({ items, isLoading, isError, onRetry, profiles = [], 
       </Table>
     </div>
   );
+}
+
+// "hoje", "há 3 dias", "há 2 meses": enough to spot who never used their access or left long ago.
+export function lastAccess(at: string | null | undefined, status: string, now = new Date()): string {
+  if (status === 'invited') return 'convite pendente';
+  if (!at) return 'nunca entrou';
+  const days = Math.floor((now.getTime() - new Date(at).getTime()) / 86_400_000);
+  if (days < 1) return 'hoje';
+  if (days === 1) return 'ontem';
+  if (days < 30) return `há ${days} dias`;
+  const months = Math.floor(days / 30);
+  return months < 12 ? `há ${months} ${months === 1 ? 'mês' : 'meses'}` : 'há mais de um ano';
 }

@@ -1,7 +1,7 @@
 'use client';
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { type UpdateMaintenanceAlertMonthsRequest, type UpdateLaborRateRequest, DEFAULT_AGENDA_HOURS, DEFAULT_PHOTO_POLICY, type AgendaHours, type UpdateAgendaHoursRequest, type PhotoPolicy, type UpdateCompanySettingsRequest, type UpdateEmailSettingsRequest, type UpdatePhotoPolicyRequest } from '@oficina/contracts';
+import { type UpdateMaintenanceAlertMonthsRequest, type UpdateLaborRateRequest, DEFAULT_AGENDA_HOURS, DEFAULT_ORDER_DEFAULTS, DEFAULT_PHOTO_POLICY, type OrderDefaults, type UpdateOrderDefaultsRequest, type AgendaHours, type UpdateAgendaHoursRequest, type PhotoPolicy, type UpdateCompanySettingsRequest, type UpdateEmailSettingsRequest, type UpdatePhotoPolicyRequest } from '@oficina/contracts';
 import { settingsApi } from '../api/settings-api';
 
 export const SETTINGS_KEY = ['tenant-settings'] as const;
@@ -85,6 +85,18 @@ export function useUpdateMaintenanceAlertMonths() {
   const client = useQueryClient();
   return useMutation({
     mutationFn: (request: UpdateMaintenanceAlertMonthsRequest) => settingsApi.updateMaintenanceAlertMonths(request),
+    onSuccess: () => client.invalidateQueries({ queryKey: BRANDING_KEY }),
+  });
+}
+
+export function useOrderDefaults(): OrderDefaults {
+  return useBranding().data?.orderDefaults ?? DEFAULT_ORDER_DEFAULTS;
+}
+
+export function useUpdateOrderDefaults() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (request: UpdateOrderDefaultsRequest) => settingsApi.updateOrderDefaults(request),
     onSuccess: () => client.invalidateQueries({ queryKey: BRANDING_KEY }),
   });
 }

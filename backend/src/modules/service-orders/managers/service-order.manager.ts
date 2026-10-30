@@ -115,6 +115,7 @@ export class ServiceOrderManager {
     }
 
     const openedAt = new Date();
+    const workshop = await this.prisma.unscoped.tenant.findFirst({ where: { id: actingUser.tenantId }, select: { defaultWarrantyDays: true } });
     const serviceOrder = await this.prisma.transaction(async (tx) => {
       await this.syncVehicleMileage(tx, vehicle.id, request.entryMileage);
       const created = await this.serviceOrderRepository.insert(
@@ -132,6 +133,7 @@ export class ServiceOrderManager {
           expectedDeliveryAt: request.expectedDeliveryAt === null ? null : request.expectedDeliveryAt ? new Date(request.expectedDeliveryAt) : undefined,
           paymentMethod: request.paymentMethod,
           paymentInstallments: request.paymentMethod === 'CREDIT_CARD' ? request.paymentInstallments : null,
+          warrantyDays: workshop?.defaultWarrantyDays ?? undefined,
           openedAt,
         },
         tx,

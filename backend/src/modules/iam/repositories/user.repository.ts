@@ -25,6 +25,7 @@ export interface UpdateUserInput {
   inviteExpiresAt?: Date | null;
   passwordResetTokenHash?: string | null;
   passwordResetExpiresAt?: Date | null;
+  lastLoginAt?: Date;
   roleId?: string;
 }
 

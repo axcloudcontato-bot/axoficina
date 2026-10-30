@@ -55,5 +55,24 @@ export interface AgendaHours {
   bays?: number | null;
   // WhatsApp reminder sent the day before each appointment.
   remindersEnabled?: boolean;
+  // Weekdays with their own hours ("6" = Saturday until noon); the others use openHour and closeHour.
+  dayHours?: Record<string, DayHours>;
+  // YYYY-MM-DD dates the workshop is closed: holidays, collective vacation.
+  closedDates?: string[];
 }
+
+export interface DayHours {
+  openHour: number;
+  closeHour: number;
+}
+
+// What every new order and printed document starts with.
+export interface OrderDefaults {
+  defaultWarrantyDays: number | null;
+  quoteValidityDays: number | null;
+  documentTerms: string | null;
+  // Empty = all methods.
+  acceptedPaymentMethods: string[];
+}
+export const DEFAULT_ORDER_DEFAULTS: OrderDefaults = { defaultWarrantyDays: null, quoteValidityDays: null, documentTerms: null, acceptedPaymentMethods: [] };
 export const DEFAULT_AGENDA_HOURS: AgendaHours = { openHour: 8, closeHour: 18, workDays: [1, 2, 3, 4, 5, 6], bays: null, remindersEnabled: false };

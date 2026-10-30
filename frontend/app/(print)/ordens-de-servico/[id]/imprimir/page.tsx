@@ -24,7 +24,7 @@ export default function ServiceOrderPrintPage() {
         </div>
         {isLoading && <div className="mx-auto h-96 max-w-4xl animate-pulse rounded-card bg-white" />}
         {(isError || (!isLoading && !data)) && <div className="mx-auto max-w-4xl bg-white p-10 text-center text-sm font-semibold text-red-700">Não foi possível carregar a ordem de serviço para impressão.</div>}
-        {data && <ServiceOrderPrintDocument serviceOrder={data.serviceOrder} mode={mode} company={branding.data?.company} />}
+        {data && <ServiceOrderPrintDocument serviceOrder={data.serviceOrder} mode={mode} company={branding.data?.company} defaults={branding.data?.orderDefaults} />}
       </main>
     </AuthGuard>
   );

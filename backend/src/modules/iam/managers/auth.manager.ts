@@ -155,6 +155,7 @@ export class AuthManager {
     }
 
     const { accessToken, refreshToken, permissions } = await this.issueTokens(user, role);
+    await this.userRepository.update(user.id, { lastLoginAt: new Date() });
 
     await this.auditLog.record({
       tenantId: user.tenantId,

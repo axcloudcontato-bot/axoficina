@@ -44,3 +44,5 @@ export * from './response/pagination.response';
 export * from './utils/case-convert';
 export * from './customer-care';
 export * from './vehicle-plate';
+export * from './document';
+export * from './agenda';

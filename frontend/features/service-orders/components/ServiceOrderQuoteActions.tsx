@@ -101,7 +101,7 @@ export function ServiceOrderQuoteActions({ serviceOrder, beforeSend, entryReady 
   }
 
   async function downloadPdf() {
-    try { await generateQuotePdf(serviceOrder); toast.success('PDF do orçamento gerado.'); }
+    try { await generateQuotePdf(serviceOrder, { company: branding.data?.company, defaults: branding.data?.orderDefaults }); toast.success('PDF do orçamento gerado.'); }
     catch { toast.error('Não foi possível gerar o PDF.'); }
   }
 

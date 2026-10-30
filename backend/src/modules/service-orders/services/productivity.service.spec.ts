@@ -302,4 +302,14 @@ describe('ProductivityService', () => {
     expect(result.open).toMatchObject({ id: 'i2', minutes: 0 });
     expect(result.today.map(entry => [entry.id, entry.minutes])).toEqual([['i2', 0], ['i1', 30]]);
   });
+
+  it('stops a Saturday timer at noon and leaves holidays out of the open hours', () => {
+    const agenda = { openHour: 8, closeHour: 18, workDays: [1, 2, 3, 4, 5, 6], dayHours: { '6': { openHour: 8, closeHour: 12 } }, closedDates: ['2026-10-02'] };
+    // Saturday 31/10 at 09:00 in São Paulo: counts until 12:00
+    expect(sessionCutoff(new Date('2026-10-31T12:00:00Z'), agenda)).toEqual(new Date('2026-10-31T15:00:00Z'));
+    // Friday 30/10: the usual 18:00
+    expect(sessionCutoff(new Date('2026-10-30T12:00:00Z'), agenda)).toEqual(new Date('2026-10-30T21:00:00Z'));
+    // 1 to 3 October: Thursday 10 h, Friday closed (holiday), Saturday 4 h
+    expect(availableMinutes(new Date('2026-10-01T03:00:00Z'), new Date('2026-10-04T03:00:00Z'), agenda)).toBe(14 * 60);
+  });
 });

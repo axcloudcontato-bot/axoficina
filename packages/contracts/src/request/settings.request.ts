@@ -36,6 +36,15 @@ export interface UpdateAgendaHoursRequest {
   workDays: number[];
   bays?: number | null;
   remindersEnabled?: boolean;
+  dayHours?: Record<string, { openHour: number; closeHour: number }>;
+  closedDates?: string[];
+}
+
+export interface UpdateOrderDefaultsRequest {
+  defaultWarrantyDays: number | null;
+  quoteValidityDays: number | null;
+  documentTerms: string | null;
+  acceptedPaymentMethods: string[];
 }
 
 export interface UpdateLaborRateRequest {

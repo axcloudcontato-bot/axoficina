@@ -1,4 +1,4 @@
-import type { AgendaHours, AppointmentResponse } from '@oficina/contracts';
+import { agendaSpan, hoursOn, localYmd, type AgendaHours, type AppointmentResponse } from '@oficina/contracts';
 
 export const SLOT_MINUTES = 30;
 
@@ -14,14 +14,17 @@ export interface PlacedAppointment {
 
 export function slotsOf(hours: AgendaHours): Array<{ hour: number; minute: number }> {
   const slots: Array<{ hour: number; minute: number }> = [];
-  for (let minutes = hours.openHour * 60; minutes < hours.closeHour * 60; minutes += SLOT_MINUTES) slots.push({ hour: Math.floor(minutes / 60), minute: minutes % 60 });
+  // The grid runs from the earliest opening to the latest closing of the week.
+  const span = agendaSpan(hours);
+  for (let minutes = span.openHour * 60; minutes < span.closeHour * 60; minutes += SLOT_MINUTES) slots.push({ hour: Math.floor(minutes / 60), minute: minutes % 60 });
   return slots;
 }
 
 // Places one day's appointments on the grid; overlapping ones share the width side by side.
 export function placeDay(items: AppointmentResponse[], day: Date, hours: AgendaHours): PlacedAppointment[] {
-  const open = new Date(day); open.setHours(hours.openHour, 0, 0, 0);
-  const span = (hours.closeHour - hours.openHour) * 60;
+  const grid = agendaSpan(hours);
+  const open = new Date(day); open.setHours(grid.openHour, 0, 0, 0);
+  const span = (grid.closeHour - grid.openHour) * 60;
   const sorted = [...items].sort((a, b) => Date.parse(a.startsAt) - Date.parse(b.startsAt) || Date.parse(b.endsAt) - Date.parse(a.endsAt));
   const laneEnds: number[] = [];
   const placed = sorted.map((item) => {
@@ -40,5 +43,6 @@ export function withinHours(start: Date, end: Date, hours: AgendaHours): boolean
   const startMinutes = start.getHours() * 60 + start.getMinutes();
   const sameDay = start.toDateString() === end.toDateString();
   const endMinutes = end.getHours() * 60 + end.getMinutes();
-  return hours.workDays.includes(start.getDay()) && sameDay && startMinutes >= hours.openHour * 60 && endMinutes <= hours.closeHour * 60;
+  const day = hoursOn(hours, start.getDay(), localYmd(start));
+  return Boolean(day) && sameDay && startMinutes >= day!.openHour * 60 && endMinutes <= day!.closeHour * 60;
 }

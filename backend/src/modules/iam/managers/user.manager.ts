@@ -302,6 +302,7 @@ export class UserManager {
       permissions,
       status: user.status as UserListItemResponse['status'],
       createdAt: user.createdAt.toISOString(),
+      lastLoginAt: user.lastLoginAt?.toISOString() ?? null,
     };
   }
 }

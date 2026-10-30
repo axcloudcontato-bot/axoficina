@@ -1,6 +1,7 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
 import type { PrismaClient, ServiceOrder } from '@oficina/database';
-import type { CommissionsResponse, MarkWarrantyReturnRequest, MyIdleResponse, SetCommissionRuleRequest, StartIdleRequest, WarrantyReturnResponse, ProductivityTrendRequest, ProductivityTrendResponse, CopyProductivityTargetsRequest, CorrectWorkSessionRequest, MyProductivityResponse, OpenWorkSession, TechnicianProductivityRequest, TechnicianProductivityResponse, TechnicianProductivityOrdersRequest, TechnicianProductivityOrdersResponse } from '@oficina/contracts';
+import { hoursOn } from '@oficina/contracts';
+import type { AgendaHours, CommissionsResponse, MarkWarrantyReturnRequest, MyIdleResponse, SetCommissionRuleRequest, StartIdleRequest, WarrantyReturnResponse, ProductivityTrendRequest, ProductivityTrendResponse, CopyProductivityTargetsRequest, CorrectWorkSessionRequest, MyProductivityResponse, OpenWorkSession, TechnicianProductivityRequest, TechnicianProductivityResponse, TechnicianProductivityOrdersRequest, TechnicianProductivityOrdersResponse } from '@oficina/contracts';
 import { PrismaService } from '../../../shared/prisma/prisma.service';
 import { AppException } from '../../../shared/errors/app-exception';
 import { AppErrorCode } from '../../../shared/errors/app-error-code';
@@ -13,27 +14,40 @@ const MAX_SESSION_MINUTES = 16 * 60;
 
 // A timer counts until the workshop closes on the day it started (São Paulo time, UTC-3 all year). Started after
 // closing time, it counts until midnight. So a timer left running overnight never turns the night into work.
-export function sessionCutoff(startedAt: Date, closeHour: number): Date {
+// Closing hour of the day in São Paulo: a weekday with its own hours (Saturday until noon) counts by those.
+const spDay = (date: Date) => { const local = new Date(date.getTime() - 3 * 3_600_000); return { weekday: local.getUTCDay(), ymd: local.toISOString().slice(0, 10) }; };
+function closingHourOf(closing: number | AgendaHours, startedAt: Date): number {
+  if (typeof closing === 'number') return closing;
+  const day = spDay(startedAt);
+  return hoursOn(closing, day.weekday, day.ymd)?.closeHour ?? closing.closeHour;
+}
+
+export function sessionCutoff(startedAt: Date, closing: number | AgendaHours): Date {
+  const closeHour = closingHourOf(closing, startedAt);
   const local = new Date(startedAt.getTime() - 3 * 3_600_000);
   const [year, month, day] = [local.getUTCFullYear(), local.getUTCMonth(), local.getUTCDate()];
-  const closing = new Date(Date.UTC(year, month, day, closeHour + 3));
-  return startedAt < closing ? closing : new Date(Date.UTC(year, month, day + 1, 3));
+  const closingAt = new Date(Date.UTC(year, month, day, closeHour + 3));
+  return startedAt < closingAt ? closingAt : new Date(Date.UTC(year, month, day + 1, 3));
 }
 
 // Open minutes of one technician between start and end: work days times the agenda's open hours (São Paulo time).
-export function availableMinutes(start: Date, end: Date, workshop: { openHour: number; closeHour: number; workDays: number[] }): number {
-  const perDay = Math.max(0, workshop.closeHour - workshop.openHour) * 60;
+export function availableMinutes(start: Date, end: Date, workshop: AgendaHours): number {
   let total = 0;
   for (let day = new Date(start.getTime() - 3 * 3_600_000); day.getTime() + 3 * 3_600_000 < end.getTime(); day = new Date(day.getTime() + 86_400_000)) {
-    if (workshop.workDays.includes(day.getUTCDay())) total += perDay;
+    const hours = hoursOn(workshop, day.getUTCDay(), day.toISOString().slice(0, 10));
+    if (hours) total += Math.max(0, hours.closeHour - hours.openHour) * 60;
   }
   return total;
 }
 
+function toAgenda(tenant: { agendaOpenHour?: number | null; agendaCloseHour?: number | null; agendaWorkDays?: number[]; agendaDayHours?: unknown; agendaClosedDates?: string[] } | null): AgendaHours {
+  return { openHour: tenant?.agendaOpenHour ?? 8, closeHour: tenant?.agendaCloseHour ?? DEFAULT_CLOSE_HOUR, workDays: tenant?.agendaWorkDays ?? [1, 2, 3, 4, 5, 6], dayHours: (tenant?.agendaDayHours as AgendaHours['dayHours']) ?? {}, closedDates: tenant?.agendaClosedDates ?? [] };
+}
+
 const percent = (part: number, whole: number) => whole > 0 ? Math.round(part * 100 / whole) : null;
 
-export function countedMinutes(startedAt: Date, endedAt: Date | null, now: Date, closeHour: number): { minutes: number; capped: boolean } {
-  const cutoff = sessionCutoff(startedAt, closeHour);
+export function countedMinutes(startedAt: Date, endedAt: Date | null, now: Date, closing: number | AgendaHours): { minutes: number; capped: boolean } {
+  const cutoff = sessionCutoff(startedAt, closing);
   const stop = endedAt ?? now;
   return { minutes: minutesBetween(startedAt, stop < cutoff ? stop : cutoff), capped: stop > cutoff };
 }
@@ -93,8 +107,8 @@ export class ProductivityService {
   }
 
   private async workshop(tenantId: string | undefined) {
-    const tenant = tenantId ? await this.prisma.unscoped.tenant.findFirst({ where: { id: tenantId }, select: { agendaOpenHour: true, agendaCloseHour: true, agendaWorkDays: true, laborRateCents: true } }) : null;
-    return { openHour: tenant?.agendaOpenHour ?? 8, closeHour: tenant?.agendaCloseHour ?? DEFAULT_CLOSE_HOUR, workDays: tenant?.agendaWorkDays ?? [1, 2, 3, 4, 5, 6], laborRateCents: tenant?.laborRateCents ?? null };
+    const tenant = tenantId ? await this.prisma.unscoped.tenant.findFirst({ where: { id: tenantId }, select: { agendaOpenHour: true, agendaCloseHour: true, agendaWorkDays: true, agendaDayHours: true, agendaClosedDates: true, laborRateCents: true } }) : null;
+    return { ...toAgenda(tenant), laborRateCents: tenant?.laborRateCents ?? null };
   }
 
   // Standard minutes per order from the catalog, only when every labor line has one.
@@ -143,10 +157,11 @@ export class ProductivityService {
     return { months: months.map(key => { const row = byMonth.get(key); return { month: key, completedCount: Number(row?.completedCount ?? 0), laborRevenueCents: Number(row?.laborCents ?? 0), workedMinutes: Number(row?.workedMinutes ?? 0) }; }) };
   }
 
-  private async closeHour(tenantId: string | undefined, client: { tenant: PrismaClient['tenant'] } = this.prisma.unscoped): Promise<number> {
-    if (!tenantId) return DEFAULT_CLOSE_HOUR;
-    const tenant = await client.tenant.findFirst({ where: { id: tenantId }, select: { agendaCloseHour: true } });
-    return tenant?.agendaCloseHour ?? DEFAULT_CLOSE_HOUR;
+  // The workshop's hours: a timer stops at the closing of the day it started.
+  private async closeHour(tenantId: string | undefined, client: { tenant: PrismaClient['tenant'] } = this.prisma.unscoped): Promise<AgendaHours> {
+    if (!tenantId) return toAgenda(null);
+    const tenant = await client.tenant.findFirst({ where: { id: tenantId }, select: { agendaOpenHour: true, agendaCloseHour: true, agendaWorkDays: true, agendaDayHours: true, agendaClosedDates: true } });
+    return toAgenda(tenant);
   }
 
   // A manager fixes a timer (new times, or removes it). On a delivered order, the labor already frozen for it is split
@@ -477,8 +492,8 @@ export class ProductivityService {
     ]);
     const rework = await this.reworkByTechnician(returns.map(entry => entry.originalOrderId));
     const idleMinutes = new Map<string, number>();
-    for (const session of idleSessions) idleMinutes.set(session.technicianId, (idleMinutes.get(session.technicianId) ?? 0) + countedMinutes(session.startedAt, session.endedAt, now, workshop.closeHour).minutes);
-    const closeHour = workshop.closeHour;
+    for (const session of idleSessions) idleMinutes.set(session.technicianId, (idleMinutes.get(session.technicianId) ?? 0) + countedMinutes(session.startedAt, session.endedAt, now, workshop).minutes);
+    const closeHour: AgendaHours = workshop;
     const minutesByOrder = new Map<string, number>();
     for (const share of shares) if (share.basis === 'RECORDED') minutesByOrder.set(share.serviceOrderId, (minutesByOrder.get(share.serviceOrderId) ?? 0) + share.workedMinutes);
     const sessionMinutes = new Map<string, number>();

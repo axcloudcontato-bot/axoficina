@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useOrderDefaults } from '@/features/settings/hooks/use-settings';
 import type { PaymentMethod, ServiceOrderResponse } from '@oficina/contracts';
 import { Money, CheckCircle, Clock, ArrowCounterClockwise } from '@phosphor-icons/react';
 import { toast } from 'sonner';
@@ -26,6 +27,8 @@ export function ServiceOrderPaymentSection({ serviceOrder }: { serviceOrder: Ser
   const confirmInstallment = useConfirmServiceOrderInstallment(serviceOrder.id);
   const confirm = useConfirmServiceOrderReceipt();
   const reverse = useDeleteServiceOrderReceipt(serviceOrder.id);
+  const accepted = useOrderDefaults().acceptedPaymentMethods;
+  const offeredMethods = METHODS.filter(([value]) => !accepted.length || accepted.includes(value) || value === serviceOrder.paymentMethod);
   const [plannedMethod, setPlannedMethod] = useState<PaymentMethod | ''>(serviceOrder.paymentMethod ?? '');
   const [paymentInstallments, setPaymentInstallments] = useState(String(serviceOrder.paymentInstallments ?? 1));
   const [anticipated, setAnticipated] = useState(serviceOrder.paymentAnticipated ?? false);
@@ -88,7 +91,7 @@ export function ServiceOrderPaymentSection({ serviceOrder }: { serviceOrder: Ser
       <summary className="cursor-pointer text-sm font-semibold text-text">{serviceOrder.paymentMethod ? 'Consultar ou ajustar a condição de pagamento' : '1. Combinar a forma de pagamento'}</summary>
       <p className="mt-2 text-xs text-text-muted">Registrar a condição cria as parcelas a receber. A entrada no caixa exige a confirmação do recebimento.</p>
       <div className={`mt-4 grid gap-3 ${plannedMethod === 'CREDIT_CARD' ? 'sm:grid-cols-2' : ''}`}>
-        <div><Label>Forma de pagamento combinada</Label><Select value={plannedMethod} onValueChange={(value) => setPlannedMethod(value as PaymentMethod)}><SelectTrigger className="mt-2"><SelectValue placeholder="Selecione a forma combinada" /></SelectTrigger><SelectContent>{METHODS.map(([value, label]) => <SelectItem key={value} value={value}>{label}</SelectItem>)}</SelectContent></Select></div>
+        <div><Label>Forma de pagamento combinada</Label><Select value={plannedMethod} onValueChange={(value) => setPlannedMethod(value as PaymentMethod)}><SelectTrigger className="mt-2"><SelectValue placeholder="Selecione a forma combinada" /></SelectTrigger><SelectContent>{offeredMethods.map(([value, label]) => <SelectItem key={value} value={value}>{label}</SelectItem>)}</SelectContent></Select></div>
         {plannedMethod === 'CREDIT_CARD' && <div><Label>Quantidade de parcelas</Label><Select value={paymentInstallments} onValueChange={setPaymentInstallments}><SelectTrigger className="mt-2"><SelectValue /></SelectTrigger><SelectContent>{CREDIT_INSTALLMENTS.map((installment) => <SelectItem key={installment} value={String(installment)}>{installment}x</SelectItem>)}</SelectContent></Select></div>}
       </div>
       {installmentPreview && <div className="mt-3 rounded-button border border-primary/20 bg-selection/20 px-4 py-3">

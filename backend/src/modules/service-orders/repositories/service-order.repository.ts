@@ -23,6 +23,7 @@ export interface CreateServiceOrderInput {
   expectedDeliveryAt?: Date | null;
   paymentMethod?: PaymentMethod | null;
   paymentInstallments?: number | null;
+  warrantyDays?: number | null;
   openedAt: Date;
 }
 
@@ -72,6 +73,7 @@ export class ServiceOrderRepository {
         expectedDeliveryAt: input.expectedDeliveryAt,
         paymentMethod: input.paymentMethod,
         paymentInstallments: input.paymentInstallments,
+        warrantyDays: input.warrantyDays,
         status: 'OPEN',
         openedAt: input.openedAt,
       },

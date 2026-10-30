@@ -1,5 +1,6 @@
-import type { UpdateMaintenanceAlertMonthsRequest, UpdateLaborRateRequest, UpdateAgendaHoursRequest, UpdatePhotoPolicyRequest } from '@oficina/contracts';
-import { ArrayMaxSize, ArrayMinSize, IsArray, IsBoolean, IsEmail, IsInt, IsOptional, IsString, Max, MaxLength, Min, ValidateIf } from 'class-validator';
+import { PAYMENT_METHODS } from '@oficina/contracts';
+import type { UpdateMaintenanceAlertMonthsRequest, UpdateLaborRateRequest, UpdateAgendaHoursRequest, UpdateOrderDefaultsRequest, UpdatePhotoPolicyRequest } from '@oficina/contracts';
+import { ArrayMaxSize, ArrayMinSize, IsArray, IsBoolean, IsEmail, IsIn, IsInt, IsObject, IsOptional, IsString, Matches, Max, MaxLength, Min, ValidateIf } from 'class-validator';
 
 // `@IsOptional()` só pula a validação quando o valor é null/undefined — uma
 // string vazia (o que o frontend sempre manda pra um campo de e-mail opcional
@@ -61,6 +62,15 @@ export class UpdateAgendaHoursDto implements UpdateAgendaHoursRequest {
   @IsArray() @ArrayMinSize(1) @ArrayMaxSize(7) @IsInt({ each: true }) @Min(0, { each: true }) @Max(6, { each: true }) workDays!: number[];
   @IsOptional() @IsInt() @Min(1) @Max(100) bays?: number | null;
   @IsOptional() @IsBoolean() remindersEnabled?: boolean;
+  @IsOptional() @IsObject() dayHours?: Record<string, { openHour: number; closeHour: number }>;
+  @IsOptional() @IsArray() @ArrayMaxSize(60) @Matches(/^\d{4}-\d{2}-\d{2}$/, { each: true }) closedDates?: string[];
+}
+
+export class UpdateOrderDefaultsDto implements UpdateOrderDefaultsRequest {
+  @ValidateIf((_object, value) => value !== null) @IsInt() @Min(0) @Max(3650) defaultWarrantyDays!: number | null;
+  @ValidateIf((_object, value) => value !== null) @IsInt() @Min(1) @Max(365) quoteValidityDays!: number | null;
+  @ValidateIf((_object, value) => value !== null) @IsString() @MaxLength(2000) documentTerms!: string | null;
+  @IsArray() @IsIn(PAYMENT_METHODS, { each: true }) acceptedPaymentMethods!: string[];
 }
 
 export class UpdateLaborRateDto implements UpdateLaborRateRequest {

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { hoursOn, localYmd } from '@oficina/contracts';
 import { DEFAULT_AGENDA_HOURS, type AgendaHours, type AppointmentResponse } from '@oficina/contracts';
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -54,7 +55,7 @@ export function AppointmentForm({ open, onOpenChange, initialDate, appointment, 
   function setDuration(minutes: number) { if (startsAt) setEndsAt(toDateInput(new Date(new Date(startsAt).getTime() + minutes * 60_000))); }
   // Moving the start keeps the chosen duration.
   function changeStart(value: string) { setStartsAt(value); if (value && durationMinutes > 0) setEndsAt(toDateInput(new Date(new Date(value).getTime() + durationMinutes * 60_000))); }
-  function fullDay() { if (!startsAt) return; const day = new Date(startsAt); const start = new Date(day); start.setHours(hours.openHour, 0, 0, 0); const end = new Date(day); end.setHours(hours.closeHour, 0, 0, 0); setStartsAt(toDateInput(start)); setEndsAt(toDateInput(end)); }
+  function fullDay() { if (!startsAt) return; const day = new Date(startsAt); const open = hoursOn(hours, day.getDay(), localYmd(day)) ?? hours; const start = new Date(day); start.setHours(open.openHour, 0, 0, 0); const end = new Date(day); end.setHours(open.closeHour, 0, 0, 0); setStartsAt(toDateInput(start)); setEndsAt(toDateInput(end)); }
   const invalidInterval = Boolean(startsAt && endsAt && new Date(endsAt) <= new Date(startsAt));
 
   useEffect(() => {

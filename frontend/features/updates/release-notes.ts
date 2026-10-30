@@ -1,5 +1,18 @@
 export const RELEASE_NOTES = [
   {
+    id: '2026-10-30-configuracoes-padroes', date: '2026-10-30', title: "Configurações: padrões da OS, horário por dia e documentos com a marca da oficina",
+    items: [
+      "Padrões da OS, em Configurações, Operação: garantia que já vem em toda OS nova, validade do orçamento, termos e condições impressos e as formas de pagamento que a oficina aceita.",
+      "O orçamento em PDF agora traz o nome, a logo, o CPF/CNPJ e o contato da oficina, a validade, os termos e o rodapé. A OS impressa também passa a mostrar os termos e o rodapé, que antes não apareciam em nenhum documento.",
+      "Horário por dia da semana (por exemplo, sábado até o meio-dia) e dias fechados, como feriados e férias coletivas. A Agenda, a ocupação e o cronômetro dos técnicos passam a respeitar esse horário.",
+      "O valor da hora da oficina e o prazo dos alertas de manutenção agora também podem ser ajustados em Operação, junto com os outros padrões.",
+      "Empresa: CPF/CNPJ, telefone e CEP ficam formatados, o endereço é preenchido pelo CEP e há um botão para baixar um orçamento de exemplo e ver como o cliente vai receber.",
+      "E-mail: escolha o provedor (Gmail, Outlook, Titan, Zoho, Hostinger, Locaweb) e servidor, porta e SSL são preenchidos sozinhos, com a dica de cada um, como a senha de app do Gmail.",
+      "Equipe: nova coluna Último acesso, para ver quem nunca entrou ou não usa o sistema há tempo.",
+      "A visão geral das Configurações mostra o quanto a oficina está pronta para usar o sistema e o próximo passo.",
+    ],
+  },
+  {
     id: '2026-10-30-configuracoes-senha', date: '2026-10-30', title: "Configurações: recuperação de senha, Minha conta e envio da logo",
     items: [
       "Esqueci minha senha: na tela de login, informe o e-mail e receba um link para criar uma nova senha, válido por 1 hora.",

@@ -24,7 +24,7 @@ export interface UserResponse {
   createdAt: string;
 }
 
-export type UserListItemResponse = UserResponse;
+export type UserListItemResponse = UserResponse & { lastLoginAt?: string | null };
 
 export interface InviteUserResponse {
   user: UserResponse;

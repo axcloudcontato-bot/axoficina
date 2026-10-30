@@ -3,7 +3,7 @@ import { CurrentUser } from '../../../shared/decorators/current-user.decorator';
 import { Permissions } from '../../../shared/decorators/permissions.decorator';
 import { Roles } from '../../../shared/decorators/roles.decorator';
 import type { AuthenticatedUser } from '../../../shared/guards/jwt-auth.guard';
-import { SendEmailDto, TestEmailSettingsDto, UpdateCompanySettingsDto, UpdateAgendaHoursDto, UpdateEmailSettingsDto, UpdateLaborRateDto, UpdateMaintenanceAlertMonthsDto, UpdatePhotoPolicyDto } from '../dto/settings.dto';
+import { SendEmailDto, TestEmailSettingsDto, UpdateCompanySettingsDto, UpdateAgendaHoursDto, UpdateEmailSettingsDto, UpdateLaborRateDto, UpdateOrderDefaultsDto, UpdateMaintenanceAlertMonthsDto, UpdatePhotoPolicyDto } from '../dto/settings.dto';
 import { SettingsManager } from '../managers/settings.manager';
 
 @Controller('api/v1/settings')
@@ -22,6 +22,9 @@ export class SettingsController {
 
   @Post('labor-rate') @HttpCode(HttpStatus.OK) @Permissions('service_orders.prices')
   updateLaborRate(@CurrentUser() user: AuthenticatedUser, @Body() body: UpdateLaborRateDto) { return this.manager.updateLaborRate(user, body); }
+
+  @Post('order-defaults') @HttpCode(HttpStatus.OK) @Permissions('settings.manage')
+  updateOrderDefaults(@CurrentUser() user: AuthenticatedUser, @Body() body: UpdateOrderDefaultsDto) { return this.manager.updateOrderDefaults(user, body); }
 
   @Post('maintenance-alert-months') @HttpCode(HttpStatus.OK) @Permissions('settings.manage')
   updateMaintenanceAlertMonths(@CurrentUser() user: AuthenticatedUser, @Body() body: UpdateMaintenanceAlertMonthsDto) { return this.manager.updateMaintenanceAlertMonths(user, body); }

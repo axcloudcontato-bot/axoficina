@@ -69,7 +69,7 @@ describe('SettingsManager', () => {
     const user = { tenantId: 'tenant-1', userId: 'user-1' } as never;
 
     const result = await manager.updateAgendaHours(user, { openHour: 7, closeHour: 17, workDays: [6, 1, 1, 3] });
-    expect(result.agendaHours).toEqual({ openHour: 7, closeHour: 17, workDays: [1, 3, 6], bays: null, remindersEnabled: false });
+    expect(result.agendaHours).toEqual({ openHour: 7, closeHour: 17, workDays: [1, 3, 6], bays: null, remindersEnabled: false, dayHours: {}, closedDates: [] });
     await expect(manager.updateAgendaHours(user, { openHour: 18, closeHour: 8, workDays: [1] })).rejects.toThrow('fechamento');
   });
 
@@ -96,5 +96,21 @@ describe('SettingsManager', () => {
     expect(await manager.updateMaintenanceAlertMonths(user, { months: 3 })).toEqual({ maintenanceAlertMonths: 3 });
     expect(tenants.updateSettings).toHaveBeenCalledWith('tenant-1', { maintenanceAlertMonths: 3 });
     expect(audit.record).toHaveBeenCalledWith(expect.objectContaining({ action: 'settings.maintenance_alert_months_updated' }));
+  });
+
+  it('keeps hours of its own only for work days that differ, and the closed dates in order', async () => {
+    const tenants = { updateSettings: jest.fn().mockImplementation(async (_id: string, data: Record<string, unknown>) => ({ id: 'tenant-1', ...data })) };
+    const manager = new SettingsManager(tenants as never, {} as never, {} as never, { record: jest.fn() } as never);
+    const user = { tenantId: 'tenant-1', userId: 'user-1' } as never;
+    const result = await manager.updateAgendaHours(user, { openHour: 8, closeHour: 18, workDays: [1, 6], dayHours: { '6': { openHour: 8, closeHour: 12 }, '1': { openHour: 8, closeHour: 18 }, '0': { openHour: 9, closeHour: 13 } }, closedDates: ['2026-12-25', '2026-11-20', '2026-12-25'] });
+    expect(result.agendaHours).toMatchObject({ dayHours: { '6': { openHour: 8, closeHour: 12 } }, closedDates: ['2026-11-20', '2026-12-25'] });
+    await expect(manager.updateAgendaHours(user, { openHour: 8, closeHour: 18, workDays: [6], dayHours: { '6': { openHour: 12, closeHour: 8 } } })).rejects.toThrow('fechamento');
+  });
+
+  it('saves the defaults every new order and printed document starts with', async () => {
+    const tenants = { updateSettings: jest.fn().mockImplementation(async (_id: string, data: Record<string, unknown>) => ({ id: 'tenant-1', ...data })) };
+    const manager = new SettingsManager(tenants as never, {} as never, {} as never, { record: jest.fn() } as never);
+    const result = await manager.updateOrderDefaults({ tenantId: 'tenant-1', userId: 'user-1' } as never, { defaultWarrantyDays: 90, quoteValidityDays: 7, documentTerms: '  Peças com garantia do fabricante.  ', acceptedPaymentMethods: ['PIX', 'CASH', 'PIX'] });
+    expect(result.orderDefaults).toEqual({ defaultWarrantyDays: 90, quoteValidityDays: 7, documentTerms: 'Peças com garantia do fabricante.', acceptedPaymentMethods: ['PIX', 'CASH'] });
   });
 });

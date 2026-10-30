@@ -153,6 +153,12 @@ model Tenant {
   agendaBays           Int?      @map("agenda_bays")
   appointmentRemindersEnabled Boolean @default(false) @map("appointment_reminders_enabled")
   laborRateCents       Int?      @map("labor_rate_cents")
+  defaultWarrantyDays  Int?      @map("default_warranty_days")
+  quoteValidityDays    Int?      @map("quote_validity_days")
+  documentTerms        String?   @map("document_terms")
+  acceptedPaymentMethods String[] @default([]) @map("accepted_payment_methods")
+  agendaDayHours       Json?     @map("agenda_day_hours")
+  agendaClosedDates    String[]  @default([]) @map("agenda_closed_dates")
   maintenanceAlertMonths Int @default(6) @map("maintenance_alert_months")
   plan                String    @default("free")
   subscriptionStatus      String    @default("unconfigured") @map("subscription_status")
@@ -184,6 +190,7 @@ model User {
   mfaSecret       String?   @map("mfa_secret")
   legalVersion    String?   @map("legal_version")
   legalAcceptedAt DateTime? @map("legal_accepted_at") @db.Timestamptz
+  lastLoginAt     DateTime? @map("last_login_at") @db.Timestamptz
   createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz
   updatedAt       DateTime? @updatedAt @map("updated_at") @db.Timestamptz
   deletedAt       DateTime? @map("deleted_at") @db.Timestamptz

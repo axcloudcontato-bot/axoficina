@@ -1,4 +1,4 @@
-import type { UpdateMaintenanceAlertMonthsRequest, UpdateLaborRateRequest, AgendaHours, UpdateAgendaHoursRequest, PhotoPolicy, UpdatePhotoPolicyRequest, CompanySettingsResponse, EmailSettingsResponse, SendEmailRequest, TestEmailSettingsRequest, TenantSettingsResponse, UpdateCompanySettingsRequest, UpdateEmailSettingsRequest } from '@oficina/contracts';
+import type { OrderDefaults, UpdateOrderDefaultsRequest, UpdateMaintenanceAlertMonthsRequest, UpdateLaborRateRequest, AgendaHours, UpdateAgendaHoursRequest, PhotoPolicy, UpdatePhotoPolicyRequest, CompanySettingsResponse, EmailSettingsResponse, SendEmailRequest, TestEmailSettingsRequest, TenantSettingsResponse, UpdateCompanySettingsRequest, UpdateEmailSettingsRequest } from '@oficina/contracts';
 import { apiClient } from '@/lib/api/client';
 import type { UpdateWhatsAppSettingsRequest, WhatsAppConnectionResponse, WhatsAppSettingsResponse, WhatsAppWebhookTestResponse } from '@oficina/contracts';
 
@@ -6,11 +6,14 @@ export const settingsApi = {
   async get(): Promise<TenantSettingsResponse> {
     return (await apiClient.get<TenantSettingsResponse>('/api/v1/settings')).data;
   },
-  async branding(): Promise<{ company: CompanySettingsResponse; whatsappEnabled?: boolean; photoPolicy?: PhotoPolicy; agendaHours?: AgendaHours; laborRateCents?: number | null; maintenanceAlertMonths?: number }> {
-    return (await apiClient.get<{ company: CompanySettingsResponse; whatsappEnabled?: boolean; photoPolicy?: PhotoPolicy; agendaHours?: AgendaHours; laborRateCents?: number | null; maintenanceAlertMonths?: number }>('/api/v1/settings/branding')).data;
+  async branding(): Promise<{ company: CompanySettingsResponse; whatsappEnabled?: boolean; photoPolicy?: PhotoPolicy; agendaHours?: AgendaHours; laborRateCents?: number | null; maintenanceAlertMonths?: number; orderDefaults?: OrderDefaults }> {
+    return (await apiClient.get<{ company: CompanySettingsResponse; whatsappEnabled?: boolean; photoPolicy?: PhotoPolicy; agendaHours?: AgendaHours; laborRateCents?: number | null; maintenanceAlertMonths?: number; orderDefaults?: OrderDefaults }>('/api/v1/settings/branding')).data;
   },
   async updateMaintenanceAlertMonths(request: UpdateMaintenanceAlertMonthsRequest): Promise<{ maintenanceAlertMonths: number }> {
     return (await apiClient.post('/api/v1/settings/maintenance-alert-months', request)).data;
+  },
+  async updateOrderDefaults(request: UpdateOrderDefaultsRequest): Promise<{ orderDefaults: OrderDefaults }> {
+    return (await apiClient.post('/api/v1/settings/order-defaults', request)).data;
   },
   async updateLaborRate(request: UpdateLaborRateRequest): Promise<{ laborRateCents: number | null }> {
     return (await apiClient.post('/api/v1/settings/labor-rate', request)).data;

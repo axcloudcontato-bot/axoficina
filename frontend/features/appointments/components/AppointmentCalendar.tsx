@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, type DragEvent, type KeyboardEvent } from 'react';
+import { agendaSpan, hoursOn, localYmd } from '@oficina/contracts';
 import { DEFAULT_AGENDA_HOURS, type AgendaHours, type AppointmentResponse, type AppointmentStatus } from '@oficina/contracts';
 import { addDays, sameDay, startOfDay, startOfWeek } from '../calendar/date-utils';
 import { placeDay, SLOT_MINUTES, slotsOf } from '../calendar/time-grid';
@@ -38,10 +39,12 @@ function TimeGrid({ date, view, items, onSelect, onCreate, onMove, hours }: {
   const slots = slotsOf(hours);
   const allDays = view === 'DAY' ? [startOfDay(date)] : Array.from({ length: 7 }, (_, index) => addDays(startOfWeek(date), index));
   // Closed days disappear from the week unless something is booked on them.
-  const days = view === 'DAY' ? allDays : allDays.filter((day) => hours.workDays.includes(day.getDay()) || items.some((item) => sameDay(new Date(item.startsAt), day)));
+  const isOpen = (day: Date) => Boolean(hoursOn(hours, day.getDay(), localYmd(day)));
+  const days = view === 'DAY' ? allDays : allDays.filter((day) => isOpen(day) || items.some((item) => sameDay(new Date(item.startsAt), day)));
   const height = `${slots.length * ROW_REM}rem`;
-  const span = (hours.closeHour - hours.openHour) * 60;
-  const nowOffset = (now.getHours() * 60 + now.getMinutes() - hours.openHour * 60) / span;
+  const grid = agendaSpan(hours);
+  const span = (grid.closeHour - grid.openHour) * 60;
+  const nowOffset = (now.getHours() * 60 + now.getMinutes() - grid.openHour * 60) / span;
 
   function slotDate(day: Date, hour: number, minute: number) { const value = new Date(day); value.setHours(hour, minute, 0, 0); return value; }
   function drop(event: DragEvent<HTMLElement>, target: Date) {
@@ -58,7 +61,7 @@ function TimeGrid({ date, view, items, onSelect, onCreate, onMove, hours }: {
         {days.map((day) => <button key={day.toISOString()} type="button" data-calendar-day aria-label={`Novo agendamento em ${dayLabel(day)}`} aria-current={sameDay(day, new Date()) ? 'date' : undefined} onClick={() => onCreate(slotDate(day, hours.openHour, 0))} className="flex flex-col items-center gap-0.5 border-l border-border px-1 py-2 hover:bg-surface">
           <span className="text-[10px] font-semibold uppercase text-text-muted">{day.toLocaleDateString('pt-BR', { weekday: 'short' })}</span>
           <span className={`inline-flex size-7 items-center justify-center rounded-full text-xs font-bold ${sameDay(day, new Date()) ? 'bg-primary text-primary-foreground' : 'text-text'}`}>{day.getDate()}</span>
-          {!hours.workDays.includes(day.getDay()) && <span className="text-[10px] text-text-muted">fechado</span>}
+          {!isOpen(day) && <span className="text-[10px] text-text-muted">{hours.closedDates?.includes(localYmd(day)) ? 'feriado/folga' : 'fechado'}</span>}
         </button>)}
       </div>
       <div className="grid" style={{ gridTemplateColumns: `3.5rem repeat(${days.length}, minmax(0, 1fr))` }}>
