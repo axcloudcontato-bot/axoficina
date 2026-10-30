@@ -1,4 +1,4 @@
-import { PLANS, YEARLY_MONTHS_CHARGED } from '@oficina/contracts';
+import { PLANS, TRIAL_DAYS } from '@oficina/contracts';
 import { formatCurrencyBRL } from '@/lib/format-currency';
 
 const price = (code: keyof typeof PLANS) => formatCurrencyBRL(PLANS[code].monthlyPriceCents);
@@ -6,7 +6,8 @@ const price = (code: keyof typeof PLANS) => formatCurrencyBRL(PLANS[code].monthl
 export const FAQ: Array<[string, string]> = [
   ['O Ofix serve para a minha oficina?', 'Ele foi feito para oficinas mecânicas: da recepção ao financeiro, passando por ordens de serviço, agenda, clientes e veículos.'],
   ['Preciso instalar alguma coisa?', 'Não. O Ofix funciona no navegador, no computador do balcão e no tablet do pátio. Basta cadastrar sua oficina e começar.'],
-  ['Quanto custa o Ofix?', `Há três planos, cobrados por oficina: Essencial por ${price('essencial')} por mês, Profissional por ${price('profissional')} e Completo por ${price('completo')}. No plano anual você paga ${YEARLY_MONTHS_CHARGED} meses e usa 12. O cadastro da oficina não cria nenhuma cobrança.`],
+  ['Quanto custa o Ofix?', `Há três planos, cobrados por oficina: Essencial por ${price('essencial')} por mês, Profissional por ${price('profissional')} e Completo por ${price('completo')}. Você testa ${TRIAL_DAYS} dias grátis antes de pagar.`],
+  ['Tem teste grátis?', `Sim: ${TRIAL_DAYS} dias grátis, sem pedir cartão, com todos os recursos do plano Completo. Ao fim do teste o sistema fica só para consulta, com os seus dados guardados, até você escolher um plano e pagar.`],
   ['Qual plano devo escolher?', 'O Essencial cobre o dia a dia: clientes, veículos, ordens de serviço, agenda e catálogo. O Profissional soma Financeiro, Produtividade e Cuidado com o cliente. O Completo traz também o WhatsApp, o histórico de alterações e a exportação dos dados, e não limita usuários nem ordens de serviço.'],
   ['Posso trocar de plano depois?', 'Sim, pelo próprio sistema. Subir de plano vale na hora e o valor proporcional é cobrado. Descer vale a partir do próximo pagamento, sem perder nada antes.'],
   ['Como é feito o pagamento?', 'A assinatura é paga com cartão, na página segura do Stripe. As faturas e os recibos ficam disponíveis dentro do sistema, e o cartão pode ser trocado quando você quiser.'],

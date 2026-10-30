@@ -1,4 +1,4 @@
-import { PLANS, YEARLY_MONTHS_CHARGED } from '@oficina/contracts';
+import { PLANS, TRIAL_DAYS } from '@oficina/contracts';
 import { formatCurrencyBRL } from '@/lib/format-currency';
 
 // Fatos do produto conferidos no código (contratos, seed e DTOs do backend).
@@ -13,7 +13,7 @@ export const STATS: Array<[string, string, string]> = [
   ['7', 'formas de pagamento', 'Pix, dinheiro, cartão de débito, cartão de crédito, transferência, boleto e outras.'],
   ['24', 'parcelas no máximo por ordem', 'O parcelamento vai de 1 a 24 vezes e gera as parcelas no contas a receber.'],
   ['3', 'planos de contratação', `Essencial, Profissional e Completo, de ${formatCurrencyBRL(PLANS.essencial.monthlyPriceCents)} a ${formatCurrencyBRL(PLANS.completo.monthlyPriceCents)} por mês.`],
-  [`${12 - YEARLY_MONTHS_CHARGED}`, 'meses grátis no plano anual', `O plano anual cobra ${YEARLY_MONTHS_CHARGED} dos 12 meses.`],
+  [`${TRIAL_DAYS}`, 'dias de teste grátis', 'Sem cartão e com todos os recursos do plano Completo. Depois do teste, você escolhe um plano para continuar.'],
   ['CSV', 'importação e exportação', 'Clientes, veículos e catálogo entram por planilha; clientes, veículos, ordens de serviço e financeiro saem em planilha.'],
 ];
 
@@ -33,5 +33,5 @@ export const SPEC: Array<[string, string]> = [
   ['Equipe e acesso', '5 perfis prontos, 20 permissões e perfis personalizados'],
   ['Avaliação do cliente', 'Nota de 1 a 5 estrelas pedida pelo WhatsApp depois da entrega'],
   ['Segurança dos dados', 'Ambiente isolado por oficina, acesso por permissão, recuperação de senha, aparelhos conectados, histórico de alterações e documentos de privacidade publicados'],
-  ['Planos', `Essencial (${formatCurrencyBRL(PLANS.essencial.monthlyPriceCents)} por mês), Profissional (${formatCurrencyBRL(PLANS.profissional.monthlyPriceCents)}) e Completo (${formatCurrencyBRL(PLANS.completo.monthlyPriceCents)}); plano anual com ${12 - YEARLY_MONTHS_CHARGED} meses grátis`],
+  ['Planos', `Essencial (${formatCurrencyBRL(PLANS.essencial.monthlyPriceCents)} por mês), Profissional (${formatCurrencyBRL(PLANS.profissional.monthlyPriceCents)}) e Completo (${formatCurrencyBRL(PLANS.completo.monthlyPriceCents)}); ${TRIAL_DAYS} dias de teste grátis, sem cartão`],
 ];

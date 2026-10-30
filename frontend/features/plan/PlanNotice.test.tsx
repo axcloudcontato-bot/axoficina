@@ -19,6 +19,17 @@ describe('PlanNotice', () => {
     expect(container).toHaveTextContent('');
   });
 
+  it('counts the days left of the free trial for administrators only', () => {
+    mocks.data = plan({ access: { state: 'active', daysLeft: 9, reason: 'trial' } });
+    const { unmount } = render(<PlanNotice />);
+    expect(screen.getByRole('status')).toHaveTextContent('Teste grátis: faltam 9 dias');
+    expect(screen.getByRole('link', { name: 'escolha um plano' })).toHaveAttribute('href', '/configuracoes/assinatura');
+    unmount();
+    mocks.role = 'MECHANIC';
+    render(<PlanNotice />);
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
+  });
+
   it('counts the days left before the system turns view-only', () => {
     mocks.data = plan({ access: { state: 'grace', daysLeft: 5, reason: 'past_due' } });
     render(<PlanNotice />);

@@ -55,13 +55,16 @@ describe('accessStatus', () => {
   it('keeps paying and not-yet-due accounts fully open', () => {
     expect(accessStatus({ status: 'active', dueAt: null }, now).state).toBe('active');
     expect(accessStatus({ status: 'unconfigured', dueAt: null }, now).state).toBe('active');
-    expect(accessStatus({ status: 'trial', dueAt: '2026-11-05T12:00:00Z' }, now).state).toBe('active');
+    expect(accessStatus({ status: 'trial', dueAt: '2026-11-05T12:00:00Z' }, now)).toEqual({ state: 'active', daysLeft: 6, reason: 'trial' });
     expect(accessStatus({ status: 'trial', dueAt: null }, now).state).toBe('active');
   });
   it('gives a week of grace after the due date, then goes view-only', () => {
     expect(accessStatus({ status: 'past_due', dueAt: '2026-10-28T12:00:00Z' }, now)).toEqual({ state: 'grace', daysLeft: 5, reason: 'past_due' });
-    expect(accessStatus({ status: 'trial', dueAt: '2026-10-29T12:00:00Z' }, now)).toEqual({ state: 'grace', daysLeft: 6, reason: 'trial_ended' });
     expect(accessStatus({ status: 'past_due', dueAt: '2026-10-23T12:00:00Z' }, now).state).toBe('suspended');
+  });
+  it('goes view-only the moment the free trial ends, with no grace week', () => {
+    expect(accessStatus({ status: 'trial', dueAt: '2026-10-30T11:59:00Z' }, now)).toEqual({ state: 'suspended', daysLeft: null, reason: 'trial_ended' });
+    expect(accessStatus({ status: 'trial', dueAt: '2026-10-30T12:01:00Z' }, now).state).toBe('active');
   });
   it('suspends a canceled account and warns a late one without a date', () => {
     expect(accessStatus({ status: 'canceled', dueAt: null }, now)).toEqual({ state: 'suspended', daysLeft: null, reason: 'canceled' });

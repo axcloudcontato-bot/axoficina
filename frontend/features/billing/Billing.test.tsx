@@ -30,14 +30,12 @@ describe('PlanSwitcher', () => {
     vi.spyOn(window, 'confirm').mockReturnValue(true);
   });
 
-  it('shows the three plans with their prices and the year as ten months', async () => {
-    const user = userEvent.setup();
+  it('shows the three plans with their monthly prices and no annual option', () => {
     render(<PlanSwitcher />);
     expect(screen.getByText(/129,90/)).toBeInTheDocument();
     expect(screen.getByText(/159,90/)).toBeInTheDocument();
     expect(screen.getByText(/199,90/)).toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: /Anual/ }));
-    expect(screen.getByText(/1\.299,00/)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Anual/ })).not.toBeInTheDocument();
   });
 
   it('sends the chosen plan and period, then goes to the payment page', async () => {

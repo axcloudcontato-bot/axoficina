@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { TRIAL_DAYS } from '@oficina/contracts';
 import { Prisma, type PrismaClient } from '@oficina/database';
 import { PrismaService } from '../../../shared/prisma/prisma.service';
 
@@ -82,6 +83,9 @@ export class TenantRepository {
         document: input.document,
         plan: input.plan ?? 'completo',
         status: input.status ?? 'active',
+        // Every new workshop starts on the free trial of the Completo plan.
+        subscriptionStatus: 'trial',
+        subscriptionDueAt: new Date(Date.now() + TRIAL_DAYS * 86_400_000),
       },
     });
   }

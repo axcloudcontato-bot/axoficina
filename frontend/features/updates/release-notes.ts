@@ -1,5 +1,12 @@
 export const RELEASE_NOTES = [
   {
+    id: '2026-10-30-teste-gratis', date: '2026-10-30', title: "Teste grátis de 14 dias",
+    items: [
+      "Oficinas novas testam o Ofix por 14 dias, sem cartão e com todos os recursos do plano Completo. O administrador vê quantos dias faltam e pode escolher o plano a qualquer momento em Assinatura e dados.",
+      "Quando o teste termina, o sistema fica só para consulta, com os dados guardados, até um plano ser contratado.",
+    ],
+  },
+  {
     id: '2026-10-30-planos-cobranca', date: '2026-10-30', title: "Contratar e trocar de plano pelo sistema",
     items: [
       "Assinatura e dados: o administrador escolhe o plano (Essencial, Profissional ou Completo), mensal ou anual, e paga na página segura do Stripe, com cartão.",

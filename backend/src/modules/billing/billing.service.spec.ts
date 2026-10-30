@@ -55,10 +55,10 @@ describe('BillingService checkout', () => {
     expect(result).toEqual({ checkoutUrl: 'https://checkout.stripe.com/c/pay/abc', appliedNow: false });
   });
 
-  it('charges a year as ten months, once a year', async () => {
+  it('charges a year as twelve months, with no discount', async () => {
     const { service, stripe } = build();
     await service.checkout(user, { plan: 'essencial', cycle: 'yearly' });
-    expect(stripe.checkoutSession).toHaveBeenCalledWith(expect.objectContaining({ unitAmountCents: 129900, interval: 'year' }));
+    expect(stripe.checkoutSession).toHaveBeenCalledWith(expect.objectContaining({ unitAmountCents: 155880, interval: 'year' }));
   });
 
   it('reuses the customer it already created', async () => {

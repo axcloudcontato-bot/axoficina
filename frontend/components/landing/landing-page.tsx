@@ -4,7 +4,7 @@ import {
   ArrowRight, Buildings, CalendarCheck, Camera, Car, ChartLineUp, Check, ClipboardText, ClockCounterClockwise,
   CurrencyCircleDollar, FileText, Gauge, Heart, Lock, Package, Printer, ShieldCheck, Star, UsersThree, WhatsappLogo, X,
 } from '@phosphor-icons/react/dist/ssr';
-import { MODULE_KEYS, MODULES, PLANS, PLAN_CODES, YEARLY_MONTHS_CHARGED, planPriceCents, type ModuleKey } from '@oficina/contracts';
+import { MODULE_KEYS, MODULES, PLANS, PLAN_CODES, TRIAL_DAYS, type ModuleKey } from '@oficina/contracts';
 import { formatCurrencyBRL } from '@/lib/format-currency';
 import { OfixLogo } from '@/components/brand/ofix-logo';
 import { DashboardMock, QuoteChatMock, StatusFlowMock } from './product-mock';
@@ -143,7 +143,7 @@ export function LandingPage() {
                 <a href="#funcionalidades" className="inline-flex h-12 items-center justify-center rounded-button border border-white/20 px-6 text-base font-semibold text-white hover:bg-white/5">Ver o que o Ofix faz</a>
               </div>
               <ul className="mt-9 flex flex-wrap gap-x-6 gap-y-2 text-sm text-white/60">
-                {['Funciona no navegador', 'Sem instalar nada', `A partir de ${formatCurrencyBRL(PLANS.essencial.monthlyPriceCents)} por mês`].map((t) => <li key={t} className="flex items-center gap-2"><Check weight="bold" className={`size-4 ${Y}`} />{t}</li>)}
+                {['Funciona no navegador', 'Sem instalar nada', `${TRIAL_DAYS} dias grátis, sem cartão`].map((t) => <li key={t} className="flex items-center gap-2"><Check weight="bold" className={`size-4 ${Y}`} />{t}</li>)}
               </ul>
             </div>
             <DashboardMock className="relative" />
@@ -313,7 +313,6 @@ export function LandingPage() {
                   <h3 className="text-xl font-extrabold">{plan.name}</h3>
                   <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{plan.tagline}</p>
                   <p className="mt-6 text-4xl font-extrabold">{formatCurrencyBRL(plan.monthlyPriceCents)}<span className="text-base font-semibold text-muted-foreground"> por mês</span></p>
-                  <p className="mt-1 text-sm text-muted-foreground">ou {formatCurrencyBRL(planPriceCents(code, 'yearly'))} por ano, com {12 - YEARLY_MONTHS_CHARGED} meses grátis</p>
                   <ul className="mt-6 flex-1 space-y-2.5 text-sm">
                     <li className="flex gap-3"><Check weight="bold" aria-hidden className="mt-0.5 size-4 shrink-0 text-success" /><span><strong>Ordens de serviço, clientes, veículos, agenda e catálogo</strong></span></li>
                     <li className="flex gap-3"><Check weight="bold" aria-hidden className="mt-0.5 size-4 shrink-0 text-success" />{plan.limits.users === null ? 'Usuários sem limite' : `Até ${plan.limits.users} usuários`}</li>
@@ -334,7 +333,7 @@ export function LandingPage() {
               );
             })}
           </div>
-          <p className="mx-auto mt-8 max-w-3xl text-center text-sm leading-relaxed text-muted-foreground">Valores por oficina. O cadastro não gera cobrança: você escolhe o plano dentro do sistema e paga com cartão, na página segura do Stripe. Cancele quando quiser: o sistema segue até o fim do período pago e seus dados continuam guardados.</p>
+          <p className="mx-auto mt-8 max-w-3xl text-center text-sm leading-relaxed text-muted-foreground">{TRIAL_DAYS} dias grátis, sem cartão e com todos os recursos do plano Completo. Depois do teste, você escolhe o plano dentro do sistema e paga com cartão, na página segura do Stripe. Valores por oficina. Cancele quando quiser: o sistema segue até o fim do período pago e seus dados continuam guardados.</p>
         </Section>
 
         <Section id="duvidas">

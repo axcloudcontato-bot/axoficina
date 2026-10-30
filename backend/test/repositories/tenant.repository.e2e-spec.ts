@@ -30,6 +30,11 @@ describe('TenantRepository (integration)', () => {
     const found = await repository.byId(tenant.id);
     expect(found?.name).toBe('Oficina Teste');
     expect(found?.plan).toBe('completo');
+    // A new workshop starts on the 14-day free trial.
+    expect(found?.subscriptionStatus).toBe('trial');
+    const days = ((found?.subscriptionDueAt?.getTime() ?? 0) - Date.now()) / 86_400_000;
+    expect(days).toBeGreaterThan(13.9);
+    expect(days).toBeLessThanOrEqual(14);
     expect(found?.status).toBe('active');
   });
 

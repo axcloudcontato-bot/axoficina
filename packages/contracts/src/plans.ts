@@ -52,12 +52,14 @@ export interface EntitlementsResponse {
 
 // A late or ended subscription is not cut off at once: the workshop gets a few days, then can only look at what it has.
 export const ACCESS_GRACE_DAYS = 7;
+// A new workshop tries everything for this long, with no card, then the system is view-only until a plan is paid.
+export const TRIAL_DAYS = 14;
 export type AccessState = 'active' | 'grace' | 'suspended';
 export interface AccessStatus {
   state: AccessState;
-  /** Days left before it turns to view-only; only while in grace and when a due date is known. */
+  /** Days left before it turns to view-only; while in grace (a late payment) or in the free trial, when the date is known. */
   daysLeft: number | null;
-  reason: 'past_due' | 'trial_ended' | 'canceled' | null;
+  reason: 'trial' | 'past_due' | 'trial_ended' | 'canceled' | null;
 }
 
 export function accessStatus(subscription: { status: string; dueAt: Date | string | null }, now: Date = new Date()): AccessStatus {
@@ -66,8 +68,14 @@ export function accessStatus(subscription: { status: string; dueAt: Date | strin
     return paidUntil > now.getTime() ? { state: 'active', daysLeft: null, reason: null } : { state: 'suspended', daysLeft: null, reason: 'canceled' };
   }
   if (subscription.status !== 'past_due' && subscription.status !== 'trial') return { state: 'active', daysLeft: null, reason: null };
-  const reason = subscription.status === 'trial' ? 'trial_ended' : 'past_due';
-  if (!subscription.dueAt) return subscription.status === 'trial' ? { state: 'active', daysLeft: null, reason: null } : { state: 'grace', daysLeft: null, reason };
+  if (subscription.status === 'trial') {
+    if (!subscription.dueAt) return { state: 'active', daysLeft: null, reason: null };
+    const left = (new Date(subscription.dueAt).getTime() - now.getTime()) / 86_400_000;
+    // The trial is not a missed payment: when it ends there is no grace week.
+    return left > 0 ? { state: 'active', daysLeft: Math.ceil(left), reason: 'trial' } : { state: 'suspended', daysLeft: null, reason: 'trial_ended' };
+  }
+  const reason = 'past_due';
+  if (!subscription.dueAt) return { state: 'grace', daysLeft: null, reason };
   const lateDays = (now.getTime() - new Date(subscription.dueAt).getTime()) / 86_400_000;
   if (lateDays <= 0) return { state: 'active', daysLeft: null, reason: null };
   if (lateDays >= ACCESS_GRACE_DAYS) return { state: 'suspended', daysLeft: null, reason };
@@ -90,8 +98,8 @@ export function limitStatus(used: number, limit: number | null): LimitStatus {
 
 export interface PlanStatusResponse extends EntitlementsResponse { access: AccessStatus; usage: PlanUsage }
 
-// A year is charged as ten months: two are on the house.
-export const YEARLY_MONTHS_CHARGED = 10;
+// A year is twelve months, with no discount: the only free offer is the trial.
+export const YEARLY_MONTHS_CHARGED = 12;
 export function planPriceCents(code: PlanCode, cycle: 'monthly' | 'yearly'): number {
   return PLANS[code].monthlyPriceCents * (cycle === 'yearly' ? YEARLY_MONTHS_CHARGED : 1);
 }
