@@ -1,6 +1,6 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
 import type { PrismaClient, ServiceOrder } from '@oficina/database';
-import type { TechnicianProductivityRequest, TechnicianProductivityResponse, TechnicianProductivityOrdersRequest, TechnicianProductivityOrdersResponse } from '@oficina/contracts';
+import type { CopyProductivityTargetsRequest, CorrectWorkSessionRequest, MyProductivityResponse, OpenWorkSession, TechnicianProductivityRequest, TechnicianProductivityResponse, TechnicianProductivityOrdersRequest, TechnicianProductivityOrdersResponse } from '@oficina/contracts';
 import { PrismaService } from '../../../shared/prisma/prisma.service';
 import { AppException } from '../../../shared/errors/app-exception';
 import { AppErrorCode } from '../../../shared/errors/app-error-code';
@@ -8,6 +8,23 @@ import type { AuthenticatedUser } from '../../../shared/guards/jwt-auth.guard';
 import { AuditLogService } from '../../../shared/audit-log/audit-log.service';
 
 const minutesBetween = (start: Date, end: Date) => Math.max(0, Math.round((end.getTime() - start.getTime()) / 60_000));
+const DEFAULT_CLOSE_HOUR = 18;
+const MAX_SESSION_MINUTES = 16 * 60;
+
+// A timer counts until the workshop closes on the day it started (São Paulo time, UTC-3 all year). Started after
+// closing time, it counts until midnight. So a timer left running overnight never turns the night into work.
+export function sessionCutoff(startedAt: Date, closeHour: number): Date {
+  const local = new Date(startedAt.getTime() - 3 * 3_600_000);
+  const [year, month, day] = [local.getUTCFullYear(), local.getUTCMonth(), local.getUTCDate()];
+  const closing = new Date(Date.UTC(year, month, day, closeHour + 3));
+  return startedAt < closing ? closing : new Date(Date.UTC(year, month, day + 1, 3));
+}
+
+export function countedMinutes(startedAt: Date, endedAt: Date | null, now: Date, closeHour: number): { minutes: number; capped: boolean } {
+  const cutoff = sessionCutoff(startedAt, closeHour);
+  const stop = endedAt ?? now;
+  return { minutes: minutesBetween(startedAt, stop < cutoff ? stop : cutoff), capped: stop > cutoff };
+}
 
 @Injectable()
 export class ProductivityService {
@@ -24,7 +41,9 @@ export class ProductivityService {
     const rows = await this.prisma.client.serviceOrderWorkSession.findMany({ where: { serviceOrderId }, orderBy: { startedAt: 'desc' } });
     const users = await this.prisma.client.user.findMany({ where: { id: { in: [...new Set(rows.map(row => row.technicianId))] } }, select: { id: true, name: true } });
     const names = new Map(users.map(user => [user.id, user.name]));
-    return { sessions: rows.map(row => ({ id: row.id, technicianId: row.technicianId, technicianName: names.get(row.technicianId) ?? 'Técnico removido', startedAt: row.startedAt.toISOString(), endedAt: row.endedAt?.toISOString() ?? null, workedMinutes: minutesBetween(row.startedAt, row.endedAt ?? new Date()) })) };
+    const closeHour = await this.closeHour(rows[0]?.tenantId);
+    const now = new Date();
+    return { sessions: rows.map(row => { const counted = countedMinutes(row.startedAt, row.endedAt, now, closeHour); return { id: row.id, technicianId: row.technicianId, technicianName: names.get(row.technicianId) ?? 'Técnico removido', startedAt: row.startedAt.toISOString(), endedAt: row.endedAt?.toISOString() ?? null, workedMinutes: counted.minutes, capped: counted.capped }; }) };
   }
 
   async start(serviceOrderId: string, actor: AuthenticatedUser) {
@@ -41,7 +60,9 @@ export class ProductivityService {
       if (!order) throw new AppException(AppErrorCode.SERVICE_ORDER_NOT_FOUND, 'Ordem de serviço não encontrada.', HttpStatus.NOT_FOUND);
       if (order.status !== 'IN_PROGRESS') throw new AppException(AppErrorCode.VALIDATION_ERROR, 'Inicie a OS antes de registrar tempo de trabalho.', HttpStatus.BAD_REQUEST);
       const existing = await tx.serviceOrderWorkSession.findFirst({ where: { technicianId: actor.userId, endedAt: null } });
-      if (existing) throw new AppException(AppErrorCode.VALIDATION_ERROR, 'Encerre seu trabalho em outra OS antes de iniciar esta.', HttpStatus.CONFLICT);
+      const forgotten = existing && countedMinutes(existing.startedAt, null, new Date(), await this.closeHour(order.tenantId, tx)).capped;
+      if (existing && forgotten) await tx.serviceOrderWorkSession.updateMany({ where: { id: existing.id, endedAt: null }, data: { endedAt: sessionCutoff(existing.startedAt, await this.closeHour(order.tenantId, tx)) } });
+      else if (existing) throw new AppException(AppErrorCode.VALIDATION_ERROR, 'Encerre seu trabalho em outra OS antes de iniciar esta.', HttpStatus.CONFLICT);
       await tx.serviceOrderWorkSession.create({ data: { tenantId: order.tenantId, serviceOrderId, technicianId: actor.userId, startedAt: new Date() } });
     });
     return this.sessions(serviceOrderId);
@@ -56,6 +77,90 @@ export class ProductivityService {
 
   async closeSessions(tx: PrismaClient, serviceOrderId: string, endedAt: Date) {
     await tx.serviceOrderWorkSession.updateMany({ where: { serviceOrderId, endedAt: null }, data: { endedAt } });
+  }
+
+  private async closeHour(tenantId: string | undefined, client: { tenant: PrismaClient['tenant'] } = this.prisma.unscoped): Promise<number> {
+    if (!tenantId) return DEFAULT_CLOSE_HOUR;
+    const tenant = await client.tenant.findFirst({ where: { id: tenantId }, select: { agendaCloseHour: true } });
+    return tenant?.agendaCloseHour ?? DEFAULT_CLOSE_HOUR;
+  }
+
+  // A manager fixes a timer (new times, or removes it). On a delivered order, the labor already frozen for it is split
+  // again by the corrected minutes: the total stays, only who gets how much changes.
+  async correctSession(input: CorrectWorkSessionRequest, actor: AuthenticatedUser, now = new Date()) {
+    const reason = input.reason.trim();
+    if (reason.length < 5) throw new AppException(AppErrorCode.VALIDATION_ERROR, 'Explique a correção (mínimo 5 caracteres).', HttpStatus.BAD_REQUEST);
+    const session = await this.prisma.client.serviceOrderWorkSession.findFirst({ where: { id: input.sessionId, tenantId: actor.tenantId } });
+    if (!session) throw new AppException(AppErrorCode.VALIDATION_ERROR, 'Registro de tempo não encontrado.', HttpStatus.NOT_FOUND);
+    const startedAt = input.startedAt ? new Date(input.startedAt) : session.startedAt;
+    const endedAt = input.endedAt ? new Date(input.endedAt) : session.endedAt;
+    if (!input.remove) {
+      if (!endedAt) throw new AppException(AppErrorCode.VALIDATION_ERROR, 'Informe a hora em que o trabalho terminou.', HttpStatus.BAD_REQUEST);
+      if (!(startedAt < endedAt) || endedAt > now) throw new AppException(AppErrorCode.VALIDATION_ERROR, 'O fim precisa ser depois do início e não pode estar no futuro.', HttpStatus.BAD_REQUEST);
+      if (minutesBetween(startedAt, endedAt) > MAX_SESSION_MINUTES) throw new AppException(AppErrorCode.VALIDATION_ERROR, 'Um registro não pode passar de 16 horas. Divida em mais de um, se for o caso.', HttpStatus.BAD_REQUEST);
+    }
+    await this.prisma.transaction(async tx => {
+      if (input.remove) await tx.serviceOrderWorkSession.deleteMany({ where: { id: session.id, tenantId: actor.tenantId } });
+      else await tx.serviceOrderWorkSession.updateMany({ where: { id: session.id, tenantId: actor.tenantId }, data: { startedAt, endedAt } });
+      await this.reallocate(tx, session.serviceOrderId, actor.tenantId);
+    });
+    await this.auditLog?.record({ tenantId: actor.tenantId, userId: actor.userId, action: input.remove ? 'productivity.session_removed' : 'productivity.session_corrected', entity: 'service_order_work_session', entityId: session.id, metadata: { reason } });
+    return this.sessions(session.serviceOrderId);
+  }
+
+  // Splits the labor already frozen for a delivered order again, by each technician's counted minutes.
+  private async reallocate(tx: PrismaClient, serviceOrderId: string, tenantId: string) {
+    const shares = await tx.serviceOrderProductivityShare.findMany({ where: { serviceOrderId, tenantId }, orderBy: { id: 'asc' } });
+    if (!shares.length) return;
+    const order = await tx.serviceOrder.findFirst({ where: { id: serviceOrderId, tenantId } });
+    if (!order) return;
+    const total = shares.reduce((sum, share) => sum + share.laborCents, 0);
+    const deliveredAt = shares[0].deliveredAt;
+    const closeHour = await this.closeHour(tenantId, tx);
+    const sessions = await tx.serviceOrderWorkSession.findMany({ where: { serviceOrderId, tenantId } });
+    const byTechnician = new Map<string, number>();
+    for (const session of sessions) byTechnician.set(session.technicianId, (byTechnician.get(session.technicianId) ?? 0) + countedMinutes(session.startedAt, session.endedAt ?? deliveredAt, deliveredAt, closeHour).minutes);
+    const entries = [...byTechnician].filter(([, minutes]) => minutes > 0).sort(([a], [b]) => a.localeCompare(b));
+    await tx.serviceOrderProductivityShare.deleteMany({ where: { serviceOrderId, tenantId } });
+    if (!entries.length) {
+      await tx.serviceOrderProductivityShare.create({ data: { tenantId, serviceOrderId, technicianId: order.technicianId, laborCents: total, workedMinutes: 0, basis: order.technicianId ? 'ASSIGNED' : 'UNASSIGNED', deliveredAt } });
+      return;
+    }
+    const totalMinutes = entries.reduce((sum, [, minutes]) => sum + minutes, 0);
+    let allocated = 0;
+    for (const [index, [technicianId, workedMinutes]] of entries.entries()) {
+      const laborCents = index === entries.length - 1 ? total - allocated : Math.floor(total * workedMinutes / totalMinutes);
+      allocated += laborCents;
+      await tx.serviceOrderProductivityShare.create({ data: { tenantId, serviceOrderId, technicianId, laborCents, workedMinutes, basis: 'RECORDED', deliveredAt } });
+    }
+  }
+
+  // Targets are per month: this repeats last month's for the technicians who have none yet, so nobody starts a month without one.
+  async copyTargets(input: CopyProductivityTargetsRequest, actor: AuthenticatedUser) {
+    if (input.fromMonth === input.toMonth) throw new AppException(AppErrorCode.VALIDATION_ERROR, 'Escolha meses diferentes.', HttpStatus.BAD_REQUEST);
+    const [from, to] = await Promise.all([
+      this.prisma.client.technicianProductivityTarget.findMany({ where: { tenantId: actor.tenantId, month: input.fromMonth } }),
+      this.prisma.client.technicianProductivityTarget.findMany({ where: { tenantId: actor.tenantId, month: input.toMonth }, select: { technicianId: true } }),
+    ]);
+    const taken = new Set(to.map(target => target.technicianId));
+    const missing = from.filter(target => !taken.has(target.technicianId));
+    if (missing.length) {
+      await this.prisma.client.technicianProductivityTarget.createMany({ data: missing.map(target => ({ tenantId: actor.tenantId, technicianId: target.technicianId, month: input.toMonth, completedTarget: target.completedTarget, laborCentsTarget: target.laborCentsTarget, workedMinutesTarget: target.workedMinutesTarget })), skipDuplicates: true });
+      await this.auditLog?.record({ tenantId: actor.tenantId, userId: actor.userId, action: 'productivity.targets_copied', entity: 'technician_productivity_target', entityId: actor.tenantId, metadata: { month: input.toMonth } });
+    }
+    return { copied: missing.length };
+  }
+
+  // A technician's own month. Money only when the person may see prices.
+  async mine(request: TechnicianProductivityRequest, actor: AuthenticatedUser, canViewPrices: boolean): Promise<MyProductivityResponse> {
+    const report = await this.report(request, actor.tenantId);
+    const item = report.items.find(entry => entry.technicianId === actor.userId);
+    if (!item) return { completedCount: 0, workedMinutes: 0, activeOrders: 0, estimatedCount: 0, ...(canViewPrices ? { laborRevenueCents: 0 } : {}), target: null };
+    return {
+      completedCount: item.completedCount, workedMinutes: item.workedMinutes, activeOrders: item.activeOrders, estimatedCount: item.estimatedCount,
+      ...(canViewPrices ? { laborRevenueCents: item.laborRevenueCents } : {}),
+      target: item.target ? { completedCount: item.target.completedCount, workedMinutes: item.target.workedMinutes, ...(canViewPrices ? { laborRevenueCents: item.target.laborRevenueCents } : {}) } : null,
+    };
   }
 
   async setTarget(input: { technicianId: string; month: string; completedCount: number; laborRevenueCents: number; workedMinutes: number }, actor: AuthenticatedUser) {
@@ -73,6 +178,7 @@ export class ProductivityService {
 
   async captureDelivery(tx: PrismaClient, order: ServiceOrder, deliveredAt: Date) {
     await this.closeSessions(tx, order.id, deliveredAt);
+    const closeHour = await this.closeHour(order.tenantId, tx);
     const [sessions, lineItems] = await Promise.all([
       tx.serviceOrderWorkSession.findMany({ where: { serviceOrderId: order.id } }),
       tx.serviceOrderItem.findMany({ where: { serviceOrderId: order.id, deletedAt: null }, select: { type: true, quantity: true, unitPriceCents: true } }),
@@ -81,7 +187,7 @@ export class ProductivityService {
     const labor = lineItems.filter(item => item.type === 'LABOR').reduce((sum, item) => sum + Math.round(Number(item.quantity) * item.unitPriceCents), 0);
     const netLabor = gross ? Math.max(0, labor - Math.round(Math.min(order.discountCents, gross) * labor / gross)) : 0;
     const byTechnician = new Map<string, number>();
-    for (const session of sessions) byTechnician.set(session.technicianId, (byTechnician.get(session.technicianId) ?? 0) + minutesBetween(session.startedAt, session.endedAt ?? deliveredAt));
+    for (const session of sessions) byTechnician.set(session.technicianId, (byTechnician.get(session.technicianId) ?? 0) + countedMinutes(session.startedAt, session.endedAt ?? deliveredAt, deliveredAt, closeHour).minutes);
     const entries = [...byTechnician].filter(([, minutes]) => minutes > 0).sort(([a], [b]) => a.localeCompare(b));
     if (!entries.length) {
       await tx.serviceOrderProductivityShare.create({ data: { tenantId: order.tenantId, serviceOrderId: order.id, technicianId: order.technicianId, laborCents: netLabor, workedMinutes: 0, basis: order.technicianId ? 'ASSIGNED' : 'UNASSIGNED', deliveredAt } });
@@ -165,7 +271,7 @@ export class ProductivityService {
     return { items: rows.map(row => ({ id: row.id, orderNumber: row.orderNumber, deliveredAt: row.deliveredAt.toISOString(), laborCents: row.laborCents, workedMinutes: row.workedMinutes, estimated: row.estimated })), total: rows.length ? Number(rows[0].total) : 0, offset: request.offset, limit: request.limit };
   }
 
-  async report(request: TechnicianProductivityRequest): Promise<TechnicianProductivityResponse> {
+  async report(request: TechnicianProductivityRequest, tenantId?: string, now = new Date()): Promise<TechnicianProductivityResponse> {
     const start = new Date(request.startAt), end = new Date(request.endAt);
     if (!Number.isFinite(start.getTime()) || !Number.isFinite(end.getTime()) || end <= start || end.getTime() - start.getTime() > 366 * 86_400_000) {
       throw new AppException(AppErrorCode.VALIDATION_ERROR, 'Informe um período válido de até 366 dias.', HttpStatus.BAD_REQUEST);
@@ -178,6 +284,10 @@ export class ProductivityService {
       this.prisma.client.role.findMany({ where: { baseRole: 'MECHANIC', deletedAt: null }, select: { id: true } }),
       this.prisma.client.technicianProductivityTarget.findMany({ where: { month } }),
     ]);
+    const [running, closeHour] = await Promise.all([
+      this.prisma.client.serviceOrderWorkSession.findMany({ where: { endedAt: null }, orderBy: { startedAt: 'asc' } }),
+      this.closeHour(tenantId),
+    ]);
     const covered = new Set(shares.map(share => share.serviceOrderId));
     const legacy = delivered.filter(order => !covered.has(order.id));
     const legacyItems = legacy.length ? await this.prisma.client.serviceOrderItem.findMany({ where: { serviceOrderId: { in: legacy.map(order => order.id) }, deletedAt: null }, select: { serviceOrderId: true, type: true, quantity: true, unitPriceCents: true } }) : [];
@@ -188,7 +298,7 @@ export class ProductivityService {
       bucket.gross += cents; if (item.type === 'LABOR') bucket.labor += cents;
       totalsByOrder.set(item.serviceOrderId, bucket);
     }
-    const technicianIds = [...new Set([...shares.map(share => share.technicianId), ...legacy.map(order => order.technicianId), ...active.map(order => order.technicianId)].filter((id): id is string => Boolean(id)))];
+    const technicianIds = [...new Set([...shares.map(share => share.technicianId), ...legacy.map(order => order.technicianId), ...active.map(order => order.technicianId), ...running.map(session => session.technicianId)].filter((id): id is string => Boolean(id)))];
     const users = await this.prisma.client.user.findMany({ where: { OR: [{ id: { in: technicianIds } }, { roleId: { in: roles.map(role => role.id) }, status: 'active', deletedAt: null }] }, select: { id: true, name: true } });
     const names = new Map(users.map(user => [user.id, user.name]));
     const targetsByTechnician = new Map(targets.map(target => [target.technicianId, target]));
@@ -214,6 +324,9 @@ export class ProductivityService {
       const target = targetsByTechnician.get(technicianId);
       return { technicianId, technicianName: names.get(technicianId) ?? 'Técnico removido', completedCount: bucket.completedCount, laborRevenueCents: bucket.laborRevenueCents, activeOrders: bucket.activeOrders, workedMinutes: bucket.workedMinutes, estimatedCount: bucket.estimatedCount, target: target ? { completedCount: target.completedTarget, laborRevenueCents: target.laborCentsTarget, workedMinutes: target.workedMinutesTarget } : null };
     }).sort((a, b) => b.laborRevenueCents - a.laborRevenueCents || b.completedCount - a.completedCount);
-    return { startAt: request.startAt, endAt: request.endAt, items, totals: { completedCount: delivered.length, laborRevenueCents: items.reduce((sum, item) => sum + item.laborRevenueCents, unassignedLabor), workedMinutes: items.reduce((sum, item) => sum + item.workedMinutes, 0), unassignedCount, estimatedCount: items.reduce((sum, item) => sum + item.estimatedCount, 0) + legacy.filter(order => !order.technicianId).length } };
+    const runningOrders = running.length ? await this.prisma.client.serviceOrder.findMany({ where: { id: { in: running.map(session => session.serviceOrderId) } }, select: { id: true, orderNumber: true } }) : [];
+    const orderNumbers = new Map(runningOrders.map(order => [order.id, order.orderNumber]));
+    const openSessions: OpenWorkSession[] = running.map(session => { const counted = countedMinutes(session.startedAt, null, now, closeHour); return { id: session.id, technicianId: session.technicianId, technicianName: names.get(session.technicianId) ?? 'Técnico removido', serviceOrderId: session.serviceOrderId, orderNumber: orderNumbers.get(session.serviceOrderId) ?? 0, startedAt: session.startedAt.toISOString(), workedMinutes: counted.minutes, capped: counted.capped }; });
+    return { openSessions, startAt: request.startAt, endAt: request.endAt, items, totals: { completedCount: delivered.length, laborRevenueCents: items.reduce((sum, item) => sum + item.laborRevenueCents, unassignedLabor), workedMinutes: items.reduce((sum, item) => sum + item.workedMinutes, 0), unassignedCount, estimatedCount: items.reduce((sum, item) => sum + item.estimatedCount, 0) + legacy.filter(order => !order.technicianId).length } };
   }
 }

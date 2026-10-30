@@ -1,6 +1,8 @@
 import { IsBoolean, IsIn, IsInt, IsISO8601, IsNotEmpty, IsObject, IsOptional, IsString, IsUUID, Matches, Max, MaxLength, Min } from 'class-validator';
 import { PAYMENT_METHODS, SERVICE_ORDER_STATUSES } from '@oficina/contracts';
 import type {
+  CopyProductivityTargetsRequest,
+  CorrectWorkSessionRequest,
   CreateServiceOrderRequest,
   DeleteServiceOrderRequest,
   ServiceOrderListRequest,
@@ -155,6 +157,19 @@ export class ProductivityTargetDto {
   @IsInt() @Min(0) @Max(100000) completedCount!: number;
   @IsInt() @Min(0) @Max(100000000000) laborRevenueCents!: number;
   @IsInt() @Min(0) @Max(1000000) workedMinutes!: number;
+}
+
+export class CorrectWorkSessionDto implements CorrectWorkSessionRequest {
+  @IsUUID('4') sessionId!: string;
+  @IsOptional() @IsISO8601() startedAt?: string;
+  @IsOptional() @IsISO8601() endedAt?: string;
+  @IsOptional() @IsBoolean() remove?: boolean;
+  @IsString() @MaxLength(300) reason!: string;
+}
+
+export class CopyProductivityTargetsDto implements CopyProductivityTargetsRequest {
+  @Matches(/^\d{4}-(0[1-9]|1[0-2])$/) fromMonth!: string;
+  @Matches(/^\d{4}-(0[1-9]|1[0-2])$/) toMonth!: string;
 }
 
 export class TechnicianProductivityOrdersDto implements TechnicianProductivityOrdersRequest {

@@ -17,6 +17,8 @@ import {
   TechnicianProductivityDto,
   TechnicianProductivityOrdersDto,
   WorkSessionDto,
+  CorrectWorkSessionDto,
+  CopyProductivityTargetsDto,
   ProductivityTargetDto,
   TransitionServiceOrderDto,
   UpdateServiceOrderDto,
@@ -115,8 +117,37 @@ export class ServiceOrdersController {
   @Permissions('service_orders.prices')
   @HttpCode(HttpStatus.OK)
   @Post('service-orders/technician-productivity')
-  async technicianProductivity(@Body() body: TechnicianProductivityDto): Promise<TechnicianProductivityResponse> {
-    return this.productivity.report(body);
+  async technicianProductivity(@CurrentUser() user: AuthenticatedUser, @Body() body: TechnicianProductivityDto): Promise<TechnicianProductivityResponse> {
+    return this.productivity.report(body, user.tenantId);
+  }
+
+  // A technician's own month; money only for those who may see prices (the role is read fresh, like PermissionsGuard).
+  @Roles(...ALL_ROLES)
+  @Permissions('service_orders.view')
+  @HttpCode(HttpStatus.OK)
+  @Post('service-orders/technician-productivity/me')
+  async myProductivity(@CurrentUser() user: AuthenticatedUser, @Body() body: TechnicianProductivityDto) {
+    const current = await this.users.byId(user.userId);
+    const roleId = current && current.tenantId === user.tenantId ? current.roleId : user.roleId;
+    const canViewPrices = roleId ? (await this.roles.permissionKeys(roleId)).includes('service_orders.prices') : Boolean(user.permissions?.includes('service_orders.prices'));
+    return this.productivity.mine(body, user, canViewPrices);
+  }
+
+  @Roles('ADMIN', 'MANAGER')
+  @Permissions('service_orders.prices')
+  @HttpCode(HttpStatus.OK)
+  @Post('service-orders/productivity-target/copy')
+  async copyProductivityTargets(@CurrentUser() user: AuthenticatedUser, @Body() body: CopyProductivityTargetsDto) {
+    return this.productivity.copyTargets(body, user);
+  }
+
+  // Fixing a timer someone forgot, or removing a wrong one: managers only, with a reason.
+  @Roles('ADMIN', 'MANAGER')
+  @Permissions('service_orders.prices')
+  @HttpCode(HttpStatus.OK)
+  @Post('service-orders/work-sessions/correct')
+  async correctWorkSession(@CurrentUser() user: AuthenticatedUser, @Body() body: CorrectWorkSessionDto) {
+    return this.productivity.correctSession(body, user);
   }
 
   @Roles(...ITEM_ROLES)

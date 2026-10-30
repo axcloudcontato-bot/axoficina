@@ -2,12 +2,13 @@
 
 import { Fragment, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { ChartBar, ShieldWarning } from '@phosphor-icons/react';
+import { ChartBar, ShieldWarning, Timer } from '@phosphor-icons/react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { useSetProductivityTarget, useTechnicianProductivity, useTechnicianProductivityOrders } from '@/features/service-orders/hooks/use-service-orders';
+import { useCopyProductivityTargets, useMyProductivity, useSetProductivityTarget, useTechnicianProductivity, useTechnicianProductivityOrders } from '@/features/service-orders/hooks/use-service-orders';
+import type { OpenWorkSession } from '@oficina/contracts';
 import { extractErrorMessage } from '@/lib/api/client';
 import { formatCurrencyBRL } from '@/lib/format-currency';
 import { hasPermission } from '@/features/auth/permissions';
@@ -22,7 +23,9 @@ function monthRange(month: string): { startAt: string; endAt: string } {
 
 function currentMonth(): string { return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit' }).format(new Date()); }
 function previousMonth(month: string): string { const [year, index] = month.split('-').map(Number); const date = new Date(Date.UTC(year, index - 2, 1)); return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}`; }
-function changePercent(current: number, previous: number): string { return previous ? `${((current - previous) * 100 / previous).toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%` : '—'; }
+function changePercent(current: number, previous: number): string { if (!previous) return '—'; const value = (current - previous) * 100 / previous; return `${value > 0 ? '+' : ''}${value.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%`; }
+const hours = (minutes: number) => `${(minutes / 60).toLocaleString('pt-BR', { maximumFractionDigits: 1 })} h`;
+const LONG_OPEN_MINUTES = 8 * 60;
 
 export default function ProductivityPage() {
   const user = useAuthStore((state) => state.user);
@@ -32,16 +35,23 @@ export default function ProductivityPage() {
   const range = useMemo(() => monthRange(validMonth ? month : currentMonth()), [month, validMonth]);
   const previousRange = useMemo(() => monthRange(previousMonth(validMonth ? month : currentMonth())), [month, validMonth]);
   const canView = hasPermission(user, 'service_orders.prices');
+  const canSeeOwn = hasPermission(user, 'service_orders.view');
+  const canManage = user?.role === 'ADMIN' || user?.role === 'MANAGER';
   const query = useTechnicianProductivity(range, canView && validMonth);
   const previous = useTechnicianProductivity(previousRange, canView && validMonth);
+  const copyTargets = useCopyProductivityTargets();
+  const [copyMessage, setCopyMessage] = useState('');
+  const previousByTechnician = useMemo(() => new Map((previous.data?.items ?? []).map(item => [item.technicianId, item])), [previous.data]);
 
   function exportCsv() {
     if (!query.data) return;
-    const rows = [['Técnico', 'OS entregues', 'Mão de obra (R$)', 'Minutos trabalhados', 'OS estimadas', 'Carga atual'], ...query.data.items.map(item => [item.technicianName, item.completedCount, (item.laborRevenueCents / 100).toFixed(2), item.workedMinutes, item.estimatedCount, item.activeOrders])];
+    const rows = [['Técnico', 'OS em que trabalhou', 'Mão de obra (R$)', 'Minutos trabalhados', 'OS estimadas', 'Carga atual'], ...query.data.items.map(item => [item.technicianName, item.completedCount, (item.laborRevenueCents / 100).toFixed(2), item.workedMinutes, item.estimatedCount, item.activeOrders])];
     const csv = '\uFEFF' + rows.map(row => row.map(value => `"${String(value).replaceAll('"', '""')}"`).join(';')).join('\r\n');
     const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
     const link = document.createElement('a'); link.href = url; link.download = `produtividade-${month}.csv`; link.click(); URL.revokeObjectURL(url);
   }
+
+  if (!canView && canSeeOwn) return <MyProductivity month={month} onMonth={setMonth} validMonth={validMonth} range={range} previousRange={previousRange} />;
 
   if (!canView) {
     return (
@@ -63,7 +73,10 @@ export default function ProductivityPage() {
           <Label htmlFor="productivity-month">Período</Label>
           <Input id="productivity-month" type="month" className="mt-2" value={month} onChange={(event) => { setMonth(event.target.value); setSelected(null); }} />
         </div>
-        <Button variant="outline" disabled={!query.data} onClick={exportCsv}>Exportar CSV</Button>
+        <div className="flex flex-wrap gap-2">
+          {canManage && <Button variant="outline" disabled={copyTargets.isPending || !validMonth} onClick={() => copyTargets.mutate({ fromMonth: previousMonth(month), toMonth: month }, { onSuccess: result => setCopyMessage(result.copied ? `Metas de ${result.copied} técnico(s) copiadas do mês anterior.` : 'Todos os técnicos já têm meta neste mês, ou o mês anterior não tinha metas.'), onError: error => setCopyMessage(extractErrorMessage(error)) })}>{copyTargets.isPending ? 'Copiando…' : 'Copiar metas do mês anterior'}</Button>}
+          <Button variant="outline" disabled={!query.data} onClick={exportCsv}>Exportar CSV</Button>
+        </div>
         <div className="grid w-full grid-cols-2 gap-3 text-sm lg:w-auto lg:grid-cols-4">
           <div className="rounded-card border border-border bg-card px-4 py-2.5">
             <p className="text-xs font-bold uppercase tracking-wide text-text-muted">OS entregues</p>
@@ -75,12 +88,14 @@ export default function ProductivityPage() {
             <p className="mt-0.5 text-lg font-bold tabular-nums text-text">{formatCurrencyBRL(totals?.laborRevenueCents ?? 0)}</p>
             {previous.data && <p className="text-xs text-text-muted">vs. mês anterior: {changePercent(totals?.laborRevenueCents ?? 0, previous.data.totals.laborRevenueCents)}</p>}
           </div>
-          <div className="rounded-card border border-border bg-card px-4 py-2.5"><p className="text-xs font-bold uppercase tracking-wide text-text-muted">Tempo registrado</p><p className="mt-0.5 text-lg font-bold tabular-nums text-text">{((totals?.workedMinutes ?? 0) / 60).toLocaleString('pt-BR', { maximumFractionDigits: 1 })} h</p></div>
+          <div className="rounded-card border border-border bg-card px-4 py-2.5"><p className="text-xs font-bold uppercase tracking-wide text-text-muted">Tempo registrado</p><p className="mt-0.5 text-lg font-bold tabular-nums text-text">{hours(totals?.workedMinutes ?? 0)}</p>{previous.data && <p className="text-xs text-text-muted">vs. mês anterior: {changePercent(totals?.workedMinutes ?? 0, previous.data.totals.workedMinutes)}</p>}</div>
           <div className="rounded-card border border-border bg-card px-4 py-2.5"><p className="text-xs font-bold uppercase tracking-wide text-text-muted">Sem atribuição</p><p className="mt-0.5 text-lg font-bold tabular-nums text-text">{totals?.unassignedCount ?? 0}</p></div>
         </div>
       </div>
 
       {!validMonth && <p className="text-sm text-danger-strong">Escolha um mês válido.</p>}
+      {copyMessage && <p role="status" className="text-sm text-text-muted">{copyMessage}</p>}
+      <OpenSessionsWarning sessions={query.data?.openSessions ?? []} />
       {totals && totals.estimatedCount > 0 && <p className="rounded-card border border-warning/30 bg-warning/5 p-3 text-sm text-text-muted">{totals.estimatedCount} OS com atribuição estimada por falta de registro de trabalho. Dados antigos podem refletir alterações posteriores à entrega.</p>}
 
       {query.isLoading && (
@@ -100,7 +115,7 @@ export default function ProductivityPage() {
           <TableHeader>
             <TableRow className="hover:bg-transparent">
               <TableHead>Técnico</TableHead>
-              <TableHead className="text-right">OS entregues</TableHead>
+              <TableHead className="text-right">OS em que trabalhou</TableHead>
               <TableHead className="text-right">Mão de obra líquida</TableHead>
               <TableHead className="text-right">Tempo registrado</TableHead>
               <TableHead className="text-right">Carga atual</TableHead>
@@ -111,19 +126,26 @@ export default function ProductivityPage() {
               <Fragment key={item.technicianId}>
               <TableRow key={item.technicianId}>
                 <TableCell><button className="font-semibold text-primary-strong underline-offset-2 hover:underline" aria-expanded={selected === item.technicianId} onClick={() => setSelected(selected === item.technicianId ? null : item.technicianId)}>{item.technicianName}</button>{item.estimatedCount > 0 && <span className="ml-2 text-xs text-warning">{item.estimatedCount} estimada(s)</span>}</TableCell>
-                <TableCell className="text-right tabular-nums">{item.completedCount}</TableCell>
-                <TableCell className="text-right tabular-nums">{formatCurrencyBRL(item.laborRevenueCents)}</TableCell>
-                <TableCell className="text-right tabular-nums">{item.workedMinutes ? `${(item.workedMinutes / 60).toLocaleString('pt-BR', { maximumFractionDigits: 1 })} h` : '—'}</TableCell>
+                <TableCell className="text-right tabular-nums">{item.completedCount}<Delta current={item.completedCount} previous={previousByTechnician.get(item.technicianId)?.completedCount} /></TableCell>
+                <TableCell className="text-right tabular-nums">{formatCurrencyBRL(item.laborRevenueCents)}<Delta current={item.laborRevenueCents} previous={previousByTechnician.get(item.technicianId)?.laborRevenueCents} /></TableCell>
+                <TableCell className="text-right tabular-nums">{item.workedMinutes ? hours(item.workedMinutes) : '—'}<Delta current={item.workedMinutes} previous={previousByTechnician.get(item.technicianId)?.workedMinutes} /></TableCell>
                 <TableCell className="text-right tabular-nums">{item.activeOrders}</TableCell>
               </TableRow>
-              {selected === item.technicianId && <TableRow key={`${item.technicianId}-details`}><TableCell colSpan={5} className="bg-surface"><div className="space-y-3 p-2 text-sm"><TargetEditor month={month} technicianId={item.technicianId} target={item.target} actual={{ completedCount: item.completedCount, laborRevenueCents: item.laborRevenueCents, workedMinutes: item.workedMinutes }} editable={user?.role === 'ADMIN' || user?.role === 'MANAGER'} /><OrderDetails range={range} technicianId={item.technicianId} /></div></TableCell></TableRow>}
+              {selected === item.technicianId && <TableRow key={`${item.technicianId}-details`}><TableCell colSpan={5} className="bg-surface"><div className="space-y-3 p-2 text-sm"><TargetEditor month={month} technicianId={item.technicianId} target={item.target} actual={{ completedCount: item.completedCount, laborRevenueCents: item.laborRevenueCents, workedMinutes: item.workedMinutes }} editable={canManage} /><OrderDetails range={range} technicianId={item.technicianId} /></div></TableCell></TableRow>}
               </Fragment>
             ))}
+            {totals && <TableRow className="border-t-2 border-border font-bold hover:bg-transparent">
+              <TableCell>Equipe</TableCell>
+              <TableCell className="text-right tabular-nums" title="OS diferentes entregues no mês. Uma OS feita por dois técnicos conta uma vez aqui.">{totals.completedCount} OS</TableCell>
+              <TableCell className="text-right tabular-nums">{formatCurrencyBRL(totals.laborRevenueCents)}</TableCell>
+              <TableCell className="text-right tabular-nums">{hours(totals.workedMinutes)}</TableCell>
+              <TableCell className="text-right tabular-nums">{items.reduce((sum, item) => sum + item.activeOrders, 0)}</TableCell>
+            </TableRow>}
           </TableBody>
         </Table>
       )}
 
-      <p className="flex items-center gap-2 text-xs text-text-muted"><ChartBar className="size-3.5" />O mês considera a entrega em São Paulo. Carga atual reúne OS em execução, aguardando peças ou prontas para entrega e independe do mês escolhido. Uma OS compartilhada pode aparecer para mais de um técnico.</p>
+      <p className="flex items-center gap-2 text-xs text-text-muted"><ChartBar className="size-3.5" />O mês considera a entrega em São Paulo. Carga atual reúne OS em execução, aguardando peças ou prontas para entrega e independe do mês escolhido. Uma OS compartilhada aparece para cada técnico que trabalhou nela, mas conta uma vez no total da equipe. Abaixo de cada número, a variação em relação ao mês anterior.</p>
     </div>
   );
 }
@@ -150,5 +172,51 @@ function TargetEditor({ month, technicianId, target, actual, editable }: { month
   return <div className="rounded-card border border-border bg-card p-3"><strong>Meta mensal</strong>{target ? <p className="mt-1 text-text-muted">OS: {actual.completedCount}/{target.completedCount} ({progress(actual.completedCount, target.completedCount)}) · Mão de obra: {formatCurrencyBRL(actual.laborRevenueCents)}/{formatCurrencyBRL(target.laborRevenueCents)} ({progress(actual.laborRevenueCents, target.laborRevenueCents)}) · Tempo: {(actual.workedMinutes / 60).toLocaleString('pt-BR', { maximumFractionDigits: 1 })}/{(target.workedMinutes / 60).toLocaleString('pt-BR', { maximumFractionDigits: 1 })} h ({progress(actual.workedMinutes, target.workedMinutes)})</p> : <p className="mt-1 text-text-muted">Ainda não há meta definida para este mês.</p>}
     {editable && <div className="mt-3 flex flex-wrap items-end gap-2"><label className="text-xs">OS<Input aria-label="Meta de OS" type="number" min="0" step="1" value={completedCount} onChange={event => setCompletedCount(Number(event.target.value))} className="mt-1 w-24" /></label><label className="text-xs">Mão de obra (R$)<Input aria-label="Meta de mão de obra em reais" type="number" min="0" step="0.01" value={laborReais} onChange={event => setLaborReais(Number(event.target.value))} className="mt-1 w-32" /></label><label className="text-xs">Horas<Input aria-label="Meta de horas" type="number" min="0" step="0.1" value={workedHours} onChange={event => setWorkedHours(Number(event.target.value))} className="mt-1 w-24" /></label><Button size="sm" disabled={save.isPending || !Number.isInteger(completedCount) || completedCount < 0 || laborReais < 0 || workedHours < 0} onClick={() => save.mutate({ technicianId, month, completedCount, laborRevenueCents: Math.round(laborReais * 100), workedMinutes: Math.round(workedHours * 60) })}>{save.isPending ? 'Salvando…' : 'Salvar meta'}</Button></div>}
     {save.isError && <p className="mt-2 text-danger-strong">{extractErrorMessage(save.error)}</p>}
+  </div>;
+}
+
+function Delta({ current, previous }: { current: number; previous?: number }) {
+  if (!previous) return null;
+  const value = changePercent(current, previous);
+  return <span className={`block text-xs font-normal ${current >= previous ? 'text-success' : 'text-danger-strong'}`} title="Em relação ao mês anterior">{value}</span>;
+}
+
+// Timers running now: one forgotten overnight shows up here before it ruins the month.
+function OpenSessionsWarning({ sessions }: { sessions: OpenWorkSession[] }) {
+  const flagged = sessions.filter(session => session.capped || session.workedMinutes >= LONG_OPEN_MINUTES);
+  if (!flagged.length) return null;
+  return <div role="alert" className="rounded-card border border-warning/30 bg-warning/5 p-3 text-sm">
+    <p className="flex items-center gap-2 font-semibold text-text"><Timer className="size-4 text-warning" aria-hidden="true" />{flagged.length === 1 ? 'Um cronômetro parece esquecido' : `${flagged.length} cronômetros parecem esquecidos`}</p>
+    <p className="mt-1 text-text-muted">O tempo para de contar no fechamento da oficina. Abra a OS para encerrar ou corrigir o registro.</p>
+    <ul className="mt-2 space-y-1">{flagged.map(session => <li key={session.id}><Link className="font-semibold text-primary-strong underline-offset-2 hover:underline" href={`/ordens-de-servico/${session.serviceOrderId}`}>OS #{session.orderNumber}</Link> · {session.technicianName} · desde {new Date(session.startedAt).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}{session.capped ? ' · passou do fechamento' : ` · ${hours(session.workedMinutes)}`}</li>)}</ul>
+  </div>;
+}
+
+// A technician without access to prices sees their own month: orders, time, current load and target.
+function MyProductivity({ month, onMonth, validMonth, range, previousRange }: { month: string; onMonth: (month: string) => void; validMonth: boolean; range: { startAt: string; endAt: string }; previousRange: { startAt: string; endAt: string } }) {
+  const query = useMyProductivity(range, validMonth);
+  const previous = useMyProductivity(previousRange, validMonth);
+  const data = query.data;
+  const progress = (value: number, goal: number) => goal > 0 ? `${Math.round(value * 100 / goal)}% da meta` : null;
+  const cards = data ? [
+    { label: 'OS entregues em que trabalhei', value: String(data.completedCount), goal: data.target ? progress(data.completedCount, data.target.completedCount) : null, before: previous.data?.completedCount, current: data.completedCount },
+    { label: 'Tempo registrado', value: hours(data.workedMinutes), goal: data.target ? progress(data.workedMinutes, data.target.workedMinutes) : null, before: previous.data?.workedMinutes, current: data.workedMinutes },
+    { label: 'OS comigo agora', value: String(data.activeOrders), goal: null, before: undefined, current: data.activeOrders },
+    ...(data.laborRevenueCents !== undefined ? [{ label: 'Mão de obra', value: formatCurrencyBRL(data.laborRevenueCents), goal: data.target?.laborRevenueCents ? progress(data.laborRevenueCents, data.target.laborRevenueCents) : null, before: previous.data?.laborRevenueCents, current: data.laborRevenueCents }] : []),
+  ] : [];
+  return <div className="flex flex-col gap-5">
+    <div className="max-w-[220px]"><Label htmlFor="productivity-month">Período</Label><Input id="productivity-month" type="month" className="mt-2" value={month} onChange={event => onMonth(event.target.value)} /></div>
+    <h2 className="text-lg font-bold text-text">Minha produtividade</h2>
+    {!validMonth && <p className="text-sm text-danger-strong">Escolha um mês válido.</p>}
+    {query.isLoading && <div role="status" aria-label="Carregando produtividade" className="h-24 animate-pulse rounded-card bg-surface" />}
+    {query.isError && <div className="rounded-card border border-danger/30 bg-danger-subtle p-6 text-center text-sm font-semibold text-danger-strong">Não foi possível carregar sua produtividade. <Button variant="outline" size="sm" onClick={() => query.refetch()}>Tentar novamente</Button></div>}
+    {data && <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">{cards.map(card => <div key={card.label} className="rounded-card border border-border bg-card px-4 py-3">
+      <p className="text-xs font-bold uppercase tracking-wide text-text-muted">{card.label}</p>
+      <p className="mt-1 text-2xl font-bold tabular-nums text-text">{card.value}</p>
+      {card.goal && <p className="text-xs text-text-muted">{card.goal}</p>}
+      {card.before !== undefined && card.before > 0 && <p className="text-xs text-text-muted">vs. mês anterior: {changePercent(card.current, card.before)}</p>}
+    </div>)}</div>}
+    {data && !data.target && <p className="text-sm text-text-muted">Ainda não há meta definida para você neste mês.</p>}
+    <p className="flex items-center gap-2 text-xs text-text-muted"><ChartBar className="size-3.5" />Conta as OS entregues no mês em que você registrou tempo ou foi o técnico responsável. Inicie e encerre seu trabalho na própria OS; o tempo para de contar no fechamento da oficina.</p>
   </div>;
 }

@@ -17,6 +17,9 @@ import type {
   ServiceOrderPhotoCategory,
   ServiceOrderPhotoAngle,
   ServiceOrderPhotoResponse,
+  CopyProductivityTargetsRequest,
+  CorrectWorkSessionRequest,
+  MyProductivityResponse,
   TechnicianProductivityRequest,
   TechnicianProductivityResponse,
   TechnicianProductivityOrdersRequest,
@@ -30,6 +33,8 @@ export interface WorkSession {
   startedAt: string;
   endedAt: string | null;
   workedMinutes: number;
+  // The timer went past the workshop's closing time and stopped counting there.
+  capped?: boolean;
 }
 
 export const serviceOrdersApi = {
@@ -106,6 +111,15 @@ export const serviceOrdersApi = {
   },
   async technicianProductivityOrders(request: TechnicianProductivityOrdersRequest): Promise<TechnicianProductivityOrdersResponse> {
     return (await apiClient.post('/api/v1/service-orders/technician-productivity/orders', request)).data;
+  },
+  async myProductivity(request: TechnicianProductivityRequest): Promise<MyProductivityResponse> {
+    return (await apiClient.post('/api/v1/service-orders/technician-productivity/me', request)).data;
+  },
+  async copyProductivityTargets(request: CopyProductivityTargetsRequest): Promise<{ copied: number }> {
+    return (await apiClient.post('/api/v1/service-orders/productivity-target/copy', request)).data;
+  },
+  async correctWorkSession(request: CorrectWorkSessionRequest): Promise<{ sessions: WorkSession[] }> {
+    return (await apiClient.post('/api/v1/service-orders/work-sessions/correct', request)).data;
   },
   async workSessions(serviceOrderId: string): Promise<{ sessions: WorkSession[] }> {
     return (await apiClient.get('/api/v1/service-orders/work-sessions', { params: { serviceOrderId } })).data;

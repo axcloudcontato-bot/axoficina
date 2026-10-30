@@ -11,7 +11,7 @@ export const NAVIGATION_DESTINATIONS: Array<{ href: string; label: string; permi
   { href: '/catalogo', label: 'Catálogo de peças, produtos e serviços', permission: 'service_orders.prices' },
   { href: '/financeiro', label: 'Financeiro', permission: 'finance.view' },
   { href: '/financeiro/fornecedores', label: 'Fornecedores', permission: 'finance.manage' },
-  { href: '/produtividade', label: 'Produtividade', permission: 'service_orders.prices' },
+  { href: '/produtividade', label: 'Produtividade', permission: 'service_orders.view' },
   { href: '/configuracoes/empresa', label: 'Configurações: empresa e marca', permission: 'settings.view' },
   { href: '/configuracoes/email', label: 'Configurações: e-mail', permission: 'settings.view' },
   { href: '/configuracoes/equipe', label: 'Equipe e acesso', permission: 'team.view' },

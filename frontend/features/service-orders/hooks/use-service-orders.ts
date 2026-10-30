@@ -14,6 +14,8 @@ import type {
   ServiceOrderPhotoCategory,
   ServiceOrderPhotoAngle,
   ServiceOrderPhotoResponse,
+  CopyProductivityTargetsRequest,
+  CorrectWorkSessionRequest,
   TechnicianProductivityRequest,
   TechnicianProductivityOrdersRequest,
 } from '@oficina/contracts';
@@ -163,6 +165,23 @@ export function useWorkSessionAction(serviceOrderId: string) {
   const client = useQueryClient();
   return useMutation({
     mutationFn: (action: 'start' | 'stop') => action === 'start' ? serviceOrdersApi.startWork(serviceOrderId) : serviceOrdersApi.stopWork(serviceOrderId),
+    onSuccess: data => { client.setQueryData(['work-sessions', serviceOrderId], data); client.invalidateQueries({ queryKey: ['technician-productivity'] }); },
+  });
+}
+
+export function useMyProductivity(request: TechnicianProductivityRequest, enabled = true) {
+  return useQuery({ queryKey: ['technician-productivity', 'me', request], queryFn: () => serviceOrdersApi.myProductivity(request), enabled });
+}
+
+export function useCopyProductivityTargets() {
+  const client = useQueryClient();
+  return useMutation({ mutationFn: (request: CopyProductivityTargetsRequest) => serviceOrdersApi.copyProductivityTargets(request), onSuccess: () => client.invalidateQueries({ queryKey: ['technician-productivity'] }) });
+}
+
+export function useCorrectWorkSession(serviceOrderId: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (request: CorrectWorkSessionRequest) => serviceOrdersApi.correctWorkSession(request),
     onSuccess: data => { client.setQueryData(['work-sessions', serviceOrderId], data); client.invalidateQueries({ queryKey: ['technician-productivity'] }); },
   });
 }

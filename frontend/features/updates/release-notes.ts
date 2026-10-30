@@ -1,5 +1,16 @@
 export const RELEASE_NOTES = [
   {
+    id: '2026-10-29-produtividade', date: '2026-10-29', title: "Produtividade: tempo confiável, correção pelo gerente e visão do mecânico",
+    items: [
+      "O cronômetro da OS para de contar no horário de fechamento da oficina: um cronômetro esquecido ligado à noite não vira horas de trabalho. Se o técnico esquecer, ao iniciar o próximo trabalho o anterior é encerrado sozinho no fechamento.",
+      "Gerentes e administradores podem corrigir ou excluir um registro de tempo na própria OS, informando o motivo. Se a OS já foi entregue, a mão de obra é redividida pelo tempo corrigido, sem mudar o total.",
+      "A Produtividade avisa quando há cronômetro parecendo esquecido, com link para a OS.",
+      "Botão Copiar metas do mês anterior: repete as metas para quem ainda não tem neste mês.",
+      "Mecânicos agora veem a própria produtividade: OS entregues em que trabalharam, tempo registrado, OS com eles agora e o andamento da meta. Valores só aparecem para quem pode ver preços.",
+      "Tabela mais clara: a coluna passou a se chamar OS em que trabalhou, há uma linha com o total da equipe (cada OS conta uma vez) e a variação em relação ao mês anterior aparece em cada número, inclusive no tempo registrado.",
+    ],
+  },
+  {
     id: '2026-10-29-cuidado-cliente-equipe', date: '2026-10-29', title: "Cuidado com o cliente: lista para a equipe ligar e histórico com filtros",
     items: [
       "Nova aba Para a equipe ligar: os cuidados vencidos ou próximos de clientes que não autorizaram os lembretes automáticos, com WhatsApp (mensagem pronta para você editar), ligar, agendar já preenchido e registro de cada contato, mostrando o último e quantas tentativas houve.",

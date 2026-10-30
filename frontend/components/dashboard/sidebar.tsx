@@ -34,7 +34,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: '/relacionamento', label: 'Cuidado com o cliente', shortLabel: 'Cuidados', icon: Heart, permission: 'alerts.view', group: 'Relacionamento' },
   { href: '/catalogo', label: 'Peças e serviços', shortLabel: 'Catálogo', icon: Package, permission: 'service_orders.prices', group: 'Operação' },
   { href: '/financeiro', label: 'Financeiro', shortLabel: 'Financeiro', icon: ChartLine, permission: 'finance.view', group: 'Gestão' },
-  { href: '/produtividade', label: 'Produtividade', shortLabel: 'Produtiv.', icon: ChartBar, permission: 'service_orders.prices', group: 'Gestão' },
+  { href: '/produtividade', label: 'Produtividade', shortLabel: 'Produtiv.', icon: ChartBar, permission: 'service_orders.view', group: 'Gestão' },
   { href: '/configuracoes', label: 'Configurações', shortLabel: 'Config.', icon: Gear, permission: 'team.view', group: 'Gestão', children: [
     { href: '/configuracoes/empresa', label: 'Empresa e marca', icon: Buildings, permission: 'settings.view' },
     { href: '/configuracoes/operacao', label: 'Operação', icon: Clock, permission: 'settings.view' },

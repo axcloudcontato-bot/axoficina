@@ -6,7 +6,7 @@ import { serviceOrdersApi } from '@/features/service-orders/api/service-orders-a
 import { useAuthStore } from '@/stores/auth-store';
 import ProductivityPage from './page';
 
-vi.mock('@/features/service-orders/api/service-orders-api', () => ({ serviceOrdersApi: { technicianProductivity: vi.fn(), technicianProductivityOrders: vi.fn(), setProductivityTarget: vi.fn() } }));
+vi.mock('@/features/service-orders/api/service-orders-api', () => ({ serviceOrdersApi: { technicianProductivity: vi.fn(), technicianProductivityOrders: vi.fn(), setProductivityTarget: vi.fn(), copyProductivityTargets: vi.fn(), myProductivity: vi.fn() } }));
 
 const baseReport = {
   startAt: '2026-10-01T03:00:00.000Z', endAt: '2026-11-01T03:00:00.000Z',
@@ -48,5 +48,46 @@ describe('ProductivityPage', () => {
     await user.type(screen.getByLabelText('Meta de horas'), '8');
     await user.click(screen.getByRole('button', { name: 'Salvar meta' }));
     await waitFor(() => expect(vi.mocked(serviceOrdersApi.setProductivityTarget).mock.calls[0]?.[0]).toMatchObject({ technicianId: 'tech', completedCount: 24, laborRevenueCents: 100000, workedMinutes: 480 }));
+  });
+
+  const renderPage = () => render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><ProductivityPage /></QueryClientProvider>);
+
+  it('warns about a timer left running past closing time', async () => {
+    vi.mocked(serviceOrdersApi.technicianProductivity).mockResolvedValue({ ...baseReport, openSessions: [
+      { id: 's1', technicianId: 'tech', technicianName: 'Ana Mecânica', serviceOrderId: 'order-9', orderNumber: 9, startedAt: '2026-10-28T12:00:00.000Z', workedMinutes: 540, capped: true },
+      { id: 's2', technicianId: 'tech2', technicianName: 'Bruno', serviceOrderId: 'order-10', orderNumber: 10, startedAt: '2026-10-29T12:00:00.000Z', workedMinutes: 30, capped: false },
+    ] });
+    renderPage();
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent('Um cronômetro parece esquecido');
+    expect(alert).toHaveTextContent('passou do fechamento');
+    expect(alert).not.toHaveTextContent('Bruno');
+    expect(screen.getByRole('link', { name: 'OS #9' })).toHaveAttribute('href', '/ordens-de-servico/order-9');
+  });
+
+  it('shows the team total once, counting each delivered order a single time', async () => {
+    renderPage();
+    expect(await screen.findByRole('columnheader', { name: 'OS em que trabalhou' })).toBeInTheDocument();
+    expect(screen.getByRole('cell', { name: '21 OS' })).toBeInTheDocument();
+  });
+
+  it('copies last month targets for the team', async () => {
+    vi.mocked(serviceOrdersApi.copyProductivityTargets).mockResolvedValue({ copied: 2 });
+    const user = userEvent.setup();
+    renderPage();
+    await user.click(await screen.findByRole('button', { name: 'Copiar metas do mês anterior' }));
+    await waitFor(() => expect(vi.mocked(serviceOrdersApi.copyProductivityTargets).mock.calls[0]?.[0]).toMatchObject({ fromMonth: expect.stringMatching(/^\d{4}-\d{2}$/), toMonth: expect.stringMatching(/^\d{4}-\d{2}$/) }));
+    expect(await screen.findByText('Metas de 2 técnico(s) copiadas do mês anterior.')).toBeInTheDocument();
+  });
+
+  it('shows a mechanic their own month without money', async () => {
+    useAuthStore.setState({ user: { id: 'tech', role: 'MECHANIC', tenantId: 'tenant', permissions: ['service_orders.view'] } as never });
+    vi.mocked(serviceOrdersApi.myProductivity).mockResolvedValue({ completedCount: 7, workedMinutes: 600, activeOrders: 2, estimatedCount: 0, target: { completedCount: 14, workedMinutes: 1200 } });
+    renderPage();
+    expect(await screen.findByRole('heading', { name: 'Minha produtividade' })).toBeInTheDocument();
+    expect(await screen.findByText('7')).toBeInTheDocument();
+    expect(screen.getAllByText('50% da meta')).toHaveLength(2);
+    expect(screen.queryByText(/Mão de obra/)).not.toBeInTheDocument();
+    expect(serviceOrdersApi.technicianProductivity).not.toHaveBeenCalled();
   });
 });
