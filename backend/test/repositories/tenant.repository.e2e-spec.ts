@@ -29,7 +29,7 @@ describe('TenantRepository (integration)', () => {
 
     const found = await repository.byId(tenant.id);
     expect(found?.name).toBe('Oficina Teste');
-    expect(found?.plan).toBe('free');
+    expect(found?.plan).toBe('completo');
     expect(found?.status).toBe('active');
   });
 

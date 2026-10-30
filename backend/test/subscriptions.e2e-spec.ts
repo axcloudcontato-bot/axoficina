@@ -75,7 +75,7 @@ describe('Global SaaS subscriptions (e2e)', () => {
     const initial = await api().get('/api/v1/admin/subscriptions').query({ search: prefix }).set('Authorization', auth());
     const row = initial.body.items.find((item: { id: string }) => item.id === other.tenant.id);
     const payload = {
-      plan: 'Profissional', subscription_status: 'active', subscription_amount_cents: 120000,
+      plan: 'profissional', extra_modules: ['whatsapp'], subscription_status: 'active', subscription_amount_cents: 120000,
       subscription_cycle: 'yearly', subscription_due_at: '2027-10-25T12:00:00.000Z',
       subscription_notes: 'Condição interna de teste', expected_updated_at: row.updated_at,
     };
@@ -84,6 +84,8 @@ describe('Global SaaS subscriptions (e2e)', () => {
     expect(updated.body.subscription_amount_cents).toBe(120000);
     expect(updated.body.subscription_notes).toBe('Condição interna de teste');
     expect(updated.body.subscription_due_at).toBe(payload.subscription_due_at);
+    expect(updated.body.plan).toBe('profissional');
+    expect(updated.body.extra_modules).toEqual(['whatsapp']);
     const filtered = await api().get('/api/v1/admin/subscriptions').query({ search: prefix, status: 'active' }).set('Authorization', auth());
     expect(filtered.body.total).toBe(1);
     expect(filtered.body.summary.mrr_cents - initial.body.summary.mrr_cents).toBe(10000);
@@ -92,6 +94,7 @@ describe('Global SaaS subscriptions (e2e)', () => {
     expect(JSON.stringify(audit.metadata)).not.toContain(payload.subscription_notes);
     expect((await api().patch(`/api/v1/admin/subscriptions/${other.tenant.id}`).set('Authorization', auth()).send(payload)).status).toBe(409);
     expect((await api().patch(`/api/v1/admin/subscriptions/${other.tenant.id}`).set('Authorization', auth()).send({ ...payload, subscription_amount_cents: -1 })).status).toBe(400);
+    expect((await api().patch(`/api/v1/admin/subscriptions/${other.tenant.id}`).set('Authorization', auth()).send({ ...payload, plan: 'Plano inventado' })).status).toBe(400);
     const cleared = await api().patch(`/api/v1/admin/subscriptions/${other.tenant.id}`).set('Authorization', auth()).send({ ...payload, subscription_status: 'canceled', subscription_due_at: null, subscription_notes: null, expected_updated_at: updated.body.updated_at });
     expect(cleared.status).toBe(200);
     expect(cleared.body.subscription_due_at).toBeNull();
