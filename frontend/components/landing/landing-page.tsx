@@ -40,9 +40,9 @@ function Heading({ children, sub, center = false }: { children: ReactNode; sub?:
   );
 }
 
-function CtaButton({ children = 'Cadastrar minha oficina', variant = 'solid' }: { children?: ReactNode; variant?: 'solid' | 'dark' }) {
+function CtaButton({ children = 'Cadastrar minha oficina', variant = 'solid' }: { children?: ReactNode; variant?: 'solid' | 'dark' | 'outline' }) {
   const base = 'group inline-flex h-12 items-center justify-center gap-2 rounded-button px-6 text-base font-bold transition-[background-color,transform] duration-fast focus-visible:outline-2 focus-visible:outline-offset-4 active:translate-y-px';
-  const tone = variant === 'solid' ? 'bg-[#ffbe00] text-[#0f171f] hover:bg-[#ffd033] focus-visible:outline-[#ffbe00]' : 'bg-[#0f171f] text-white hover:bg-[#27323d] focus-visible:outline-[#0f171f]';
+  const tone = variant === 'solid' ? 'bg-[#ffbe00] text-[#0f171f] hover:bg-[#ffd033] focus-visible:outline-[#ffbe00]' : variant === 'outline' ? 'border-2 border-[#ffbe00] text-foreground hover:bg-[#ffbe00]/10 focus-visible:outline-[#ffbe00]' : 'bg-[#0f171f] text-white hover:bg-[#27323d] focus-visible:outline-[#0f171f]';
   return <Link href={SIGNUP} className={`${base} ${tone}`}>{children}<ArrowRight weight="bold" className="size-4 transition-transform group-hover:translate-x-0.5" /></Link>;
 }
 
@@ -53,6 +53,10 @@ const PAINS = [
 ] as const;
 
 // `module` marks what is sold from a given plan on; the badge reads the catalog, so it never drifts from the prices.
+// The plan shown as the suggested one, and the words on its badge. "Recomendado" is our opinion; switch it to "Mais escolhido" only once the numbers say so.
+const HIGHLIGHTED_PLAN = 'profissional';
+const HIGHLIGHT_LABEL = 'Recomendado';
+
 const FEATURES: Array<{ icon: IconType; title: string; text: string; span?: string; chat?: boolean; flow?: boolean; module?: ModuleKey }> = [
   { icon: ClipboardText, title: 'Ordens de serviço completas', text: 'Itens, peças, serviços, fotos e histórico de status em um só lugar, do check-in à entrega, com desconto, garantia e impressão em A4.', span: 'lg:col-span-2', flow: true },
   { icon: WhatsappLogo, title: 'Orçamento aprovado pelo WhatsApp', text: 'O cliente recebe o orçamento e responde com um toque. Você acompanha a resposta direto na ordem de serviço.', chat: true, module: 'whatsapp' },
@@ -302,8 +306,10 @@ export function LandingPage() {
           <div className="mt-14 grid gap-5 lg:grid-cols-3">
             {PLAN_CODES.map((code) => {
               const plan = PLANS[code];
+              const highlighted = code === HIGHLIGHTED_PLAN;
               return (
-                <article key={code} className="flex flex-col rounded-card border border-border bg-card p-7 shadow-card">
+                <article key={code} className={`relative flex flex-col rounded-card border bg-card p-7 shadow-card ${highlighted ? 'border-2 border-[#ffbe00] lg:-my-3 lg:py-10' : 'border-border'}`}>
+                  {highlighted && <p className="absolute -top-3.5 left-7 rounded-full bg-[#ffbe00] px-3 py-1 text-xs font-extrabold uppercase tracking-wider text-[#0f171f]">{HIGHLIGHT_LABEL}</p>}
                   <h3 className="text-xl font-extrabold">{plan.name}</h3>
                   <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{plan.tagline}</p>
                   <p className="mt-6 text-4xl font-extrabold">{formatCurrencyBRL(plan.monthlyPriceCents)}<span className="text-base font-semibold text-muted-foreground"> por mês</span></p>
@@ -323,7 +329,7 @@ export function LandingPage() {
                       );
                     })}
                   </ul>
-                  <div className="mt-8"><CtaButton>Começar no {plan.name}</CtaButton></div>
+                  <div className="mt-8"><CtaButton variant={highlighted ? 'solid' : 'outline'}>Contratar<span className="sr-only"> o plano {plan.name}</span></CtaButton></div>
                 </article>
               );
             })}
