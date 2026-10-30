@@ -6,7 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { extractErrorMessage } from '@/lib/api/client';
 import { useAuthStore } from '@/stores/auth-store';
-import { useChangePassword } from '../hooks/use-auth';
+import { useChangePassword, useRevokeOtherSessions, useRevokeSession, useSessions } from '../hooks/use-auth';
+import { describeDevice } from '../device';
 import { NewPasswordFields, newPasswordProblem } from './NewPasswordFields';
 
 const ROLE_LABELS: Record<string, string> = { ADMIN: 'Administrador', MANAGER: 'Gerente', FRONT_DESK: 'Atendimento', MECHANIC: 'Mecânico' };
@@ -48,5 +49,25 @@ export function MyAccount() {
         <div><Button type="submit" loading={change.isPending}>{change.isPending ? 'Salvando...' : 'Trocar senha'}</Button></div>
       </div>
     </form>
+    <Sessions />
   </div>;
+}
+
+// The devices where this account is open, so a lost phone or a forgotten computer can be closed from here.
+function Sessions() {
+  const query = useSessions();
+  const revoke = useRevokeSession();
+  const revokeOthers = useRevokeOtherSessions();
+  const items = query.data?.items ?? [];
+  const others = items.filter((item) => !item.current);
+  return <section aria-label="Aparelhos conectados" className="rounded-card border border-border bg-card p-5 shadow-sm">
+    <div className="flex flex-wrap items-start justify-between gap-3"><div><h2 className="text-base font-bold">Aparelhos conectados</h2><p className="mt-1 text-sm text-text-muted">Onde a sua conta está aberta. Se não reconhecer algum, saia dele e troque a senha.</p></div>
+      {others.length > 0 && <Button variant="outline" size="sm" disabled={revokeOthers.isPending} onClick={() => revokeOthers.mutate(undefined, { onSuccess: () => toast.success('Os outros aparelhos foram desconectados.'), onError: (error) => toast.error(extractErrorMessage(error)) })}>{revokeOthers.isPending ? 'Saindo...' : 'Sair dos outros aparelhos'}</Button>}</div>
+    {query.isLoading && <p className="mt-3 text-sm text-text-muted">Carregando...</p>}
+    {query.isError && <p className="mt-3 text-sm text-danger">Não foi possível carregar os aparelhos. <button className="underline" onClick={() => query.refetch()}>Tentar novamente</button></p>}
+    {items.length > 0 && <ul className="mt-3 divide-y divide-border text-sm">{items.map((item) => <li key={item.id} className="flex flex-wrap items-center justify-between gap-2 py-2.5">
+      <span><span className="font-semibold">{describeDevice(item.device)}</span>{item.current && <span className="ml-2 rounded-full bg-success-subtle px-2 py-0.5 text-xs font-bold text-success">Este aparelho</span>}<span className="block text-xs text-text-muted">Última atividade: {new Date(item.lastActiveAt).toLocaleString('pt-BR')}</span></span>
+      {!item.current && <Button variant="ghost" size="sm" className="text-danger" aria-label={`Desconectar ${describeDevice(item.device)}`} disabled={revoke.isPending} onClick={() => revoke.mutate(item.id, { onSuccess: () => toast.success('Aparelho desconectado.'), onError: (error) => toast.error(extractErrorMessage(error)) })}>Desconectar</Button>}
+    </li>)}</ul>}
+  </section>;
 }

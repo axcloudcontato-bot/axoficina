@@ -23,3 +23,12 @@ export interface SignupResponse extends AuthResponse {
 }
 
 export type RefreshResponse = TokenPairResponse;
+
+// A device signed in to the account. The refresh token rotates on each renewal, so lastActiveAt is the last renewal.
+export interface SessionResponse {
+  id: string;
+  device: string | null;
+  lastActiveAt: string;
+  expiresAt: string;
+  current: boolean;
+}

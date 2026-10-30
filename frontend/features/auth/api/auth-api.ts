@@ -1,6 +1,7 @@
 import { apiClient } from '@/lib/api/client';
 import type {
   AuthResponse,
+  SessionResponse,
   ChangePasswordRequest,
   ForgotPasswordRequest,
   ResetPasswordRequest,
@@ -13,6 +14,15 @@ import type {
 } from '@oficina/contracts';
 
 export const authApi = {
+  async sessions(refreshToken: string | null): Promise<{ items: SessionResponse[] }> {
+    return (await apiClient.post('/api/v1/auth/sessions', refreshToken ? { refreshToken } : {})).data;
+  },
+  async revokeSession(id: string): Promise<{ items: SessionResponse[] }> {
+    return (await apiClient.post('/api/v1/auth/sessions/revoke', { id })).data;
+  },
+  async revokeOtherSessions(refreshToken: string): Promise<{ items: SessionResponse[] }> {
+    return (await apiClient.post('/api/v1/auth/sessions/revoke-others', { refreshToken })).data;
+  },
   async forgotPassword(request: ForgotPasswordRequest): Promise<{ success: true }> {
     return (await apiClient.post('/api/v1/auth/forgot-password', request)).data;
   },

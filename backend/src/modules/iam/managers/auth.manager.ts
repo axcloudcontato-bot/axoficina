@@ -1,5 +1,6 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
 import { LEGAL_VERSION, MIN_PASSWORD_LENGTH } from '@oficina/contracts';
+import type { SessionResponse } from '@oficina/contracts';
 import type {
   AuthResponse,
   LoginRequest,
@@ -125,7 +126,7 @@ export class AuthManager {
     };
   }
 
-  async login(input: LoginRequest): Promise<AuthResponse> {
+  async login(input: LoginRequest, device?: string): Promise<AuthResponse> {
     const user = await this.userRepository.byEmail(input.email);
     if (!user || !user.passwordHash) {
       // Edge Case 6 da spec: soft-deleted deve ter mensagem distinta de
@@ -154,7 +155,7 @@ export class AuthManager {
       throw new AppException(AppErrorCode.ROLE_NOT_FOUND, 'Papel do usuário não encontrado.', HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
-    const { accessToken, refreshToken, permissions } = await this.issueTokens(user, role);
+    const { accessToken, refreshToken, permissions } = await this.issueTokens(user, role, device);
     await this.userRepository.update(user.id, { lastLoginAt: new Date() });
 
     await this.auditLog.record({
@@ -169,7 +170,7 @@ export class AuthManager {
     return { accessToken, refreshToken, user: this.toUserResponse(user, role, permissions) };
   }
 
-  async refresh(refreshToken: string): Promise<RefreshResponse> {
+  async refresh(refreshToken: string, device?: string): Promise<RefreshResponse> {
     const tokenHash = this.tokenService.hashToken(refreshToken);
     const existing = await this.refreshTokenRepository.byTokenHash(tokenHash);
 
@@ -199,12 +200,13 @@ export class AuthManager {
     }
 
     await this.refreshTokenRepository.revoke(existing.id);
-    const { accessToken, refreshToken: newRefreshToken } = await this.issueTokens(user, role);
+    // The renewed token stays the same device even when this request does not say which.
+    const { accessToken, refreshToken: newRefreshToken } = await this.issueTokens(user, role, device ?? existing.userAgent ?? undefined);
 
     return { accessToken, refreshToken: newRefreshToken };
   }
 
-  async changePassword(userId: string, currentPassword: string, newPassword: string): Promise<RefreshResponse> {
+  async changePassword(userId: string, currentPassword: string, newPassword: string, device?: string): Promise<RefreshResponse> {
     const user = await this.userRepository.byId(userId);
     if (!user || user.status !== 'active' || !user.passwordHash) throw new AppException(AppErrorCode.USER_NOT_FOUND, 'Usuário não encontrado.', HttpStatus.NOT_FOUND);
     if (!(await this.passwordService.verify(currentPassword, user.passwordHash))) throw new AppException(AppErrorCode.INVALID_CREDENTIALS, 'A senha atual não confere.', HttpStatus.BAD_REQUEST);
@@ -214,9 +216,31 @@ export class AuthManager {
     if (!role) throw new AppException(AppErrorCode.ROLE_NOT_FOUND, 'Papel do usuário não encontrado.', HttpStatus.INTERNAL_SERVER_ERROR);
     await this.userRepository.update(user.id, { passwordHash: await this.passwordService.hash(newPassword), passwordResetTokenHash: null, passwordResetExpiresAt: null });
     await this.refreshTokenRepository.revokeAllForUser(user.id);
-    const { accessToken, refreshToken } = await this.issueTokens(user, role);
+    const { accessToken, refreshToken } = await this.issueTokens(user, role, device);
     await this.auditLog.record({ tenantId: user.tenantId, userId: user.id, action: 'auth.password_changed', entity: 'user', entityId: user.id, metadata: {} });
     return { accessToken, refreshToken };
+  }
+
+  async sessions(userId: string, currentRefreshToken?: string): Promise<{ items: SessionResponse[] }> {
+    const currentHash = currentRefreshToken ? this.tokenService.hashToken(currentRefreshToken) : null;
+    const rows = await this.refreshTokenRepository.listActive(userId);
+    return { items: rows.map(row => ({ id: row.id, device: row.userAgent, lastActiveAt: row.createdAt.toISOString(), expiresAt: row.expiresAt.toISOString(), current: currentHash !== null && row.tokenHash === currentHash })) };
+  }
+
+  async revokeSession(userId: string, tenantId: string, id: string): Promise<{ items: SessionResponse[] }> {
+    const result = await this.refreshTokenRepository.revokeOne(id, userId);
+    if (!result.count) throw new AppException(AppErrorCode.VALIDATION_ERROR, 'Esse aparelho já estava desconectado.', HttpStatus.NOT_FOUND);
+    await this.auditLog.record({ tenantId, userId, action: 'auth.session_revoked', entity: 'user', entityId: userId, metadata: {} });
+    return this.sessions(userId);
+  }
+
+  // "Sair dos outros aparelhos": the device that asks stays signed in, identified by its own refresh token.
+  async revokeOtherSessions(userId: string, tenantId: string, currentRefreshToken: string): Promise<{ items: SessionResponse[] }> {
+    const current = await this.refreshTokenRepository.byTokenHash(this.tokenService.hashToken(currentRefreshToken));
+    if (!current || current.userId !== userId || current.revokedAt) throw new AppException(AppErrorCode.REFRESH_TOKEN_INVALID, 'Sua sessão não foi reconhecida. Entre de novo.', HttpStatus.UNAUTHORIZED);
+    await this.refreshTokenRepository.revokeOthers(userId, current.id);
+    await this.auditLog.record({ tenantId, userId, action: 'auth.other_sessions_revoked', entity: 'user', entityId: userId, metadata: {} });
+    return this.sessions(userId, currentRefreshToken);
   }
 
   async logout(input: LogoutRequest): Promise<void> {
@@ -242,7 +266,7 @@ export class AuthManager {
     }
   }
 
-  private async issueTokens(user: UserEntity, role: RoleEntity): Promise<{ accessToken: string; refreshToken: string; permissions: import('@oficina/contracts').PermissionKey[] }> {
+  private async issueTokens(user: UserEntity, role: RoleEntity, device?: string): Promise<{ accessToken: string; refreshToken: string; permissions: import('@oficina/contracts').PermissionKey[] }> {
     const permissions = await (this.roleRepository.permissionKeys?.(role.id) ?? Promise.resolve([])) as import('@oficina/contracts').PermissionKey[];
     const accessToken = await this.tokenService.signAccessToken({
       userId: user.id,
@@ -257,6 +281,8 @@ export class AuthManager {
       userId: user.id,
       tokenHash: opaque.tokenHash,
       expiresAt: opaque.expiresAt,
+      // Only the browser's own description, never the address: enough to recognize the device, nothing to track.
+      userAgent: device?.slice(0, 300),
     });
 
     return { accessToken, refreshToken: opaque.token, permissions };

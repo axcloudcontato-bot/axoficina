@@ -1,10 +1,10 @@
-import { Body, Controller, HttpCode, HttpStatus, Post } from '@nestjs/common';
+import { Body, Controller, Headers, HttpCode, HttpStatus, Post } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import type { AuthResponse, RefreshResponse, SignupResponse } from '@oficina/contracts';
 import { Public } from '../../../shared/decorators/public.decorator';
 import { AUTH_THROTTLE } from '../../../shared/constants/throttle.constants';
 import { AuthManager } from '../managers/auth.manager';
-import { ChangePasswordDto, ForgotPasswordDto, LoginDto, LogoutDto, RefreshDto, ResetPasswordDto, SignupDto } from '../dto/auth.dto';
+import { RevokeOtherSessionsDto, RevokeSessionDto, SessionsDto, ChangePasswordDto, ForgotPasswordDto, LoginDto, LogoutDto, RefreshDto, ResetPasswordDto, SignupDto } from '../dto/auth.dto';
 import { PasswordResetService } from '../services/password-reset.service';
 import { CurrentUser } from '../../../shared/decorators/current-user.decorator';
 import type { AuthenticatedUser } from '../../../shared/guards/jwt-auth.guard';
@@ -24,15 +24,15 @@ export class AuthController {
   @Throttle(AUTH_THROTTLE)
   @HttpCode(HttpStatus.OK)
   @Post('login')
-  async login(@Body() body: LoginDto): Promise<AuthResponse> {
-    return this.authManager.login(body);
+  async login(@Body() body: LoginDto, @Headers('user-agent') userAgent?: string): Promise<AuthResponse> {
+    return this.authManager.login(body, userAgent);
   }
 
   @Public()
   @HttpCode(HttpStatus.OK)
   @Post('refresh')
-  async refresh(@Body() body: RefreshDto): Promise<RefreshResponse> {
-    return this.authManager.refresh(body.refreshToken);
+  async refresh(@Body() body: RefreshDto, @Headers('user-agent') userAgent?: string): Promise<RefreshResponse> {
+    return this.authManager.refresh(body.refreshToken, userAgent);
   }
 
   // Same answer whether the e-mail has an account or not.
@@ -57,8 +57,27 @@ export class AuthController {
   @Throttle(AUTH_THROTTLE)
   @HttpCode(HttpStatus.OK)
   @Post('change-password')
-  async changePassword(@CurrentUser() user: AuthenticatedUser, @Body() body: ChangePasswordDto): Promise<RefreshResponse> {
-    return this.authManager.changePassword(user.userId, body.currentPassword, body.newPassword);
+  async changePassword(@CurrentUser() user: AuthenticatedUser, @Body() body: ChangePasswordDto, @Headers('user-agent') userAgent?: string): Promise<RefreshResponse> {
+    return this.authManager.changePassword(user.userId, body.currentPassword, body.newPassword, userAgent);
+  }
+
+  // The devices signed in to the account of whoever asks. The body carries this device's refresh token to mark it.
+  @HttpCode(HttpStatus.OK)
+  @Post('sessions')
+  async sessions(@CurrentUser() user: AuthenticatedUser, @Body() body: SessionsDto) {
+    return this.authManager.sessions(user.userId, body.refreshToken);
+  }
+
+  @HttpCode(HttpStatus.OK)
+  @Post('sessions/revoke')
+  async revokeSession(@CurrentUser() user: AuthenticatedUser, @Body() body: RevokeSessionDto) {
+    return this.authManager.revokeSession(user.userId, user.tenantId, body.id);
+  }
+
+  @HttpCode(HttpStatus.OK)
+  @Post('sessions/revoke-others')
+  async revokeOtherSessions(@CurrentUser() user: AuthenticatedUser, @Body() body: RevokeOtherSessionsDto) {
+    return this.authManager.revokeOtherSessions(user.userId, user.tenantId, body.refreshToken);
   }
 
   @Public()

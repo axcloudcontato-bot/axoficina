@@ -1,6 +1,6 @@
 'use client';
 
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ChangePasswordRequest, ForgotPasswordRequest, LoginRequest, ResetPasswordRequest, SignupRequest } from '@oficina/contracts';
 import { useAuthStore } from '@/stores/auth-store';
 import { authApi } from '../api/auth-api';
@@ -61,4 +61,23 @@ export function useResetPassword() {
 export function useChangePassword() {
   const updateTokens = useAuthStore((state) => state.updateTokens);
   return useMutation({ mutationFn: (request: ChangePasswordRequest) => authApi.changePassword(request), onSuccess: (tokens) => updateTokens(tokens) });
+}
+
+const SESSIONS_KEY = ['auth-sessions'] as const;
+
+// The devices signed in to this account; this device is marked by sending its own refresh token.
+export function useSessions() {
+  const refreshToken = useAuthStore((state) => state.refreshToken);
+  return useQuery({ queryKey: SESSIONS_KEY, queryFn: () => authApi.sessions(refreshToken), enabled: Boolean(refreshToken) });
+}
+
+export function useRevokeSession() {
+  const client = useQueryClient();
+  return useMutation({ mutationFn: (id: string) => authApi.revokeSession(id), onSuccess: (data) => client.setQueryData(SESSIONS_KEY, data) });
+}
+
+export function useRevokeOtherSessions() {
+  const client = useQueryClient();
+  const refreshToken = useAuthStore((state) => state.refreshToken);
+  return useMutation({ mutationFn: () => authApi.revokeOtherSessions(refreshToken ?? ''), onSuccess: (data) => client.setQueryData(SESSIONS_KEY, data) });
 }

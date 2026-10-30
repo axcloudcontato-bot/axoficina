@@ -41,6 +41,23 @@ export class RefreshTokenRepository {
     });
   }
 
+  // Open sessions of a user: not revoked, not expired.
+  async listActive(userId: string) {
+    return this.prisma.unscoped.refreshToken.findMany({
+      where: { userId, revokedAt: null, expiresAt: { gt: new Date() } },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  // Always scoped to the owner: nobody revokes another person's session by guessing an id.
+  async revokeOne(id: string, userId: string) {
+    return this.prisma.unscoped.refreshToken.updateMany({ where: { id, userId, revokedAt: null }, data: { revokedAt: new Date() } });
+  }
+
+  async revokeOthers(userId: string, keepId: string) {
+    return this.prisma.unscoped.refreshToken.updateMany({ where: { userId, revokedAt: null, id: { not: keepId } }, data: { revokedAt: new Date() } });
+  }
+
   // Sinal de possível token roubado (Edge Case 2 da spec): revoga TODA a
   // família de refresh tokens do usuário, não só o token reutilizado.
   async revokeAllForUser(userId: string) {

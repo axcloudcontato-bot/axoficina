@@ -1,6 +1,6 @@
-import { Equals, IsEmail, IsNotEmpty, IsString, MaxLength, MinLength } from 'class-validator';
+import { Equals, IsEmail, IsNotEmpty, IsOptional, IsString, IsUUID, MaxLength, MinLength } from 'class-validator';
 import { LEGAL_VERSION, MIN_PASSWORD_LENGTH } from '@oficina/contracts';
-import type { ChangePasswordRequest, ForgotPasswordRequest, LoginRequest, LogoutRequest, RefreshRequest, ResetPasswordRequest, SignupRequest } from '@oficina/contracts';
+import type { RevokeOtherSessionsRequest, RevokeSessionRequest, SessionsRequest, ChangePasswordRequest, ForgotPasswordRequest, LoginRequest, LogoutRequest, RefreshRequest, ResetPasswordRequest, SignupRequest } from '@oficina/contracts';
 
 export class SignupDto implements SignupRequest {
   @Equals(true, { message: 'Aceite os Termos de uso para continuar.' })
@@ -62,4 +62,19 @@ export class ChangePasswordDto implements ChangePasswordRequest {
 
   @IsString() @MinLength(MIN_PASSWORD_LENGTH, { message: `A senha deve ter pelo menos ${MIN_PASSWORD_LENGTH} caracteres.` }) @MaxLength(200)
   newPassword!: string;
+}
+
+export class SessionsDto implements SessionsRequest {
+  @IsOptional() @IsString() @MaxLength(200)
+  refreshToken?: string;
+}
+
+export class RevokeSessionDto implements RevokeSessionRequest {
+  @IsUUID('4')
+  id!: string;
+}
+
+export class RevokeOtherSessionsDto implements RevokeOtherSessionsRequest {
+  @IsString() @IsNotEmpty() @MaxLength(200)
+  refreshToken!: string;
 }

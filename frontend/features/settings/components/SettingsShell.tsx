@@ -1,6 +1,6 @@
 'use client';
 
-import { Buildings, Envelope, UsersThree, ShieldCheck, WhatsappLogo, SquaresFour, Clock, UserCircle } from '@phosphor-icons/react';
+import { Buildings, ClockCounterClockwise, CreditCard, Envelope, UsersThree, ShieldCheck, WhatsappLogo, SquaresFour, Clock, UserCircle } from '@phosphor-icons/react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
@@ -14,6 +14,8 @@ const items = [
   { href: '/configuracoes/email', label: 'E-mail', description: 'Servidor e remetente', icon: Envelope, permission: 'settings.view' as const },
   { href: '/configuracoes/whatsapp', label: 'WhatsApp', description: 'Conexão com WA-AKG', icon: WhatsappLogo, permission: 'settings.view' as const },
   { href: '/configuracoes/equipe', label: 'Equipe e acesso', description: 'Usuários e permissões', icon: UsersThree, permission: 'team.view' as const },
+  { href: '/configuracoes/assinatura', label: 'Assinatura e dados', description: 'Plano e exportação', icon: CreditCard, permission: 'settings.manage' as const },
+  { href: '/configuracoes/historico', label: 'Histórico', description: 'Quem alterou o quê', icon: ClockCounterClockwise, permission: 'settings.manage' as const },
   { href: '/configuracoes/privacidade-da-oficina', label: 'Privacidade da oficina', description: 'Protocolos dos clientes', icon: ShieldCheck, permission: 'settings.manage' as const },
 ];
 
@@ -22,7 +24,7 @@ export function SettingsShell({ children }: { children: React.ReactNode }) {
   const user = useAuthStore((state) => state.user);
   // The personal area (my account, my privacy) is for everyone and has its own tabs.
   const privacy = pathname === '/configuracoes/privacidade' || pathname === '/configuracoes/conta';
-  const tabs = privacy ? [{ href: '/configuracoes/conta', label: 'Minha conta', icon: UserCircle }, { href: '/configuracoes/privacidade', label: 'Privacidade e solicitações', icon: ShieldCheck }] : items.filter((item) => (item.permission === null || hasPermission(user, item.permission)) && (item.href !== '/configuracoes/privacidade-da-oficina' || user?.role === 'ADMIN'));
+  const tabs = privacy ? [{ href: '/configuracoes/conta', label: 'Minha conta', icon: UserCircle }, { href: '/configuracoes/privacidade', label: 'Privacidade e solicitações', icon: ShieldCheck }] : items.filter((item) => (item.permission === null || hasPermission(user, item.permission)) && (!['/configuracoes/privacidade-da-oficina', '/configuracoes/assinatura', '/configuracoes/historico'].includes(item.href) || user?.role === 'ADMIN'));
   return <div className="space-y-6">
     <header>
       <p className="text-xs font-bold uppercase tracking-[0.14em] text-primary">{privacy ? 'Minha conta' : 'Administração'}</p>

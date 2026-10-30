@@ -15,7 +15,9 @@ export const NAVIGATION_DESTINATIONS: Array<{ href: string; label: string; permi
   { href: '/configuracoes/empresa', label: 'Configurações: empresa e marca', permission: 'settings.view' },
   { href: '/configuracoes/email', label: 'Configurações: e-mail', permission: 'settings.view' },
   { href: '/configuracoes/equipe', label: 'Equipe e acesso', permission: 'team.view' },
-  { href: '/configuracoes/conta', label: 'Minha conta: trocar senha' },
+  { href: '/configuracoes/conta', label: 'Minha conta: trocar senha e aparelhos' },
+  { href: '/configuracoes/assinatura', label: 'Assinatura e exportação de dados', permission: 'settings.manage' },
+  { href: '/configuracoes/historico', label: 'Histórico de alterações', permission: 'settings.manage' },
   { href: '/configuracoes/privacidade', label: 'Privacidade e solicitações' },
 ];
 

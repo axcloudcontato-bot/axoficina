@@ -1,4 +1,4 @@
-import type { OrderDefaults, UpdateOrderDefaultsRequest, UpdateMaintenanceAlertMonthsRequest, UpdateLaborRateRequest, AgendaHours, UpdateAgendaHoursRequest, PhotoPolicy, UpdatePhotoPolicyRequest, CompanySettingsResponse, EmailSettingsResponse, SendEmailRequest, TestEmailSettingsRequest, TenantSettingsResponse, UpdateCompanySettingsRequest, UpdateEmailSettingsRequest } from '@oficina/contracts';
+import type { AuditLogRequest, AuditLogResponse, DataExportDataset, WorkshopSubscriptionResponse, OrderDefaults, UpdateOrderDefaultsRequest, UpdateMaintenanceAlertMonthsRequest, UpdateLaborRateRequest, AgendaHours, UpdateAgendaHoursRequest, PhotoPolicy, UpdatePhotoPolicyRequest, CompanySettingsResponse, EmailSettingsResponse, SendEmailRequest, TestEmailSettingsRequest, TenantSettingsResponse, UpdateCompanySettingsRequest, UpdateEmailSettingsRequest } from '@oficina/contracts';
 import { apiClient } from '@/lib/api/client';
 import type { UpdateWhatsAppSettingsRequest, WhatsAppConnectionResponse, WhatsAppSettingsResponse, WhatsAppWebhookTestResponse } from '@oficina/contracts';
 
@@ -14,6 +14,17 @@ export const settingsApi = {
   },
   async updateOrderDefaults(request: UpdateOrderDefaultsRequest): Promise<{ orderDefaults: OrderDefaults }> {
     return (await apiClient.post('/api/v1/settings/order-defaults', request)).data;
+  },
+  async subscription(): Promise<WorkshopSubscriptionResponse> {
+    return (await apiClient.get('/api/v1/settings/subscription')).data;
+  },
+  async auditLog(request: AuditLogRequest): Promise<AuditLogResponse> {
+    return (await apiClient.post('/api/v1/settings/audit-log', request)).data;
+  },
+  async exportData(dataset: DataExportDataset): Promise<{ blob: Blob; filename: string }> {
+    const response = await apiClient.get(`/api/v1/settings/export/${dataset}`, { responseType: 'blob' });
+    const name = /filename="?([^";]+)"?/.exec(String(response.headers['content-disposition'] ?? ''))?.[1];
+    return { blob: response.data as Blob, filename: name ?? `${dataset}.csv` };
   },
   async updateLaborRate(request: UpdateLaborRateRequest): Promise<{ laborRateCents: number | null }> {
     return (await apiClient.post('/api/v1/settings/labor-rate', request)).data;

@@ -1,5 +1,14 @@
 export const RELEASE_NOTES = [
   {
+    id: '2026-10-30-conta-historico', date: '2026-10-30', title: "Conta da oficina: aparelhos conectados, assinatura, exportação e histórico",
+    items: [
+      "Minha conta mostra os aparelhos em que a sua conta está aberta. Dá para desconectar um deles ou sair de todos os outros de uma vez, útil depois de perder um celular.",
+      "Assinatura e dados: o administrador vê o plano, o valor, o vencimento e se o pagamento está em dia.",
+      "Exportar os dados da oficina: clientes, veículos, ordens de serviço e financeiro em planilha, para guardar uma cópia ou levar para outro lugar. Cada exportação fica registrada.",
+      "Histórico de alterações: o administrador vê quem fez o quê e quando (preços, equipe, configurações, exclusões, acessos), com filtro por área e por período.",
+    ],
+  },
+  {
     id: '2026-10-30-configuracoes-padroes', date: '2026-10-30', title: "Configurações: padrões da OS, horário por dia e documentos com a marca da oficina",
     items: [
       "Padrões da OS, em Configurações, Operação: garantia que já vem em toda OS nova, validade do orçamento, termos e condições impressos e as formas de pagamento que a oficina aceita.",

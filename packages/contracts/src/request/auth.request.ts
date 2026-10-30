@@ -34,3 +34,16 @@ export interface ChangePasswordRequest {
   currentPassword: string;
   newPassword: string;
 }
+
+// The device asks for its own sessions sending its refresh token, so it can be told apart from the others.
+export interface SessionsRequest {
+  refreshToken?: string;
+}
+
+export interface RevokeSessionRequest {
+  id: string;
+}
+
+export interface RevokeOtherSessionsRequest {
+  refreshToken: string;
+}

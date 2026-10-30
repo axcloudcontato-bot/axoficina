@@ -384,4 +384,37 @@ describe('AuthManager', () => {
       expect(deps.userRepository.update).not.toHaveBeenCalled();
     });
   });
+
+  describe('sessions', () => {
+    it('lists the open devices and marks the one asking', async () => {
+      const deps = buildManager();
+      (deps.refreshTokenRepository as unknown as { listActive: jest.Mock }).listActive = jest.fn().mockResolvedValue([
+        { id: 's1', tokenHash: 'hash(mine)', userAgent: 'Chrome', createdAt: new Date('2026-10-30T12:00:00Z'), expiresAt: new Date('2026-11-06T12:00:00Z') },
+        { id: 's2', tokenHash: 'hash(other)', userAgent: null, createdAt: new Date('2026-10-29T12:00:00Z'), expiresAt: new Date('2026-11-05T12:00:00Z') },
+      ]);
+      const result = await deps.manager.sessions('u1', 'mine');
+      expect(result.items.map(item => [item.id, item.current, item.device])).toEqual([['s1', true, 'Chrome'], ['s2', false, null]]);
+    });
+
+    it('keeps the asking device when signing the others out', async () => {
+      const deps = buildManager();
+      const repo = deps.refreshTokenRepository as unknown as { revokeOthers: jest.Mock; listActive: jest.Mock };
+      repo.revokeOthers = jest.fn(); repo.listActive = jest.fn().mockResolvedValue([]);
+      deps.refreshTokenRepository.byTokenHash.mockResolvedValue({ id: 's1', userId: 'u1', revokedAt: null });
+      await deps.manager.revokeOtherSessions('u1', 't1', 'mine');
+      expect(repo.revokeOthers).toHaveBeenCalledWith('u1', 's1');
+      deps.refreshTokenRepository.byTokenHash.mockResolvedValue({ id: 's9', userId: 'someone-else', revokedAt: null });
+      await expect(deps.manager.revokeOtherSessions('u1', 't1', 'stolen')).rejects.toThrow('não foi reconhecida');
+    });
+
+    it('only revokes sessions of the person asking', async () => {
+      const deps = buildManager();
+      const repo = deps.refreshTokenRepository as unknown as { revokeOne: jest.Mock; listActive: jest.Mock };
+      repo.listActive = jest.fn().mockResolvedValue([]);
+      repo.revokeOne = jest.fn().mockResolvedValueOnce({ count: 1 }).mockResolvedValueOnce({ count: 0 });
+      await deps.manager.revokeSession('u1', 't1', 's1');
+      expect(repo.revokeOne).toHaveBeenCalledWith('s1', 'u1');
+      await expect(deps.manager.revokeSession('u1', 't1', 'not-mine')).rejects.toThrow('já estava desconectado');
+    });
+  });
 });

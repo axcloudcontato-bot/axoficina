@@ -46,3 +46,4 @@ export * from './customer-care';
 export * from './vehicle-plate';
 export * from './document';
 export * from './agenda';
+export * from './workshop-account';
