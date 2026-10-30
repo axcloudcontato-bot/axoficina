@@ -485,6 +485,46 @@ model ServiceOrderProductivityShare {
   @@map("service_order_productivity_shares")
 }
 
+model ServiceOrderWarrantyReturn {
+  id              String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  tenantId        String   @map("tenant_id") @db.Uuid
+  serviceOrderId  String   @map("service_order_id") @db.Uuid
+  originalOrderId String   @map("original_order_id") @db.Uuid
+  reason          String?
+  createdBy       String?  @map("created_by") @db.Uuid
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@unique([tenantId, serviceOrderId], map: "service_order_warranty_returns_order_key")
+  @@index([tenantId, createdAt], map: "service_order_warranty_returns_period_idx")
+  @@map("service_order_warranty_returns")
+}
+
+model TechnicianCommissionRule {
+  id             String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  tenantId       String   @map("tenant_id") @db.Uuid
+  technicianId   String   @map("technician_id") @db.Uuid
+  laborPercentBp Int      @map("labor_percent_bp")
+  bonusPercentBp Int      @default(0) @map("bonus_percent_bp")
+  updatedAt      DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@unique([tenantId, technicianId], map: "technician_commission_rules_technician_key")
+  @@map("technician_commission_rules")
+}
+
+model TechnicianIdleSession {
+  id           String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  tenantId     String    @map("tenant_id") @db.Uuid
+  technicianId String    @map("technician_id") @db.Uuid
+  reason       String
+  note         String?
+  startedAt    DateTime  @map("started_at") @db.Timestamptz
+  endedAt      DateTime? @map("ended_at") @db.Timestamptz
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([tenantId, technicianId, startedAt], map: "technician_idle_sessions_period_idx")
+  @@map("technician_idle_sessions")
+}
+
 model TechnicianProductivityTarget {
   id                    String @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
   tenantId              String @map("tenant_id") @db.Uuid

@@ -16,6 +16,10 @@ import type {
   ServiceOrderPhotoResponse,
   CopyProductivityTargetsRequest,
   CorrectWorkSessionRequest,
+  ProductivityTrendRequest,
+  MarkWarrantyReturnRequest,
+  SetCommissionRuleRequest,
+  StartIdleRequest,
   TechnicianProductivityRequest,
   TechnicianProductivityOrdersRequest,
 } from '@oficina/contracts';
@@ -167,6 +171,43 @@ export function useWorkSessionAction(serviceOrderId: string) {
     mutationFn: (action: 'start' | 'stop') => action === 'start' ? serviceOrdersApi.startWork(serviceOrderId) : serviceOrdersApi.stopWork(serviceOrderId),
     onSuccess: data => { client.setQueryData(['work-sessions', serviceOrderId], data); client.invalidateQueries({ queryKey: ['technician-productivity'] }); },
   });
+}
+
+export function useWarrantyReturn(serviceOrderId: string) {
+  return useQuery({ queryKey: ['warranty-return', serviceOrderId], queryFn: () => serviceOrdersApi.warrantyReturn(serviceOrderId), enabled: Boolean(serviceOrderId) });
+}
+
+export function useMarkWarrantyReturn(serviceOrderId: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (request: Omit<MarkWarrantyReturnRequest, 'serviceOrderId'>) => serviceOrdersApi.markWarrantyReturn({ ...request, serviceOrderId }),
+    onSuccess: data => { client.setQueryData(['warranty-return', serviceOrderId], data); client.invalidateQueries({ queryKey: ['technician-productivity'] }); },
+  });
+}
+
+export function useCommissions(request: TechnicianProductivityRequest, enabled = true) {
+  return useQuery({ queryKey: ['technician-productivity', 'commissions', request], queryFn: () => serviceOrdersApi.commissions(request), enabled });
+}
+
+export function useSetCommissionRule() {
+  const client = useQueryClient();
+  return useMutation({ mutationFn: (request: SetCommissionRuleRequest) => serviceOrdersApi.setCommissionRule(request), onSuccess: () => client.invalidateQueries({ queryKey: ['technician-productivity', 'commissions'] }) });
+}
+
+export function useMyIdle(enabled = true) {
+  return useQuery({ queryKey: ['idle-time'], queryFn: () => serviceOrdersApi.myIdle(), enabled, refetchInterval: 60_000 });
+}
+
+export function useIdleAction() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (request: StartIdleRequest | null) => request ? serviceOrdersApi.startIdle(request) : serviceOrdersApi.stopIdle(),
+    onSuccess: data => { client.setQueryData(['idle-time'], data); client.invalidateQueries({ queryKey: ['technician-productivity'] }); client.invalidateQueries({ queryKey: ['work-sessions'] }); },
+  });
+}
+
+export function useProductivityTrend(request: ProductivityTrendRequest, enabled = true) {
+  return useQuery({ queryKey: ['technician-productivity', 'trend', request], queryFn: () => serviceOrdersApi.productivityTrend(request), enabled });
 }
 
 export function useMyProductivity(request: TechnicianProductivityRequest, enabled = true) {

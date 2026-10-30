@@ -19,6 +19,10 @@ import {
   WorkSessionDto,
   CorrectWorkSessionDto,
   CopyProductivityTargetsDto,
+  ProductivityTrendDto,
+  MarkWarrantyReturnDto,
+  SetCommissionRuleDto,
+  StartIdleDto,
   ProductivityTargetDto,
   TransitionServiceOrderDto,
   UpdateServiceOrderDto,
@@ -119,6 +123,70 @@ export class ServiceOrdersController {
   @Post('service-orders/technician-productivity')
   async technicianProductivity(@CurrentUser() user: AuthenticatedUser, @Body() body: TechnicianProductivityDto): Promise<TechnicianProductivityResponse> {
     return this.productivity.report(body, user.tenantId);
+  }
+
+  @Roles(...ITEM_ROLES)
+  @Permissions('service_orders.prices')
+  @HttpCode(HttpStatus.OK)
+  @Post('service-orders/technician-productivity/trend')
+  async productivityTrend(@CurrentUser() user: AuthenticatedUser, @Body() body: ProductivityTrendDto) {
+    return this.productivity.trend(body, user.tenantId);
+  }
+
+  @Roles(...ALL_ROLES)
+  @Permissions('service_orders.view')
+  @Get('service-orders/warranty-return')
+  async warrantyReturn(@Query() query: WorkSessionDto) {
+    return this.productivity.warrantyReturn(query.serviceOrderId);
+  }
+
+  // Marking a return under warranty puts the rework on the earlier order's technicians.
+  @Roles(...ITEM_ROLES)
+  @Permissions('service_orders.manage')
+  @HttpCode(HttpStatus.OK)
+  @Post('service-orders/warranty-return')
+  async markWarrantyReturn(@CurrentUser() user: AuthenticatedUser, @Body() body: MarkWarrantyReturnDto) {
+    return this.productivity.markWarrantyReturn(body, user);
+  }
+
+  // What each technician earns is for the owner and managers only.
+  @Roles('ADMIN', 'MANAGER')
+  @Permissions('service_orders.prices')
+  @HttpCode(HttpStatus.OK)
+  @Post('service-orders/technician-productivity/commissions')
+  async commissions(@CurrentUser() user: AuthenticatedUser, @Body() body: TechnicianProductivityDto) {
+    return this.productivity.commissions(body, user.tenantId);
+  }
+
+  @Roles('ADMIN', 'MANAGER')
+  @Permissions('service_orders.prices')
+  @HttpCode(HttpStatus.OK)
+  @Post('service-orders/technician-productivity/commission-rule')
+  async setCommissionRule(@CurrentUser() user: AuthenticatedUser, @Body() body: SetCommissionRuleDto) {
+    return this.productivity.setCommissionRule(body, user);
+  }
+
+  @Roles(...ALL_ROLES)
+  @Permissions('service_orders.view')
+  @Get('service-orders/idle-time')
+  async myIdle(@CurrentUser() user: AuthenticatedUser) {
+    return this.productivity.myIdle(user);
+  }
+
+  @Roles('MECHANIC')
+  @Permissions('service_orders.view')
+  @HttpCode(HttpStatus.OK)
+  @Post('service-orders/idle-time/start')
+  async startIdle(@CurrentUser() user: AuthenticatedUser, @Body() body: StartIdleDto) {
+    return this.productivity.startIdle(body, user);
+  }
+
+  @Roles('MECHANIC')
+  @Permissions('service_orders.view')
+  @HttpCode(HttpStatus.OK)
+  @Post('service-orders/idle-time/stop')
+  async stopIdle(@CurrentUser() user: AuthenticatedUser) {
+    return this.productivity.stopIdle(user);
   }
 
   // A technician's own month; money only for those who may see prices (the role is read fresh, like PermissionsGuard).

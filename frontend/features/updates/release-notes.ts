@@ -1,5 +1,25 @@
 export const RELEASE_NOTES = [
   {
+    id: '2026-10-29-produtividade-retrabalho-comissao', date: '2026-10-29', title: "Produtividade: retornos em garantia, comissões e tempo parado",
+    items: [
+      "Retorno em garantia: quando o veículo volta e tem uma OS entregue ainda na garantia, a nova OS pergunta se é retorno. Marcado, conta como retrabalho para os técnicos da OS original, na coluna Retornos da Produtividade.",
+      "Comissões do mês: defina o percentual sobre a mão de obra de cada técnico e um bônus quando a meta de mão de obra for atingida. O valor a pagar sai calculado e pode ser exportado em CSV. Só gerentes e administradores veem.",
+      "Tempo parado: o mecânico registra quando não está em uma OS (esperando peça, limpeza, deslocamento, treinamento). Ao iniciar trabalho numa OS, o tempo parado encerra sozinho. A Produtividade mostra as horas paradas de cada técnico.",
+      "Minha produtividade no painel do mecânico: OS entregues contra a meta, tempo em OS, eficiência, retornos em garantia e o botão de tempo parado, sem ver os números dos colegas.",
+    ],
+  },
+  {
+    id: '2026-10-29-produtividade-eficiencia', date: '2026-10-29', title: "Produtividade: eficiência, valor por hora, ocupação e gráficos",
+    items: [
+      "Eficiência por técnico: o tempo padrão dos serviços entregues (cadastrado no catálogo) comparado com o tempo registrado nessas OS. Acima de 100%, o serviço saiu no tempo ou mais rápido; abaixo de 80%, aparece em destaque.",
+      "Valor por hora: a mão de obra das OS com tempo registrado dividida pelas horas, por técnico e da equipe, ao lado do valor da hora da oficina.",
+      "Ocupação: o tempo em OS no mês comparado com as horas de funcionamento da agenda até hoje, para ver quem está ocioso ou sobrecarregado.",
+      "Comparativo da equipe em barras (mão de obra, horas em OS ou eficiência) e a evolução da mão de obra e das OS entregues nos últimos 6 meses.",
+      "No detalhe de cada técnico, cada OS mostra o tempo previsto e o real, destacando as que demoraram bem mais que o previsto.",
+      "O CSV exportado inclui eficiência, valor por hora e ocupação.",
+    ],
+  },
+  {
     id: '2026-10-29-produtividade', date: '2026-10-29', title: "Produtividade: tempo confiável, correção pelo gerente e visão do mecânico",
     items: [
       "O cronômetro da OS para de contar no horário de fechamento da oficina: um cronômetro esquecido ligado à noite não vira horas de trabalho. Se o técnico esquecer, ao iniciar o próximo trabalho o anterior é encerrado sozinho no fechamento.",

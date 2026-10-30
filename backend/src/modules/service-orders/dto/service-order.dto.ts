@@ -1,7 +1,12 @@
-import { IsBoolean, IsIn, IsInt, IsISO8601, IsNotEmpty, IsObject, IsOptional, IsString, IsUUID, Matches, Max, MaxLength, Min } from 'class-validator';
-import { PAYMENT_METHODS, SERVICE_ORDER_STATUSES } from '@oficina/contracts';
+import { ValidateIf, IsBoolean, IsIn, IsInt, IsISO8601, IsNotEmpty, IsObject, IsOptional, IsString, IsUUID, Matches, Max, MaxLength, Min } from 'class-validator';
+import { IDLE_REASONS, PAYMENT_METHODS, SERVICE_ORDER_STATUSES } from '@oficina/contracts';
 import type {
   CopyProductivityTargetsRequest,
+  ProductivityTrendRequest,
+  MarkWarrantyReturnRequest,
+  SetCommissionRuleRequest,
+  StartIdleRequest,
+  IdleReason,
   CorrectWorkSessionRequest,
   CreateServiceOrderRequest,
   DeleteServiceOrderRequest,
@@ -165,6 +170,27 @@ export class CorrectWorkSessionDto implements CorrectWorkSessionRequest {
   @IsOptional() @IsISO8601() endedAt?: string;
   @IsOptional() @IsBoolean() remove?: boolean;
   @IsString() @MaxLength(300) reason!: string;
+}
+
+export class MarkWarrantyReturnDto implements MarkWarrantyReturnRequest {
+  @IsUUID('4') serviceOrderId!: string;
+  @ValidateIf((_object, value) => value !== null) @IsUUID('4') originalOrderId!: string | null;
+  @IsOptional() @IsString() @MaxLength(300) reason?: string;
+}
+
+export class SetCommissionRuleDto implements SetCommissionRuleRequest {
+  @IsUUID('4') technicianId!: string;
+  @IsInt() @Min(0) @Max(10000) laborPercentBp!: number;
+  @IsInt() @Min(0) @Max(10000) bonusPercentBp!: number;
+}
+
+export class StartIdleDto implements StartIdleRequest {
+  @IsIn(IDLE_REASONS) reason!: IdleReason;
+  @IsOptional() @IsString() @MaxLength(200) note?: string;
+}
+
+export class ProductivityTrendDto implements ProductivityTrendRequest {
+  @Matches(/^\d{4}-(0[1-9]|1[0-2])$/) month!: string;
 }
 
 export class CopyProductivityTargetsDto implements CopyProductivityTargetsRequest {

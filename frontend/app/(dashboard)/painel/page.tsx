@@ -14,6 +14,7 @@ import { useAppointments } from '@/features/appointments/hooks/use-appointments'
 import { useCareForecast } from '@/features/customer-care/use-customer-care';
 import { StatusBadge } from '@/features/service-orders/components/StatusBadge';
 import { NewServiceOrderQuickStart } from '@/features/service-orders/components/NewServiceOrderQuickStart';
+import { MyProductivityCard } from '@/features/service-orders/components/MyProductivityCard';
 import { useDueServiceOrderInstallments } from '@/features/service-orders/hooks/use-service-orders';
 import { useCashFlow } from '@/features/financial/hooks/use-financial';
 import { formatCurrencyBRL } from '@/lib/format-currency';
@@ -133,6 +134,7 @@ export default function DashboardPage() {
           <CardHeader className="flex-row items-start justify-between"><div><CardTitle>Minhas OS</CardTitle><p className="mt-1 text-sm text-text-muted">{mine?.total ? `${mine.total} ${mine.total === 1 ? 'OS atribuída a você' : 'OS atribuídas a você'}` : 'O que está atribuído a você.'}</p></div><Button asChild variant="ghost" size="sm" className="text-primary"><Link href="/ordens-de-servico">Abrir quadro</Link></Button></CardHeader>
           <CardContent className="flex flex-1 flex-col p-0">{today.isLoading ? <RowsSkeleton rows={3} /> : today.isError ? <ErrorBlock action={refreshDashboard} /> : (mine?.items.length ?? 0) === 0 ? <EmptyBlock icon={CheckCircle} title="Nada na sua fila" detail="Nenhuma OS atribuída a você no momento." tone="success" /> : <div className="divide-y divide-border">{mine!.items.map((item) => <OrderRow key={item.id} item={item} />)}{mine!.total > mine!.items.length && <Link href="/ordens-de-servico" className="block px-5 py-3 text-center text-xs font-semibold text-primary hover:bg-muted/40">+ {mine!.total - mine!.items.length} na sua fila</Link>}</div>}</CardContent>
         </Card>}
+        {user?.role === 'MECHANIC' && <MyProductivityCard />}
 
         {showTeam && <Card className="flex h-full flex-col overflow-hidden">
           <CardHeader><CardTitle>Carga da equipe</CardTitle><p className="mt-1 text-sm text-text-muted">Quem está com trabalho e quem está livre.</p></CardHeader>

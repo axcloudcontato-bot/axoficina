@@ -20,6 +20,14 @@ import type {
   CopyProductivityTargetsRequest,
   CorrectWorkSessionRequest,
   MyProductivityResponse,
+  ProductivityTrendRequest,
+  ProductivityTrendResponse,
+  CommissionsResponse,
+  MarkWarrantyReturnRequest,
+  MyIdleResponse,
+  SetCommissionRuleRequest,
+  StartIdleRequest,
+  WarrantyReturnResponse,
   TechnicianProductivityRequest,
   TechnicianProductivityResponse,
   TechnicianProductivityOrdersRequest,
@@ -111,6 +119,30 @@ export const serviceOrdersApi = {
   },
   async technicianProductivityOrders(request: TechnicianProductivityOrdersRequest): Promise<TechnicianProductivityOrdersResponse> {
     return (await apiClient.post('/api/v1/service-orders/technician-productivity/orders', request)).data;
+  },
+  async warrantyReturn(serviceOrderId: string): Promise<WarrantyReturnResponse> {
+    return (await apiClient.get('/api/v1/service-orders/warranty-return', { params: { serviceOrderId } })).data;
+  },
+  async markWarrantyReturn(request: MarkWarrantyReturnRequest): Promise<WarrantyReturnResponse> {
+    return (await apiClient.post('/api/v1/service-orders/warranty-return', request)).data;
+  },
+  async commissions(request: TechnicianProductivityRequest): Promise<CommissionsResponse> {
+    return (await apiClient.post('/api/v1/service-orders/technician-productivity/commissions', request)).data;
+  },
+  async setCommissionRule(request: SetCommissionRuleRequest): Promise<{ success: true }> {
+    return (await apiClient.post('/api/v1/service-orders/technician-productivity/commission-rule', request)).data;
+  },
+  async myIdle(): Promise<MyIdleResponse> {
+    return (await apiClient.get('/api/v1/service-orders/idle-time')).data;
+  },
+  async startIdle(request: StartIdleRequest): Promise<MyIdleResponse> {
+    return (await apiClient.post('/api/v1/service-orders/idle-time/start', request)).data;
+  },
+  async stopIdle(): Promise<MyIdleResponse> {
+    return (await apiClient.post('/api/v1/service-orders/idle-time/stop', {})).data;
+  },
+  async productivityTrend(request: ProductivityTrendRequest): Promise<ProductivityTrendResponse> {
+    return (await apiClient.post('/api/v1/service-orders/technician-productivity/trend', request)).data;
   },
   async myProductivity(request: TechnicianProductivityRequest): Promise<MyProductivityResponse> {
     return (await apiClient.post('/api/v1/service-orders/technician-productivity/me', request)).data;

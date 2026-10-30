@@ -35,6 +35,7 @@ import { StatusHistoryTimeline } from './StatusHistoryTimeline';
 import { DeleteServiceOrderDialog } from './DeleteServiceOrderDialog';
 import { VehicleServiceHistoryDialog } from './VehicleServiceHistoryDialog';
 import { ServiceOrderWorkSessions } from './ServiceOrderWorkSessions';
+import { ServiceOrderWarrantyReturn } from './ServiceOrderWarrantyReturn';
 
 const NEXT_COPY = {
   OPEN: 'Registre a entrada, prepare os valores e solicite a aprovação do cliente.',
@@ -170,7 +171,7 @@ export function ServiceOrderWorkspace({ serviceOrder: order }: { serviceOrder: S
       {canManage && order.status === 'WAITING_PARTS' && <Button onClick={() => requestTransition('IN_PROGRESS', true)}>Retomar serviço</Button>}
       {canManage && order.status === 'IN_PROGRESS' && <div className="flex flex-wrap gap-2"><Button onClick={() => void go('delivery')}>Conferir conclusão e entrega<ArrowRight className="size-4" /></Button><Button variant="outline" onClick={() => requestTransition('WAITING_PARTS')}>Pausar: aguardar peças</Button></div>}
       {approval.state === 'changed' && <div className="mt-4"><Notice>Os itens mudaram após a solicitação de aprovação. <button className="font-semibold underline" onClick={() => setStep('approval')}>Conferir novos valores com o cliente</button></Notice></div>}
-    </Panel><ServiceOrderWorkSessions serviceOrderId={order.id} status={order.status} /><ItemPhotosSection serviceOrderId={order.id} items={order.items ?? []} canManage={canEdit} />
+    </Panel><ServiceOrderWarrantyReturn serviceOrderId={order.id} canManage={canManage && user?.role !== 'MECHANIC'} /><ServiceOrderWorkSessions serviceOrderId={order.id} status={order.status} /><ItemPhotosSection serviceOrderId={order.id} items={order.items ?? []} canManage={canEdit} />
       <StepFooter back="Aprovação" onBack={() => setStep('approval')}  />
     </div>}
 
