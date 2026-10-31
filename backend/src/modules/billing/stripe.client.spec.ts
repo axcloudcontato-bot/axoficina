@@ -161,5 +161,8 @@ describe('StripeClient plan products', () => {
     const session = bodyOf(fetchMock, 1);
     expect(session.get('line_items[0][price_data][product]')).toBe('ofix_plan_profissional');
     expect(session.has('line_items[0][price_data][product_data][name]')).toBe(false);
+    // The Ofix look on the checkout page, without touching the account's own branding.
+    expect(session.get('branding_settings[display_name]')).toBe('Ofix (Ax Cloud)');
+    expect(session.get('branding_settings[button_color]')).toBe('#ffbe00');
   });
 });

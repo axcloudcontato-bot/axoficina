@@ -5,6 +5,11 @@ import { createHmac, timingSafeEqual } from 'node:crypto';
 const API = 'https://api.stripe.com/v1';
 const WEBHOOK_TOLERANCE_SECONDS = 300;
 
+// The Stripe account is shared with another product, so the Ofix look is set per Checkout session and the account-wide
+// branding in the Dashboard is left alone. The name carries the company that charges, which is what the card statement
+// shows, so the payer recognizes the charge.
+const CHECKOUT_BRANDING = { display_name: 'Ofix (Ax Cloud)', button_color: '#ffbe00' };
+
 export type StripeInterval = 'month' | 'year';
 
 // Stripe takes form bodies; nested values are written as a[b][c]=value.
@@ -65,7 +70,7 @@ export class StripeClient {
       mode: 'subscription', customer: input.customerId, client_reference_id: input.tenantId, locale: 'pt-BR',
       success_url: input.successUrl, cancel_url: input.cancelUrl, allow_promotion_codes: true,
       line_items: [{ quantity: 1, price_data: { currency: 'brl', unit_amount: input.unitAmountCents, recurring: { interval: input.interval }, product } }],
-      metadata, subscription_data: { metadata },
+      metadata, subscription_data: { metadata }, branding_settings: CHECKOUT_BRANDING,
     });
     if (!session.url) throw new UnprocessableEntityException('O serviço de cobrança não devolveu a página de pagamento.');
     return session.url;
