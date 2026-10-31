@@ -1,4 +1,4 @@
-import { BadGatewayException, Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
+import { Injectable, Logger, ServiceUnavailableException, UnprocessableEntityException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { createHmac, timingSafeEqual } from 'node:crypto';
 
@@ -34,9 +34,12 @@ export function verifyStripeSignature(rawBody: Buffer, header: string | undefine
 interface StripeSubscription { id: string; current_period_end?: number; items: { data: Array<{ id: string; current_period_end?: number; price: { product: string } }> } }
 
 // The only place that talks to Stripe. The secret key comes from the server environment and goes nowhere else.
+// Failures answer 422 or 503, never 502/504: the edge in front of the site replaces those with its own error page,
+// and the workshop would never see the reason.
 @Injectable()
 export class StripeClient {
   private readonly logger = new Logger(StripeClient.name);
+  private readonly knownProducts = new Set<string>();
 
   constructor(private readonly config: ConfigService) {}
 
@@ -57,23 +60,25 @@ export class StripeClient {
   // Stripe-hosted page where the payer chooses the payment method and pays; the subscription is created there.
   async checkoutSession(input: { customerId: string; tenantId: string; plan: string; planName: string; cycle: string; unitAmountCents: number; interval: StripeInterval; successUrl: string; cancelUrl: string }): Promise<string> {
     const metadata = { tenant_id: input.tenantId, plan: input.plan, cycle: input.cycle };
+    const product = await this.ensureProduct(input.plan, input.planName);
     const session = await this.request<{ url?: string }>('POST', '/checkout/sessions', {
       mode: 'subscription', customer: input.customerId, client_reference_id: input.tenantId, locale: 'pt-BR',
       success_url: input.successUrl, cancel_url: input.cancelUrl, allow_promotion_codes: true,
-      line_items: [{ quantity: 1, price_data: { currency: 'brl', unit_amount: input.unitAmountCents, recurring: { interval: input.interval }, product_data: { name: `Ofix, plano ${input.planName}` } } }],
+      line_items: [{ quantity: 1, price_data: { currency: 'brl', unit_amount: input.unitAmountCents, recurring: { interval: input.interval }, product } }],
       metadata, subscription_data: { metadata },
     });
-    if (!session.url) throw new BadGatewayException('O serviço de cobrança não devolveu a página de pagamento.');
+    if (!session.url) throw new UnprocessableEntityException('O serviço de cobrança não devolveu a página de pagamento.');
     return session.url;
   }
 
   // Moves an existing subscription to another price. An upgrade is charged now (prorated); otherwise the new value starts with the next invoice.
-  async changeSubscription(subscriptionId: string, input: { unitAmountCents: number; interval: StripeInterval; planName: string; chargeNow: boolean }): Promise<void> {
+  async changeSubscription(subscriptionId: string, input: { plan: string; unitAmountCents: number; interval: StripeInterval; planName: string; chargeNow: boolean }): Promise<void> {
     const current = await this.request<StripeSubscription>('GET', `/subscriptions/${encodeURIComponent(subscriptionId)}`);
     const item = current.items.data[0];
-    if (!item) throw new BadGatewayException('A assinatura não tem itens para alterar.');
+    if (!item) throw new UnprocessableEntityException('A assinatura não tem itens para alterar.');
+    const product = await this.ensureProduct(input.plan, input.planName);
     await this.request('POST', `/subscriptions/${encodeURIComponent(subscriptionId)}`, {
-      items: [{ id: item.id, price_data: { currency: 'brl', product: item.price.product, unit_amount: input.unitAmountCents, recurring: { interval: input.interval } } }],
+      items: [{ id: item.id, price_data: { currency: 'brl', product, unit_amount: input.unitAmountCents, recurring: { interval: input.interval } } }],
       proration_behavior: input.chargeNow ? 'always_invoice' : 'none',
       metadata: { plan_name: input.planName },
     });
@@ -86,16 +91,28 @@ export class StripeClient {
     return end ? new Date(end * 1000) : null;
   }
 
+  // One active product per plan, with a fixed id. A product created inline by Checkout is born inactive, and Stripe
+  // refuses to move a subscription onto an inactive product, so the plan change would never work.
+  async ensureProduct(plan: string, planName: string): Promise<string> {
+    const id = `ofix_plan_${plan}`;
+    if (this.knownProducts.has(id)) return id;
+    const existing = await this.request<{ active?: boolean } | null>('GET', `/products/${id}`, undefined, undefined, true);
+    if (!existing) await this.request('POST', '/products', { id, name: `Ofix, plano ${planName}`, metadata: { plan } });
+    else if (existing.active === false) await this.request('POST', `/products/${id}`, { active: true });
+    this.knownProducts.add(id);
+    return id;
+  }
+
   // Stripe's own page to update the card and see receipts. The account's default portal is shared with every other
   // product on it, so the Ofix uses its own configuration (STRIPE_PORTAL_CONFIGURATION) when one is set.
   async portalSession(customerId: string, returnUrl: string): Promise<string> {
     const configuration = this.config.get<string>('STRIPE_PORTAL_CONFIGURATION') || undefined;
     const session = await this.request<{ url?: string }>('POST', '/billing_portal/sessions', { customer: customerId, return_url: returnUrl, configuration });
-    if (!session.url) throw new BadGatewayException('O serviço de cobrança não devolveu a página.');
+    if (!session.url) throw new UnprocessableEntityException('O serviço de cobrança não devolveu a página.');
     return session.url;
   }
 
-  private async request<T = unknown>(method: string, path: string, body?: Record<string, unknown>, idempotencyKey?: string): Promise<T> {
+  private async request<T = unknown>(method: string, path: string, body?: Record<string, unknown>, idempotencyKey?: string, nullOn404 = false): Promise<T> {
     const key = this.config.get<string>('STRIPE_SECRET_KEY');
     if (!key) throw new ServiceUnavailableException('A cobrança automática ainda não está configurada.');
     let response: Response;
@@ -107,15 +124,16 @@ export class StripeClient {
       });
     } catch (error) {
       this.logger.warn(`${method} ${path} sem resposta: ${error instanceof Error ? error.name : 'erro'}`);
-      throw new BadGatewayException('Não foi possível falar com o serviço de cobrança agora. Tente novamente em instantes.');
+      throw new ServiceUnavailableException('Não foi possível falar com o serviço de cobrança agora. Tente novamente em instantes.');
     }
+    if (nullOn404 && response.status === 404) return null as T;
     const payload = (await response.json().catch(() => null)) as (T & { error?: { message?: string } }) | null;
     if (!response.ok || !payload) {
       // The provider's reason goes to the server log (never the key or the body we sent), so a failed call can be diagnosed.
       const reason = (payload as { error?: { code?: string; message?: string } } | null)?.error;
       this.logger.warn(`${method} ${path} -> ${response.status} ${reason?.code ?? ''} ${reason?.message ?? ''}`.trim());
     }
-    if (!response.ok || !payload) throw new BadGatewayException(payload?.error?.message ?? 'O serviço de cobrança recusou a operação.');
+    if (!response.ok || !payload) throw new UnprocessableEntityException(payload?.error?.message ?? 'O serviço de cobrança recusou a operação.');
     return payload;
   }
 }

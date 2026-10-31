@@ -82,7 +82,7 @@ describe('BillingService checkout', () => {
   it('applies an upgrade of a paid subscription at once and charges the difference now', async () => {
     const { service, db, stripe, entitlements } = build(tenantRow({ plan: 'essencial', billingCustomerId: 'cus_1', billingSubscriptionId: 'sub_1', subscriptionStatus: 'active' }));
     const result = await service.checkout(user, { plan: 'completo', cycle: 'monthly' });
-    expect(stripe.changeSubscription).toHaveBeenCalledWith('sub_1', { unitAmountCents: 19990, interval: 'month', planName: 'Completo', chargeNow: true });
+    expect(stripe.changeSubscription).toHaveBeenCalledWith('sub_1', { plan: 'completo', unitAmountCents: 19990, interval: 'month', planName: 'Completo', chargeNow: true });
     expect(db.tenant.update).toHaveBeenCalledWith({ where: { id: TENANT_ID }, data: { plan: 'completo', pendingPlan: null, subscriptionCycle: 'monthly', subscriptionAmountCents: 19990 } });
     expect(entitlements.forget).toHaveBeenCalledWith(TENANT_ID);
     expect(result).toEqual({ checkoutUrl: null, appliedNow: true });

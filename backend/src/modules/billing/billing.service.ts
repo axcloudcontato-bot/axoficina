@@ -85,7 +85,7 @@ export class BillingService {
     const current = resolvePlan(tenant.plan).code;
     if (request.plan === current && cycle === tenant.subscriptionCycle && !tenant.pendingPlan) throw new ConflictException('Esta já é a sua assinatura atual.');
     const upgrade = RANK[request.plan] > RANK[current];
-    await this.stripe.changeSubscription(tenant.billingSubscriptionId!, { unitAmountCents, interval: interval(cycle), planName: plan.name, chargeNow: upgrade });
+    await this.stripe.changeSubscription(tenant.billingSubscriptionId!, { plan: plan.code, unitAmountCents, interval: interval(cycle), planName: plan.name, chargeNow: upgrade });
     const now = upgrade || request.plan === current;
     const data = now
       ? { plan: request.plan, pendingPlan: null, subscriptionCycle: cycle, subscriptionAmountCents: unitAmountCents }

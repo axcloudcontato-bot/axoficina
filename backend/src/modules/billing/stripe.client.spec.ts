@@ -104,3 +104,62 @@ describe('StripeClient portal session', () => {
     expect(body(fetchMock.mock.calls[0]).has('configuration')).toBe(false);
   });
 });
+
+describe('StripeClient plan products', () => {
+  afterEach(() => jest.restoreAllMocks());
+
+  const answer = (status: number, body: unknown) => new Response(JSON.stringify(body), { status });
+  function client() {
+    return new StripeClient(new ConfigService({ STRIPE_SECRET_KEY: 'sk_test_x', STRIPE_WEBHOOK_SECRET: 'whsec_x' }));
+  }
+  const callsOf = (fetchMock: jest.SpyInstance) => fetchMock.mock.calls.map((call) => `${(call[1] as { method: string }).method} ${String(call[0]).replace('https://api.stripe.com/v1', '')}`);
+  const bodyOf = (fetchMock: jest.SpyInstance, index: number) => new URLSearchParams(String((fetchMock.mock.calls[index][1] as { body: string }).body));
+
+  it('creates the plan product once, with a fixed id, when Stripe does not have it yet', async () => {
+    const fetchMock = jest.spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(answer(404, { error: { code: 'resource_missing' } }))
+      .mockResolvedValueOnce(answer(200, { id: 'ofix_plan_essencial' }));
+    const stripe = client();
+    await expect(stripe.ensureProduct('essencial', 'Essencial')).resolves.toBe('ofix_plan_essencial');
+    expect(callsOf(fetchMock)).toEqual(['GET /products/ofix_plan_essencial', 'POST /products']);
+    expect(bodyOf(fetchMock, 1).get('id')).toBe('ofix_plan_essencial');
+    expect(bodyOf(fetchMock, 1).get('name')).toBe('Ofix, plano Essencial');
+    await stripe.ensureProduct('essencial', 'Essencial');
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('leaves an active product alone and turns an archived one back on', async () => {
+    const active = jest.spyOn(globalThis, 'fetch').mockResolvedValueOnce(answer(200, { id: 'ofix_plan_completo', active: true }));
+    await client().ensureProduct('completo', 'Completo');
+    expect(callsOf(active)).toEqual(['GET /products/ofix_plan_completo']);
+    jest.restoreAllMocks();
+    const archived = jest.spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(answer(200, { id: 'ofix_plan_completo', active: false }))
+      .mockResolvedValueOnce(answer(200, { id: 'ofix_plan_completo', active: true }));
+    await client().ensureProduct('completo', 'Completo');
+    expect(callsOf(archived)).toEqual(['GET /products/ofix_plan_completo', 'POST /products/ofix_plan_completo']);
+    expect(bodyOf(archived, 1).get('active')).toBe('true');
+  });
+
+  it('moves a subscription onto the target plan product, never the old inactive one', async () => {
+    const fetchMock = jest.spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(answer(200, { id: 'sub_1', items: { data: [{ id: 'si_1', price: { product: 'prod_inactive' } }] } }))
+      .mockResolvedValueOnce(answer(200, { id: 'ofix_plan_essencial', active: true }))
+      .mockResolvedValueOnce(answer(200, { id: 'sub_1' }));
+    await client().changeSubscription('sub_1', { plan: 'essencial', unitAmountCents: 12990, interval: 'month', planName: 'Essencial', chargeNow: false });
+    const update = bodyOf(fetchMock, 2);
+    expect(update.get('items[0][price_data][product]')).toBe('ofix_plan_essencial');
+    expect(update.get('items[0][id]')).toBe('si_1');
+    expect(update.get('proration_behavior')).toBe('none');
+  });
+
+  it('puts the plan product, not an inline one, in the checkout', async () => {
+    const fetchMock = jest.spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(answer(200, { id: 'ofix_plan_profissional', active: true }))
+      .mockResolvedValueOnce(answer(200, { url: 'https://checkout.stripe.com/c/pay/abc' }));
+    await client().checkoutSession({ customerId: 'cus_1', tenantId: 't1', plan: 'profissional', planName: 'Profissional', cycle: 'monthly', unitAmountCents: 15990, interval: 'month', successUrl: 'https://x/y', cancelUrl: 'https://x/z' });
+    const session = bodyOf(fetchMock, 1);
+    expect(session.get('line_items[0][price_data][product]')).toBe('ofix_plan_profissional');
+    expect(session.has('line_items[0][price_data][product_data][name]')).toBe(false);
+  });
+});
