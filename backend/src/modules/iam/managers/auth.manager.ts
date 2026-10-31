@@ -69,6 +69,10 @@ export class AuthManager {
 
     const existingUser = await this.userRepository.byEmail(input.adminEmail);
     if (existingUser) {
+      // A closed workshop keeps its users until it is erased, so the e-mail stays taken during the grace period.
+      if (!(await this.tenantRepository.byId(existingUser.tenantId))) {
+        throw new AppException(AppErrorCode.ACCOUNT_CLOSED, 'Este e-mail pertence a uma oficina encerrada, cujos dados ficam guardados por 30 dias. Para restaurar a conta, fale com o suporte do Ofix; para abrir uma nova oficina agora, use outro e-mail.', HttpStatus.CONFLICT);
+      }
       throw new AppException(AppErrorCode.EMAIL_ALREADY_EXISTS, 'Já existe uma conta com este e-mail.', HttpStatus.CONFLICT);
     }
 

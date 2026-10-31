@@ -190,6 +190,7 @@ describe('AuthManager', () => {
       const deps = buildManager();
       deps.tenantRepository.byDocument.mockResolvedValue(null);
       deps.userRepository.byEmail.mockResolvedValue(baseUser);
+      deps.tenantRepository.byId.mockResolvedValue({ id: baseUser.tenantId });
 
       await expect(
         deps.manager.signup({ acceptedTerms: true, legalVersion: LEGAL_VERSION,
@@ -200,6 +201,23 @@ describe('AuthManager', () => {
           password: 'supersecret1',
         }),
       ).rejects.toMatchObject({ status: HttpStatus.CONFLICT });
+    });
+
+    it('says the e-mail belongs to a closed workshop instead of a generic duplicate', async () => {
+      const deps = buildManager();
+      deps.tenantRepository.byDocument.mockResolvedValue(null);
+      deps.userRepository.byEmail.mockResolvedValue(baseUser);
+      deps.tenantRepository.byId.mockResolvedValue(null);
+
+      await expect(
+        deps.manager.signup({ acceptedTerms: true, legalVersion: LEGAL_VERSION,
+          tenantName: 'X',
+          tenantDocument: '11444777000161',
+          adminName: 'Admin',
+          adminEmail: 'admin@oficina.com',
+          password: 'supersecret1',
+        }),
+      ).rejects.toMatchObject({ code: 'ACCOUNT_CLOSED', status: HttpStatus.CONFLICT });
     });
 
     it('fails loudly if the ADMIN role is missing (seed not run)', async () => {
