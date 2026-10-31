@@ -120,6 +120,13 @@ describe('BillingService checkout', () => {
     await expect(build(tenantRow({ billingCustomerId: 'cus_1' })).service.portal(user)).resolves.toEqual({ url: 'https://billing.stripe.com/p/session/abc' });
   });
 
+  it('does not call a plan that was only chosen at checkout, and not yet paid, a scheduled change', async () => {
+    const abandoned = build(tenantRow({ billingCustomerId: 'cus_1', billingSubscriptionId: null, pendingPlan: 'completo' }));
+    expect((await abandoned.service.status(user)).pendingPlan).toBeNull();
+    const scheduled = build(tenantRow({ billingCustomerId: 'cus_1', billingSubscriptionId: 'sub_1', subscriptionStatus: 'active', pendingPlan: 'essencial' }));
+    expect((await scheduled.service.status(user)).pendingPlan).toBe('essencial');
+  });
+
   it('reports whether a subscription is running', async () => {
     expect(await build(tenantRow({ billingSubscriptionId: 'sub_1', billingCustomerId: 'cus_1', subscriptionStatus: 'active' })).service.status(user)).toEqual({ enabled: true, hasSubscription: true, hasCustomer: true, pendingPlan: null });
     expect((await build(tenantRow({ billingSubscriptionId: 'sub_1', subscriptionStatus: 'canceled' })).service.status(user)).hasSubscription).toBe(false);

@@ -52,11 +52,13 @@ export class BillingService {
 
   async status(user: AuthenticatedUser): Promise<BillingStatusResponse> {
     const tenant = await this.tenant(user.tenantId);
+    const hasSubscription = Boolean(tenant.billingSubscriptionId) && tenant.subscriptionStatus !== 'canceled';
     return {
       enabled: this.stripe.enabled,
-      hasSubscription: Boolean(tenant.billingSubscriptionId) && tenant.subscriptionStatus !== 'canceled',
+      hasSubscription,
       hasCustomer: Boolean(tenant.billingCustomerId),
-      pendingPlan: (tenant.pendingPlan as PlanCode | null) ?? null,
+      // Before the first payment the same field only remembers the plan being contracted, which is not a scheduled change.
+      pendingPlan: hasSubscription ? (tenant.pendingPlan as PlanCode | null) ?? null : null,
     };
   }
 
