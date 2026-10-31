@@ -1,5 +1,12 @@
 export const RELEASE_NOTES = [
   {
+    id: '2026-10-31-configuracao-inicial', date: '2026-10-31', title: "Configuração inicial guiada",
+    items: [
+      "No primeiro acesso, a oficina passa por um passo a passo: nome e CPF/CNPJ, contato, endereço (com busca pelo CEP), horário de funcionamento e dados dos documentos. Preencha cada tela e clique em Avançar.",
+      "O que você preenche já fica salvo a cada passo, e tudo pode ser mudado depois em Configurações.",
+    ],
+  },
+  {
     id: '2026-10-31-menus-em-abas', date: '2026-10-31', title: "Menus de seção com o mesmo visual",
     items: [
       "Configurações, Financeiro, Alertas de manutenção, Veículos, Clientes e Peças e Serviços ganharam menus de seção no mesmo estilo: botões ligados, com a opção selecionada em amarelo e uma barra por baixo.",

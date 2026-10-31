@@ -26,6 +26,14 @@ export function useUpdateCompanySettings() {
   });
 }
 
+export function useCompleteOnboarding() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: settingsApi.completeOnboarding,
+    onSuccess: () => client.invalidateQueries({ queryKey: BRANDING_KEY }),
+  });
+}
+
 export function useUpdateEmailSettings() {
   const client = useQueryClient();
   return useMutation({

@@ -78,6 +78,23 @@ describe('SettingsManager', () => {
     await expect(manager.updateAgendaHours(user as never, { openHour: 8, closeHour: 18, workDays: [1, 2], remindersEnabled: true })).rejects.toThrow('Ative o WhatsApp');
   });
 
+  it('tells whether the first-access setup is done, and closes it once', async () => {
+    const pending = { ...tenant, onboardingCompletedAt: null };
+    const tenants = { byId: jest.fn().mockResolvedValue(pending), updateSettings: jest.fn().mockResolvedValue(pending) };
+    const audit = { record: jest.fn() };
+    const manager = new SettingsManager(tenants as never, {} as never, {} as never, audit as never);
+    expect((await manager.getBranding(user as never)).onboardingCompleted).toBe(false);
+    expect(await manager.completeOnboarding(user as never)).toEqual({ onboardingCompleted: true });
+    expect(tenants.updateSettings).toHaveBeenCalledWith('tenant-1', { onboardingCompletedAt: expect.any(Date) });
+    expect(audit.record).toHaveBeenCalledWith(expect.objectContaining({ action: 'settings.onboarding_completed' }));
+
+    tenants.byId.mockResolvedValue({ ...tenant, onboardingCompletedAt: new Date() });
+    tenants.updateSettings.mockClear();
+    expect((await manager.getBranding(user as never)).onboardingCompleted).toBe(true);
+    await manager.completeOnboarding(user as never);
+    expect(tenants.updateSettings).not.toHaveBeenCalled();
+  });
+
   it('saves the hourly labor rate and lets it be cleared', async () => {
     const tenants = { updateSettings: jest.fn().mockImplementation(async (_id: string, data: Record<string, unknown>) => ({ id: 'tenant-1', ...data })) };
     const audit = { record: jest.fn() };

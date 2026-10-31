@@ -7,6 +7,7 @@ import { PlanNotice } from '@/features/plan/PlanNotice';
 import { ModuleLocked } from '@/features/plan/ModuleLocked';
 import { moduleForPath, useEntitlements } from '@/features/plan/use-entitlements';
 import { AuthGuard } from '@/features/auth/components/AuthGuard';
+import { OnboardingGate } from '@/features/onboarding/OnboardingGate';
 
 // A page of a module the plan does not include shows the offer instead of failing with a refused request.
 function ModuleGate({ children }: { children: React.ReactNode }) {
@@ -18,6 +19,7 @@ function ModuleGate({ children }: { children: React.ReactNode }) {
 export function DashboardShell({ children }: { children: React.ReactNode }) {
   return (
     <AuthGuard>
+      <OnboardingGate>
       <div className="min-h-screen bg-bg">
         <Sidebar />
         <div className="min-h-screen min-w-0 transition-[padding] duration-normal md:pl-[var(--sidebar-width)]">
@@ -27,6 +29,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
           </main>
         </div>
       </div>
+      </OnboardingGate>
     </AuthGuard>
   );
 }

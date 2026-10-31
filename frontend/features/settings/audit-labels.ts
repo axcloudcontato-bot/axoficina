@@ -7,7 +7,7 @@ const LABELS: Record<string, string> = {
   'user.disabled': 'Bloqueou um usuário', 'user.enabled': 'Reativou um usuário', 'user.deleted': 'Excluiu um usuário', 'user.password_reset_link_created': 'Gerou um link de nova senha para um usuário',
   'settings.company_updated': 'Alterou os dados da empresa', 'settings.email_updated': 'Alterou a configuração de e-mail', 'settings.whatsapp_updated': 'Alterou a configuração do WhatsApp',
   'settings.agenda_hours_updated': 'Alterou o horário de funcionamento', 'settings.photo_policy_updated': 'Alterou a exigência de fotos', 'settings.order_defaults_updated': 'Alterou os padrões da OS',
-  'settings.labor_rate_updated': 'Alterou o valor da hora', 'settings.maintenance_alert_months_updated': 'Alterou o prazo dos alertas de manutenção', 'settings.data_exported': 'Exportou os dados da oficina',
+  'settings.labor_rate_updated': 'Alterou o valor da hora', 'settings.onboarding_completed': 'Concluiu a configuração inicial da oficina', 'settings.maintenance_alert_months_updated': 'Alterou o prazo dos alertas de manutenção', 'settings.data_exported': 'Exportou os dados da oficina',
   'subscription.updated': 'Plano atualizado pelo Ofix',
   'account.closed': 'Encerrou a conta da oficina', 'account.restored': 'Conta da oficina restaurada pelo Ofix',
   'billing.checkout_started': 'Contratou um plano', 'billing.plan_upgraded': 'Subiu de plano', 'billing.plan_change_scheduled': 'Agendou a troca de plano para o próximo pagamento',

@@ -6,8 +6,8 @@ export const settingsApi = {
   async get(): Promise<TenantSettingsResponse> {
     return (await apiClient.get<TenantSettingsResponse>('/api/v1/settings')).data;
   },
-  async branding(): Promise<{ company: CompanySettingsResponse; whatsappEnabled?: boolean; photoPolicy?: PhotoPolicy; agendaHours?: AgendaHours; laborRateCents?: number | null; maintenanceAlertMonths?: number; orderDefaults?: OrderDefaults }> {
-    return (await apiClient.get<{ company: CompanySettingsResponse; whatsappEnabled?: boolean; photoPolicy?: PhotoPolicy; agendaHours?: AgendaHours; laborRateCents?: number | null; maintenanceAlertMonths?: number; orderDefaults?: OrderDefaults }>('/api/v1/settings/branding')).data;
+  async branding(): Promise<{ company: CompanySettingsResponse; whatsappEnabled?: boolean; photoPolicy?: PhotoPolicy; agendaHours?: AgendaHours; laborRateCents?: number | null; maintenanceAlertMonths?: number; orderDefaults?: OrderDefaults; onboardingCompleted?: boolean }> {
+    return (await apiClient.get<{ company: CompanySettingsResponse; whatsappEnabled?: boolean; photoPolicy?: PhotoPolicy; agendaHours?: AgendaHours; laborRateCents?: number | null; maintenanceAlertMonths?: number; orderDefaults?: OrderDefaults; onboardingCompleted?: boolean }>('/api/v1/settings/branding')).data;
   },
   async updateMaintenanceAlertMonths(request: UpdateMaintenanceAlertMonthsRequest): Promise<{ maintenanceAlertMonths: number }> {
     return (await apiClient.post('/api/v1/settings/maintenance-alert-months', request)).data;
@@ -44,6 +44,9 @@ export const settingsApi = {
   },
   async retryReminder(id: string): Promise<{ sent: true }> {
     return (await apiClient.post('/api/v1/appointments/reminder-retry', { id })).data;
+  },
+  async completeOnboarding(): Promise<{ onboardingCompleted: true }> {
+    return (await apiClient.post('/api/v1/settings/onboarding/complete')).data;
   },
   async updateCompany(request: UpdateCompanySettingsRequest): Promise<{ company: CompanySettingsResponse }> {
     return (await apiClient.post('/api/v1/settings/company', request)).data;

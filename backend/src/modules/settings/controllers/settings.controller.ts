@@ -17,6 +17,9 @@ export class SettingsController {
   @Get('branding') @Roles('ADMIN', 'MANAGER', 'MECHANIC', 'FRONT_DESK')
   branding(@CurrentUser() user: AuthenticatedUser) { return this.manager.getBranding(user); }
 
+  @Post('onboarding/complete') @HttpCode(HttpStatus.OK) @Permissions('settings.manage')
+  completeOnboarding(@CurrentUser() user: AuthenticatedUser) { return this.manager.completeOnboarding(user); }
+
   @Post('company') @HttpCode(HttpStatus.OK) @Permissions('settings.manage')
   updateCompany(@CurrentUser() user: AuthenticatedUser, @Body() body: UpdateCompanySettingsDto) { return this.manager.updateCompany(user, body); }
 

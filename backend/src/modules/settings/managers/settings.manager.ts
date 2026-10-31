@@ -28,7 +28,17 @@ export class SettingsManager {
 
   async getBranding(user: AuthenticatedUser) {
     const tenant = await this.requireTenant(user.tenantId);
-    return { company: this.toResponse(tenant).company, whatsappEnabled: tenant.waAkgEnabled ?? false, photoPolicy: this.photoPolicy(tenant), agendaHours: this.agendaHours(tenant), laborRateCents: tenant.laborRateCents ?? null, maintenanceAlertMonths: tenant.maintenanceAlertMonths ?? 6, orderDefaults: this.orderDefaults(tenant) };
+    return { company: this.toResponse(tenant).company, whatsappEnabled: tenant.waAkgEnabled ?? false, photoPolicy: this.photoPolicy(tenant), agendaHours: this.agendaHours(tenant), laborRateCents: tenant.laborRateCents ?? null, maintenanceAlertMonths: tenant.maintenanceAlertMonths ?? 6, orderDefaults: this.orderDefaults(tenant), onboardingCompleted: Boolean(tenant.onboardingCompletedAt) };
+  }
+
+  // Closes the guided first-access setup; the company data was already saved step by step.
+  async completeOnboarding(user: AuthenticatedUser) {
+    const tenant = await this.requireTenant(user.tenantId);
+    if (!tenant.onboardingCompletedAt) {
+      await this.tenants.updateSettings(user.tenantId, { onboardingCompletedAt: new Date() });
+      await this.audit.record({ tenantId: user.tenantId, userId: user.userId, action: 'settings.onboarding_completed', entity: 'tenant', entityId: user.tenantId, metadata: { itemAction: 'update' } });
+    }
+    return { onboardingCompleted: true };
   }
 
   async updateOrderDefaults(user: AuthenticatedUser, input: UpdateOrderDefaultsRequest) {

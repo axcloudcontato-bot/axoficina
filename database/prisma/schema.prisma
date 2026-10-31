@@ -165,6 +165,7 @@ model Tenant {
   billingCustomerId     String? @map("billing_customer_id")
   billingSubscriptionId String? @map("billing_subscription_id")
   pendingPlan           String? @map("pending_plan")
+  onboardingCompletedAt DateTime? @map("onboarding_completed_at") @db.Timestamptz
   closureReason         String? @map("closure_reason")
   closedBy              String? @map("closed_by")
   purgeAfter            DateTime? @map("purge_after") @db.Timestamptz

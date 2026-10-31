@@ -36,7 +36,7 @@ export function SignupForm() {
     signup.mutate({ ...values, legalVersion: LEGAL_VERSION }, {
       onSuccess: () => {
         toast.success('Oficina criada com sucesso!');
-        router.push('/usuarios');
+        router.push('/primeiros-passos');
       },
       onError: (error) => {
         const fieldErrors = extractFieldErrors(error);

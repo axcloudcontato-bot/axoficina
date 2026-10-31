@@ -11,6 +11,7 @@ export interface CreateTenantInput {
 }
 
 export interface UpdateTenantSettingsInput {
+  onboardingCompletedAt?: Date | null;
   name?: string;
   legalName?: string | null;
   document?: string;
