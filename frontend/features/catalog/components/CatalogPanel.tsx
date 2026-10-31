@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { segmentedItem, segmentedList } from '@/components/ui/segmented';
 import { extractErrorMessage } from '@/lib/api/client';
 import { formatCurrencyBRL } from '@/lib/format-currency';
 import { normalizeNavigationSearch } from '@/lib/navigation';
@@ -118,8 +119,8 @@ export function CatalogPanel() {
         : <button type="button" aria-label="Alterar valor da hora" onClick={() => setRateText(laborRate === null ? '' : (laborRate / 100).toFixed(2).replace('.', ','))} className="rounded-button px-2 py-1 font-bold tabular-nums hover:bg-muted">{laborRate === null ? <span className="font-medium text-warning">Definir</span> : `${formatCurrencyBRL(laborRate)}/h`}</button>}
     </div>
 
-    <div role="tablist" aria-label="Seção do catálogo" className="flex gap-1 border-b border-border">
-      {VIEWS.map(option => <button key={option.key} role="tab" aria-selected={view === option.key} onClick={() => setView(option.key)} className={`-mb-px border-b-2 px-4 py-2 text-sm font-semibold transition-colors ${view === option.key ? 'border-primary text-text' : 'border-transparent text-text-muted hover:text-text'}`}>{option.label}</button>)}
+    <div role="tablist" aria-label="Seção do catálogo" className={segmentedList}>
+      {VIEWS.map(option => <button key={option.key} role="tab" aria-selected={view === option.key} onClick={() => setView(option.key)} className={segmentedItem(view === option.key, 'px-4')}>{option.label}</button>)}
     </div>
 
     {view === 'packages' && <CatalogPackages items={items} />}
@@ -127,8 +128,8 @@ export function CatalogPanel() {
 
     {view === 'items' && <>
     <div className="flex flex-wrap items-center justify-between gap-3">
-      <div role="tablist" aria-label="Tipo de item" className="flex gap-1 rounded-button bg-muted p-1">
-        {CATALOG_ITEM_TYPES.map(type => <button key={type} role="tab" aria-selected={tab === type} onClick={() => { setTab(type); setCategory('ALL'); }} className={`rounded-button px-4 py-1.5 text-sm font-semibold transition-colors ${tab === type ? 'bg-card text-text shadow-sm' : 'text-text-muted hover:text-text'}`}>{TAB_LABELS[type]} <span className="text-xs font-normal text-text-muted">{counts[type]}</span></button>)}
+      <div role="tablist" aria-label="Tipo de item" className={segmentedList}>
+        {CATALOG_ITEM_TYPES.map(type => <button key={type} role="tab" aria-selected={tab === type} onClick={() => { setTab(type); setCategory('ALL'); }} className={segmentedItem(tab === type, 'px-4')}>{TAB_LABELS[type]} <span className="text-xs font-normal opacity-70">{counts[type]}</span></button>)}
       </div>
       <div className="flex w-full flex-wrap gap-2 sm:w-auto">
         {tabCategories.length > 0 && <select aria-label="Filtrar por categoria" className="h-10 rounded-button border border-input bg-background px-3 text-sm" value={category} onChange={event => setCategory(event.target.value)}><option value="ALL">Todas as categorias</option>{tabCategories.map(name => <option key={name} value={name}>{name}</option>)}</select>}

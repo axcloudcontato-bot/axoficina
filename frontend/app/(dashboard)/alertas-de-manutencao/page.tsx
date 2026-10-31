@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import type { MaintenanceAlertFilter } from '@oficina/contracts';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { segmentedItem, segmentedList } from '@/components/ui/segmented';
 import { hasPermission } from '@/features/auth/permissions';
 import { MaintenanceAlertsTable } from '@/features/maintenance-alerts/components/MaintenanceAlertsTable';
 import { useMaintenanceAlertsList } from '@/features/maintenance-alerts/hooks/use-maintenance-alerts';
@@ -69,9 +70,9 @@ export default function MaintenanceAlertsPage() {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div role="tablist" aria-label="Situação dos alertas" className="flex flex-wrap gap-1 rounded-button bg-muted p-1">
+        <div role="tablist" aria-label="Situação dos alertas" className={segmentedList}>
           {TABS.map((item) => (
-            <button key={item.value} role="tab" aria-selected={status === item.value} onClick={() => { setStatus(item.value); setOffset(0); }} className={`rounded-button px-3 py-1.5 text-sm font-semibold transition-colors ${status === item.value ? 'bg-card text-text shadow-sm' : 'text-text-muted hover:text-text'}`}>
+            <button key={item.value} role="tab" aria-selected={status === item.value} onClick={() => { setStatus(item.value); setOffset(0); }} className={segmentedItem(status === item.value)}>
               {item.label}
             </button>
           ))}

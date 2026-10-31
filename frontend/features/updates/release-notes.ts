@@ -1,5 +1,11 @@
 export const RELEASE_NOTES = [
   {
+    id: '2026-10-31-menus-em-abas', date: '2026-10-31', title: "Menus de seção com o mesmo visual",
+    items: [
+      "Configurações, Financeiro, Alertas de manutenção, Veículos, Clientes e Peças e Serviços ganharam menus de seção no mesmo estilo: botões ligados, com a opção selecionada em amarelo e uma barra por baixo.",
+    ],
+  },
+  {
     id: '2026-10-31-encerrar-conta', date: '2026-10-31', title: "Encerrar a conta da oficina",
     items: [
       "Em Assinatura e dados, o administrador pode encerrar a conta da oficina. É preciso digitar o nome da oficina e a senha. O acesso de toda a equipe termina na hora e a assinatura é cancelada.",

@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import type { VehicleListItemResponse } from '@oficina/contracts';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { segmentedItem, segmentedList } from '@/components/ui/segmented';
 import { DeleteVehicleDialog } from '@/features/vehicles/components/DeleteVehicleDialog';
 import { VehicleImportModal } from '@/features/vehicles/components/VehicleImportModal';
 import { vehiclesToRows } from '@/features/vehicles/vehicle-csv';
@@ -118,9 +119,9 @@ export default function VehiclesPage() {
         <div className="flex flex-wrap items-center gap-2">
           {!archived && <select aria-label="Filtrar veículos" className="h-10 rounded-button border border-input bg-background px-3 text-sm" value={filter} onChange={(event) => { setFilter(event.target.value as typeof filter); setOffset(0); }}><option value="">Todos os veículos</option><option value="IN_SERVICE">Em andamento na oficina</option><option value="INACTIVE">Sem visita há mais de 6 meses</option></select>}
           {canManage && (
-            <div role="tablist" aria-label="Situação do cadastro" className="flex gap-1 rounded-button bg-muted p-1">
+            <div role="tablist" aria-label="Situação do cadastro" className={segmentedList}>
               {[{ value: false, label: 'Ativos' }, { value: true, label: 'Arquivados' }].map((option) => (
-                <button key={option.label} role="tab" aria-selected={archived === option.value} onClick={() => switchView(option.value)} className={`rounded-button px-3 py-1.5 text-sm font-semibold transition-colors ${archived === option.value ? 'bg-card text-text shadow-sm' : 'text-text-muted hover:text-text'}`}>
+                <button key={option.label} role="tab" aria-selected={archived === option.value} onClick={() => switchView(option.value)} className={segmentedItem(archived === option.value)}>
                   {option.label}
                 </button>
               ))}
