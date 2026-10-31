@@ -1,5 +1,12 @@
 export const RELEASE_NOTES = [
   {
+    id: '2026-10-31-encerrar-conta', date: '2026-10-31', title: "Encerrar a conta da oficina",
+    items: [
+      "Em Assinatura e dados, o administrador pode encerrar a conta da oficina. É preciso digitar o nome da oficina e a senha. O acesso de toda a equipe termina na hora e a assinatura é cancelada.",
+      "Os dados ficam guardados por 30 dias, para o caso de arrependimento: nesse prazo o suporte do Ofix pode restaurar a conta. Depois disso, tudo é apagado de vez, inclusive fotos e usuários.",
+    ],
+  },
+  {
     id: '2026-10-30-teste-gratis', date: '2026-10-30', title: "Teste grátis de 14 dias",
     items: [
       "Oficinas novas testam o Ofix por 14 dias, sem cartão e com todos os recursos do plano Completo. O administrador vê quantos dias faltam e pode escolher o plano a qualquer momento em Assinatura e dados.",

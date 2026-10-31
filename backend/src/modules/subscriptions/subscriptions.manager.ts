@@ -8,8 +8,13 @@ import { SubscriptionsRepository } from './subscriptions.repository';
 type SubscriptionRecord = Awaited<ReturnType<SubscriptionsRepository['update']>>;
 
 function serialize(item: SubscriptionRecord): SubscriptionResponse {
+  const { deletedAt, purgeAfter, closedBy, closureReason, ...rest } = item;
   return {
-    ...item,
+    ...rest,
+    closedAt: deletedAt?.toISOString() ?? null,
+    purgeAfter: purgeAfter?.toISOString() ?? null,
+    closedBy: closedBy as SubscriptionResponse['closedBy'],
+    closureReason,
     extraModules: item.extraModules as SubscriptionResponse['extraModules'],
     subscriptionStatus: item.subscriptionStatus as SubscriptionResponse['subscriptionStatus'],
     subscriptionCycle: item.subscriptionCycle as SubscriptionResponse['subscriptionCycle'],

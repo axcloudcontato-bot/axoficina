@@ -32,6 +32,7 @@ import { PrivacyModule } from './modules/privacy/privacy.module';
 import { SubscriptionsModule } from './modules/subscriptions/subscriptions.module';
 import { CustomerCareModule } from './modules/customer-care/customer-care.module';
 import { BillingModule } from './modules/billing/billing.module';
+import { AccountClosureModule } from './modules/account-closure/account-closure.module';
 
 @Module({
   imports: [
@@ -74,6 +75,7 @@ import { BillingModule } from './modules/billing/billing.module';
     SubscriptionsModule,
     CustomerCareModule,
     BillingModule,
+    AccountClosureModule,
   ],
   providers: [
     // Ordem importa: ThrottlerGuard e JwtAuthGuard rodam antes do RolesGuard

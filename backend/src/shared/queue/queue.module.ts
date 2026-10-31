@@ -8,6 +8,7 @@ export const MAINTENANCE_ALERTS_QUEUE = 'maintenance-alerts-scan';
 export const SERVICE_ORDER_STATUS_QUEUE = 'service-order-status-notifications';
 export const CUSTOMER_CARE_QUEUE = 'customer-care';
 export const APPOINTMENT_REMINDERS_QUEUE = 'appointment-reminders';
+export const ACCOUNT_CLOSURE_QUEUE = 'account-closure';
 
 @Global()
 @Module({
@@ -32,6 +33,7 @@ export const APPOINTMENT_REMINDERS_QUEUE = 'appointment-reminders';
     BullModule.registerQueue({ name: SERVICE_ORDER_STATUS_QUEUE }),
     BullModule.registerQueue({ name: CUSTOMER_CARE_QUEUE }),
     BullModule.registerQueue({ name: APPOINTMENT_REMINDERS_QUEUE }),
+    BullModule.registerQueue({ name: ACCOUNT_CLOSURE_QUEUE }),
   ],
   exports: [BullModule],
 })

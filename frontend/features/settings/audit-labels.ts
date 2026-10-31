@@ -9,6 +9,7 @@ const LABELS: Record<string, string> = {
   'settings.agenda_hours_updated': 'Alterou o horário de funcionamento', 'settings.photo_policy_updated': 'Alterou a exigência de fotos', 'settings.order_defaults_updated': 'Alterou os padrões da OS',
   'settings.labor_rate_updated': 'Alterou o valor da hora', 'settings.maintenance_alert_months_updated': 'Alterou o prazo dos alertas de manutenção', 'settings.data_exported': 'Exportou os dados da oficina',
   'subscription.updated': 'Plano atualizado pelo Ofix',
+  'account.closed': 'Encerrou a conta da oficina', 'account.restored': 'Conta da oficina restaurada pelo Ofix',
   'billing.checkout_started': 'Contratou um plano', 'billing.plan_upgraded': 'Subiu de plano', 'billing.plan_change_scheduled': 'Agendou a troca de plano para o próximo pagamento',
   'billing.canceled': 'Cancelou a assinatura', 'billing.payment_confirmed': 'Pagamento da assinatura confirmado', 'billing.payment_overdue': 'Pagamento da assinatura em atraso', 'billing.subscription_ended': 'Assinatura encerrada',
   'customer.created': 'Cadastrou um cliente', 'customer.updated': 'Alterou um cliente', 'customer.deleted': 'Arquivou um cliente', 'customer.restored': 'Restaurou um cliente', 'customer.merged': 'Uniu clientes duplicados', 'customer.imported': 'Importou clientes',

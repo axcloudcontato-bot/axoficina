@@ -224,12 +224,22 @@ describe('AuthManager', () => {
     it('returns tokens for correct credentials', async () => {
       const deps = buildManager();
       deps.userRepository.byEmail.mockResolvedValue(baseUser);
+      deps.tenantRepository.byId.mockResolvedValue({ id: baseUser.tenantId });
       deps.roleRepository.byId.mockResolvedValue(ADMIN_ROLE);
 
       const result = await deps.manager.login({ email: 'admin@oficina.com', password: 'supersecret1' });
 
       expect(result.accessToken).toBe('access-token');
       expect(result.user.role).toBe('ADMIN');
+    });
+
+    it('refuses a correct password when the workshop was closed, and says how to get it back', async () => {
+      const deps = buildManager();
+      deps.userRepository.byEmail.mockResolvedValue(baseUser);
+      deps.tenantRepository.byId.mockResolvedValue(null);
+
+      await expect(deps.manager.login({ email: 'admin@oficina.com', password: 'supersecret1' })).rejects.toMatchObject({ code: 'ACCOUNT_CLOSED', status: HttpStatus.FORBIDDEN });
+      expect(deps.refreshTokenRepository.insert).not.toHaveBeenCalled();
     });
 
     it('rejects when the user does not exist', async () => {
@@ -286,6 +296,7 @@ describe('AuthManager', () => {
       const deps = buildManager();
       deps.refreshTokenRepository.byTokenHash.mockResolvedValue(validToken);
       deps.userRepository.byId.mockResolvedValue(baseUser);
+      deps.tenantRepository.byId.mockResolvedValue({ id: baseUser.tenantId });
       deps.roleRepository.byId.mockResolvedValue(ADMIN_ROLE);
 
       const result = await deps.manager.refresh('good-token');

@@ -4,7 +4,8 @@ import { PrismaService } from '../prisma/prisma.service';
 
 const TTL_MS = 30_000;
 
-export type TenantEntitlements = EntitlementsResponse & { access: AccessStatus };
+// `closed`: the workshop was closed (or does not exist), so nobody of it may use the system.
+export type TenantEntitlements = EntitlementsResponse & { access: AccessStatus; closed: boolean };
 
 // What a workshop's plan lets it use. Read on every gated request, so it is cached for a few seconds;
 // changing a plan calls forget() so the owner of the SaaS sees the change at once on this instance.
@@ -20,7 +21,7 @@ export class EntitlementsService {
     const tenant = await this.prisma.unscoped.tenant.findFirst({ where: { id: tenantId, deletedAt: null }, select: { plan: true, extraModules: true, subscriptionStatus: true, subscriptionDueAt: true } });
     const plan = resolvePlan(tenant?.plan);
     const access = tenant ? accessStatus({ status: tenant.subscriptionStatus, dueAt: tenant.subscriptionDueAt }) : { state: 'active' as const, daysLeft: null, reason: null };
-    const value: TenantEntitlements = { plan: plan.code, planName: plan.name, modules: entitledModules(tenant?.plan, tenant?.extraModules ?? []), limits: plan.limits, access };
+    const value: TenantEntitlements = { plan: plan.code, planName: plan.name, modules: entitledModules(tenant?.plan, tenant?.extraModules ?? []), limits: plan.limits, access, closed: !tenant };
     this.cache.set(tenantId, { value, expiresAt: Date.now() + TTL_MS });
     return value;
   }

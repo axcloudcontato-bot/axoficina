@@ -150,6 +150,11 @@ export class AuthManager {
       throw new AppException(AppErrorCode.INVALID_CREDENTIALS, 'E-mail ou senha inválidos.', HttpStatus.UNAUTHORIZED);
     }
 
+    // The password was right, so saying why the access is closed does not help anyone guess it.
+    if (!(await this.tenantRepository.byId(user.tenantId))) {
+      throw new AppException(AppErrorCode.ACCOUNT_CLOSED, 'Esta oficina foi encerrada. Para restaurar a conta em até 30 dias do encerramento, fale com o suporte do Ofix.', HttpStatus.FORBIDDEN);
+    }
+
     const role = await this.roleRepository.byId(user.roleId);
     if (!role) {
       throw new AppException(AppErrorCode.ROLE_NOT_FOUND, 'Papel do usuário não encontrado.', HttpStatus.INTERNAL_SERVER_ERROR);
@@ -190,7 +195,7 @@ export class AuthManager {
     }
 
     const user = await this.userRepository.byId(existing.userId);
-    if (!user || user.status === 'disabled') {
+    if (!user || user.status === 'disabled' || !(await this.tenantRepository.byId(user.tenantId))) {
       throw new AppException(AppErrorCode.REFRESH_TOKEN_INVALID, 'Refresh token inválido.', HttpStatus.UNAUTHORIZED);
     }
 

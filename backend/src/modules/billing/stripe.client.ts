@@ -101,6 +101,11 @@ export class StripeClient {
     });
   }
 
+  // Ends the subscription at once, with no more charges. Used when the whole account is closed.
+  async cancelNow(subscriptionId: string): Promise<void> {
+    await this.request('DELETE', `/subscriptions/${encodeURIComponent(subscriptionId)}`);
+  }
+
   // Stops renewing at the end of the period already paid.
   async cancelAtPeriodEnd(subscriptionId: string): Promise<Date | null> {
     const subscription = await this.request<StripeSubscription>('POST', `/subscriptions/${encodeURIComponent(subscriptionId)}`, { cancel_at_period_end: true });

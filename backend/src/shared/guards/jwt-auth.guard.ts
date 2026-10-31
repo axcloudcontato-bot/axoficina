@@ -5,6 +5,7 @@ import type { Request } from 'express';
 import { IS_PUBLIC_KEY } from '../decorators/public.decorator';
 import type { PermissionKey, UserRole } from '@oficina/contracts';
 import { UserRepository } from '../../modules/iam/repositories/user.repository';
+import { EntitlementsService } from '../plan/entitlements.service';
 
 export interface AuthenticatedUser {
   userId: string;
@@ -20,6 +21,7 @@ export class JwtAuthGuard implements CanActivate {
     private readonly jwtService: JwtService,
     private readonly reflector: Reflector,
     private readonly users: UserRepository,
+    private readonly entitlements: EntitlementsService,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -43,6 +45,8 @@ export class JwtAuthGuard implements CanActivate {
       if (!user || user.tenantId !== payload.tenantId || user.status !== 'active') {
         throw new UnauthorizedException('Usuário bloqueado ou removido.');
       }
+      // Closing a workshop ends every session of it at once, even the ones with a valid token.
+      if ((await this.entitlements.forTenant(payload.tenantId)).closed) throw new UnauthorizedException('Esta conta foi encerrada.');
       (request as Request & { user: AuthenticatedUser }).user = payload;
       return true;
     } catch (error) {

@@ -16,6 +16,11 @@ export interface SubscriptionResponse {
   subscriptionCycle: BillingCycle;
   subscriptionDueAt: string | null;
   subscriptionNotes: string | null;
+  /** Set while the workshop is closed and waiting to be erased. */
+  closedAt: string | null;
+  purgeAfter: string | null;
+  closedBy: 'owner' | 'saas_admin' | null;
+  closureReason: string | null;
   createdAt: string;
   updatedAt: string | null;
 }
@@ -25,6 +30,8 @@ export interface SubscriptionListRequest {
   limit?: number;
   search?: string;
   status?: SubscriptionStatus;
+  /** active (default) lists workshops in use; closed lists the ones waiting to be erased. */
+  scope?: 'active' | 'closed';
 }
 
 export interface SubscriptionListResponse {

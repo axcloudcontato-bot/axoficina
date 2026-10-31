@@ -7,7 +7,8 @@ import type { SubscriptionListDto, UpdateSubscriptionDto } from './subscriptions
 export const SUBSCRIPTION_SELECT = {
   id: true, name: true, document: true, email: true, plan: true, extraModules: true,
   subscriptionStatus: true, subscriptionAmountCents: true, subscriptionCycle: true,
-  subscriptionDueAt: true, subscriptionNotes: true, createdAt: true, updatedAt: true,
+  subscriptionDueAt: true, subscriptionNotes: true, deletedAt: true, closedBy: true, closureReason: true, purgeAfter: true,
+  createdAt: true, updatedAt: true,
 } satisfies Prisma.TenantSelect;
 
 @Injectable()
@@ -18,7 +19,7 @@ export class SubscriptionsRepository {
     const search = query.search?.trim();
     const document = search?.replace(/\D/g, '');
     const where: Prisma.TenantWhereInput = {
-      deletedAt: null,
+      deletedAt: query.scope === 'closed' ? { not: null } : null,
       ...(query.status ? { subscriptionStatus: query.status } : {}),
       ...(search ? { OR: [
         { name: { contains: search, mode: 'insensitive' } },
@@ -29,7 +30,7 @@ export class SubscriptionsRepository {
     };
     // Global access is intentional and only reachable behind SaasAdminGuard.
     return this.prisma.unscoped.$transaction(async (tx) => {
-      const items = await tx.tenant.findMany({ where, select: SUBSCRIPTION_SELECT, orderBy: [{ createdAt: 'desc' }, { id: 'asc' }], skip: query.offset, take: query.limit });
+      const items = await tx.tenant.findMany({ where, select: SUBSCRIPTION_SELECT, orderBy: query.scope === 'closed' ? [{ purgeAfter: 'asc' }, { id: 'asc' }] : [{ createdAt: 'desc' }, { id: 'asc' }], skip: query.offset, take: query.limit });
       const total = await tx.tenant.count({ where });
       const groups = await tx.tenant.groupBy({
         by: ['subscriptionStatus', 'subscriptionCycle'], where: { deletedAt: null },

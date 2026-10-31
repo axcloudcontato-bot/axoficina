@@ -15,6 +15,9 @@ export class SubscriptionListDto {
 
   @IsOptional() @IsIn(SUBSCRIPTION_STATUSES)
   status?: SubscriptionStatus;
+
+  @IsOptional() @IsIn(['active', 'closed'])
+  scope?: 'active' | 'closed';
 }
 
 export class UpdateSubscriptionDto implements UpdateSubscriptionRequest {

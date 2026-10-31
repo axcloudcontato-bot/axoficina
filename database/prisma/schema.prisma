@@ -165,6 +165,9 @@ model Tenant {
   billingCustomerId     String? @map("billing_customer_id")
   billingSubscriptionId String? @map("billing_subscription_id")
   pendingPlan           String? @map("pending_plan")
+  closureReason         String? @map("closure_reason")
+  closedBy              String? @map("closed_by")
+  purgeAfter            DateTime? @map("purge_after") @db.Timestamptz
   subscriptionStatus      String    @default("unconfigured") @map("subscription_status")
   subscriptionAmountCents Int       @default(0) @map("subscription_amount_cents")
   subscriptionCycle       String    @default("monthly") @map("subscription_cycle")
@@ -967,4 +970,14 @@ model BillingInvoice {
 
   @@index([tenantId, dueDate(sort: Desc)], map: "billing_invoices_tenant_due_idx")
   @@map("billing_invoices")
+}
+
+// What remains of a workshop whose data was erased: only when and by whom it was closed, no personal data.
+model AccountClosure {
+  tenantId String   @id @map("tenant_id") @db.Uuid
+  closedBy String   @map("closed_by")
+  closedAt DateTime @map("closed_at") @db.Timestamptz
+  purgedAt DateTime @default(now()) @map("purged_at") @db.Timestamptz
+
+  @@map("account_closures")
 }
