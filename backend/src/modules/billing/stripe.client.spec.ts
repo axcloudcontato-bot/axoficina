@@ -153,16 +153,56 @@ describe('StripeClient plan products', () => {
     expect(update.get('proration_behavior')).toBe('none');
   });
 
-  it('puts the plan product, not an inline one, in the checkout', async () => {
-    const fetchMock = jest.spyOn(globalThis, 'fetch')
-      .mockResolvedValueOnce(answer(200, { id: 'ofix_plan_profissional', active: true }))
-      .mockResolvedValueOnce(answer(200, { url: 'https://checkout.stripe.com/c/pay/abc' }));
-    await client().checkoutSession({ customerId: 'cus_1', tenantId: 't1', plan: 'profissional', planName: 'Profissional', cycle: 'monthly', unitAmountCents: 15990, interval: 'month', successUrl: 'https://x/y', cancelUrl: 'https://x/z' });
-    const session = bodyOf(fetchMock, 1);
+  function checkoutFetch(options: { uploads: boolean }) {
+    return jest.spyOn(globalThis, 'fetch').mockImplementation(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes('/products/')) return answer(200, { id: 'ofix_plan_profissional', active: true });
+      if (url.startsWith('https://ofix.test/')) return new Response(new Uint8Array([137, 80, 78, 71]), { status: 200 });
+      if (url.startsWith('https://files.stripe.com/')) return options.uploads ? answer(200, { id: url.includes('x') ? 'file_1' : 'file_2' }) : answer(403, { error: { code: 'permission_error', message: 'sem permissão para arquivos' } });
+      return answer(200, { url: 'https://checkout.stripe.com/c/pay/abc' });
+    });
+  }
+  const checkoutInput = { customerId: 'cus_1', tenantId: 't1', plan: 'profissional', planName: 'Profissional', cycle: 'monthly', unitAmountCents: 15990, interval: 'month' as const, successUrl: 'https://x/y', cancelUrl: 'https://x/z' };
+  const sessionBody = (fetchMock: jest.SpyInstance) => {
+    const call = fetchMock.mock.calls.find((c) => String(c[0]).endsWith('/checkout/sessions'));
+    return new URLSearchParams(String((call?.[1] as { body: string }).body));
+  };
+  const withSite = () => new StripeClient(new ConfigService({ STRIPE_SECRET_KEY: 'sk_test_x', STRIPE_WEBHOOK_SECRET: 'whsec_x', FRONTEND_URL: 'https://ofix.test' }));
+
+  it('puts the plan product, not an inline one, in the checkout, with the Ofix name and colour', async () => {
+    const fetchMock = checkoutFetch({ uploads: true });
+    await withSite().checkoutSession(checkoutInput);
+    const session = sessionBody(fetchMock);
     expect(session.get('line_items[0][price_data][product]')).toBe('ofix_plan_profissional');
     expect(session.has('line_items[0][price_data][product_data][name]')).toBe(false);
-    // The Ofix look on the checkout page, without touching the account's own branding.
     expect(session.get('branding_settings[display_name]')).toBe('Ofix (Ax Cloud)');
     expect(session.get('branding_settings[button_color]')).toBe('#ffbe00');
+  });
+
+  it('uploads the logo and the icon once and shows them on the checkout page', async () => {
+    const fetchMock = checkoutFetch({ uploads: true });
+    const stripe = withSite();
+    await stripe.checkoutSession(checkoutInput);
+    const session = sessionBody(fetchMock);
+    expect(session.get('branding_settings[logo][type]')).toBe('file');
+    expect(session.get('branding_settings[logo][file]')).toMatch(/^file_/);
+    expect(session.get('branding_settings[icon][file]')).toMatch(/^file_/);
+    const uploads = () => fetchMock.mock.calls.filter((c) => String(c[0]).startsWith('https://files.stripe.com/')).length;
+    expect(uploads()).toBe(2);
+    await stripe.checkoutSession(checkoutInput);
+    expect(uploads()).toBe(2);
+  });
+
+  it('still opens the checkout, without the images, when Stripe refuses the upload, and does not hammer it', async () => {
+    const fetchMock = checkoutFetch({ uploads: false });
+    const stripe = withSite();
+    await expect(stripe.checkoutSession(checkoutInput)).resolves.toBe('https://checkout.stripe.com/c/pay/abc');
+    const session = sessionBody(fetchMock);
+    expect(session.get('branding_settings[display_name]')).toBe('Ofix (Ax Cloud)');
+    expect(session.has('branding_settings[logo][file]')).toBe(false);
+    expect(session.has('branding_settings[icon][file]')).toBe(false);
+    const attempts = fetchMock.mock.calls.filter((c) => String(c[0]).startsWith('https://files.stripe.com/')).length;
+    await stripe.checkoutSession(checkoutInput);
+    expect(fetchMock.mock.calls.filter((c) => String(c[0]).startsWith('https://files.stripe.com/')).length).toBe(attempts);
   });
 });

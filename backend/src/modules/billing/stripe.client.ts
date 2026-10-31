@@ -3,12 +3,21 @@ import { ConfigService } from '@nestjs/config';
 import { createHmac, timingSafeEqual } from 'node:crypto';
 
 const API = 'https://api.stripe.com/v1';
+const FILES_API = 'https://files.stripe.com/v1/files';
 const WEBHOOK_TOLERANCE_SECONDS = 300;
 
 // The Stripe account is shared with another product, so the Ofix look is set per Checkout session and the account-wide
 // branding in the Dashboard is left alone. The name carries the company that charges, which is what the card statement
 // shows, so the payer recognizes the charge.
 const CHECKOUT_BRANDING = { display_name: 'Ofix (Ax Cloud)', button_color: '#ffbe00' };
+
+// The images are served by the site itself; Stripe needs them as uploaded files (PNG, at most 512 KB).
+const BRAND_IMAGES = {
+  logo: { path: '/brand/ofix-logo-checkout.png', purpose: 'business_logo' },
+  icon: { path: '/icons/icon-512.png', purpose: 'business_icon' },
+} as const;
+const MAX_IMAGE_BYTES = 500 * 1024;
+const RETRY_UPLOAD_AFTER_MS = 10 * 60_000;
 
 export type StripeInterval = 'month' | 'year';
 
@@ -45,6 +54,8 @@ interface StripeSubscription { id: string; current_period_end?: number; items: {
 export class StripeClient {
   private readonly logger = new Logger(StripeClient.name);
   private readonly knownProducts = new Set<string>();
+  private readonly brandFiles = new Map<string, string>();
+  private brandFailedAt = 0;
 
   constructor(private readonly config: ConfigService) {}
 
@@ -66,11 +77,12 @@ export class StripeClient {
   async checkoutSession(input: { customerId: string; tenantId: string; plan: string; planName: string; cycle: string; unitAmountCents: number; interval: StripeInterval; successUrl: string; cancelUrl: string }): Promise<string> {
     const metadata = { tenant_id: input.tenantId, plan: input.plan, cycle: input.cycle };
     const product = await this.ensureProduct(input.plan, input.planName);
+    const branding = await this.checkoutBranding();
     const session = await this.request<{ url?: string }>('POST', '/checkout/sessions', {
       mode: 'subscription', customer: input.customerId, client_reference_id: input.tenantId, locale: 'pt-BR',
       success_url: input.successUrl, cancel_url: input.cancelUrl, allow_promotion_codes: true,
       line_items: [{ quantity: 1, price_data: { currency: 'brl', unit_amount: input.unitAmountCents, recurring: { interval: input.interval }, product } }],
-      metadata, subscription_data: { metadata }, branding_settings: CHECKOUT_BRANDING,
+      metadata, subscription_data: { metadata }, branding_settings: branding,
     });
     if (!session.url) throw new UnprocessableEntityException('O serviço de cobrança não devolveu a página de pagamento.');
     return session.url;
@@ -94,6 +106,39 @@ export class StripeClient {
     const subscription = await this.request<StripeSubscription>('POST', `/subscriptions/${encodeURIComponent(subscriptionId)}`, { cancel_at_period_end: true });
     const end = subscription.current_period_end ?? subscription.items?.data?.[0]?.current_period_end;
     return end ? new Date(end * 1000) : null;
+  }
+
+  // Name and colour always; logo and icon when they could be uploaded. A refused upload (for example a key without the
+  // permission to write files) must not stop anyone from paying, so the page just goes without the images.
+  private async checkoutBranding(): Promise<Record<string, unknown>> {
+    const [logo, icon] = await Promise.all([this.brandFile('logo'), this.brandFile('icon')]);
+    return { ...CHECKOUT_BRANDING, ...(logo ? { logo: { type: 'file', file: logo } } : {}), ...(icon ? { icon: { type: 'file', file: icon } } : {}) };
+  }
+
+  // Uploads a brand image once per process and remembers its Stripe file id.
+  private async brandFile(kind: keyof typeof BRAND_IMAGES): Promise<string | null> {
+    const cached = this.brandFiles.get(kind);
+    if (cached) return cached;
+    if (Date.now() - this.brandFailedAt < RETRY_UPLOAD_AFTER_MS) return null;
+    const key = this.config.get<string>('STRIPE_SECRET_KEY');
+    try {
+      const origin = this.config.get<string>('FRONTEND_URL', 'http://localhost:3000');
+      const image = await fetch(new URL(BRAND_IMAGES[kind].path, origin), { redirect: 'error', signal: AbortSignal.timeout(10_000) });
+      const bytes = await image.arrayBuffer();
+      if (!image.ok || bytes.byteLength === 0 || bytes.byteLength > MAX_IMAGE_BYTES) throw new Error(`imagem indisponível (${image.status}, ${bytes.byteLength} bytes)`);
+      const form = new FormData();
+      form.set('purpose', BRAND_IMAGES[kind].purpose);
+      form.set('file', new Blob([bytes], { type: 'image/png' }), `ofix-${kind}.png`);
+      const response = await fetch(FILES_API, { method: 'POST', redirect: 'error', signal: AbortSignal.timeout(20_000), headers: { Authorization: `Bearer ${key}` }, body: form });
+      const payload = (await response.json().catch(() => null)) as { id?: string; error?: { code?: string; message?: string } } | null;
+      if (!response.ok || !payload?.id) throw new Error(`${response.status} ${payload?.error?.code ?? ''} ${payload?.error?.message ?? ''}`.trim());
+      this.brandFiles.set(kind, payload.id);
+      return payload.id;
+    } catch (error) {
+      this.brandFailedAt = Date.now();
+      this.logger.warn(`Imagem da marca (${kind}) não enviada ao Stripe: ${error instanceof Error ? error.message : 'erro'}`);
+      return null;
+    }
   }
 
   // One active product per plan, with a fixed id. A product created inline by Checkout is born inactive, and Stripe
