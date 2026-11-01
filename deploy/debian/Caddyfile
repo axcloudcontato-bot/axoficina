@@ -13,6 +13,12 @@
 		reverse_proxy backend:3001
 	}
 
+	# Public health check for the uptime monitor: only status and which dependency is down, no data.
+	@health path /health
+	handle @health {
+		reverse_proxy backend:3001
+	}
+
 	handle {
 		reverse_proxy frontend:3000
 	}

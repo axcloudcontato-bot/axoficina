@@ -124,6 +124,10 @@ Acesse de outro computador:
 - sistema: `http://IP_DO_SERVIDOR:3005`;
 - saúde da API: `http://IP_DO_SERVIDOR:3006/health`.
 
+Em produção, o Caddy também expõe `https://ofix.axcloud.com.br/health` para o monitor de disponibilidade
+(UptimeRobot). Ele responde 200 com `"status":"ok"` ou 503 com o item que falhou (`database` ou `redis`);
+configure o monitor para checar essa URL a cada 5 minutos.
+
 Se a tela abrir mas não acessar a API, confirme que
 `PUBLIC_BACKEND_URL` contém o IP do Debian, não `localhost`, e refaça o build.
 Essa variável é incorporada ao frontend durante a compilação.
