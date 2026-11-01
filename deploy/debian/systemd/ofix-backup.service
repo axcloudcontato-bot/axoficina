@@ -1,5 +1,5 @@
 [Unit]
-Description=Backup do Ofix fora do servidor (banco e fotos, criptografado)
+Description=Backup do Ofix fora do servidor (banco e fotos)
 Wants=network-online.target
 After=network-online.target docker.service
 

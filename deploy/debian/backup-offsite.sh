@@ -39,8 +39,9 @@ ping /start
 
 BACKUP_DIR="$WORK" bash "$ROOT_DIR/deploy/debian/backup.sh"
 
-# A broken or empty dump must fail here, not on the day it is needed. grep stops early, so pipefail is off for it.
-contains() { (set +o pipefail; gunzip -c "$1" | grep -q -F "$2"); }
+# A broken or empty dump must fail here, not on the day it is needed. grep stops early, so gunzip's broken pipe
+# is expected (systemd ignores SIGPIPE, so gunzip reports it instead of dying quietly); gzip -t checks integrity.
+contains() { (set +o pipefail; gunzip -c "$1" 2>/dev/null | grep -q -F "$2"); }
 dump="$(ls "$WORK"/postgres-*.sql.gz)"
 uploads="$(ls "$WORK"/uploads-*.tar.gz)"
 gzip -t "$dump"
