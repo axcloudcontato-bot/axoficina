@@ -119,8 +119,8 @@ export function CatalogPanel() {
         : <button type="button" aria-label="Alterar valor da hora" onClick={() => setRateText(laborRate === null ? '' : (laborRate / 100).toFixed(2).replace('.', ','))} className="rounded-button px-2 py-1 font-bold tabular-nums hover:bg-muted">{laborRate === null ? <span className="font-medium text-warning">Definir</span> : `${formatCurrencyBRL(laborRate)}/h`}</button>}
     </div>
 
-    <div role="tablist" aria-label="Seção do catálogo" className={segmentedList}>
-      {VIEWS.map(option => <button key={option.key} role="tab" aria-selected={view === option.key} onClick={() => setView(option.key)} className={segmentedItem(view === option.key, 'px-4')}>{option.label}</button>)}
+    <div role="tablist" aria-label="Seção do catálogo" className="flex gap-6 border-b border-border">
+      {VIEWS.map(option => <button key={option.key} role="tab" aria-selected={view === option.key} onClick={() => setView(option.key)} className={`-mb-px border-b-2 px-1 pb-3 pt-1 text-sm font-semibold transition-colors ${view === option.key ? 'border-primary text-text' : 'border-transparent text-text-muted hover:border-border hover:text-text'}`}>{option.label}</button>)}
     </div>
 
     {view === 'packages' && <CatalogPackages items={items} />}
