@@ -116,7 +116,7 @@ As durações fiscais e contratuais dependem dos documentos, obrigações e oper
 | Protocolos LGPD/comerciais | Evidência mínima de atendimento, prazo e expurgo do texto livre desnecessário |
 | Sessões expiradas/revogadas | Limpeza periódica dos tokens e metadados; conta excluída remove seus tokens na operação |
 | Filas Redis | Retenção limitada de jobs concluídos/falhos, inspeção de payloads antigos e limpeza aprovada |
-| Backups | Janela real de expiração, controle de acesso e registro de exclusões para reaplicar após restauração |
+| Backups | Diários por 14 dias e semanais por 35 dias, criptografados e fora do servidor ([backup-offsite.md](backup-offsite.md)); dados de oficina apagada somem de todas as cópias em até 65 dias do encerramento; após restaurar um backup antigo, reaplicar os apagamentos de `account_closures` |
 | Exportações/mensagens | Responsável, destinatário, finalidade e descarte das cópias sob controle da oficina |
 
 Não há promessa de expurgo automático de todos esses conjuntos. Definir os períodos reais, monitorar os prazos e implementar o descarte com evidência é parte da operação, além do código entregue. Registrar fornecedores de hospedagem, SMTP, backup, borda/proxy, países de tratamento e mecanismo de transferência internacional quando aplicável. Formalizar instruções controlador–operador e responsabilidades por incidentes. Tokens continuam em localStorage, conforme a arquitetura existente; migração futura para sessão com cookies HttpOnly deve ser tratada como mudança de autenticação, com seus controles próprios.

@@ -19,11 +19,12 @@ describe('HealthController (e2e)', () => {
     await app.close();
   });
 
-  it('GET /health returns 200 with status ok and a timestamp', async () => {
+  it('GET /health returns 200 when the database and Redis answer', async () => {
     const response = await request(app.getHttpServer()).get('/health');
 
     expect(response.status).toBe(200);
     expect(response.body.status).toBe('ok');
+    expect(response.body.checks).toEqual({ database: 'ok', redis: 'ok' });
     expect(typeof response.body.timestamp).toBe('string');
     expect(new Date(response.body.timestamp).toString()).not.toBe('Invalid Date');
   });

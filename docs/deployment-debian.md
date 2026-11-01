@@ -200,7 +200,8 @@ cd /opt/oficina-mecanica
 ls -lh backups/
 ```
 
-Copie regularmente a pasta `backups/` para outro equipamento.
+Esse comando gera uma cópia local, sem criptografia. O backup diário automático, criptografado e enviado
+para fora do servidor, está em [`docs/backup-offsite.md`](backup-offsite.md); use-o em produção.
 
 Para restaurar um backup do banco:
 
