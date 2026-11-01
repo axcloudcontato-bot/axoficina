@@ -1,13 +1,14 @@
 #!/usr/bin/env bash
-# Prova de que o backup volta: baixa o backup mais recente do armazenamento externo, descriptografa com a
-# chave privada age, restaura num Postgres descartável e mostra as contagens. Não toca na produção.
-#   sudo bash deploy/debian/restore-test.sh /dev/shm/ofix-backup-key.txt
+# Prova de que o backup volta: baixa o backup mais recente do armazenamento externo, descriptografa (se estiver
+# criptografado), restaura num Postgres descartável e mostra as contagens. Não toca na produção.
+#   sudo bash deploy/debian/restore-test.sh                                # backups sem criptografia
+#   sudo bash deploy/debian/restore-test.sh /dev/shm/ofix-backup-key.txt   # backups criptografados com age
 # A chave privada nunca fica no servidor: copie-a só para rodar o teste e apague em seguida.
 set -Eeuo pipefail
 
 IDENTITY="${1:-}"
 CONFIG_FILE="${OFIX_BACKUP_CONFIG:-/etc/ofix-backup.env}"
-[[ -n "$IDENTITY" && -f "$IDENTITY" ]] || { echo "Uso: $0 <arquivo da chave privada age>"; exit 1; }
+[[ -z "$IDENTITY" || -f "$IDENTITY" ]] || { echo "Chave não encontrada: $IDENTITY"; exit 1; }
 [[ -f "$CONFIG_FILE" ]] || { echo "Configuração ausente: $CONFIG_FILE"; exit 1; }
 # shellcheck source=/dev/null
 source "$CONFIG_FILE"
@@ -21,15 +22,23 @@ cleanup() { docker rm -f "$CONTAINER" >/dev/null 2>&1 || true; rm -rf "$WORK"; }
 trap cleanup EXIT
 
 latest() { rclone lsf "$RCLONE_REMOTE/daily" --include "$1" | sort | tail -n 1; }
-dump="$(latest 'postgres-*.sql.gz.age')"
-uploads="$(latest 'uploads-*.tar.gz.age')"
+dump="$(latest 'postgres-*')"
+uploads="$(latest 'uploads-*')"
 [[ -n "$dump" && -n "$uploads" ]] || { echo "Nenhum backup encontrado em $RCLONE_REMOTE/daily."; exit 1; }
 echo "Testando $dump e $uploads"
 
-rclone copy "$RCLONE_REMOTE/daily/$dump" "$WORK"
-rclone copy "$RCLONE_REMOTE/daily/$uploads" "$WORK"
-age -d -i "$IDENTITY" -o "$WORK/dump.sql.gz" "$WORK/$dump"
-age -d -i "$IDENTITY" -o "$WORK/uploads.tar.gz" "$WORK/$uploads"
+# Encrypted files (.age) need the private key; plain ones are used as they come.
+fetch() {
+  rclone copy "$RCLONE_REMOTE/daily/$1" "$WORK"
+  if [[ "$1" == *.age ]]; then
+    [[ -n "$IDENTITY" ]] || { echo "O backup é criptografado: informe o arquivo da chave privada age."; exit 1; }
+    age -d -i "$IDENTITY" -o "$WORK/$2" "$WORK/$1"
+  else
+    mv "$WORK/$1" "$WORK/$2"
+  fi
+}
+fetch "$dump" dump.sql.gz
+fetch "$uploads" uploads.tar.gz
 
 docker run -d --rm --name "$CONTAINER" --network none -e POSTGRES_PASSWORD=restore-test "$POSTGRES_IMAGE" >/dev/null
 for _ in $(seq 1 60); do
