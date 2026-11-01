@@ -1,8 +1,10 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { configureApp } from './bootstrap';
+import { initSentry } from './shared/observability/sentry';
 
 async function bootstrap() {
+  initSentry();
   // bodyParser desligado no create() porque o parser automático do Nest só é
   // anexado ao Express DEPOIS dos app.use() chamados em configureApp() —
   // sem isso, snakeToCamelMiddleware via req.body sempre `undefined`.

@@ -59,7 +59,9 @@ fi
 # Ordem importa: o frontend só sobe com o backend saudável (depends_on).
 (( backend )) && compose up -d backend
 (( frontend )) && compose up -d --no-deps frontend
-(( caddy )) && compose up -d caddy && compose restart caddy
+# The Caddyfile is a single-file bind mount and git replaces the file (new inode), so a restart would keep serving
+# the old content; recreating the container mounts the new one.
+(( caddy )) && compose up -d --force-recreate caddy
 
 docker image prune -f >/dev/null
 compose ps

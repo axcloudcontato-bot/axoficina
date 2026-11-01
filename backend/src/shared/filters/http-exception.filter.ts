@@ -1,6 +1,7 @@
 import { ArgumentsHost, Catch, ExceptionFilter, HttpException, HttpStatus, Logger } from '@nestjs/common';
 import type { Response } from 'express';
 import { AppException } from '../errors/app-exception';
+import { captureServerError } from '../observability/sentry';
 
 @Catch()
 export class HttpExceptionFilter implements ExceptionFilter {
@@ -48,6 +49,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
     }
 
     this.logger.error('Unhandled exception', exception instanceof Error ? exception.stack : String(exception));
+    captureServerError(exception);
     response.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
       error: {
         code: 'INTERNAL_ERROR',

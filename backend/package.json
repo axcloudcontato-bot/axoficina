@@ -21,6 +21,7 @@
     "@nestjs/throttler": "^6.5.0",
     "@oficina/contracts": "workspace:*",
     "@oficina/database": "workspace:*",
+    "@sentry/node": "^11.10.0",
     "bcrypt": "^6.0.0",
     "bullmq": "^5.34.5",
     "class-transformer": "^0.5.1",

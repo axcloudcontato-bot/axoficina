@@ -86,6 +86,8 @@ services:
       STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
       STRIPE_PORTAL_CONFIGURATION: ${STRIPE_PORTAL_CONFIGURATION:-}
       PLATFORM_MAIL_FROM: ${PLATFORM_MAIL_FROM:-}
+      # Error monitoring (docs/observabilidade.md). Empty = off.
+      SENTRY_DSN: ${SENTRY_BACKEND_DSN:-}
     volumes:
       - service_order_uploads:/app/uploads
     ports:
@@ -111,6 +113,7 @@ services:
         NEXT_PUBLIC_LEGAL_COMPANY_DOCUMENT: ${NEXT_PUBLIC_LEGAL_COMPANY_DOCUMENT:-}
         NEXT_PUBLIC_LEGAL_COMPANY_ADDRESS: ${NEXT_PUBLIC_LEGAL_COMPANY_ADDRESS:-}
         NEXT_PUBLIC_PRIVACY_EMAIL: ${NEXT_PUBLIC_PRIVACY_EMAIL:-}
+        NEXT_PUBLIC_SENTRY_DSN: ${SENTRY_FRONTEND_DSN:-}
     restart: unless-stopped
     depends_on:
       backend:
