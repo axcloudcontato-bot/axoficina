@@ -64,6 +64,7 @@ export class UpdateAgendaHoursDto implements UpdateAgendaHoursRequest {
   @IsOptional() @IsBoolean() remindersEnabled?: boolean;
   @IsOptional() @IsObject() dayHours?: Record<string, { openHour: number; closeHour: number }>;
   @IsOptional() @IsArray() @ArrayMaxSize(60) @Matches(/^\d{4}-\d{2}-\d{2}$/, { each: true }) closedDates?: string[];
+  @IsOptional() @IsObject() dateHours?: Record<string, { openHour: number; closeHour: number }>;
 }
 
 export class UpdateOrderDefaultsDto implements UpdateOrderDefaultsRequest {

@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { ChangeEvent, useEffect, useState } from 'react';
 import { ArrowLeft, ArrowRight, Buildings, CheckCircle, Image as ImageIcon, Trash } from '@phosphor-icons/react';
 import { toast } from 'sonner';
-import { DEFAULT_AGENDA_HOURS, isValidDocument, type CompanySettingsResponse } from '@oficina/contracts';
+import { DEFAULT_AGENDA_HOURS, isValidDocument, type AgendaHours, type CompanySettingsResponse, type DayHours } from '@oficina/contracts';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -14,6 +14,7 @@ import { lookupCep } from '@/lib/cep';
 import { maskDocument, maskPhone, maskPostalCode, onlyDigits } from '@/lib/format-br-document';
 import { cn } from '@/lib/utils';
 import { useBranding, useCompleteOnboarding, useSettings, useUpdateAgendaHours, useUpdateCompanySettings, useUpdateOrderDefaults } from '@/features/settings/hooks/use-settings';
+import { SpecialDatesEditor } from '@/features/settings/components/SpecialDatesEditor';
 
 const STEPS = ['Sua oficina', 'Contato', 'Endereço', 'Funcionamento', 'Documentos', 'Pronto'] as const;
 const DAYS = [{ value: 1, label: 'Seg' }, { value: 2, label: 'Ter' }, { value: 3, label: 'Qua' }, { value: 4, label: 'Qui' }, { value: 5, label: 'Sex' }, { value: 6, label: 'Sáb' }, { value: 0, label: 'Dom' }];
@@ -21,6 +22,7 @@ const selectClass = 'h-10 w-full rounded-button border border-input bg-backgroun
 const hourLabel = (hour: number) => `${String(hour).padStart(2, '0')}:00`;
 
 const validPhone = (value?: string) => /^\d{10,13}$/.test(onlyDigits(value));
+type WizardHours = Omit<AgendaHours, 'bays'> & { bays: string };
 
 // First access: the company is set up one short screen at a time. Each "Avançar" saves what the screen asked,
 // so leaving halfway keeps the answers and the guide resumes where the data stops.
@@ -35,7 +37,7 @@ export function OnboardingWizard() {
 
   const [step, setStep] = useState(0);
   const [company, setCompany] = useState<CompanySettingsResponse | null>(null);
-  const [hours, setHours] = useState({ openHour: DEFAULT_AGENDA_HOURS.openHour, closeHour: DEFAULT_AGENDA_HOURS.closeHour, workDays: DEFAULT_AGENDA_HOURS.workDays, bays: '' });
+  const [hours, setHours] = useState<WizardHours>({ ...DEFAULT_AGENDA_HOURS, bays: '' });
   const [warranty, setWarranty] = useState('90');
   const [validity, setValidity] = useState('7');
   const [terms, setTerms] = useState('');
@@ -46,7 +48,7 @@ export function OnboardingWizard() {
     if (!settings.data || !branding.data || company) return;
     setCompany({ ...settings.data.company, document: settings.data.company.document.startsWith('PENDING_GOOGLE_') ? '' : maskDocument(settings.data.company.document) });
     const agenda = branding.data.agendaHours;
-    if (agenda) setHours({ openHour: agenda.openHour, closeHour: agenda.closeHour, workDays: agenda.workDays, bays: agenda.bays ? String(agenda.bays) : '' });
+    if (agenda) setHours({ ...agenda, bays: agenda.bays ? String(agenda.bays) : '' });
     const defaults = branding.data.orderDefaults;
     if (defaults) { if (defaults.defaultWarrantyDays != null) setWarranty(String(defaults.defaultWarrantyDays)); if (defaults.quoteValidityDays != null) setValidity(String(defaults.quoteValidityDays)); setTerms(defaults.documentTerms ?? ''); }
   }, [settings.data, branding.data, company]);
@@ -101,6 +103,8 @@ export function OnboardingWizard() {
     if (step === 3) {
       if (hours.openHour >= hours.closeHour) return 'O horário de fechamento deve ser depois da abertura.';
       if (hours.workDays.length === 0) return 'Escolha ao menos um dia de funcionamento.';
+      if (Object.entries(hours.dayHours ?? {}).some(([day, value]) => hours.workDays.includes(Number(day)) && value.openHour >= value.closeHour)) return 'Em cada dia da semana, o fechamento deve ser depois da abertura.';
+      if (Object.values(hours.dateHours ?? {}).some((value) => value.openHour >= value.closeHour)) return 'Em cada data especial, o fechamento deve ser depois da abertura.';
       if (hours.bays && !(Number(hours.bays) >= 1 && Number(hours.bays) <= 100)) return 'Informe de 1 a 100 vagas, ou deixe em branco.';
     }
     if (step === 4) {
@@ -119,7 +123,7 @@ export function OnboardingWizard() {
         const payload = step === 4 ? { ...company!, documentFooter: company!.documentFooter?.trim() || undefined } : company!;
         await updateCompany.mutateAsync(payload);
       }
-      if (step === 3) await updateAgenda.mutateAsync({ ...(branding.data?.agendaHours ?? DEFAULT_AGENDA_HOURS), openHour: hours.openHour, closeHour: hours.closeHour, workDays: hours.workDays, bays: hours.bays ? Number(hours.bays) : null });
+      if (step === 3) await updateAgenda.mutateAsync({ ...(branding.data?.agendaHours ?? DEFAULT_AGENDA_HOURS), openHour: hours.openHour, closeHour: hours.closeHour, workDays: hours.workDays, dayHours: hours.dayHours ?? {}, dateHours: hours.dateHours ?? {}, closedDates: hours.closedDates ?? [], bays: hours.bays ? Number(hours.bays) : null });
       if (step === 4) await updateDefaults.mutateAsync({ defaultWarrantyDays: warranty ? Number(warranty) : null, quoteValidityDays: validity ? Number(validity) : null, documentTerms: terms.trim() || null, acceptedPaymentMethods: branding.data?.orderDefaults?.acceptedPaymentMethods ?? [] });
       setStep((value) => value + 1);
     } catch (failure) {
@@ -139,6 +143,7 @@ export function OnboardingWizard() {
 
   const last = step === STEPS.length - 1;
   const toggleDay = (day: number) => setHours((current) => ({ ...current, workDays: current.workDays.includes(day) ? current.workDays.filter((value) => value !== day) : [...current.workDays, day] }));
+  const setDayHours = (day: number, value: DayHours | null) => setHours((current) => { const next = { ...(current.dayHours ?? {}) }; if (value) next[String(day)] = value; else delete next[String(day)]; return { ...current, dayHours: next }; });
   const address = [company.addressStreet, company.addressNumber, company.addressDistrict, company.addressCity && `${company.addressCity}${company.addressState ? `/${company.addressState.toUpperCase()}` : ''}`].filter(Boolean).join(', ');
 
   return <div className="mx-auto w-full max-w-2xl">
@@ -193,12 +198,14 @@ export function OnboardingWizard() {
         </>}
 
         {step === 3 && <>
-          <StepTitle title="Quando a oficina funciona?" help="A agenda usa estes horários. Horários especiais e feriados ficam em Configurações, Operação." />
+          <StepTitle title="Quando a oficina funciona?" help="Defina o horário geral e, se precisar, horários diferentes para fins de semana e feriados. A Agenda usa essas regras." />
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label="Abre às"><select className={selectClass} value={hours.openHour} onChange={(e) => setHours((current) => ({ ...current, openHour: Number(e.target.value) }))}>{Array.from({ length: 24 }, (_, hour) => <option key={hour} value={hour}>{hourLabel(hour)}</option>)}</select></Field>
             <Field label="Fecha às"><select className={selectClass} value={hours.closeHour} onChange={(e) => setHours((current) => ({ ...current, closeHour: Number(e.target.value) }))}>{Array.from({ length: 24 }, (_, index) => index + 1).map((hour) => <option key={hour} value={hour}>{hourLabel(hour)}</option>)}</select></Field>
           </div>
           <div><p className="text-sm font-semibold">Dias de funcionamento</p><div className="mt-2 flex flex-wrap gap-2" role="group" aria-label="Dias de funcionamento">{DAYS.map((day) => <button key={day.value} type="button" aria-pressed={hours.workDays.includes(day.value)} onClick={() => toggleDay(day.value)} className={cn('h-10 min-w-14 rounded-button border px-3 text-sm font-semibold transition-colors', hours.workDays.includes(day.value) ? 'border-primary bg-primary text-primary-foreground' : 'border-border bg-card text-text-muted hover:bg-muted')}>{day.label}</button>)}</div></div>
+          <div className="space-y-2"><p className="text-sm font-semibold">Horários diferentes por dia da semana</p><p className="text-xs text-text-muted">Ex.: sábado das 08:00 às 12:00. Marque o dia acima antes de alterar seu horário.</p>{DAYS.filter((day) => hours.workDays.includes(day.value)).map((day) => { const own = hours.dayHours?.[String(day.value)]; return <div key={day.value} className="flex flex-wrap items-center gap-2 text-sm"><label className="flex w-24 items-center gap-2"><input type="checkbox" className="size-4 accent-primary" checked={Boolean(own)} onChange={(event) => setDayHours(day.value, event.target.checked ? { openHour: hours.openHour, closeHour: Math.min(hours.closeHour, Math.max(hours.openHour + 1, 12)) } : null)} />{day.label}</label>{own ? <><select aria-label={`${day.label}: abre às`} className={selectClass} value={own.openHour} onChange={(event) => setDayHours(day.value, { ...own, openHour: Number(event.target.value) })}>{Array.from({ length: 24 }, (_, hour) => <option key={hour} value={hour}>{hourLabel(hour)}</option>)}</select><span>às</span><select aria-label={`${day.label}: fecha às`} className={selectClass} value={own.closeHour} onChange={(event) => setDayHours(day.value, { ...own, closeHour: Number(event.target.value) })}>{Array.from({ length: 24 }, (_, index) => index + 1).map((hour) => <option key={hour} value={hour}>{hourLabel(hour)}</option>)}</select></> : <span className="text-text-muted">{hourLabel(hours.openHour)} às {hourLabel(hours.closeHour)}</span>}</div>; })}</div>
+          <SpecialDatesEditor hours={hours} onChange={(next) => setHours((current) => ({ ...current, ...next }))} />
           <Field label="Quantos carros atende ao mesmo tempo? (opcional)"><Input inputMode="numeric" className="sm:w-40" placeholder="Ex.: 4" value={hours.bays} onChange={(e) => setHours((current) => ({ ...current, bays: e.target.value.replace(/\D/g, '') }))} /></Field>
         </>}
 
@@ -218,7 +225,7 @@ export function OnboardingWizard() {
             <Summary term="Oficina" value={`${company.name} · ${company.document}`} />
             <Summary term="Contato" value={[company.phone, company.whatsapp, company.email].filter(Boolean).join(' · ')} />
             <Summary term="Endereço" value={address} />
-            <Summary term="Funcionamento" value={`${DAYS.filter((day) => hours.workDays.includes(day.value)).map((day) => day.label).join(', ')}, das ${hourLabel(hours.openHour)} às ${hourLabel(hours.closeHour)}`} />
+            <Summary term="Funcionamento" value={`${DAYS.filter((day) => hours.workDays.includes(day.value)).map((day) => day.label).join(', ')}, das ${hourLabel(hours.openHour)} às ${hourLabel(hours.closeHour)}${Object.keys(hours.dayHours ?? {}).length ? ` · ${Object.keys(hours.dayHours ?? {}).length} dia(s) com horário próprio` : ''}${(hours.closedDates?.length ?? 0) + Object.keys(hours.dateHours ?? {}).length ? ` · ${(hours.closedDates?.length ?? 0) + Object.keys(hours.dateHours ?? {}).length} data(s) especial(is)` : ''}`} />
             <Summary term="Documentos" value={`Garantia de ${warranty || '0'} dias · orçamento válido por ${validity || '-'} dias`} />
           </dl>
           <p className="text-sm text-text-muted">Quando quiser, conecte o e-mail e o WhatsApp e convide a equipe em Configurações.</p>

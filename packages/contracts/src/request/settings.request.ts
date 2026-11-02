@@ -38,6 +38,7 @@ export interface UpdateAgendaHoursRequest {
   remindersEnabled?: boolean;
   dayHours?: Record<string, { openHour: number; closeHour: number }>;
   closedDates?: string[];
+  dateHours?: Record<string, { openHour: number; closeHour: number }>;
 }
 
 export interface UpdateOrderDefaultsRequest {

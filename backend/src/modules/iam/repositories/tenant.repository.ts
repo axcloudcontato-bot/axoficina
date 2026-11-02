@@ -67,6 +67,7 @@ export interface UpdateTenantSettingsInput {
   documentTerms?: string | null;
   acceptedPaymentMethods?: string[];
   agendaDayHours?: Record<string, { openHour: number; closeHour: number }> | null;
+  agendaDateHours?: Record<string, { openHour: number; closeHour: number }> | null;
   agendaClosedDates?: string[];
 }
 
@@ -99,8 +100,8 @@ export class TenantRepository {
 
   async updateSettings(id: string, data: UpdateTenantSettingsInput) {
     // Prisma needs JsonNull to clear a JSON column.
-    const { agendaDayHours, ...rest } = data;
-    await this.prisma.unscoped.tenant.updateMany({ where: { id, deletedAt: null }, data: { ...rest, ...(agendaDayHours !== undefined ? { agendaDayHours: agendaDayHours ?? Prisma.JsonNull } : {}) } });
+    const { agendaDayHours, agendaDateHours, ...rest } = data;
+    await this.prisma.unscoped.tenant.updateMany({ where: { id, deletedAt: null }, data: { ...rest, ...(agendaDayHours !== undefined ? { agendaDayHours: agendaDayHours ?? Prisma.JsonNull } : {}), ...(agendaDateHours !== undefined ? { agendaDateHours: agendaDateHours ?? Prisma.JsonNull } : {}) } });
     return this.byId(id);
   }
 

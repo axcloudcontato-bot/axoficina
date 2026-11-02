@@ -1,24 +1,24 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Clock, FloppyDisk, X } from '@phosphor-icons/react';
+import { Clock, FloppyDisk } from '@phosphor-icons/react';
 import { toast } from 'sonner';
 import type { AgendaHours } from '@oficina/contracts';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { extractErrorMessage } from '@/lib/api/client';
 import { useBranding, useUpdateAgendaHours } from '../hooks/use-settings';
 import { useUnsavedSettings } from '../hooks/use-unsaved-settings';
 import { hasPermission } from '@/features/auth/permissions';
 import { useAuthStore } from '@/stores/auth-store';
 import { DEFAULT_AGENDA_HOURS } from '@oficina/contracts';
+import { SpecialDatesEditor } from './SpecialDatesEditor';
 
 const DAYS = [{ value: 1, label: 'Seg', name: 'Segunda' }, { value: 2, label: 'Ter', name: 'Terça' }, { value: 3, label: 'Qua', name: 'Quarta' }, { value: 4, label: 'Qui', name: 'Quinta' }, { value: 5, label: 'Sex', name: 'Sexta' }, { value: 6, label: 'Sáb', name: 'Sábado' }, { value: 0, label: 'Dom', name: 'Domingo' }];
 const selectClass = 'h-10 rounded-button border border-input bg-background px-3 text-sm';
 const HOURS = Array.from({ length: 25 }, (_, hour) => hour);
 const label = (hour: number) => `${String(hour).padStart(2, '0')}:00`;
 // Only what the server keeps: hours of their own for work days, closed dates in order.
-const normalize = (hours: AgendaHours) => JSON.stringify({ openHour: hours.openHour, closeHour: hours.closeHour, workDays: [...hours.workDays].sort(), bays: hours.bays ?? null, remindersEnabled: Boolean(hours.remindersEnabled), dayHours: Object.fromEntries(Object.entries(hours.dayHours ?? {}).filter(([day, value]) => hours.workDays.includes(Number(day)) && (value.openHour !== hours.openHour || value.closeHour !== hours.closeHour)).sort()), closedDates: [...(hours.closedDates ?? [])].sort() });
+const normalize = (hours: AgendaHours) => JSON.stringify({ openHour: hours.openHour, closeHour: hours.closeHour, workDays: [...hours.workDays].sort(), bays: hours.bays ?? null, remindersEnabled: Boolean(hours.remindersEnabled), dayHours: Object.fromEntries(Object.entries(hours.dayHours ?? {}).filter(([day, value]) => hours.workDays.includes(Number(day)) && (value.openHour !== hours.openHour || value.closeHour !== hours.closeHour)).sort()), closedDates: [...(hours.closedDates ?? [])].sort(), dateHours: Object.fromEntries(Object.entries(hours.dateHours ?? {}).sort()) });
 
 export function AgendaHoursSettings() {
   const branding = useBranding();
@@ -27,15 +27,14 @@ export function AgendaHoursSettings() {
   const user = useAuthStore((state) => state.user);
   const canManage = hasPermission(user, 'settings.manage');
   const [hours, setHours] = useState<AgendaHours>(saved);
-  const [newDate, setNewDate] = useState('');
   const savedKey = normalize(saved);
   useEffect(() => setHours(saved), [savedKey]); // eslint-disable-line react-hooks/exhaustive-deps
   const dirty = normalize(hours) !== savedKey;
   useUnsavedSettings(dirty && !update.isPending);
   const ownHours = Object.entries(hours.dayHours ?? {}).filter(([day]) => hours.workDays.includes(Number(day)));
   const invalidDay = ownHours.find(([, value]) => value.openHour >= value.closeHour);
-  const invalid = hours.openHour >= hours.closeHour || hours.workDays.length === 0 || (hours.bays != null && (hours.bays < 1 || hours.bays > 100)) || Boolean(invalidDay);
-  const today = new Date().toISOString().slice(0, 10);
+  const invalidDate = Object.values(hours.dateHours ?? {}).some((value) => value.openHour >= value.closeHour);
+  const invalid = hours.openHour >= hours.closeHour || hours.workDays.length === 0 || (hours.bays != null && (hours.bays < 1 || hours.bays > 100)) || Boolean(invalidDay) || invalidDate;
   const closedDates = [...(hours.closedDates ?? [])].sort();
 
   function toggle(day: number) {
@@ -48,15 +47,10 @@ export function AgendaHoursSettings() {
       return { ...current, dayHours: next };
     });
   }
-  function addDate() {
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(newDate) || closedDates.includes(newDate)) return;
-    setHours((current) => ({ ...current, closedDates: [...(current.closedDates ?? []), newDate] }));
-    setNewDate('');
-  }
   function save() {
     if (!canManage || !branding.data) return;
     const dayHours = Object.fromEntries(ownHours);
-    update.mutate({ openHour: hours.openHour, closeHour: hours.closeHour, workDays: hours.workDays, bays: hours.bays ?? null, remindersEnabled: Boolean(hours.remindersEnabled), dayHours, closedDates }, {
+    update.mutate({ openHour: hours.openHour, closeHour: hours.closeHour, workDays: hours.workDays, bays: hours.bays ?? null, remindersEnabled: Boolean(hours.remindersEnabled), dayHours, closedDates, dateHours: hours.dateHours ?? {} }, {
       onSuccess: () => toast.success('Horário de funcionamento atualizado.'),
       onError: (error) => toast.error(extractErrorMessage(error, 'Não foi possível salvar o horário.')),
     });
@@ -79,16 +73,13 @@ export function AgendaHoursSettings() {
       </div>; })}</div>
     </fieldset>
 
-    <fieldset className="mt-5"><legend className="text-sm font-semibold">Dias fechados</legend><p className="mt-0.5 text-xs text-text-muted">Feriados, folgas e férias coletivas: a Agenda mostra o dia como fechado e ele não conta na ocupação.</p>
-      <div className="mt-2 flex flex-wrap items-center gap-2"><Input type="date" aria-label="Data fechada" className="w-44" min={today} value={newDate} onChange={(event) => setNewDate(event.target.value)} /><Button type="button" variant="outline" size="sm" disabled={!newDate || closedDates.includes(newDate) || closedDates.length >= 60} onClick={addDate}>Adicionar</Button></div>
-      {closedDates.length > 0 && <ul className="mt-2 flex flex-wrap gap-1.5">{closedDates.map((date) => <li key={date} className={`flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-semibold ${date < today ? 'border-border text-text-muted' : 'border-primary/30 bg-selection text-primary'}`}>{new Date(`${date}T12:00:00`).toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric' })}<button type="button" aria-label={`Remover ${new Date(`${date}T12:00:00`).toLocaleDateString('pt-BR')}`} className="rounded-full p-0.5 hover:bg-muted" onClick={() => setHours((current) => ({ ...current, closedDates: (current.closedDates ?? []).filter((value) => value !== date) }))}><X className="size-3" aria-hidden="true" /></button></li>)}</ul>}
-    </fieldset>
+    <div className="mt-5"><SpecialDatesEditor hours={hours} onChange={(next) => setHours((current) => ({ ...current, ...next }))} /></div>
 
     <div className="mt-5 grid gap-4 sm:grid-cols-2">
       <label className="space-y-1.5 text-sm font-semibold"><span className="block">Carros atendidos ao mesmo tempo</span><input type="number" min={1} max={100} inputMode="numeric" className={`${selectClass} w-32`} placeholder="Sem limite" value={hours.bays ?? ''} onChange={(event) => setHours((current) => ({ ...current, bays: event.target.value === '' ? null : Number(event.target.value) }))} /><span className="block text-xs font-normal text-text-muted">Boxes ou elevadores. A Agenda avisa quando um horário passa disso.</span></label>
       <label className="flex cursor-pointer items-start gap-3 rounded-button border border-border p-3"><input type="checkbox" className="mt-1 size-4 accent-primary" checked={Boolean(hours.remindersEnabled)} disabled={!branding.data.whatsappEnabled && !hours.remindersEnabled} onChange={(event) => setHours((current) => ({ ...current, remindersEnabled: event.target.checked }))} /><span><span className="block text-sm font-semibold">Lembrete por WhatsApp na véspera</span><span className="mt-0.5 block text-xs text-text-muted">Enviado uma vez, entre 24 e 2 horas antes, das 8h às 20h. Precisa do WhatsApp da oficina ativo.</span>{!branding.data.whatsappEnabled && <span className="mt-1 block text-xs text-danger">Ative o WhatsApp em Configurações para usar esta opção.</span>}</span></label>
     </div>
-    {invalid && <p role="alert" className="mt-3 text-sm text-danger">{hours.workDays.length === 0 ? 'Escolha ao menos um dia.' : hours.bays != null && (hours.bays < 1 || hours.bays > 100) ? 'Informe de 1 a 100 carros simultâneos.' : invalidDay ? `${DAYS.find((day) => String(day.value) === invalidDay[0])?.name}: o fechamento deve ser depois da abertura.` : 'O fechamento deve ser depois da abertura.'}</p>}
+    {invalid && <p role="alert" className="mt-3 text-sm text-danger">{hours.workDays.length === 0 ? 'Escolha ao menos um dia.' : hours.bays != null && (hours.bays < 1 || hours.bays > 100) ? 'Informe de 1 a 100 carros simultâneos.' : invalidDay ? `${DAYS.find((day) => String(day.value) === invalidDay[0])?.name}: o fechamento deve ser depois da abertura.` : invalidDate ? 'Em cada data especial, o fechamento deve ser depois da abertura.' : 'O fechamento deve ser depois da abertura.'}</p>}
     {!canManage && <p className="mt-3 text-sm text-text-muted">Seu perfil permite consultar este horário, mas não alterá-lo.</p>}
     {canManage && <div className="mt-4 flex justify-end"><Button onClick={save} disabled={!dirty || invalid || update.isPending}><FloppyDisk className="size-4" />{update.isPending ? 'Salvando...' : 'Salvar horário'}</Button></div>}
   </fieldset>;

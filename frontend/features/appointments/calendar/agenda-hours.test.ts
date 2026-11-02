@@ -12,11 +12,13 @@ describe('agenda with hours per day and closed dates', () => {
     expect(hoursOn(hours, 6, '2026-11-21')).toEqual({ openHour: 8, closeHour: 12 });
     expect(hoursOn(hours, 5, '2026-11-20')).toBeNull();
     expect(hoursOn(hours, 0, '2026-11-22')).toBeNull();
+    expect(hoursOn({ ...hours, dateHours: { '2026-11-22': { openHour: 10, closeHour: 14 } } }, 0, '2026-11-22')).toEqual({ openHour: 10, closeHour: 14 });
   });
 
   it('draws the grid from the earliest opening to the latest closing', () => {
     expect(agendaSpan({ ...hours, dayHours: { '6': { openHour: 7, closeHour: 12 }, '5': { openHour: 8, closeHour: 20 } } })).toEqual({ openHour: 7, closeHour: 20 });
     expect(slotsOf(hours)).toHaveLength(20);
+    expect(agendaSpan({ ...hours, dateHours: { '2026-12-25': { openHour: 7, closeHour: 21 } } })).toEqual({ openHour: 7, closeHour: 21 });
   });
 
   it('flags a Saturday afternoon and a holiday as outside the hours', () => {

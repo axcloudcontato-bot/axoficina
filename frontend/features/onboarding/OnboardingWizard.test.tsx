@@ -57,8 +57,15 @@ describe('OnboardingWizard', () => {
     await user.type(screen.getByLabelText(/^UF/), 'sp');
     await user.click(screen.getByRole('button', { name: 'Avançar' }));
     expect(await screen.findByText('Passo 4 de 6: Funcionamento')).toBeInTheDocument();
+    await user.click(screen.getByRole('checkbox', { name: 'Sáb' }));
+    await user.selectOptions(screen.getByLabelText('Sáb: fecha às'), '12');
+    await user.type(screen.getByLabelText('Data especial'), '2030-12-25');
+    await user.selectOptions(screen.getByLabelText('Funcionamento na data'), 'hours');
+    await user.selectOptions(screen.getByLabelText('Data especial: abre às'), '9');
+    await user.selectOptions(screen.getByLabelText('Data especial: fecha às'), '13');
+    await user.click(screen.getByRole('button', { name: 'Adicionar data' }));
     await user.click(screen.getByRole('button', { name: 'Avançar' }));
-    await waitFor(() => expect(mocks.agenda).toHaveBeenCalledWith(expect.objectContaining({ openHour: 8, closeHour: 18, workDays: [1, 2, 3, 4, 5, 6], bays: null })));
+    await waitFor(() => expect(mocks.agenda).toHaveBeenCalledWith(expect.objectContaining({ openHour: 8, closeHour: 18, workDays: [1, 2, 3, 4, 5, 6], bays: null, dayHours: { '6': { openHour: 8, closeHour: 12 } }, dateHours: { '2030-12-25': { openHour: 9, closeHour: 13 } } })));
     expect(await screen.findByText('Passo 5 de 6: Documentos')).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Avançar' }));
     await waitFor(() => expect(mocks.defaults).toHaveBeenCalledWith({ defaultWarrantyDays: 90, quoteValidityDays: 7, documentTerms: null, acceptedPaymentMethods: [] }));

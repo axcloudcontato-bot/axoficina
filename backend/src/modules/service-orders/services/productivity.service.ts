@@ -40,8 +40,8 @@ export function availableMinutes(start: Date, end: Date, workshop: AgendaHours):
   return total;
 }
 
-function toAgenda(tenant: { agendaOpenHour?: number | null; agendaCloseHour?: number | null; agendaWorkDays?: number[]; agendaDayHours?: unknown; agendaClosedDates?: string[] } | null): AgendaHours {
-  return { openHour: tenant?.agendaOpenHour ?? 8, closeHour: tenant?.agendaCloseHour ?? DEFAULT_CLOSE_HOUR, workDays: tenant?.agendaWorkDays ?? [1, 2, 3, 4, 5, 6], dayHours: (tenant?.agendaDayHours as AgendaHours['dayHours']) ?? {}, closedDates: tenant?.agendaClosedDates ?? [] };
+function toAgenda(tenant: { agendaOpenHour?: number | null; agendaCloseHour?: number | null; agendaWorkDays?: number[]; agendaDayHours?: unknown; agendaDateHours?: unknown; agendaClosedDates?: string[] } | null): AgendaHours {
+  return { openHour: tenant?.agendaOpenHour ?? 8, closeHour: tenant?.agendaCloseHour ?? DEFAULT_CLOSE_HOUR, workDays: tenant?.agendaWorkDays ?? [1, 2, 3, 4, 5, 6], dayHours: (tenant?.agendaDayHours as AgendaHours['dayHours']) ?? {}, dateHours: (tenant?.agendaDateHours as AgendaHours['dateHours']) ?? {}, closedDates: tenant?.agendaClosedDates ?? [] };
 }
 
 const percent = (part: number, whole: number) => whole > 0 ? Math.round(part * 100 / whole) : null;
@@ -107,7 +107,7 @@ export class ProductivityService {
   }
 
   private async workshop(tenantId: string | undefined) {
-    const tenant = tenantId ? await this.prisma.unscoped.tenant.findFirst({ where: { id: tenantId }, select: { agendaOpenHour: true, agendaCloseHour: true, agendaWorkDays: true, agendaDayHours: true, agendaClosedDates: true, laborRateCents: true } }) : null;
+    const tenant = tenantId ? await this.prisma.unscoped.tenant.findFirst({ where: { id: tenantId }, select: { agendaOpenHour: true, agendaCloseHour: true, agendaWorkDays: true, agendaDayHours: true, agendaDateHours: true, agendaClosedDates: true, laborRateCents: true } }) : null;
     return { ...toAgenda(tenant), laborRateCents: tenant?.laborRateCents ?? null };
   }
 
@@ -160,7 +160,7 @@ export class ProductivityService {
   // The workshop's hours: a timer stops at the closing of the day it started.
   private async closeHour(tenantId: string | undefined, client: { tenant: PrismaClient['tenant'] } = this.prisma.unscoped): Promise<AgendaHours> {
     if (!tenantId) return toAgenda(null);
-    const tenant = await client.tenant.findFirst({ where: { id: tenantId }, select: { agendaOpenHour: true, agendaCloseHour: true, agendaWorkDays: true, agendaDayHours: true, agendaClosedDates: true } });
+    const tenant = await client.tenant.findFirst({ where: { id: tenantId }, select: { agendaOpenHour: true, agendaCloseHour: true, agendaWorkDays: true, agendaDayHours: true, agendaDateHours: true, agendaClosedDates: true } });
     return toAgenda(tenant);
   }
 

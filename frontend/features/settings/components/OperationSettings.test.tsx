@@ -29,10 +29,22 @@ describe('Operation settings', () => {
     render(<AgendaHoursSettings />);
     await user.click(screen.getByRole('checkbox', { name: 'Sábado' }));
     await user.selectOptions(screen.getByLabelText('Sábado: fecha às'), '12');
-    await user.type(screen.getByLabelText('Data fechada'), '2030-12-25');
-    await user.click(screen.getByRole('button', { name: 'Adicionar' }));
+    await user.type(screen.getByLabelText('Data especial'), '2030-12-25');
+    await user.click(screen.getByRole('button', { name: 'Adicionar data' }));
     await user.click(screen.getByRole('button', { name: 'Salvar horário' }));
     expect(mocks.agenda).toHaveBeenCalledWith(expect.objectContaining({ dayHours: { '6': { openHour: 8, closeHour: 12 } }, closedDates: ['2030-12-25'] }), expect.anything());
+  });
+
+  it('saves special opening hours on a holiday', async () => {
+    const user = userEvent.setup();
+    render(<AgendaHoursSettings />);
+    await user.type(screen.getByLabelText('Data especial'), '2030-12-25');
+    await user.selectOptions(screen.getByLabelText('Funcionamento na data'), 'hours');
+    await user.selectOptions(screen.getByLabelText('Data especial: abre às'), '9');
+    await user.selectOptions(screen.getByLabelText('Data especial: fecha às'), '13');
+    await user.click(screen.getByRole('button', { name: 'Adicionar data' }));
+    await user.click(screen.getByRole('button', { name: 'Salvar horário' }));
+    expect(mocks.agenda).toHaveBeenCalledWith(expect.objectContaining({ dateHours: { '2030-12-25': { openHour: 9, closeHour: 13 } } }), expect.anything());
   });
 
   it('refuses a day that closes before it opens', async () => {

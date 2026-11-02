@@ -1,5 +1,12 @@
 export const RELEASE_NOTES = [
   {
+    id: '2026-11-02-horarios-especiais', date: '2026-11-02', title: 'Horários especiais na configuração da oficina',
+    items: [
+      'Na configuração inicial, defina horários diferentes para sábado, domingo ou qualquer outro dia da semana.',
+      'Cadastre feriados e datas específicas como fechados ou com horário próprio. Essas regras também podem ser alteradas em Configurações, Operação.',
+    ],
+  },
+  {
     id: '2026-11-02-conta-google', date: '2026-11-02', title: 'Cadastro e entrada com Google',
     items: [
       'Escolha Continuar com Google para criar sua conta sem digitar nome, e-mail ou senha. Aceite os termos e complete os dados da oficina nos primeiros passos.',

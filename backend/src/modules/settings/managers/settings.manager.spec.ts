@@ -69,7 +69,7 @@ describe('SettingsManager', () => {
     const user = { tenantId: 'tenant-1', userId: 'user-1' } as never;
 
     const result = await manager.updateAgendaHours(user, { openHour: 7, closeHour: 17, workDays: [6, 1, 1, 3] });
-    expect(result.agendaHours).toEqual({ openHour: 7, closeHour: 17, workDays: [1, 3, 6], bays: null, remindersEnabled: false, dayHours: {}, closedDates: [] });
+    expect(result.agendaHours).toEqual({ openHour: 7, closeHour: 17, workDays: [1, 3, 6], bays: null, remindersEnabled: false, dayHours: {}, dateHours: {}, closedDates: [] });
     await expect(manager.updateAgendaHours(user, { openHour: 18, closeHour: 8, workDays: [1] })).rejects.toThrow('fechamento');
   });
 
@@ -129,6 +129,10 @@ describe('SettingsManager', () => {
     const result = await manager.updateAgendaHours(user, { openHour: 8, closeHour: 18, workDays: [1, 6], dayHours: { '6': { openHour: 8, closeHour: 12 }, '1': { openHour: 8, closeHour: 18 }, '0': { openHour: 9, closeHour: 13 } }, closedDates: ['2026-12-25', '2026-11-20', '2026-12-25'] });
     expect(result.agendaHours).toMatchObject({ dayHours: { '6': { openHour: 8, closeHour: 12 } }, closedDates: ['2026-11-20', '2026-12-25'] });
     await expect(manager.updateAgendaHours(user, { openHour: 8, closeHour: 18, workDays: [6], dayHours: { '6': { openHour: 12, closeHour: 8 } } })).rejects.toThrow('fechamento');
+    const holiday = await manager.updateAgendaHours(user, { openHour: 8, closeHour: 18, workDays: [1, 6], dateHours: { '2026-12-25': { openHour: 9, closeHour: 13 } } });
+    expect(holiday.agendaHours.dateHours).toEqual({ '2026-12-25': { openHour: 9, closeHour: 13 } });
+    await expect(manager.updateAgendaHours(user, { openHour: 8, closeHour: 18, workDays: [1], closedDates: ['2026-12-25'], dateHours: { '2026-12-25': { openHour: 9, closeHour: 13 } } })).rejects.toThrow('uma data não pode ter horário e estar fechada');
+    await expect(manager.updateAgendaHours(user, { openHour: 8, closeHour: 18, workDays: [1], dateHours: { '2026-12-25': { openHour: 14, closeHour: 12 } } })).rejects.toThrow('fechamento');
   });
 
   it('saves the defaults every new order and printed document starts with', async () => {

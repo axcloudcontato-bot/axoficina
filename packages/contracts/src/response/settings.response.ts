@@ -59,6 +59,8 @@ export interface AgendaHours {
   dayHours?: Record<string, DayHours>;
   // YYYY-MM-DD dates the workshop is closed: holidays, collective vacation.
   closedDates?: string[];
+  // YYYY-MM-DD dates with their own opening hours, including holidays and normally closed weekdays.
+  dateHours?: Record<string, DayHours>;
 }
 
 export interface DayHours {

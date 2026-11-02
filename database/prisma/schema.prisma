@@ -158,6 +158,7 @@ model Tenant {
   documentTerms        String?   @map("document_terms")
   acceptedPaymentMethods String[] @default([]) @map("accepted_payment_methods")
   agendaDayHours       Json?     @map("agenda_day_hours")
+  agendaDateHours      Json?     @map("agenda_date_hours")
   agendaClosedDates    String[]  @default([]) @map("agenda_closed_dates")
   maintenanceAlertMonths Int @default(6) @map("maintenance_alert_months")
   plan                String    @default("completo")

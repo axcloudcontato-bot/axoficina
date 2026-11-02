@@ -85,14 +85,22 @@ export class SettingsManager {
       if (open !== input.openHour || close !== input.closeHour) dayHours[String(day)] = { openHour: open, closeHour: close };
     }
     const closedDates = [...new Set(input.closedDates ?? [])].filter(date => !Number.isNaN(Date.parse(`${date}T12:00:00Z`))).sort();
-    const tenant = await this.tenants.updateSettings(user.tenantId, { agendaOpenHour: input.openHour, agendaCloseHour: input.closeHour, agendaWorkDays: workDays, ...(input.dayHours !== undefined ? { agendaDayHours: Object.keys(dayHours).length ? dayHours : null } : {}), ...(input.closedDates !== undefined ? { agendaClosedDates: closedDates } : {}), ...(input.bays !== undefined ? { agendaBays: input.bays } : {}), ...(input.remindersEnabled !== undefined ? { appointmentRemindersEnabled: input.remindersEnabled } : {}) });
+    const dateHours: Record<string, { openHour: number; closeHour: number }> = {};
+    if (Object.keys(input.dateHours ?? {}).length > 60) throw new BadRequestException('Cadastre no máximo 60 datas com horário especial.');
+    for (const [date, value] of Object.entries(input.dateHours ?? {})) {
+      const parsed = new Date(`${date}T12:00:00Z`);
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || Number.isNaN(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== date || closedDates.includes(date)) throw new BadRequestException('Revise as datas especiais: uma data não pode ter horário e estar fechada ao mesmo tempo.');
+      if (!Number.isInteger(value?.openHour) || !Number.isInteger(value?.closeHour) || value.openHour < 0 || value.closeHour > 24 || value.openHour >= value.closeHour) throw new BadRequestException('Em cada data especial, o fechamento deve ser depois da abertura.');
+      dateHours[date] = { openHour: value.openHour, closeHour: value.closeHour };
+    }
+    const tenant = await this.tenants.updateSettings(user.tenantId, { agendaOpenHour: input.openHour, agendaCloseHour: input.closeHour, agendaWorkDays: workDays, ...(input.dayHours !== undefined ? { agendaDayHours: Object.keys(dayHours).length ? dayHours : null } : {}), ...(input.closedDates !== undefined ? { agendaClosedDates: closedDates } : {}), ...(input.dateHours !== undefined ? { agendaDateHours: Object.keys(dateHours).length ? dateHours : null } : {}), ...(input.bays !== undefined ? { agendaBays: input.bays } : {}), ...(input.remindersEnabled !== undefined ? { appointmentRemindersEnabled: input.remindersEnabled } : {}) });
     if (!tenant) throw new NotFoundException('Empresa não encontrada.');
     await this.audit.record({ tenantId: user.tenantId, userId: user.userId, action: 'settings.agenda_hours_updated', entity: 'tenant', entityId: user.tenantId, metadata: { openHour: input.openHour, closeHour: input.closeHour, workDays: workDays.join(','), bays: input.bays ?? 0, remindersEnabled: input.remindersEnabled ?? false } });
     return { agendaHours: this.agendaHours(tenant) };
   }
 
-  private agendaHours(tenant: { agendaOpenHour?: number; agendaCloseHour?: number; agendaWorkDays?: number[]; agendaBays?: number | null; appointmentRemindersEnabled?: boolean; agendaDayHours?: unknown; agendaClosedDates?: string[] }): AgendaHours {
-    return { openHour: tenant.agendaOpenHour ?? 8, closeHour: tenant.agendaCloseHour ?? 18, workDays: tenant.agendaWorkDays ?? [1, 2, 3, 4, 5, 6], bays: tenant.agendaBays ?? null, remindersEnabled: tenant.appointmentRemindersEnabled ?? false, dayHours: (tenant.agendaDayHours as AgendaHours['dayHours']) ?? {}, closedDates: tenant.agendaClosedDates ?? [] };
+  private agendaHours(tenant: { agendaOpenHour?: number; agendaCloseHour?: number; agendaWorkDays?: number[]; agendaBays?: number | null; appointmentRemindersEnabled?: boolean; agendaDayHours?: unknown; agendaDateHours?: unknown; agendaClosedDates?: string[] }): AgendaHours {
+    return { openHour: tenant.agendaOpenHour ?? 8, closeHour: tenant.agendaCloseHour ?? 18, workDays: tenant.agendaWorkDays ?? [1, 2, 3, 4, 5, 6], bays: tenant.agendaBays ?? null, remindersEnabled: tenant.appointmentRemindersEnabled ?? false, dayHours: (tenant.agendaDayHours as AgendaHours['dayHours']) ?? {}, dateHours: (tenant.agendaDateHours as AgendaHours['dateHours']) ?? {}, closedDates: tenant.agendaClosedDates ?? [] };
   }
 
   async updatePhotoPolicy(user: AuthenticatedUser, input: UpdatePhotoPolicyRequest) {

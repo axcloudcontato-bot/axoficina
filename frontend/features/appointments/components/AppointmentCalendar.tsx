@@ -36,13 +36,15 @@ function TimeGrid({ date, view, items, onSelect, onCreate, onMove, hours }: {
   const [dropTarget, setDropTarget] = useState<string>();
   const [now, setNow] = useState(() => new Date());
   useEffect(() => { const timer = window.setInterval(() => setNow(new Date()), 60_000); return () => window.clearInterval(timer); }, []);
-  const slots = slotsOf(hours);
   const allDays = view === 'DAY' ? [startOfDay(date)] : Array.from({ length: 7 }, (_, index) => addDays(startOfWeek(date), index));
+  const visibleKeys = new Set(allDays.map(localYmd));
+  const visibleHours = { ...hours, dateHours: Object.fromEntries(Object.entries(hours.dateHours ?? {}).filter(([key]) => visibleKeys.has(key))) };
+  const slots = slotsOf(visibleHours);
   // Closed days disappear from the week unless something is booked on them.
   const isOpen = (day: Date) => Boolean(hoursOn(hours, day.getDay(), localYmd(day)));
   const days = view === 'DAY' ? allDays : allDays.filter((day) => isOpen(day) || items.some((item) => sameDay(new Date(item.startsAt), day)));
   const height = `${slots.length * ROW_REM}rem`;
-  const grid = agendaSpan(hours);
+  const grid = agendaSpan(visibleHours);
   const span = (grid.closeHour - grid.openHour) * 60;
   const nowOffset = (now.getHours() * 60 + now.getMinutes() - grid.openHour * 60) / span;
 
@@ -58,7 +60,7 @@ function TimeGrid({ date, view, items, onSelect, onCreate, onMove, hours }: {
     <div className={view === 'WEEK' ? 'min-w-[44rem]' : ''}>
       <div className="grid border-b border-border" style={{ gridTemplateColumns: `3.5rem repeat(${days.length}, minmax(0, 1fr))` }}>
         <span aria-hidden="true" />
-        {days.map((day) => <button key={day.toISOString()} type="button" data-calendar-day aria-label={`Novo agendamento em ${dayLabel(day)}`} aria-current={sameDay(day, new Date()) ? 'date' : undefined} onClick={() => onCreate(slotDate(day, hours.openHour, 0))} className="flex flex-col items-center gap-0.5 border-l border-border px-1 py-2 hover:bg-surface">
+        {days.map((day) => <button key={day.toISOString()} type="button" data-calendar-day aria-label={`Novo agendamento em ${dayLabel(day)}`} aria-current={sameDay(day, new Date()) ? 'date' : undefined} onClick={() => onCreate(slotDate(day, hoursOn(hours, day.getDay(), localYmd(day))?.openHour ?? hours.openHour, 0))} className="flex flex-col items-center gap-0.5 border-l border-border px-1 py-2 hover:bg-surface">
           <span className="text-[10px] font-semibold uppercase text-text-muted">{day.toLocaleDateString('pt-BR', { weekday: 'short' })}</span>
           <span className={`inline-flex size-7 items-center justify-center rounded-full text-xs font-bold ${sameDay(day, new Date()) ? 'bg-primary text-primary-foreground' : 'text-text'}`}>{day.getDate()}</span>
           {!isOpen(day) && <span className="text-[10px] text-text-muted">{hours.closedDates?.includes(localYmd(day)) ? 'feriado/folga' : 'fechado'}</span>}
@@ -67,7 +69,7 @@ function TimeGrid({ date, view, items, onSelect, onCreate, onMove, hours }: {
       <div className="grid" style={{ gridTemplateColumns: `3.5rem repeat(${days.length}, minmax(0, 1fr))` }}>
         <div aria-hidden="true" className="relative" style={{ height }}>{slots.map((slot, index) => slot.minute === 0 && <span key={index} className="absolute right-2 -translate-y-1/2 text-[10px] tabular-nums text-text-muted" style={{ top: `${index * ROW_REM}rem` }}>{timeLabel(slot.hour, 0)}</span>)}</div>
         {days.map((day) => {
-          const placed = placeDay(items.filter((item) => sameDay(new Date(item.startsAt), day)), day, hours);
+          const placed = placeDay(items.filter((item) => sameDay(new Date(item.startsAt), day)), day, visibleHours);
           return <section key={day.toISOString()} aria-label={dayLabel(day)} className="relative border-l border-border" style={{ height }}>
             {slots.map((slot) => {
               const target = slotDate(day, slot.hour, slot.minute); const key = target.toISOString();
@@ -121,7 +123,7 @@ function MonthCalendar({ date, items, onSelect, onCreate, hours }: { date: Date;
         const dayItems = items.filter((item) => sameDay(new Date(item.startsAt), day));
         const outside = day.getMonth() !== date.getMonth();
         return <section key={day.toISOString()} aria-label={dayLabel(day)} className={`min-h-28 min-w-0 border-b border-r border-border p-1.5 ${outside ? 'bg-surface/50' : ''}`}>
-          <button type="button" data-calendar-day tabIndex={index === activeIndex ? 0 : -1} aria-label={`Novo agendamento em ${dayLabel(day)}`} aria-current={sameDay(day, new Date()) ? 'date' : undefined} onFocus={() => setFocusedDay(day.toDateString())} onKeyDown={(event) => dayKeys(event, index)} onClick={() => { const selected = new Date(day); selected.setHours(hours.openHour, 0, 0, 0); onCreate(selected); }} className="flex w-full items-center justify-between rounded-button px-1 py-0.5 hover:bg-surface">
+          <button type="button" data-calendar-day tabIndex={index === activeIndex ? 0 : -1} aria-label={`Novo agendamento em ${dayLabel(day)}`} aria-current={sameDay(day, new Date()) ? 'date' : undefined} onFocus={() => setFocusedDay(day.toDateString())} onKeyDown={(event) => dayKeys(event, index)} onClick={() => { const selected = new Date(day); selected.setHours(hoursOn(hours, day.getDay(), localYmd(day))?.openHour ?? hours.openHour, 0, 0, 0); onCreate(selected); }} className="flex w-full items-center justify-between rounded-button px-1 py-0.5 hover:bg-surface">
             <span className={`inline-flex size-6 items-center justify-center rounded-full text-xs font-bold ${sameDay(day, new Date()) ? 'bg-primary text-primary-foreground' : outside ? 'text-text-muted' : 'text-text'}`}>{day.getDate()}</span>
             {dayItems.length > 0 && <span className="text-[10px] font-semibold text-text-muted">{dayItems.length}</span>}
           </button>
