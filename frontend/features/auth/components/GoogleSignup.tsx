@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
@@ -12,23 +12,12 @@ import { extractErrorMessage } from '@/lib/api/client';
 import { useGoogleSignup } from '../hooks/use-auth';
 import { GoogleButton } from './GoogleButton';
 
-export const GOOGLE_SIGNUP_CREDENTIAL_KEY = 'ofix-google-signup-credential';
-
 export function GoogleSignup() {
   const router = useRouter();
   const signup = useGoogleSignup();
   const [credential, setCredential] = useState<string | null>(null);
   const form = useForm<{ acceptedTerms: boolean }>({ defaultValues: { acceptedTerms: false } });
   const handleCredential = useCallback((value: string) => setCredential(value), []);
-
-  // An unknown Google account selected on /entrar continues here without asking the user to choose it again.
-  useEffect(() => {
-    const pending = sessionStorage.getItem(GOOGLE_SIGNUP_CREDENTIAL_KEY);
-    if (pending) {
-      setCredential(pending);
-      sessionStorage.removeItem(GOOGLE_SIGNUP_CREDENTIAL_KEY);
-    }
-  }, []);
 
   return <div className="space-y-4">
     <GoogleButton text="signup_with" onCredential={handleCredential} />

@@ -6,7 +6,7 @@ import { LoginForm } from '../LoginForm';
 import { authApi } from '../../api/auth-api';
 
 vi.mock('../../api/auth-api', () => ({
-  authApi: { login: vi.fn(), googleLogin: vi.fn() },
+  authApi: { login: vi.fn(), googleLogin: vi.fn(), googleSignup: vi.fn() },
 }));
 
 vi.mock('../GoogleButton', () => ({
@@ -34,16 +34,22 @@ function renderWithClient(ui: React.ReactElement) {
 describe('LoginForm', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    sessionStorage.clear();
   });
 
-  it('starts Google registration when the selected account is new', async () => {
+  it('creates a new Google account after legal acceptance and opens workshop setup', async () => {
     vi.mocked(authApi.googleLogin).mockRejectedValue({ isAxiosError: true, response: { data: { error: { code: 'USER_NOT_FOUND' } } } });
+    vi.mocked(authApi.googleSignup).mockResolvedValue(validLoginResponse as never);
     const user = userEvent.setup();
     renderWithClient(<LoginForm />);
     await user.click(screen.getByRole('button', { name: 'Continuar com Google' }));
-    await waitFor(() => expect(pushMock).toHaveBeenCalledWith('/cadastro'));
-    expect(sessionStorage.getItem('ofix-google-signup-credential')).toBe('google-id-token');
+    expect(await screen.findByRole('dialog', { name: 'Criar conta com Google' })).toBeInTheDocument();
+    expect(pushMock).not.toHaveBeenCalledWith('/cadastro');
+    await user.click(screen.getByRole('button', { name: 'Continuar' }));
+    expect(authApi.googleSignup).not.toHaveBeenCalled();
+    await user.click(screen.getByRole('checkbox'));
+    await user.click(screen.getByRole('button', { name: 'Continuar' }));
+    await waitFor(() => expect(authApi.googleSignup).toHaveBeenCalledWith({ credential: 'google-id-token', acceptedTerms: true, legalVersion: expect.any(String) }));
+    await waitFor(() => expect(pushMock).toHaveBeenCalledWith('/primeiros-passos'));
   });
 
   it('shows validation errors when submitted empty', async () => {

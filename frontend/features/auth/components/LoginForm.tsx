@@ -6,14 +6,16 @@ import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 import { z } from 'zod';
+import { useCallback, useState } from 'react';
+import { LEGAL_VERSION } from '@oficina/contracts';
 import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { extractErrorCode, extractErrorMessage } from '@/lib/api/client';
-import { useGoogleLogin, useLogin } from '../hooks/use-auth';
+import { LegalAcceptance } from '@/features/privacy/components/LegalAcceptance';
+import { useGoogleLogin, useGoogleSignup, useLogin } from '../hooks/use-auth';
 import { GoogleButton } from './GoogleButton';
-import { GOOGLE_SIGNUP_CREDENTIAL_KEY } from './GoogleSignup';
-import { useCallback } from 'react';
 
 const loginSchema = z.object({
   email: z.string().email('Informe um e-mail válido'),
@@ -26,11 +28,13 @@ export function LoginForm() {
   const router = useRouter();
   const login = useLogin();
   const googleLogin = useGoogleLogin();
+  const googleSignup = useGoogleSignup();
+  const [newGoogleCredential, setNewGoogleCredential] = useState<string | null>(null);
+  const signupForm = useForm<{ acceptedTerms: boolean }>({ defaultValues: { acceptedTerms: false } });
   const onGoogleCredential = useCallback((credential: string) => {
     googleLogin.mutate(credential, { onSuccess: () => router.push('/painel'), onError: (error) => {
       if (extractErrorCode(error) === 'USER_NOT_FOUND') {
-        sessionStorage.setItem(GOOGLE_SIGNUP_CREDENTIAL_KEY, credential);
-        router.push('/cadastro');
+        setNewGoogleCredential(credential);
         return;
       }
       toast.error(extractErrorMessage(error));
@@ -89,6 +93,22 @@ export function LoginForm() {
     </Form>
     {process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID && <div className="flex items-center gap-3 text-xs text-text-muted"><span className="h-px flex-1 bg-border" />ou<span className="h-px flex-1 bg-border" /></div>}
     <GoogleButton text="signin_with" onCredential={onGoogleCredential} />
+    <Dialog open={Boolean(newGoogleCredential)} onOpenChange={(open) => { if (!open && !googleSignup.isPending) setNewGoogleCredential(null); }}>
+      <DialogContent>
+        <DialogHeader><DialogTitle>Criar conta com Google</DialogTitle><DialogDescription>Você vai direto para a configuração inicial da oficina após aceitar os termos.</DialogDescription></DialogHeader>
+        <Form {...signupForm}><form className="space-y-4" onSubmit={signupForm.handleSubmit(({ acceptedTerms }) => {
+          if (!acceptedTerms) return signupForm.setError('acceptedTerms', { message: 'Aceite os Termos de uso para continuar.' });
+          if (!newGoogleCredential) return;
+          googleSignup.mutate({ credential: newGoogleCredential, acceptedTerms, legalVersion: LEGAL_VERSION }, {
+            onSuccess: () => { setNewGoogleCredential(null); router.push('/primeiros-passos'); },
+            onError: (error) => toast.error(extractErrorMessage(error)),
+          });
+        })}>
+          <LegalAcceptance form={signupForm} />
+          <DialogFooter><Button type="button" variant="outline" disabled={googleSignup.isPending} onClick={() => setNewGoogleCredential(null)}>Cancelar</Button><Button type="submit" disabled={googleSignup.isPending}>{googleSignup.isPending ? 'Criando conta...' : 'Continuar'}</Button></DialogFooter>
+        </form></Form>
+      </DialogContent>
+    </Dialog>
     </div>
   );
 }

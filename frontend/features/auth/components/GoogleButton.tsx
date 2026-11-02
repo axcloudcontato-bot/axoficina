@@ -25,5 +25,5 @@ export function GoogleButton({ onCredential, text = 'continue_with' }: { onCrede
   }, [clientId, loaded, onCredential, text]);
 
   if (!clientId) return null;
-  return <div className="flex justify-center"><Script src="https://accounts.google.com/gsi/client" strategy="afterInteractive" onLoad={() => setLoaded(true)} /><div ref={container} /></div>;
+  return <div className="flex justify-center"><Script src="https://accounts.google.com/gsi/client" strategy="afterInteractive" onReady={() => setLoaded(true)} /><div ref={container} /></div>;
 }
