@@ -31,15 +31,27 @@ export async function generateQuotePdf(serviceOrder: ServiceOrderResponse, brand
     // jsPDF reads PNG and JPEG; a WebP logo is left out rather than breaking the quote.
     const logo = company.logoDataUrl?.match(/^data:image\/(png|jpeg);base64,/) ? company.logoDataUrl : null;
     let textX = margin;
-    if (logo) { try { pdf.addImage(logo, logo.includes('image/png') ? 'PNG' : 'JPEG', margin, y - 6, 18, 18, undefined, 'FAST'); textX = margin + 22; } catch { /* a broken image never blocks the quote */ } }
+    let logoHeight = 0;
+    if (logo) {
+      try {
+        const image = pdf.getImageProperties(logo);
+        const scale = Math.min(34 / image.width, 25 / image.height);
+        const width = image.width * scale;
+        logoHeight = image.height * scale;
+        pdf.addImage(logo, logo.includes('image/png') ? 'PNG' : 'JPEG', margin, y - 5, width, logoHeight, undefined, 'FAST');
+        textX = margin + width + 6;
+      } catch { logoHeight = 0; /* A logo inválida não impede o orçamento. */ }
+    }
     pdf.setFont('helvetica', 'bold'); pdf.setFontSize(12); pdf.setTextColor(25);
     pdf.text(company.name, textX, y);
     pdf.setFont('helvetica', 'normal'); pdf.setFontSize(8.5); pdf.setTextColor(90);
     const identity = [company.legalName, company.document && `CPF/CNPJ ${company.document}`].filter(Boolean).join(' · ');
     const contact = [company.phone || company.whatsapp, company.email, [company.addressStreet, company.addressNumber, company.addressCity, company.addressState].filter(Boolean).join(', ')].filter(Boolean).join(' · ');
-    if (identity) pdf.text(identity, textX, y + 5);
-    if (contact) pdf.text(pdf.splitTextToSize(contact, pageWidth - textX - margin) as string[], textX, y + 9.5);
-    y += logo ? 18 : 16;
+    const identityLines = identity ? pdf.splitTextToSize(identity, pageWidth - textX - margin) as string[] : [];
+    const contactLines = contact ? pdf.splitTextToSize(contact, pageWidth - textX - margin) as string[] : [];
+    if (identityLines.length) pdf.text(identityLines, textX, y + 5);
+    if (contactLines.length) pdf.text(contactLines, textX, y + 5 + identityLines.length * 4.5);
+    y += Math.max(logoHeight + 1, 10 + (identityLines.length + contactLines.length) * 4.5) + 5;
   }
 
   pdf.setFont('helvetica', 'bold');

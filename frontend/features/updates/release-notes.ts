@@ -1,5 +1,11 @@
 export const RELEASE_NOTES = [
   {
+    id: '2026-11-02-logo-orcamento', date: '2026-11-02', title: 'Logo maior e proporcional no orçamento',
+    items: [
+      'O PDF do orçamento ajusta a logo à proporção original e reserva espaço no cabeçalho para a marca e os dados da oficina.',
+    ],
+  },
+  {
     id: '2026-11-02-termos-oficina', date: '2026-11-02', title: 'Termos sugeridos para orçamentos e ordens de serviço',
     items: [
       'A configuração inicial traz termos editáveis sobre aprovação do orçamento, serviços adicionais, prazos, garantia, peças substituídas, retirada e guarda do veículo.',
