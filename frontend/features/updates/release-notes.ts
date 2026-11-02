@@ -1,5 +1,12 @@
 export const RELEASE_NOTES = [
   {
+    id: '2026-11-02-orcamento-pdf-corrigido', date: '2026-11-02', title: 'Orçamento em PDF ajustado',
+    items: [
+      'O cabeçalho separa nome, identificação, contato e endereço em linhas próprias. Os dados do cliente e veículo ocupam duas colunas e a aprovação fica inteira após os termos.',
+      'A tabela ganhou mais espaço para leitura e as cláusulas dos termos não são divididas entre páginas.',
+    ],
+  },
+  {
     id: '2026-11-02-dropdown-contraste', date: '2026-11-02', title: 'Menus suspensos mais visíveis',
     items: [
       'Campos de seleção e listas suspensas ganharam fundo, borda e sombra mais definidos em todo o sistema, inclusive nos formulários de clientes e veículos.',

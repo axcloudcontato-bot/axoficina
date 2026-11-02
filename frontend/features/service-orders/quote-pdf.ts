@@ -20,13 +20,15 @@ export async function generateQuotePdf(serviceOrder: ServiceOrderResponse, brand
     pdf.addPage();
     y = margin;
   };
-  const line = (label: string, value: string) => {
-    ensureSpace(8);
-    pdf.setFont('helvetica', 'bold'); pdf.setFontSize(8); pdf.setTextColor(...muted);
-    pdf.text(label.toUpperCase(), margin, y);
-    pdf.setFont('helvetica', 'normal'); pdf.setFontSize(10); pdf.setTextColor(...ink);
-    pdf.text(value, margin + 36, y);
-    y += 8;
+  const detail = (label: string, value: string, column: number, row: number) => {
+    const x = margin + 6 + column * 87;
+    const at = y + 7 + row * 12;
+    pdf.setFont('helvetica', 'bold'); pdf.setFontSize(7); pdf.setTextColor(...muted);
+    pdf.text(label.toUpperCase(), x, at);
+    pdf.setFont('helvetica', 'normal'); pdf.setFontSize(9); pdf.setTextColor(...ink);
+    const lines = pdf.splitTextToSize(value, 77) as string[];
+    pdf.text(lines[0] ?? '', x, at + 5);
+    if (lines[1]) pdf.text(lines[1], x, at + 8.5);
   };
 
   const { company, defaults } = branding;
@@ -49,16 +51,20 @@ export async function generateQuotePdf(serviceOrder: ServiceOrderResponse, brand
     pdf.text(company.name, textX, y);
     pdf.setFont('helvetica', 'normal'); pdf.setFontSize(8.5); pdf.setTextColor(...muted);
     const identity = [company.legalName, company.document && `CPF/CNPJ ${company.document}`].filter(Boolean).join(' · ');
-    const contact = [company.phone || company.whatsapp, company.email, [company.addressStreet, company.addressNumber, company.addressCity, company.addressState].filter(Boolean).join(', ')].filter(Boolean).join(' · ');
+    const contact = [company.phone || company.whatsapp, company.email].filter(Boolean).join(' · ');
+    const address = [company.addressStreet, company.addressNumber, company.addressDistrict, company.addressCity, company.addressState].filter(Boolean).join(', ');
     const identityLines = identity ? pdf.splitTextToSize(identity, pageWidth - textX - margin) as string[] : [];
     const contactLines = contact ? pdf.splitTextToSize(contact, pageWidth - textX - margin) as string[] : [];
-    if (identityLines.length) pdf.text(identityLines, textX, y + 5);
-    if (contactLines.length) pdf.text(contactLines, textX, y + 5 + identityLines.length * 4.5);
-    y += Math.max(logoHeight + 1, 10 + (identityLines.length + contactLines.length) * 4.5) + 8;
+    const addressLines = address ? pdf.splitTextToSize(address, pageWidth - textX - margin) as string[] : [];
+    let nextLine = y + 5;
+    for (const group of [identityLines, contactLines, addressLines]) {
+      if (group.length) { pdf.text(group, textX, nextLine); nextLine += group.length * 4.5; }
+    }
+    y += Math.max(logoHeight, nextLine - y) + 3;
   }
 
   pdf.setDrawColor(...border); pdf.line(margin, y, pageWidth - margin, y);
-  y += 10;
+  y += 8;
   pdf.setFont('helvetica', 'bold');
   pdf.setFontSize(17);
   pdf.setTextColor(...ink);
@@ -68,49 +74,48 @@ export async function generateQuotePdf(serviceOrder: ServiceOrderResponse, brand
   pdf.text(`OS #${String(serviceOrder.orderNumber).padStart(5, '0')}`, pageWidth - margin, y, { align: 'right' });
   y += 5;
   pdf.setFillColor(255, 190, 0); pdf.rect(margin, y, 27, 1.1, 'F');
-  y += 12;
+  y += 9;
   pdf.setFillColor(247, 248, 250); pdf.setDrawColor(...border);
-  pdf.roundedRect(margin, y - 5, pageWidth - margin * 2, defaults?.quoteValidityDays ? 53 : 45, 2, 2, 'FD');
-  y += 2;
-  pdf.setTextColor(...ink);
-  pdf.setFontSize(10);
-
-  line('Cliente', serviceOrder.customerName);
-  line('Telefone', serviceOrder.customerPhone || 'Não informado');
-  line('Veículo', `${serviceOrder.vehicleBrand} ${serviceOrder.vehicleModel}`);
-  line('Placa', serviceOrder.vehiclePlate);
-  line('Emissão', new Date().toLocaleString('pt-BR'));
-  if (defaults?.quoteValidityDays) { const until = new Date(); until.setDate(until.getDate() + defaults.quoteValidityDays); line('Validade', `${defaults.quoteValidityDays} dias (até ${until.toLocaleDateString('pt-BR')})`); }
-  y += 10;
+  pdf.roundedRect(margin, y, pageWidth - margin * 2, 42, 2, 2, 'FD');
+  const issued = new Date();
+  const until = new Date(issued);
+  if (defaults?.quoteValidityDays) until.setDate(until.getDate() + defaults.quoteValidityDays);
+  detail('Cliente', serviceOrder.customerName, 0, 0);
+  detail('Veículo', `${serviceOrder.vehicleBrand} ${serviceOrder.vehicleModel}`, 1, 0);
+  detail('Telefone', serviceOrder.customerPhone || 'Não informado', 0, 1);
+  detail('Placa', serviceOrder.vehiclePlate, 1, 1);
+  detail('Emissão', issued.toLocaleString('pt-BR'), 0, 2);
+  detail('Validade', defaults?.quoteValidityDays ? `${defaults.quoteValidityDays} dias (até ${until.toLocaleDateString('pt-BR')})` : 'Não informada', 1, 2);
+  y += 49;
 
   pdf.setFillColor(...ink);
-  pdf.rect(margin, y, pageWidth - margin * 2, 9, 'F');
-  pdf.setFont('helvetica', 'bold'); pdf.setFontSize(8); pdf.setTextColor(255);
-  pdf.text('Tipo', margin + 2, y + 6);
-  pdf.text('Descrição', margin + 29, y + 6);
-  pdf.text('Qtd.', 138, y + 6, { align: 'right' });
-  pdf.text('Valor', pageWidth - margin - 2, y + 6, { align: 'right' });
-  y += 9;
+  pdf.rect(margin, y, pageWidth - margin * 2, 10, 'F');
+  pdf.setFont('helvetica', 'bold'); pdf.setFontSize(8.5); pdf.setTextColor(255);
+  pdf.text('Tipo', margin + 3, y + 6.5);
+  pdf.text('Descrição', margin + 29, y + 6.5);
+  pdf.text('Qtd.', 138, y + 6.5, { align: 'right' });
+  pdf.text('Valor', pageWidth - margin - 3, y + 6.5, { align: 'right' });
+  y += 10;
 
   for (const [index, item] of (serviceOrder.items ?? []).entries()) {
-    pdf.setFontSize(9);
+    pdf.setFontSize(10);
     const descriptionLines = pdf.splitTextToSize(item.description, 82) as string[];
-    const rowHeight = Math.max(11, descriptionLines.length * 4.5 + 5);
+    const rowHeight = Math.max(13, descriptionLines.length * 5 + 6);
     if (y + rowHeight > pageHeight - 22) {
       pdf.addPage(); y = margin;
-      pdf.setFillColor(...ink); pdf.rect(margin, y, pageWidth - margin * 2, 9, 'F');
-      pdf.setFont('helvetica', 'bold'); pdf.setFontSize(8); pdf.setTextColor(255);
-      pdf.text('Tipo', margin + 2, y + 6); pdf.text('Descrição', margin + 29, y + 6);
-      pdf.text('Qtd.', 138, y + 6, { align: 'right' }); pdf.text('Valor', pageWidth - margin - 2, y + 6, { align: 'right' });
-      y += 9;
+      pdf.setFillColor(...ink); pdf.rect(margin, y, pageWidth - margin * 2, 10, 'F');
+      pdf.setFont('helvetica', 'bold'); pdf.setFontSize(8.5); pdf.setTextColor(255);
+      pdf.text('Tipo', margin + 3, y + 6.5); pdf.text('Descrição', margin + 29, y + 6.5);
+      pdf.text('Qtd.', 138, y + 6.5, { align: 'right' }); pdf.text('Valor', pageWidth - margin - 3, y + 6.5, { align: 'right' });
+      y += 10;
     }
     if (index % 2 === 0) { pdf.setFillColor(250, 251, 252); pdf.rect(margin, y, pageWidth - margin * 2, rowHeight, 'F'); }
-    pdf.setFont('helvetica', 'normal'); pdf.setFontSize(9); pdf.setTextColor(...ink);
-    pdf.text(SERVICE_ORDER_ITEM_TYPE_LABELS[item.type], margin + 2, y + 7);
-    pdf.text(descriptionLines, margin + 29, y + 7);
-    pdf.text(item.quantity.toLocaleString('pt-BR'), 138, y + 7, { align: 'right' });
+    pdf.setFont('helvetica', 'normal'); pdf.setFontSize(10); pdf.setTextColor(...ink);
+    pdf.text(SERVICE_ORDER_ITEM_TYPE_LABELS[item.type], margin + 3, y + 8);
+    pdf.text(descriptionLines, margin + 29, y + 8);
+    pdf.text(item.quantity.toLocaleString('pt-BR'), 138, y + 8, { align: 'right' });
     pdf.setFont('helvetica', 'bold');
-    pdf.text(formatCurrencyBRL(item.lineTotalCents), pageWidth - margin - 2, y + 7, { align: 'right' });
+    pdf.text(formatCurrencyBRL(item.lineTotalCents), pageWidth - margin - 3, y + 8, { align: 'right' });
     y += rowHeight;
     pdf.setDrawColor(...border);
     pdf.line(margin, y, pageWidth - margin, y);
@@ -140,33 +145,40 @@ export async function generateQuotePdf(serviceOrder: ServiceOrderResponse, brand
     pdf.setTextColor(...ink); pdf.text(`-${formatCurrencyBRL(serviceOrder.discountCents)}`, pageWidth - margin - 3, y, { align: 'right' });
     y += 6;
   }
-  pdf.setFillColor(255, 190, 0); pdf.roundedRect(summaryX - 4, y + 1, 79, 15, 2, 2, 'F');
+  pdf.setDrawColor(...border); pdf.line(summaryX, y + 1, pageWidth - margin, y + 1);
   pdf.setFont('helvetica', 'bold'); pdf.setFontSize(9); pdf.setTextColor(...ink);
-  pdf.text('TOTAL', summaryX, y + 11);
-  pdf.setFontSize(13); pdf.text(formatCurrencyBRL(serviceOrder.totalAmountCents), pageWidth - margin - 3, y + 11, { align: 'right' });
-  y += 31;
-  ensureSpace(28);
-  pdf.setFontSize(8); pdf.setTextColor(...muted); pdf.text('APROVAÇÃO DO CLIENTE', margin, y);
-  y += 17;
-  pdf.setDrawColor(...border); pdf.line(margin, y, margin + 90, y);
-  pdf.setFont('helvetica', 'normal'); pdf.text('Assinatura', margin, y + 5);
-  y += 13;
+  pdf.text('TOTAL', summaryX, y + 10);
+  pdf.setFontSize(13); pdf.text(formatCurrencyBRL(serviceOrder.totalAmountCents), pageWidth - margin - 3, y + 10, { align: 'right' });
+  y += 23;
 
   if (defaults?.documentTerms) {
-    const terms = pdf.splitTextToSize(defaults.documentTerms, pageWidth - margin * 2) as string[];
-    y += 12;
+    y += 3;
     ensureSpace(12);
     pdf.setDrawColor(...border); pdf.line(margin, y, pageWidth - margin, y);
     y += 7;
     pdf.setFont('helvetica', 'bold'); pdf.setFontSize(8); pdf.setTextColor(...ink); pdf.text('TERMOS E CONDIÇÕES', margin, y);
     y += 6;
-    for (const termLine of terms) {
-      ensureSpace(4);
+    pdf.setFont('helvetica', 'normal'); pdf.setFontSize(8);
+    for (const clause of defaults.documentTerms.split(/\n+/).filter(Boolean)) {
+      const lines = pdf.splitTextToSize(clause, pageWidth - margin * 2) as string[];
+      if (y + lines.length * 4 + 3 > pageHeight - 22) {
+        pdf.addPage(); y = margin + 2;
+        pdf.setFont('helvetica', 'bold'); pdf.setFontSize(8); pdf.setTextColor(...ink);
+        pdf.text('TERMOS E CONDIÇÕES (CONTINUAÇÃO)', margin, y);
+        y += 7;
+      }
       pdf.setFont('helvetica', 'normal'); pdf.setFontSize(8); pdf.setTextColor(...muted);
-      pdf.text(termLine, margin, y);
-      y += 4;
+      pdf.text(lines, margin, y);
+      y += lines.length * 4 + 3;
     }
   }
+  ensureSpace(35);
+  pdf.setFontSize(8); pdf.setFont('helvetica', 'bold'); pdf.setTextColor(...muted);
+  pdf.text('APROVAÇÃO DO CLIENTE', margin, y + 7);
+  y += 25;
+  pdf.setDrawColor(...border); pdf.line(margin, y, margin + 90, y);
+  pdf.setFont('helvetica', 'normal'); pdf.text('Assinatura', margin, y + 5);
+  y += 10;
   const pages = pdf.getNumberOfPages();
   for (let page = 1; page <= pages; page++) {
     pdf.setPage(page);
