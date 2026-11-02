@@ -4,6 +4,7 @@ import type { Queue } from 'bullmq';
 import { ACCOUNT_CLOSURE_QUEUE } from '../../shared/queue/queue.module';
 import { BillingModule } from '../billing/billing.module';
 import { PasswordService } from '../iam/services/password.service';
+import { GoogleIdentityService } from '../iam/services/google-identity.service';
 import { AccountClosureController } from './account-closure.controller';
 import { AccountClosureProcessor } from './account-closure.processor';
 import { AccountClosureService } from './account-closure.service';
@@ -16,7 +17,7 @@ const PROCESSORS = process.env.NODE_ENV === 'test' ? [] : [AccountClosureProcess
 @Module({
   imports: [BillingModule],
   controllers: [AccountClosureController],
-  providers: [AccountClosureService, PasswordService, ...PROCESSORS],
+  providers: [AccountClosureService, PasswordService, GoogleIdentityService, ...PROCESSORS],
   exports: [AccountClosureService],
 })
 export class AccountClosureModule implements OnModuleInit {

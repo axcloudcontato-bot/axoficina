@@ -20,7 +20,7 @@ const EXPECTED_USES: Record<string, number> = {
   'modules/iam/repositories/refresh-token.repository.ts': 7,
   'modules/iam/repositories/role.repository.ts': 10,
   'modules/iam/repositories/tenant.repository.ts': 5,
-  'modules/iam/repositories/user.repository.ts': 6,
+  'modules/iam/repositories/user.repository.ts': 7,
   'modules/maintenance-alerts/repositories/maintenance-alert.repository.ts': 1,
   'modules/service-orders/managers/service-order.manager.ts': 1,
   'modules/service-orders/repositories/customer-message.repository.ts': 7,

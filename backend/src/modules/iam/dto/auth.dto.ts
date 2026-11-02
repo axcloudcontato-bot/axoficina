@@ -1,6 +1,25 @@
 import { Equals, IsEmail, IsNotEmpty, IsOptional, IsString, IsUUID, MaxLength, MinLength } from 'class-validator';
 import { LEGAL_VERSION, MIN_PASSWORD_LENGTH } from '@oficina/contracts';
-import type { RevokeOtherSessionsRequest, RevokeSessionRequest, SessionsRequest, ChangePasswordRequest, ForgotPasswordRequest, LoginRequest, LogoutRequest, RefreshRequest, ResetPasswordRequest, SignupRequest } from '@oficina/contracts';
+import type { RevokeOtherSessionsRequest, RevokeSessionRequest, SessionsRequest, ChangePasswordRequest, ForgotPasswordRequest, LoginRequest, LogoutRequest, RefreshRequest, ResetPasswordRequest, SignupRequest, GoogleSignupRequest, GoogleLoginRequest } from '@oficina/contracts';
+
+export class GoogleLoginDto implements GoogleLoginRequest {
+  @IsString() @IsNotEmpty() @MaxLength(4096)
+  credential!: string;
+}
+
+export class GoogleSignupDto extends GoogleLoginDto implements GoogleSignupRequest {
+  @Equals(true, { message: 'Aceite os Termos de uso para continuar.' })
+  acceptedTerms!: boolean;
+
+  @Equals(LEGAL_VERSION, { message: 'Leia e aceite a versão atual dos documentos.' })
+  legalVersion!: string;
+
+  @IsString() @IsNotEmpty() @MaxLength(250)
+  tenantName!: string;
+
+  @IsString() @IsNotEmpty() @MaxLength(20)
+  tenantDocument!: string;
+}
 
 export class SignupDto implements SignupRequest {
   @Equals(true, { message: 'Aceite os Termos de uso para continuar.' })

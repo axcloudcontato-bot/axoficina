@@ -12,6 +12,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Input } from '@/components/ui/input';
 import { extractErrorMessage, extractFieldErrors } from '@/lib/api/client';
 import { useSignup } from '../hooks/use-auth';
+import { GoogleSignup } from './GoogleSignup';
 
 const signupSchema = z.object({
   acceptedTerms: z.boolean().refine((value) => value, 'Aceite os Termos de uso para continuar.'),
@@ -52,6 +53,7 @@ export function SignupForm() {
   }
 
   return (
+    <div className="space-y-5">
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-4">
         <FormField
@@ -125,5 +127,8 @@ export function SignupForm() {
         </Button>
       </form>
     </Form>
+    {process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID && <div className="flex items-center gap-3 text-xs text-text-muted"><span className="h-px flex-1 bg-border" />ou<span className="h-px flex-1 bg-border" /></div>}
+    <GoogleSignup />
+    </div>
   );
 }

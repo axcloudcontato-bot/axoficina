@@ -10,7 +10,9 @@ import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { extractErrorMessage } from '@/lib/api/client';
-import { useLogin } from '../hooks/use-auth';
+import { useGoogleLogin, useLogin } from '../hooks/use-auth';
+import { GoogleButton } from './GoogleButton';
+import { useCallback } from 'react';
 
 const loginSchema = z.object({
   email: z.string().email('Informe um e-mail válido'),
@@ -22,6 +24,10 @@ type LoginFormValues = z.infer<typeof loginSchema>;
 export function LoginForm() {
   const router = useRouter();
   const login = useLogin();
+  const googleLogin = useGoogleLogin();
+  const onGoogleCredential = useCallback((credential: string) => {
+    googleLogin.mutate(credential, { onSuccess: () => router.push('/painel'), onError: (error) => toast.error(extractErrorMessage(error)) });
+  }, [googleLogin, router]);
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
     defaultValues: { email: '', password: '' },
@@ -39,6 +45,7 @@ export function LoginForm() {
   }
 
   return (
+    <div className="space-y-5">
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-4">
         <FormField
@@ -72,5 +79,8 @@ export function LoginForm() {
         </Button>
       </form>
     </Form>
+    {process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID && <div className="flex items-center gap-3 text-xs text-text-muted"><span className="h-px flex-1 bg-border" />ou<span className="h-px flex-1 bg-border" /></div>}
+    <GoogleButton text="signin_with" onCredential={onGoogleCredential} />
+    </div>
   );
 }

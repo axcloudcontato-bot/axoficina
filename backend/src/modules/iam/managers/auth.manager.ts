@@ -9,6 +9,7 @@ import type {
   SignupResponse,
   UserResponse,
   UserRole,
+  GoogleSignupRequest,
 } from '@oficina/contracts';
 import type { Role as RoleEntity, User as UserEntity } from '@oficina/database';
 import { AppErrorCode } from '../../../shared/errors/app-error-code';
@@ -22,6 +23,7 @@ import { RefreshTokenRepository } from '../repositories/refresh-token.repository
 import { RoleRepository } from '../repositories/role.repository';
 import { TenantRepository } from '../repositories/tenant.repository';
 import { UserRepository } from '../repositories/user.repository';
+import { GoogleIdentityService } from '../services/google-identity.service';
 
 const ADMIN_ROLE_NAME = 'ADMIN';
 
@@ -47,13 +49,26 @@ export class AuthManager {
     private readonly tokenService: TokenService,
     private readonly documentValidator: DocumentValidatorService,
     private readonly auditLog: AuditLogService,
+    private readonly googleIdentity: GoogleIdentityService,
   ) {}
 
   async signup(input: SignupInput): Promise<SignupResponse> {
+    return this.createSignup(input);
+  }
+
+  async googleSignup(input: GoogleSignupRequest): Promise<SignupResponse> {
+    const identity = await this.googleIdentity.verifyCredential(input.credential);
+    if (await this.userRepository.byGoogleSubject(identity.subject)) {
+      throw new AppException(AppErrorCode.EMAIL_ALREADY_EXISTS, 'Esta conta Google já está cadastrada. Entre na sua oficina.', HttpStatus.CONFLICT);
+    }
+    return this.createSignup({ ...input, adminName: identity.name, adminEmail: identity.email }, identity.subject);
+  }
+
+  private async createSignup(input: Omit<SignupInput, 'password'> & { password?: string }, googleSubject?: string): Promise<SignupResponse> {
     if (input.acceptedTerms !== true || input.legalVersion !== LEGAL_VERSION) {
       throw new AppException(AppErrorCode.VALIDATION_ERROR, 'Leia e aceite os Termos de uso e a ciência da Política de privacidade atuais.');
     }
-    if (input.password.length < MIN_PASSWORD_LENGTH) {
+    if (!googleSubject && (!input.password || input.password.length < MIN_PASSWORD_LENGTH)) {
       throw new AppException(AppErrorCode.VALIDATION_ERROR, `A senha deve ter pelo menos ${MIN_PASSWORD_LENGTH} caracteres.`);
     }
 
@@ -81,7 +96,7 @@ export class AuthManager {
       throw new AppException(AppErrorCode.ROLE_NOT_FOUND, 'Papel ADMIN não encontrado — seed não foi executado.', HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
-    const passwordHash = await this.passwordService.hash(input.password);
+    const passwordHash = input.password ? await this.passwordService.hash(input.password) : undefined;
 
     const { tenant, user } = await this.prisma.transaction(async (tx) => {
       const tenant = await this.tenantRepository.insert(
@@ -96,6 +111,7 @@ export class AuthManager {
           roleId: adminRole.id,
           status: 'active',
           passwordHash,
+          googleSubject,
           legalVersion: LEGAL_VERSION,
           legalAcceptedAt: new Date(),
         },
@@ -128,6 +144,20 @@ export class AuthManager {
         createdAt: tenant.createdAt.toISOString(),
       },
     };
+  }
+
+  async googleLogin(credential: string, device?: string): Promise<AuthResponse> {
+    const identity = await this.googleIdentity.verifyCredential(credential);
+    const user = await this.userRepository.byGoogleSubject(identity.subject);
+    if (!user) throw new AppException(AppErrorCode.INVALID_CREDENTIALS, 'Conta Google não cadastrada. Crie sua oficina primeiro.', HttpStatus.UNAUTHORIZED);
+    if (user.status !== 'active') throw new AppException(AppErrorCode.USER_DISABLED, 'Esta conta está desabilitada.', HttpStatus.FORBIDDEN);
+    if (!(await this.tenantRepository.byId(user.tenantId))) throw new AppException(AppErrorCode.ACCOUNT_CLOSED, 'Esta oficina foi encerrada. Fale com o suporte do Ofix.', HttpStatus.FORBIDDEN);
+    const role = await this.roleRepository.byId(user.roleId);
+    if (!role) throw new AppException(AppErrorCode.ROLE_NOT_FOUND, 'Papel do usuário não encontrado.', HttpStatus.INTERNAL_SERVER_ERROR);
+    const { accessToken, refreshToken, permissions } = await this.issueTokens(user, role, device);
+    await this.userRepository.update(user.id, { lastLoginAt: new Date() });
+    await this.auditLog.record({ tenantId: user.tenantId, userId: user.id, action: 'auth.login', entity: 'user', entityId: user.id, metadata: { provider: 'google' } });
+    return { accessToken, refreshToken, user: this.toUserResponse(user, role, permissions) };
   }
 
   async login(input: LoginRequest, device?: string): Promise<AuthResponse> {

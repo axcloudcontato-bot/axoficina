@@ -6,8 +6,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { GoogleButton } from '@/features/auth/components/GoogleButton';
 
-export interface ConfirmValues { confirmName: string; password: string; reason: string }
+export interface ConfirmValues { confirmName: string; password: string; googleCredential?: string; reason: string }
 
 const same = (a: string, b: string) => a.trim().toLocaleLowerCase('pt-BR') === b.trim().toLocaleLowerCase('pt-BR');
 
@@ -28,12 +29,13 @@ export function ConfirmByNameDialog({ title, description, expectedName, extra, c
   const id = useId();
   const [confirmName, setConfirmName] = useState('');
   const [password, setPassword] = useState('');
+  const [googleCredential, setGoogleCredential] = useState<string | undefined>();
   const [reason, setReason] = useState('');
-  const ready = same(confirmName, expectedName) && (extra !== 'password' || password.length > 0);
+  const ready = same(confirmName, expectedName) && (extra !== 'password' || password.length > 0 || Boolean(googleCredential));
 
   function submit(event: FormEvent) {
     event.preventDefault();
-    if (ready && !pending) onConfirm({ confirmName, password, reason });
+    if (ready && !pending) onConfirm({ confirmName, password, googleCredential, reason });
   }
 
   return <Dialog open onOpenChange={(open) => { if (!open && !pending) onClose(); }}>
@@ -45,6 +47,7 @@ export function ConfirmByNameDialog({ title, description, expectedName, extra, c
           {extra === 'reason' && <div className="space-y-1.5"><Label htmlFor={`${id}-reason`}>Motivo (fica no registro)</Label><Textarea id={`${id}-reason`} rows={2} maxLength={500} value={reason} onChange={(event) => setReason(event.target.value)} /></div>}
           <div className="space-y-1.5"><Label htmlFor={`${id}-name`}>Para confirmar, digite o nome da oficina: <strong>{expectedName}</strong></Label><Input id={`${id}-name`} autoComplete="off" value={confirmName} onChange={(event) => setConfirmName(event.target.value)} /></div>
           {extra === 'password' && <div className="space-y-1.5"><Label htmlFor={`${id}-password`}>Sua senha atual</Label><Input id={`${id}-password`} type="password" autoComplete="current-password" value={password} onChange={(event) => setPassword(event.target.value)} /></div>}
+          {extra === 'password' && process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID && <div className="space-y-2"><p className="text-center text-xs text-text-muted">ou confirme com sua conta Google</p><GoogleButton onCredential={setGoogleCredential} />{googleCredential && <p className="text-center text-xs text-text-muted">Conta Google confirmada. Digite o nome da oficina para continuar.</p>}</div>}
         </fieldset>
         {error && <p role="alert" className="rounded-button border border-danger/20 bg-danger-subtle p-3 text-sm text-danger-strong">{error}</p>}
         <DialogFooter>

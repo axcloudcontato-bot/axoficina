@@ -18,6 +18,7 @@ function buildManager() {
     byId: jest.fn(),
     byEmail: jest.fn(),
     byEmailIncludingDeleted: jest.fn(),
+    byGoogleSubject: jest.fn(),
     byInviteTokenHash: jest.fn(),
     update: jest.fn(),
     listByTenant: jest.fn(),
@@ -56,6 +57,7 @@ function buildManager() {
     })),
   };
   const auditLog = { record: jest.fn() };
+  const googleIdentity = { verifyCredential: jest.fn().mockResolvedValue({ subject: 'google-1', email: 'google@gmail.com', name: 'Pessoa Google' }) };
 
   const manager = new AuthManager(
     prisma as never,
@@ -67,6 +69,7 @@ function buildManager() {
     tokenService as never,
     documentValidator as never,
     auditLog as never,
+    googleIdentity as never,
   );
 
   return {
@@ -80,6 +83,7 @@ function buildManager() {
     tokenService,
     documentValidator,
     auditLog,
+    googleIdentity,
   };
 }
 
@@ -103,6 +107,22 @@ const baseUser = {
 };
 
 describe('AuthManager', () => {
+  describe('Google account', () => {
+    it('does not link an existing email to a Google identity automatically', async () => {
+      const deps = buildManager();
+      deps.userRepository.byEmail.mockResolvedValue(baseUser);
+      deps.tenantRepository.byId.mockResolvedValue({ id: baseUser.tenantId });
+      await expect(deps.manager.googleSignup({ credential: 'token', tenantName: 'Oficina', tenantDocument: '11444777000161', acceptedTerms: true, legalVersion: LEGAL_VERSION })).rejects.toThrow('Já existe uma conta com este e-mail');
+      expect(deps.prisma.transaction).not.toHaveBeenCalled();
+    });
+
+    it('uses only the linked Google subject for login', async () => {
+      const deps = buildManager();
+      deps.userRepository.byEmail.mockResolvedValue(baseUser);
+      await expect(deps.manager.googleLogin('token')).rejects.toThrow('Conta Google não cadastrada');
+      expect(deps.userRepository.byEmail).not.toHaveBeenCalled();
+    });
+  });
   describe('signup', () => {
     it('rejects absent or stale legal acceptance before creating records', async () => {
       const deps = buildManager();

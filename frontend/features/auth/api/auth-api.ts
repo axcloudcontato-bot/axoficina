@@ -11,9 +11,17 @@ import type {
   RefreshResponse,
   SignupRequest,
   SignupResponse,
+  GoogleLoginRequest,
+  GoogleSignupRequest,
 } from '@oficina/contracts';
 
 export const authApi = {
+  async googleSignup(request: GoogleSignupRequest): Promise<SignupResponse> {
+    return (await apiClient.post<SignupResponse>('/api/v1/auth/google/signup', request)).data;
+  },
+  async googleLogin(request: GoogleLoginRequest): Promise<AuthResponse> {
+    return (await apiClient.post<AuthResponse>('/api/v1/auth/google/login', request)).data;
+  },
   async sessions(refreshToken: string | null): Promise<{ items: SessionResponse[] }> {
     return (await apiClient.post('/api/v1/auth/sessions', refreshToken ? { refreshToken } : {})).data;
   },

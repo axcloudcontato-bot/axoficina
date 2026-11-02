@@ -5,8 +5,11 @@ import type { AdminCloseRequest, AdminPurgeRequest, CloseAccountRequest } from '
 const trim = ({ value }: { value: unknown }) => (typeof value === 'string' ? value.trim() : value);
 
 export class CloseAccountDto implements CloseAccountRequest {
-  @IsString() @MinLength(1) @MaxLength(200)
-  password!: string;
+  @IsOptional() @IsString() @MinLength(1) @MaxLength(200)
+  password?: string;
+
+  @IsOptional() @IsString() @MinLength(1) @MaxLength(4096)
+  googleCredential?: string;
 
   @Transform(trim) @IsString() @MinLength(1) @MaxLength(200)
   confirmName!: string;

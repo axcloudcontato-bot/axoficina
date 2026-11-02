@@ -8,6 +8,7 @@ import { EntitlementsService } from '../../shared/plan/entitlements.service';
 import { PrismaService } from '../../shared/prisma/prisma.service';
 import { StripeClient } from '../billing/stripe.client';
 import { PasswordService } from '../iam/services/password.service';
+import { GoogleIdentityService } from '../iam/services/google-identity.service';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const IDENTIFIER = /^[a-z_][a-z0-9_]*$/;
@@ -37,13 +38,16 @@ export class AccountClosureService {
     private readonly stripe: StripeClient,
     private readonly entitlements: EntitlementsService,
     private readonly passwords: PasswordService,
+    private readonly googleIdentity: GoogleIdentityService,
   ) {}
 
   // The workshop's administrator closing their own account. Password and the typed name stop an accidental click.
   async closeAsOwner(user: AuthenticatedUser, input: CloseAccountRequest): Promise<CloseAccountResponse> {
     const tenant = await this.activeTenant(user.tenantId);
-    const actor = await this.prisma.unscoped.user.findFirst({ where: { id: user.userId, tenantId: user.tenantId, status: 'active', deletedAt: null }, select: { passwordHash: true } });
-    if (!actor?.passwordHash || !(await this.passwords.verify(input.password, actor.passwordHash))) throw new ForbiddenException('Confirme sua senha atual para encerrar a conta.');
+    const actor = await this.prisma.unscoped.user.findFirst({ where: { id: user.userId, tenantId: user.tenantId, status: 'active', deletedAt: null }, select: { passwordHash: true, googleSubject: true } });
+    const passwordConfirmed = Boolean(actor?.passwordHash && input.password && await this.passwords.verify(input.password, actor.passwordHash));
+    const googleConfirmed = Boolean(actor?.googleSubject && input.googleCredential && (await this.googleIdentity.verifyCredential(input.googleCredential)).subject === actor.googleSubject);
+    if (!passwordConfirmed && !googleConfirmed) throw new ForbiddenException('Confirme sua senha atual ou conta Google para encerrar a conta.');
     this.requireName(tenant.name, input.confirmName);
     return this.close(tenant, 'owner', user.userId, null);
   }

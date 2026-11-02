@@ -7,7 +7,9 @@ export type ClosedBy = (typeof CLOSED_BY)[number];
 /** The workshop's administrator closing their own account. */
 export interface CloseAccountRequest {
   /** The administrator's current password. */
-  password: string;
+  password?: string;
+  /** A fresh Google credential can confirm a Google-only administrator. */
+  googleCredential?: string;
   /** The workshop name, typed to confirm. */
   confirmName: string;
 }

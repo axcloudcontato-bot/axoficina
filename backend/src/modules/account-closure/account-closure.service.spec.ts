@@ -31,8 +31,9 @@ function build(options: { tenant?: Record<string, unknown> | null; closed?: Reco
   const stripe = { enabled: options.stripeEnabled ?? true, cancelNow: jest.fn() };
   const entitlements = { forget: jest.fn() };
   const passwords = { verify: jest.fn().mockResolvedValue(options.password ?? true) };
-  const service = new AccountClosureService({ unscoped: db } as never, new ConfigService({ UPLOAD_DIR: '/tmp/ofix-test-uploads' }), stripe as never, entitlements as never, passwords as never);
-  return { service, db, tx, raw, params, stripe, entitlements, passwords };
+  const googleIdentity = { verifyCredential: jest.fn().mockResolvedValue({ subject: 'google-1' }) };
+  const service = new AccountClosureService({ unscoped: db } as never, new ConfigService({ UPLOAD_DIR: '/tmp/ofix-test-uploads' }), stripe as never, entitlements as never, passwords as never, googleIdentity as never);
+  return { service, db, tx, raw, params, stripe, entitlements, passwords, googleIdentity };
 }
 
 describe('helpers', () => {
@@ -47,6 +48,12 @@ describe('helpers', () => {
 });
 
 describe('AccountClosureService: closing', () => {
+  it('accepts a fresh credential from the same Google account for an owner without a password', async () => {
+    const deps = build();
+    deps.db.user.findFirst.mockResolvedValue({ passwordHash: null, googleSubject: 'google-1' });
+    await expect(deps.service.closeAsOwner(owner, { googleCredential: 'fresh-token', confirmName: 'Oficina Boa' })).resolves.toHaveProperty('purgeAfter');
+    expect(deps.googleIdentity.verifyCredential).toHaveBeenCalledWith('fresh-token');
+  });
   it('needs the administrator password and the workshop name, and changes nothing without them', async () => {
     const wrongPassword = build({ password: false });
     await expect(wrongPassword.service.closeAsOwner(owner, { password: 'x', confirmName: 'Oficina Boa' })).rejects.toThrow('Confirme sua senha');

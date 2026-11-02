@@ -3,7 +3,7 @@
 > Gerado a partir dos controllers do backend. Não edite à mão: rode `UPDATE_API_DOCS=1 pnpm --filter @oficina/backend exec jest src/shared/api-docs`
 > depois de mudar uma rota ou seus decorators. O teste `api-docs.spec.ts` falha se este arquivo ficar desatualizado.
 
-São 156 endpoints em 24 controllers.
+São 158 endpoints em 24 controllers.
 
 ## Convenções
 
@@ -106,6 +106,8 @@ São 156 endpoints em 24 controllers.
 | Método | Rota | Ação | Quem acessa | Permissão | Módulo/limite |
 | --- | --- | --- | --- | --- | --- |
 | POST | `/api/v1/auth/signup` | `signup` | público |  |  |
+| POST | `/api/v1/auth/google/signup` | `googleSignup` | público |  |  |
+| POST | `/api/v1/auth/google/login` | `googleLogin` | público |  |  |
 | POST | `/api/v1/auth/login` | `login` | público |  |  |
 | POST | `/api/v1/auth/refresh` | `refresh` | público |  |  |
 | POST | `/api/v1/auth/forgot-password` | `forgotPassword` | público |  |  |

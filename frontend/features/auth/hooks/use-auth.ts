@@ -1,7 +1,7 @@
 'use client';
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type { ChangePasswordRequest, ForgotPasswordRequest, LoginRequest, ResetPasswordRequest, SignupRequest } from '@oficina/contracts';
+import type { ChangePasswordRequest, ForgotPasswordRequest, LoginRequest, ResetPasswordRequest, SignupRequest, GoogleSignupRequest } from '@oficina/contracts';
 import { useAuthStore } from '@/stores/auth-store';
 import { authApi } from '../api/auth-api';
 
@@ -16,6 +16,24 @@ export function useSignup() {
       setSession({ accessToken: data.accessToken, refreshToken: data.refreshToken, user: data.user });
     },
   });
+}
+
+export function useGoogleSignup() {
+  const queryClient = useQueryClient();
+  const setSession = useAuthStore((state) => state.setSession);
+  return useMutation({ mutationFn: (request: GoogleSignupRequest) => authApi.googleSignup(request), onSuccess: (data) => {
+    queryClient.clear();
+    setSession({ accessToken: data.accessToken, refreshToken: data.refreshToken, user: data.user });
+  } });
+}
+
+export function useGoogleLogin() {
+  const queryClient = useQueryClient();
+  const setSession = useAuthStore((state) => state.setSession);
+  return useMutation({ mutationFn: (credential: string) => authApi.googleLogin({ credential }), onSuccess: (data) => {
+    queryClient.clear();
+    setSession({ accessToken: data.accessToken, refreshToken: data.refreshToken, user: data.user });
+  } });
 }
 
 export function useLogin() {

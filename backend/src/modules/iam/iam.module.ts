@@ -12,6 +12,7 @@ import { RoleRepository } from './repositories/role.repository';
 import { PasswordService } from './services/password.service';
 import { PasswordResetService } from './services/password-reset.service';
 import { TokenService } from './services/token.service';
+import { GoogleIdentityService } from './services/google-identity.service';
 // Instanciados aqui (em vez de importar SettingsModule) para evitar
 // dependência circular: SettingsModule já importa IamModule por causa do
 // TenantRepository. São serviços sem estado — ter uma segunda instância
@@ -34,6 +35,7 @@ import { TenantMailerService } from '../settings/services/tenant-mailer.service'
     PasswordService,
     PasswordResetService,
     TokenService,
+    GoogleIdentityService,
     SecretEncryptionService,
     TenantMailerService,
   ],

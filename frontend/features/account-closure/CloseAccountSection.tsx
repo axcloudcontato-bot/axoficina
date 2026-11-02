@@ -54,10 +54,10 @@ export function CloseAccountSection() {
       pending={mutation.isPending}
       error={error}
       onClose={() => setOpen(false)}
-      onConfirm={async ({ confirmName, password }) => {
+      onConfirm={async ({ confirmName, password, googleCredential }) => {
         setError(null);
         try {
-          const result = await mutation.mutateAsync({ password, confirmName });
+          const result = await mutation.mutateAsync({ ...(password ? { password } : {}), ...(googleCredential ? { googleCredential } : {}), confirmName });
           setOpen(false);
           setPurgeAfter(result.purgeAfter);
         } catch (failure) {

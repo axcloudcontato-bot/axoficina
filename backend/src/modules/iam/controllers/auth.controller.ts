@@ -4,7 +4,7 @@ import type { AuthResponse, RefreshResponse, SignupResponse } from '@oficina/con
 import { Public } from '../../../shared/decorators/public.decorator';
 import { AUTH_THROTTLE } from '../../../shared/constants/throttle.constants';
 import { AuthManager } from '../managers/auth.manager';
-import { RevokeOtherSessionsDto, RevokeSessionDto, SessionsDto, ChangePasswordDto, ForgotPasswordDto, LoginDto, LogoutDto, RefreshDto, ResetPasswordDto, SignupDto } from '../dto/auth.dto';
+import { RevokeOtherSessionsDto, RevokeSessionDto, SessionsDto, ChangePasswordDto, ForgotPasswordDto, LoginDto, LogoutDto, RefreshDto, ResetPasswordDto, SignupDto, GoogleLoginDto, GoogleSignupDto } from '../dto/auth.dto';
 import { PasswordResetService } from '../services/password-reset.service';
 import { CurrentUser } from '../../../shared/decorators/current-user.decorator';
 import type { AuthenticatedUser } from '../../../shared/guards/jwt-auth.guard';
@@ -18,6 +18,21 @@ export class AuthController {
   @Post('signup')
   async signup(@Body() body: SignupDto): Promise<SignupResponse> {
     return this.authManager.signup(body);
+  }
+
+  @Public()
+  @Throttle(AUTH_THROTTLE)
+  @Post('google/signup')
+  async googleSignup(@Body() body: GoogleSignupDto): Promise<SignupResponse> {
+    return this.authManager.googleSignup(body);
+  }
+
+  @Public()
+  @Throttle(AUTH_THROTTLE)
+  @HttpCode(HttpStatus.OK)
+  @Post('google/login')
+  async googleLogin(@Body() body: GoogleLoginDto, @Headers('user-agent') userAgent?: string): Promise<AuthResponse> {
+    return this.authManager.googleLogin(body.credential, userAgent);
   }
 
   @Public()

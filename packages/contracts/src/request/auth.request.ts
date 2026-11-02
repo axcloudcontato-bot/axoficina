@@ -13,6 +13,16 @@ export interface LoginRequest {
   password: string;
 }
 
+export interface GoogleSignupRequest extends LegalAcknowledgement {
+  credential: string;
+  tenantName: string;
+  tenantDocument: string;
+}
+
+export interface GoogleLoginRequest {
+  credential: string;
+}
+
 export interface RefreshRequest {
   refreshToken: string;
 }

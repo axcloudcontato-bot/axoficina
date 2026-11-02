@@ -1,5 +1,12 @@
 export const RELEASE_NOTES = [
   {
+    id: '2026-11-02-conta-google', date: '2026-11-02', title: 'Cadastro e entrada com Google',
+    items: [
+      'Você pode criar sua oficina usando a conta Google. Depois de escolher a conta, informe o nome e CPF/CNPJ da oficina e aceite os termos.',
+      'Quem criou a oficina com Google pode entrar novamente pelo botão do Google na tela de acesso.',
+    ],
+  },
+  {
     id: '2026-10-31-configuracao-inicial', date: '2026-10-31', title: "Configuração inicial guiada",
     items: [
       "No primeiro acesso, a oficina passa por um passo a passo: nome e CPF/CNPJ, contato, endereço (com busca pelo CEP), horário de funcionamento e dados dos documentos. Preencha cada tela e clique em Avançar.",

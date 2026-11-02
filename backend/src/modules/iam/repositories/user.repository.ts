@@ -11,6 +11,7 @@ export interface CreateUserInput {
   roleId: string;
   status: 'active' | 'invited';
   passwordHash?: string;
+  googleSubject?: string;
   inviteTokenHash?: string;
   inviteExpiresAt?: Date;
 }
@@ -54,6 +55,7 @@ export class UserRepository {
         roleId: input.roleId,
         status: input.status,
         passwordHash: input.passwordHash,
+        googleSubject: input.googleSubject,
         inviteTokenHash: input.inviteTokenHash,
         inviteExpiresAt: input.inviteExpiresAt,
         legalVersion: input.legalVersion,
@@ -75,6 +77,11 @@ export class UserRepository {
     return this.prisma.unscoped.user.findFirst({
       where: { email, deletedAt: null },
     });
+  }
+
+  // Google subject is the stable identity; email alone never links accounts.
+  async byGoogleSubject(subject: string) {
+    return this.prisma.unscoped.user.findFirst({ where: { googleSubject: subject, deletedAt: null } });
   }
 
   // Ignora deletedAt de propósito — usado só para distinguir "e-mail nunca
