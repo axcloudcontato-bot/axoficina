@@ -1,5 +1,12 @@
 export const RELEASE_NOTES = [
   {
+    id: '2026-11-02-calendario-compartilhado', date: '2026-11-02', title: 'Novo calendário para escolher datas',
+    items: [
+      'Os campos de data, mês e data com hora agora abrem o mesmo calendário visual, com navegação em português e limites de datas respeitados.',
+      'A consulta de histórico de ordens de serviço ganhou seleção de período. A agenda permite ir direto para uma data e a visão mensal acompanha o novo visual.',
+    ],
+  },
+  {
     id: '2026-11-02-painel-admin-saas', date: '2026-11-02', title: 'Novo painel da administração do SaaS',
     items: [
       'A administração do Ofix ganhou visão geral, indicadores reais de oficinas e assinaturas, distribuição por situação e lista de cadastros recentes.',

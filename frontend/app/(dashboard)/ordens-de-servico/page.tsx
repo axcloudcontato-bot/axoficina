@@ -5,6 +5,7 @@ import { Warning, CheckCircle, ClipboardText, GridFour, List, Package, Magnifyin
 import type { ServiceOrderStatus, ServiceOrderListRequest } from '@oficina/contracts';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { CalendarRangeSelect } from '@/components/ui/calendar-range-select';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { hasPermission } from '@/features/auth/permissions';
 import { ServiceOrderBoard } from '@/features/service-orders/components/ServiceOrderBoard';
@@ -165,9 +166,8 @@ export default function ServiceOrdersPage() {
             <Button size="sm" variant="ghost" onClick={() => applyPeriod('', '')}>Todo o histórico</Button>
           </div>
         </div>
-        <form className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-[1fr_1fr_1.3fr_auto] xl:items-end" onSubmit={(event) => { event.preventDefault(); if (!invalidPeriod) applyPeriod(draftStart, draftEnd); }}>
-          <label className="min-w-0 text-xs font-medium text-text-muted">Data inicial<Input type="date" className="mt-1 min-w-0" value={draftStart} max={draftEnd || undefined} onChange={(event) => setDraftStart(event.target.value)} /></label>
-          <label className="min-w-0 text-xs font-medium text-text-muted">Data final<Input type="date" className="mt-1 min-w-0" value={draftEnd} min={draftStart || undefined} aria-invalid={invalidPeriod} onChange={(event) => setDraftEnd(event.target.value)} /></label>
+        <form className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-[1.5fr_1.3fr_auto] xl:items-end" onSubmit={(event) => { event.preventDefault(); if (!invalidPeriod) applyPeriod(draftStart, draftEnd); }}>
+          <div className="min-w-0"><span className="text-xs font-medium text-text-muted">Período</span><div className="mt-1"><CalendarRangeSelect from={draftStart} to={draftEnd} onChange={(from, to) => { setDraftStart(from); setDraftEnd(to); }} /></div></div>
           <div><span id="history-date-label" className="text-xs font-medium text-text-muted">Consultar pela data de</span><Select value={dateField} onValueChange={(value) => updateFilter(() => setDateField(value as 'OPENED' | 'CLOSED'))}><SelectTrigger aria-labelledby="history-date-label" className="mt-1"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="OPENED">Entrada na oficina</SelectItem><SelectItem value="CLOSED">Entrega ou cancelamento</SelectItem></SelectContent></Select></div>
           <Button type="submit" disabled={invalidPeriod}>Aplicar período</Button>
         </form>

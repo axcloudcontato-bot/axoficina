@@ -118,13 +118,14 @@ function MonthCalendar({ date, items, onSelect, onCreate, hours }: { date: Date;
   }
   return <div data-calendar role="group" aria-label="Agenda mensal" className="overflow-hidden rounded-card border border-border bg-card">
     <p className="sr-only">Use as setas para mudar de dia, Home/End para os limites da semana e Tab para acessar os agendamentos. Enter ou Espaço ativa o controle selecionado.</p>
+    <div className="grid grid-cols-7 border-b border-border bg-surface/60 text-center text-xs font-semibold text-text-muted">{['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map((label) => <span key={label} className="py-2">{label}</span>)}</div>
     <div className="grid grid-cols-7">
       {days.map((day, index) => {
         const dayItems = items.filter((item) => sameDay(new Date(item.startsAt), day));
         const outside = day.getMonth() !== date.getMonth();
         return <section key={day.toISOString()} aria-label={dayLabel(day)} className={`min-h-28 min-w-0 border-b border-r border-border p-1.5 ${outside ? 'bg-surface/50' : ''}`}>
-          <button type="button" data-calendar-day tabIndex={index === activeIndex ? 0 : -1} aria-label={`Novo agendamento em ${dayLabel(day)}`} aria-current={sameDay(day, new Date()) ? 'date' : undefined} onFocus={() => setFocusedDay(day.toDateString())} onKeyDown={(event) => dayKeys(event, index)} onClick={() => { const selected = new Date(day); selected.setHours(hoursOn(hours, day.getDay(), localYmd(day))?.openHour ?? hours.openHour, 0, 0, 0); onCreate(selected); }} className="flex w-full items-center justify-between rounded-button px-1 py-0.5 hover:bg-surface">
-            <span className={`inline-flex size-6 items-center justify-center rounded-full text-xs font-bold ${sameDay(day, new Date()) ? 'bg-primary text-primary-foreground' : outside ? 'text-text-muted' : 'text-text'}`}>{day.getDate()}</span>
+          <button type="button" data-calendar-day tabIndex={index === activeIndex ? 0 : -1} aria-label={`Novo agendamento em ${dayLabel(day)}`} aria-current={sameDay(day, new Date()) ? 'date' : undefined} onFocus={() => setFocusedDay(day.toDateString())} onKeyDown={(event) => dayKeys(event, index)} onClick={() => { const selected = new Date(day); selected.setHours(hoursOn(hours, day.getDay(), localYmd(day))?.openHour ?? hours.openHour, 0, 0, 0); onCreate(selected); }} className="flex w-full items-center justify-between rounded-button px-1 py-0.5 hover:bg-blue-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500">
+            <span className={`inline-flex size-7 items-center justify-center rounded-full text-xs font-bold ${sameDay(day, date) ? 'bg-blue-600 text-white' : sameDay(day, new Date()) ? 'ring-1 ring-blue-500 text-blue-600' : outside ? 'text-text-muted' : 'text-text'}`}>{day.getDate()}</span>
             {dayItems.length > 0 && <span className="text-[10px] font-semibold text-text-muted">{dayItems.length}</span>}
           </button>
           <div className="mt-1 max-h-40 space-y-1 overflow-y-auto p-0.5">

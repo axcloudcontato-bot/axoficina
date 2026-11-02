@@ -2,6 +2,10 @@
 @tailwind components;
 @tailwind utilities;
 
+.calendar-native-input::-webkit-calendar-picker-indicator {
+  display: none;
+}
+
 /* Gradient Able's light admin surface stays readable when the workshop uses dark mode. */
 .saas-admin-surface {
   color-scheme: light;
