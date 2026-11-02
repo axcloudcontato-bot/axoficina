@@ -44,7 +44,7 @@ export function OnboardingWizard() {
 
   useEffect(() => {
     if (!settings.data || !branding.data || company) return;
-    setCompany({ ...settings.data.company, document: maskDocument(settings.data.company.document) });
+    setCompany({ ...settings.data.company, document: settings.data.company.document.startsWith('PENDING_GOOGLE_') ? '' : maskDocument(settings.data.company.document) });
     const agenda = branding.data.agendaHours;
     if (agenda) setHours({ openHour: agenda.openHour, closeHour: agenda.closeHour, workDays: agenda.workDays, bays: agenda.bays ? String(agenda.bays) : '' });
     const defaults = branding.data.orderDefaults;

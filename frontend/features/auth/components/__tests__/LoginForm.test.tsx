@@ -6,7 +6,11 @@ import { LoginForm } from '../LoginForm';
 import { authApi } from '../../api/auth-api';
 
 vi.mock('../../api/auth-api', () => ({
-  authApi: { login: vi.fn() },
+  authApi: { login: vi.fn(), googleLogin: vi.fn() },
+}));
+
+vi.mock('../GoogleButton', () => ({
+  GoogleButton: ({ onCredential }: { onCredential: (value: string) => void }) => <button type="button" onClick={() => onCredential('google-id-token')}>Continuar com Google</button>,
 }));
 
 // vi.mock() é hoisted acima dos imports — variáveis fechadas pela factory
@@ -30,6 +34,16 @@ function renderWithClient(ui: React.ReactElement) {
 describe('LoginForm', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    sessionStorage.clear();
+  });
+
+  it('starts Google registration when the selected account is new', async () => {
+    vi.mocked(authApi.googleLogin).mockRejectedValue({ isAxiosError: true, response: { data: { error: { code: 'USER_NOT_FOUND' } } } });
+    const user = userEvent.setup();
+    renderWithClient(<LoginForm />);
+    await user.click(screen.getByRole('button', { name: 'Continuar com Google' }));
+    await waitFor(() => expect(pushMock).toHaveBeenCalledWith('/cadastro'));
+    expect(sessionStorage.getItem('ofix-google-signup-credential')).toBe('google-id-token');
   });
 
   it('shows validation errors when submitted empty', async () => {

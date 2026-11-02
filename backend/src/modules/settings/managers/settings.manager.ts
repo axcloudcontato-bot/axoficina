@@ -34,6 +34,9 @@ export class SettingsManager {
   // Closes the guided first-access setup; the company data was already saved step by step.
   async completeOnboarding(user: AuthenticatedUser) {
     const tenant = await this.requireTenant(user.tenantId);
+    if (!tenant.name.trim() || !(new DocumentValidatorService().validate(tenant.document)).valid) {
+      throw new BadRequestException('Informe o nome e um CPF/CNPJ válido da oficina antes de concluir.');
+    }
     if (!tenant.onboardingCompletedAt) {
       await this.tenants.updateSettings(user.tenantId, { onboardingCompletedAt: new Date() });
       await this.audit.record({ tenantId: user.tenantId, userId: user.userId, action: 'settings.onboarding_completed', entity: 'tenant', entityId: user.tenantId, metadata: { itemAction: 'update' } });

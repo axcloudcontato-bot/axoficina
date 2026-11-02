@@ -15,8 +15,6 @@ export interface LoginRequest {
 
 export interface GoogleSignupRequest extends LegalAcknowledgement {
   credential: string;
-  tenantName: string;
-  tenantDocument: string;
 }
 
 export interface GoogleLoginRequest {

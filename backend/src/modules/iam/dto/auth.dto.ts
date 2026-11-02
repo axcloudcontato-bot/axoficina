@@ -14,11 +14,6 @@ export class GoogleSignupDto extends GoogleLoginDto implements GoogleSignupReque
   @Equals(LEGAL_VERSION, { message: 'Leia e aceite a versão atual dos documentos.' })
   legalVersion!: string;
 
-  @IsString() @IsNotEmpty() @MaxLength(250)
-  tenantName!: string;
-
-  @IsString() @IsNotEmpty() @MaxLength(20)
-  tenantDocument!: string;
 }
 
 export class SignupDto implements SignupRequest {

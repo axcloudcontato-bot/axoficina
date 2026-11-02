@@ -2,8 +2,8 @@ export const RELEASE_NOTES = [
   {
     id: '2026-11-02-conta-google', date: '2026-11-02', title: 'Cadastro e entrada com Google',
     items: [
-      'Você pode criar sua oficina usando a conta Google. Depois de escolher a conta, informe o nome e CPF/CNPJ da oficina e aceite os termos.',
-      'Quem criou a oficina com Google pode entrar novamente pelo botão do Google na tela de acesso.',
+      'Escolha Continuar com Google para criar sua conta sem digitar nome, e-mail ou senha. Aceite os termos e complete os dados da oficina nos primeiros passos.',
+      'O botão do Google na tela de entrada reconhece uma conta existente ou inicia o cadastro no primeiro acesso.',
     ],
   },
   {

@@ -9,9 +9,10 @@ import { z } from 'zod';
 import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { extractErrorMessage } from '@/lib/api/client';
+import { extractErrorCode, extractErrorMessage } from '@/lib/api/client';
 import { useGoogleLogin, useLogin } from '../hooks/use-auth';
 import { GoogleButton } from './GoogleButton';
+import { GOOGLE_SIGNUP_CREDENTIAL_KEY } from './GoogleSignup';
 import { useCallback } from 'react';
 
 const loginSchema = z.object({
@@ -26,7 +27,14 @@ export function LoginForm() {
   const login = useLogin();
   const googleLogin = useGoogleLogin();
   const onGoogleCredential = useCallback((credential: string) => {
-    googleLogin.mutate(credential, { onSuccess: () => router.push('/painel'), onError: (error) => toast.error(extractErrorMessage(error)) });
+    googleLogin.mutate(credential, { onSuccess: () => router.push('/painel'), onError: (error) => {
+      if (extractErrorCode(error) === 'USER_NOT_FOUND') {
+        sessionStorage.setItem(GOOGLE_SIGNUP_CREDENTIAL_KEY, credential);
+        router.push('/cadastro');
+        return;
+      }
+      toast.error(extractErrorMessage(error));
+    } });
   }, [googleLogin, router]);
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),

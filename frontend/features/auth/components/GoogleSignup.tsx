@@ -1,43 +1,47 @@
 'use client';
 
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 import { LEGAL_VERSION } from '@oficina/contracts';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { LegalAcceptance } from '@/features/privacy/components/LegalAcceptance';
 import { Form } from '@/components/ui/form';
-import { useForm } from 'react-hook-form';
+import { LegalAcceptance } from '@/features/privacy/components/LegalAcceptance';
 import { extractErrorMessage } from '@/lib/api/client';
 import { useGoogleSignup } from '../hooks/use-auth';
 import { GoogleButton } from './GoogleButton';
 
-type Values = { tenantName: string; tenantDocument: string; acceptedTerms: boolean };
+export const GOOGLE_SIGNUP_CREDENTIAL_KEY = 'ofix-google-signup-credential';
 
 export function GoogleSignup() {
   const router = useRouter();
   const signup = useGoogleSignup();
   const [credential, setCredential] = useState<string | null>(null);
-  const form = useForm<Values>({ defaultValues: { tenantName: '', tenantDocument: '', acceptedTerms: false } });
+  const form = useForm<{ acceptedTerms: boolean }>({ defaultValues: { acceptedTerms: false } });
   const handleCredential = useCallback((value: string) => setCredential(value), []);
+
+  // An unknown Google account selected on /entrar continues here without asking the user to choose it again.
+  useEffect(() => {
+    const pending = sessionStorage.getItem(GOOGLE_SIGNUP_CREDENTIAL_KEY);
+    if (pending) {
+      setCredential(pending);
+      sessionStorage.removeItem(GOOGLE_SIGNUP_CREDENTIAL_KEY);
+    }
+  }, []);
 
   return <div className="space-y-4">
     <GoogleButton text="signup_with" onCredential={handleCredential} />
-    {credential && <Form {...form}><form className="space-y-4" onSubmit={form.handleSubmit((values) => {
-      if (!values.tenantName.trim()) return form.setError('tenantName', { message: 'Informe o nome da oficina' });
-      if (!values.tenantDocument.trim()) return form.setError('tenantDocument', { message: 'Informe um CPF ou CNPJ válido' });
-      if (!values.acceptedTerms) return form.setError('acceptedTerms', { message: 'Aceite os Termos de uso para continuar.' });
-      signup.mutate({ ...values, credential, legalVersion: LEGAL_VERSION }, {
-        onSuccess: () => { toast.success('Oficina criada com sucesso!'); router.push('/primeiros-passos'); },
+    {credential && <Form {...form}><form className="space-y-4" onSubmit={form.handleSubmit(({ acceptedTerms }) => {
+      if (!acceptedTerms) return form.setError('acceptedTerms', { message: 'Aceite os Termos de uso para continuar.' });
+      signup.mutate({ credential, acceptedTerms, legalVersion: LEGAL_VERSION }, {
+        onSuccess: () => { toast.success('Conta criada! Vamos configurar sua oficina.'); router.push('/primeiros-passos'); },
         onError: (error) => toast.error(extractErrorMessage(error)),
       });
     })}>
-      <p className="text-sm text-text-muted">Complete os dados da oficina para criar sua conta com Google.</p>
-      <label className="block space-y-1 text-sm">Nome da oficina<Input {...form.register('tenantName')} />{form.formState.errors.tenantName && <span className="text-destructive">{form.formState.errors.tenantName.message}</span>}</label>
-      <label className="block space-y-1 text-sm">CPF ou CNPJ<Input {...form.register('tenantDocument')} />{form.formState.errors.tenantDocument && <span className="text-destructive">{form.formState.errors.tenantDocument.message}</span>}</label>
+      <p className="text-sm text-text-muted">Conta Google selecionada. Aceite os termos para continuar; os dados da oficina serão pedidos nos primeiros passos.</p>
       <LegalAcceptance form={form} />
-      <Button type="submit" disabled={signup.isPending}>{signup.isPending ? 'Criando oficina...' : 'Criar oficina com Google'}</Button>
+      <Button type="submit" disabled={signup.isPending}>{signup.isPending ? 'Criando conta...' : 'Continuar com Google'}</Button>
     </form></Form>}
   </div>;
 }

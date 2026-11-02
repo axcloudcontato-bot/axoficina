@@ -29,7 +29,7 @@ apiClient.interceptors.request.use((config) => {
 // Nunca deixa o refresh-and-retry abaixo tentar de novo em cima de
 // login/signup/refresh — evita loop (refresh falhando chamaria a si mesmo)
 // e evita renovar sessão no meio de um fluxo que ainda nem tem uma.
-const AUTH_ENDPOINTS = ['/api/v1/auth/login', '/api/v1/auth/signup', '/api/v1/auth/refresh'];
+const AUTH_ENDPOINTS = ['/api/v1/auth/login', '/api/v1/auth/signup', '/api/v1/auth/google/login', '/api/v1/auth/google/signup', '/api/v1/auth/refresh'];
 
 function isAuthEndpoint(url?: string): boolean {
   return Boolean(url && AUTH_ENDPOINTS.some((endpoint) => url.includes(endpoint)));

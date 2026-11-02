@@ -1,4 +1,5 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
+import { randomUUID } from 'node:crypto';
 import { LEGAL_VERSION, MIN_PASSWORD_LENGTH } from '@oficina/contracts';
 import type { SessionResponse } from '@oficina/contracts';
 import type {
@@ -61,7 +62,7 @@ export class AuthManager {
     if (await this.userRepository.byGoogleSubject(identity.subject)) {
       throw new AppException(AppErrorCode.EMAIL_ALREADY_EXISTS, 'Esta conta Google já está cadastrada. Entre na sua oficina.', HttpStatus.CONFLICT);
     }
-    return this.createSignup({ ...input, adminName: identity.name, adminEmail: identity.email }, identity.subject);
+    return this.createSignup({ ...input, tenantName: '', tenantDocument: `PENDING_GOOGLE_${randomUUID()}`, adminName: identity.name, adminEmail: identity.email }, identity.subject);
   }
 
   private async createSignup(input: Omit<SignupInput, 'password'> & { password?: string }, googleSubject?: string): Promise<SignupResponse> {
@@ -72,7 +73,10 @@ export class AuthManager {
       throw new AppException(AppErrorCode.VALIDATION_ERROR, `A senha deve ter pelo menos ${MIN_PASSWORD_LENGTH} caracteres.`);
     }
 
-    const documentCheck = this.documentValidator.validate(input.tenantDocument);
+    // Google does not know the workshop's legal document. First-access setup collects and validates it.
+    const documentCheck = googleSubject
+      ? { valid: true, normalized: input.tenantDocument }
+      : this.documentValidator.validate(input.tenantDocument);
     if (!documentCheck.valid) {
       throw new AppException(AppErrorCode.VALIDATION_ERROR, 'CPF/CNPJ inválido.');
     }
@@ -149,7 +153,7 @@ export class AuthManager {
   async googleLogin(credential: string, device?: string): Promise<AuthResponse> {
     const identity = await this.googleIdentity.verifyCredential(credential);
     const user = await this.userRepository.byGoogleSubject(identity.subject);
-    if (!user) throw new AppException(AppErrorCode.INVALID_CREDENTIALS, 'Conta Google não cadastrada. Crie sua oficina primeiro.', HttpStatus.UNAUTHORIZED);
+    if (!user) throw new AppException(AppErrorCode.USER_NOT_FOUND, 'Conta Google ainda não cadastrada.', HttpStatus.NOT_FOUND);
     if (user.status !== 'active') throw new AppException(AppErrorCode.USER_DISABLED, 'Esta conta está desabilitada.', HttpStatus.FORBIDDEN);
     if (!(await this.tenantRepository.byId(user.tenantId))) throw new AppException(AppErrorCode.ACCOUNT_CLOSED, 'Esta oficina foi encerrada. Fale com o suporte do Ofix.', HttpStatus.FORBIDDEN);
     const role = await this.roleRepository.byId(user.roleId);

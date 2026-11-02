@@ -1,6 +1,6 @@
 # Cadastro e entrada com Google
 
-O Ofix usa o botão oficial do Google Identity Services nas telas de cadastro e entrada. A conta Google fornece nome e e-mail confirmados. O cadastro ainda pede nome e CPF/CNPJ da oficina e o aceite dos termos atuais. Contas criadas com Google entram pelo mesmo botão, sem senha.
+O Ofix usa o botão oficial do Google Identity Services nas telas de cadastro e entrada. A conta Google fornece nome e e-mail confirmados. No primeiro acesso pela tela de entrada, o usuário segue para o cadastro com a conta Google já selecionada. Após aceitar os termos atuais, a conta é criada sem digitar nome, e-mail ou senha. O nome e CPF/CNPJ da oficina são informados na configuração inicial antes de usar o sistema. Contas criadas com Google entram pelo mesmo botão, sem senha.
 
 ## Configuração
 

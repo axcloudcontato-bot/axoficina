@@ -112,15 +112,26 @@ describe('AuthManager', () => {
       const deps = buildManager();
       deps.userRepository.byEmail.mockResolvedValue(baseUser);
       deps.tenantRepository.byId.mockResolvedValue({ id: baseUser.tenantId });
-      await expect(deps.manager.googleSignup({ credential: 'token', tenantName: 'Oficina', tenantDocument: '11444777000161', acceptedTerms: true, legalVersion: LEGAL_VERSION })).rejects.toThrow('Já existe uma conta com este e-mail');
+      await expect(deps.manager.googleSignup({ credential: 'token', acceptedTerms: true, legalVersion: LEGAL_VERSION })).rejects.toThrow('Já existe uma conta com este e-mail');
       expect(deps.prisma.transaction).not.toHaveBeenCalled();
     });
 
     it('uses only the linked Google subject for login', async () => {
       const deps = buildManager();
       deps.userRepository.byEmail.mockResolvedValue(baseUser);
-      await expect(deps.manager.googleLogin('token')).rejects.toThrow('Conta Google não cadastrada');
+      await expect(deps.manager.googleLogin('token')).rejects.toThrow('Conta Google ainda não cadastrada');
       expect(deps.userRepository.byEmail).not.toHaveBeenCalled();
+    });
+
+    it('creates a provisional workshop without asking Google for business details', async () => {
+      const deps = buildManager();
+      deps.roleRepository.byName.mockResolvedValue(ADMIN_ROLE);
+      deps.tenantRepository.insert.mockImplementation(async (input: { name: string; document: string }) => ({ id: 'tenant-1', ...input, plan: 'completo', status: 'active', createdAt: new Date() }));
+      deps.userRepository.insert.mockResolvedValue(baseUser);
+      const result = await deps.manager.googleSignup({ credential: 'token', acceptedTerms: true, legalVersion: LEGAL_VERSION });
+      expect(result.accessToken).toBe('access-token');
+      expect(deps.tenantRepository.insert).toHaveBeenCalledWith(expect.objectContaining({ name: '', document: expect.stringMatching(/^PENDING_GOOGLE_/) }), expect.anything());
+      expect(deps.userRepository.insert).toHaveBeenCalledWith(expect.objectContaining({ googleSubject: 'google-1', email: 'google@gmail.com', passwordHash: undefined }), expect.anything());
     });
   });
   describe('signup', () => {
