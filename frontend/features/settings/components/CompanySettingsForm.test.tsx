@@ -47,7 +47,7 @@ describe('CompanySettingsForm', () => {
   it('fills the address from the CEP without overwriting what was typed', async () => {
     useAuthStore.setState({ user: { id: 'u1', tenantId: 't1', name: 'Dono', email: 'dono@example.invalid', role: 'ADMIN', permissions: ['settings.view', 'settings.manage'], status: 'active', createdAt: new Date().toISOString() } });
     useSettings.mockReturnValue({ isLoading: false, isError: false, data: { company: { name: 'Oficina Boa', document: '11444777000161', addressStreet: 'Rua já digitada' } }, refetch: vi.fn() });
-    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue({ json: async () => ({ logradouro: 'Avenida Paulista', bairro: 'Bela Vista', localidade: 'São Paulo', uf: 'SP' }) } as Response);
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue({ ok: true, json: async () => ({ logradouro: 'Avenida Paulista', bairro: 'Bela Vista', localidade: 'São Paulo', uf: 'SP' }) } as Response);
     const { default: userEvent } = await import('@testing-library/user-event');
     const user = userEvent.setup();
     render(<CompanySettingsForm />);

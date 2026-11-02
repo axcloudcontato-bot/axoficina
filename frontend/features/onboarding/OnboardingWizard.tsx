@@ -10,7 +10,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { extractErrorMessage } from '@/lib/api/client';
-import { formatCNPJ, formatCPF, formatPhone } from '@/lib/format-br-document';
+import { lookupCep } from '@/lib/cep';
+import { maskDocument, maskPhone, maskPostalCode, onlyDigits } from '@/lib/format-br-document';
 import { cn } from '@/lib/utils';
 import { useBranding, useCompleteOnboarding, useSettings, useUpdateAgendaHours, useUpdateCompanySettings, useUpdateOrderDefaults } from '@/features/settings/hooks/use-settings';
 
@@ -19,11 +20,7 @@ const DAYS = [{ value: 1, label: 'Seg' }, { value: 2, label: 'Ter' }, { value: 3
 const selectClass = 'h-10 w-full rounded-button border border-input bg-background px-3 text-sm';
 const hourLabel = (hour: number) => `${String(hour).padStart(2, '0')}:00`;
 
-const digits = (value = '') => value.replace(/\D/g, '');
-const maskDocument = (value: string) => { const d = digits(value); return d.length === 11 ? formatCPF(d) : d.length === 14 ? formatCNPJ(d) : value; };
-const maskPhone = (value: string) => { const d = digits(value); return [10, 11].includes(d.length) ? formatPhone(d) : value; };
-const maskPostalCode = (value: string) => { const d = digits(value); return d.length === 8 ? `${d.slice(0, 5)}-${d.slice(5)}` : value; };
-const validPhone = (value?: string) => /^\d{10,13}$/.test(digits(value));
+const validPhone = (value?: string) => /^\d{10,13}$/.test(onlyDigits(value));
 
 // First access: the company is set up one short screen at a time. Each "Avançar" saves what the screen asked,
 // so leaving halfway keeps the answers and the guide resumes where the data stops.
@@ -61,13 +58,13 @@ export function OnboardingWizard() {
   if (!company) return <div className="h-96 animate-pulse rounded-card bg-muted" />;
 
   async function lookupPostalCode(value: string) {
-    if (digits(value).length !== 8) return;
+    const cep = onlyDigits(value);
+    if (cep.length !== 8) return;
     setFindingCep(true);
     try {
-      const response = await fetch(`https://viacep.com.br/ws/${digits(value)}/json/`);
-      const address = await response.json() as { erro?: boolean; logradouro?: string; bairro?: string; localidade?: string; uf?: string };
-      if (address.erro) return void setError('CEP não encontrado. Confira os números ou preencha o endereço abaixo.');
-      setCompany((current) => current && { ...current, addressStreet: current.addressStreet || address.logradouro || undefined, addressDistrict: current.addressDistrict || address.bairro || undefined, addressCity: current.addressCity || address.localidade || undefined, addressState: current.addressState || address.uf || undefined });
+      const address = await lookupCep(cep);
+      if (!address) return void setError('CEP não encontrado. Confira os números ou preencha o endereço abaixo.');
+      setCompany((current) => current && { ...current, addressStreet: current.addressStreet || address.street || undefined, addressDistrict: current.addressDistrict || address.neighborhood || undefined, addressCity: current.addressCity || address.city || undefined, addressState: current.addressState || address.state || undefined });
     } catch { /* the address is typed by hand when the lookup is out */ }
     finally { setFindingCep(false); }
   }

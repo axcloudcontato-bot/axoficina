@@ -59,6 +59,7 @@ Frontend `tsc` may show stale errors from `.next/types`; ignore them. Running th
 ## Workflow rules
 
 - Before pushing, run `pnpm turbo run lint typecheck` and grep `backend/test/*e2e*` for any default or behavior you changed (e2e cannot run locally; CI catches it). Watch the CI run after pushing to `main`.
+- Backend `pnpm test` enforces a coverage threshold (`coverageThreshold` in `backend/package.json`); after changing a controller route or its decorators regenerate `docs/api/endpoints.md` with `UPDATE_API_DOCS=1 pnpm --filter @oficina/backend exec jest src/shared/api-docs` (a unit test fails otherwise). See `docs/testes.md`.
 - Never commit `Logo/` or `docs/auditoria-seo/` (untracked on purpose).
 - Commit messages follow Conventional Commits (`feat(scope):`, `fix(scope):`).
 - Production deploy on the Debian server: `cd /opt/oficina-mecanica && bash deploy/debian/update.sh` (applies migrations); env-only changes: `docker compose --env-file deploy/debian/.env.production -f deploy/debian/compose.production.yml up -d backend`. Back up first with `deploy/debian/backup.sh` before destructive operations. Health: `curl http://127.0.0.1:3006/health`. See `docs/deployment-debian.md`.

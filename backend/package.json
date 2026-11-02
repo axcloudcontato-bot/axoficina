@@ -8,7 +8,7 @@
     "start": "node dist/main.js",
     "lint": "eslint \"src/**/*.ts\" \"test/**/*.ts\"",
     "typecheck": "tsc --noEmit",
-    "test": "jest --passWithNoTests && pnpm run test:e2e",
+    "test": "jest --coverage --passWithNoTests && pnpm run test:e2e",
     "test:e2e": "jest --config ./test/jest-e2e.json"
   },
   "dependencies": {
@@ -70,6 +70,18 @@
       "**/*.(t|j)s"
     ],
     "coverageDirectory": "../coverage",
+    "coverageReporters": [
+      "text-summary",
+      "json-summary"
+    ],
+    "coverageThreshold": {
+      "global": {
+        "statements": 50,
+        "branches": 56,
+        "functions": 47,
+        "lines": 51
+      }
+    },
     "testEnvironment": "node"
   }
 }

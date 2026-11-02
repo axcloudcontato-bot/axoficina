@@ -14,7 +14,8 @@ export default defineConfig({
   },
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
   webServer: {
-    command: 'pnpm run build && pnpm run start',
+    // In CI the workflow builds first (a build inside the 120 s start-up limit would time out).
+    command: process.env.CI ? 'pnpm run start' : 'pnpm run build && pnpm run start',
     url: 'http://localhost:3000',
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,

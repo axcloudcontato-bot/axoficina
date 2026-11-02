@@ -10,7 +10,8 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { extractErrorMessage } from '@/lib/api/client';
 import { useOrderDefaults, useSettings, useUpdateCompanySettings } from '../hooks/use-settings';
-import { formatCNPJ, formatCPF, formatPhone } from '@/lib/format-br-document';
+import { lookupCep } from '@/lib/cep';
+import { maskDocument, maskPhone, maskPostalCode, onlyDigits } from '@/lib/format-br-document';
 import { generateQuotePdf } from '@/features/service-orders/quote-pdf';
 import type { ServiceOrderResponse } from '@oficina/contracts';
 import { useUnsavedSettings } from '../hooks/use-unsaved-settings';
@@ -18,11 +19,6 @@ import { hasPermission } from '@/features/auth/permissions';
 import { useAuthStore } from '@/stores/auth-store';
 
 const EMPTY: CompanySettingsResponse = { name: '', document: '' };
-
-// Shown the way people read them once the field is left; stored the same way.
-const maskDocument = (value: string) => { const digits = value.replace(/\D/g, ''); return digits.length === 11 ? formatCPF(digits) : digits.length === 14 ? formatCNPJ(digits) : value; };
-const maskPhone = (value: string) => { const digits = value.replace(/\D/g, ''); return [10, 11].includes(digits.length) ? formatPhone(digits) : value; };
-const maskPostalCode = (value: string) => { const digits = value.replace(/\D/g, ''); return digits.length === 8 ? `${digits.slice(0, 5)}-${digits.slice(5)}` : value; };
 
 // A quote with made-up items, to see the logo, data, terms and footer as the customer will.
 const SAMPLE_ORDER = {
@@ -43,8 +39,7 @@ export function CompanySettingsForm() {
   const canManage = hasPermission(user, 'settings.manage');
   useEffect(() => { if (settings.data && !loaded) { setForm({ ...settings.data.company, document: maskDocument(settings.data.company.document) }); setLoaded(true); } }, [settings.data, loaded]);
   // The document is stored as digits; the mask on screen is not a change.
-  const digitsOnly = (value = '') => value.replace(/\D/g, '');
-  const dirty = loaded && JSON.stringify({ ...form, document: digitsOnly(form.document) }) !== JSON.stringify({ ...settings.data?.company, document: digitsOnly(settings.data?.company.document) });
+  const dirty = loaded && JSON.stringify({ ...form, document: onlyDigits(form.document) }) !== JSON.stringify({ ...settings.data?.company, document: onlyDigits(settings.data?.company.document) });
   useUnsavedSettings(dirty && !update.isPending);
   const set = (key: keyof CompanySettingsResponse, value: string | undefined) => setForm((current) => ({ ...current, [key]: value }));
   const defaults = useOrderDefaults();
@@ -52,14 +47,13 @@ export function CompanySettingsForm() {
 
   // Fills street, district, city and state from the CEP, only where they are still empty.
   async function lookupPostalCode(value: string) {
-    const digits = value.replace(/\D/g, '');
+    const digits = onlyDigits(value);
     if (digits.length !== 8) return;
     setFindingCep(true);
     try {
-      const response = await fetch(`https://viacep.com.br/ws/${digits}/json/`);
-      const address = await response.json() as { erro?: boolean; logradouro?: string; bairro?: string; localidade?: string; uf?: string };
-      if (address.erro) { toast.error('CEP não encontrado. Confira os números.'); return; }
-      setForm((current) => ({ ...current, addressStreet: current.addressStreet || address.logradouro || undefined, addressDistrict: current.addressDistrict || address.bairro || undefined, addressCity: current.addressCity || address.localidade || undefined, addressState: current.addressState || address.uf || undefined }));
+      const address = await lookupCep(digits);
+      if (!address) { toast.error('CEP não encontrado. Confira os números.'); return; }
+      setForm((current) => ({ ...current, addressStreet: current.addressStreet || address.street || undefined, addressDistrict: current.addressDistrict || address.neighborhood || undefined, addressCity: current.addressCity || address.city || undefined, addressState: current.addressState || address.state || undefined }));
     } catch { /* without the lookup the address is typed by hand, as before */ }
     finally { setFindingCep(false); }
   }

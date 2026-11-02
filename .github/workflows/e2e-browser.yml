@@ -1,0 +1,104 @@
+name: E2E browser
+
+# Playwright specs (frontend/e2e) against a real backend, Postgres and Redis. Manual only for now: run it from the
+# Actions tab ("Run workflow"). Once it passes reliably, add `push` / `pull_request` triggers to run it on every change.
+on:
+  workflow_dispatch:
+
+env:
+  TURBO_TELEMETRY_DISABLED: "1"
+
+jobs:
+  playwright:
+    name: Playwright (chromium)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: oficina
+          POSTGRES_PASSWORD: oficina_ci_password
+          POSTGRES_DB: oficina_saas
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U oficina"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://oficina:oficina_ci_password@localhost:5432/oficina_saas?schema=public
+      REDIS_URL: redis://localhost:6379
+      JWT_SECRET: ci_test_secret_do_not_use_in_prod
+      SETTINGS_ENCRYPTION_KEY: ci_test_encryption_key_do_not_use_in_prod_0123456789
+      CORS_ORIGIN: http://localhost:3000
+      FRONTEND_URL: http://localhost:3000
+      NEXT_PUBLIC_API_URL: http://localhost:3001
+      BACKEND_PORT: "3001"
+      # Every browser test signs up from the same IP: the 5-per-minute auth limit would fail them.
+      AUTH_THROTTLE_LIMIT: "1000"
+      THROTTLE_LIMIT: "10000"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: "20"
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+
+      - name: Install dependencies (frozen lockfile)
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma Client, migrate and seed
+        run: |
+          pnpm --filter @oficina/database run generate
+          pnpm --filter @oficina/database run migrate:deploy
+          pnpm --filter @oficina/database run seed
+
+      - name: Build contracts, backend and frontend
+        run: |
+          pnpm --filter @oficina/contracts build
+          pnpm --filter @oficina/backend build
+          pnpm --filter @oficina/frontend build
+
+      - name: Start the backend
+        run: |
+          # NODE_ENV=test keeps the background jobs (FIPE sync, reminders, purge) off, as in the integration tests.
+          NODE_ENV=test nohup node backend/dist/main.js > backend.log 2>&1 &
+          for attempt in $(seq 1 30); do
+            curl -fsS http://localhost:3001/health && exit 0
+            sleep 2
+          done
+          cat backend.log
+          exit 1
+
+      - name: Install Chromium for Playwright
+        run: pnpm --filter @oficina/frontend exec playwright install --with-deps chromium
+
+      - name: Run Playwright
+        run: pnpm --filter @oficina/frontend run test:e2e
+
+      - name: Upload the report and the backend log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-results
+          path: |
+            frontend/test-results
+            backend.log
+          if-no-files-found: ignore
+          retention-days: 7

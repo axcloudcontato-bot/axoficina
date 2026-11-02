@@ -17,7 +17,7 @@ ERP SaaS multi-tenant para oficinas mecânicas.
 - **Backend:** NestJS + TypeScript + Prisma + PostgreSQL + Redis + BullMQ
 - **Frontend:** Next.js (App Router) + Tailwind CSS + shadcn/ui + TanStack Query + Zustand
 - **Monorepo:** Turborepo + pnpm workspaces
-- **Infra:** Docker Compose (local) · Railway (staging) · AWS ECS Fargate + RDS (produção)
+- **Infra:** Docker Compose (local e produção). A produção roda num servidor Debian com Docker Compose, Caddy e Cloudflare Tunnel (`deploy/debian`); não há staging nem AWS.
 
 Arquitetura completa: [`docs/superpowers/specs/2026-07-14-arquitetura-mvp-design.md`](docs/superpowers/specs/2026-07-14-arquitetura-mvp-design.md).
 
@@ -58,8 +58,13 @@ docker compose -f docker/docker-compose.yml --project-directory . up
 
 ## Produção em Debian
 
-A stack de produção isolada, com HTTPS automático, migrações e backup, está
-documentada em [`docs/deployment-debian.md`](docs/deployment-debian.md).
+A stack de produção, com migrações e atualização por `update.sh`, está documentada em
+[`docs/deployment-debian.md`](docs/deployment-debian.md). Operação do dia a dia:
+
+- Backup diário fora do servidor, restauração e prazo de guarda: [`docs/backup-offsite.md`](docs/backup-offsite.md).
+- Monitoramento de disponibilidade e de erros (UptimeRobot, Sentry): [`docs/observabilidade.md`](docs/observabilidade.md).
+- Isolamento entre oficinas e política de scripts (CSP): [`docs/seguranca.md`](docs/seguranca.md).
+- Endpoints da API: [`docs/api/endpoints.md`](docs/api/endpoints.md).
 
 ## Comandos úteis
 
@@ -79,7 +84,8 @@ frontend/            Next.js App Router
 packages/contracts/  DTOs/tipos compartilhados entre backend e frontend
 database/            Schema e migrations do Prisma
 docker/              docker-compose e configuração do NGINX
-infra/               Terraform (AWS) — cresce pós-MVP
+deploy/debian/       Produção: compose, Caddy, scripts de deploy, backup e restauração
+infra/               Placeholder (sem Terraform; a produção não usa AWS)
 docs/                Documentação (arquitetura, API, roadmap)
 scripts/             Scripts de setup e seed
 .planning/           Specs, plans e epics (workflow Spartan)
