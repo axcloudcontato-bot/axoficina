@@ -31,6 +31,8 @@ function flattenValidationErrors(errors: ValidationError[], parentPath = ''): Ap
 // snake_case sem o snakeToCamelMiddleware, testando um caminho que a
 // aplicação real nunca exercita.
 export function configureApp(app: INestApplication): void {
+  // Browsers post CSP violation reports as application/csp-report (JSON), which the parser below would skip. Small body.
+  app.use('/api/v1/csp-report', json({ type: () => true, limit: '16kb' }));
   // The logo (up to 500 KiB) and payment receipts (up to 2 MB) travel as base64 inside JSON, a third bigger than
   // the file. The 100 KB default refused anything past ~70 KB; each endpoint still checks its own file size.
   app.use(json({ limit: '4mb', verify: (req, _res, buffer) => {

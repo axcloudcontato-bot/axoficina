@@ -35,5 +35,10 @@
 		# No scripts restricted here (Next.js inline scripts); this blocks plugins, <base> hijacking, framing and
 		# forms posting elsewhere.
 		Content-Security-Policy "object-src 'none'; base-uri 'self'; frame-ancestors 'self'; form-action 'self'"
+		# Full policy in report-only mode: nothing is blocked, the browser reports what it WOULD block to the backend log
+		# (docker compose logs backend | grep CSP). After a few days without own-origin reports, switch the name to
+		# Content-Security-Policy to enforce it (docs/seguranca.md). 'unsafe-inline' stays for Next.js inline scripts and
+		# styles; viacep.com.br is the CEP lookup and ingest.de.sentry.io the optional error monitoring.
+		Content-Security-Policy-Report-Only "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' https://viacep.com.br https://*.ingest.de.sentry.io; media-src 'self' blob:; frame-src 'none'; worker-src 'self' blob:; manifest-src 'self'; report-uri /api/v1/csp-report"
 	}
 }
