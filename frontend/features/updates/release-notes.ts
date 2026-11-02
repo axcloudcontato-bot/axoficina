@@ -1,5 +1,12 @@
 export const RELEASE_NOTES = [
   {
+    id: '2026-11-02-termos-oficina', date: '2026-11-02', title: 'Termos sugeridos para orçamentos e ordens de serviço',
+    items: [
+      'A configuração inicial traz termos editáveis sobre aprovação do orçamento, serviços adicionais, prazos, garantia, peças substituídas, retirada e guarda do veículo.',
+      'Em Configurações, Padrões da OS, use a sugestão quando quiser. Os termos completos aparecem nos documentos impressos.',
+    ],
+  },
+  {
     id: '2026-11-02-horarios-especiais', date: '2026-11-02', title: 'Horários especiais na configuração da oficina',
     items: [
       'Na configuração inicial, defina horários diferentes para sábado, domingo ou qualquer outro dia da semana.',

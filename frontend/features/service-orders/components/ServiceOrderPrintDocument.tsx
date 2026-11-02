@@ -191,7 +191,7 @@ function ApprovalCopy({
           {serviceOrder.discountCents > 0 && <><span>Desconto</span><strong className="text-right">-{formatCurrencyBRL(serviceOrder.discountCents)}</strong></>}
           <span className="border-t border-slate-500 pt-1 font-black">Total</span><strong className="border-t border-slate-500 pt-1 text-right text-base">{formatCurrencyBRL(serviceOrder.totalAmountCents)}</strong>
         </div>
-        {(defaults?.quoteValidityDays || defaults?.documentTerms) && <div className="mt-2 space-y-0.5 text-[10px] leading-4 text-slate-700">{defaults?.quoteValidityDays ? <p><strong>Validade do orçamento:</strong> {quoteValidity(defaults.quoteValidityDays)}</p> : null}{defaults?.documentTerms && <p className="line-clamp-3 whitespace-pre-line">{defaults.documentTerms}</p>}</div>}
+        {(defaults?.quoteValidityDays || defaults?.documentTerms) && <div className="mt-2 space-y-0.5 text-[10px] leading-4 text-slate-700">{defaults?.quoteValidityDays ? <p><strong>Validade do orçamento:</strong> {quoteValidity(defaults.quoteValidityDays)}</p> : null}{defaults?.documentTerms && <p className="whitespace-pre-line">{defaults.documentTerms}</p>}</div>}
         <div className="mt-auto grid grid-cols-2 gap-10 pb-1 text-center text-[11px]">
           <p className="border-t border-slate-600 pt-1.5">Assinatura do cliente — aprovação</p>
           <p className="border-t border-slate-600 pt-1.5">Data</p>

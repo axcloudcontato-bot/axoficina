@@ -15,6 +15,7 @@ import { maskDocument, maskPhone, maskPostalCode, onlyDigits } from '@/lib/forma
 import { cn } from '@/lib/utils';
 import { useBranding, useCompleteOnboarding, useSettings, useUpdateAgendaHours, useUpdateCompanySettings, useUpdateOrderDefaults } from '@/features/settings/hooks/use-settings';
 import { SpecialDatesEditor } from '@/features/settings/components/SpecialDatesEditor';
+import { SUGGESTED_WORKSHOP_TERMS } from '@/features/settings/workshop-terms';
 
 const STEPS = ['Sua oficina', 'Contato', 'Endereço', 'Funcionamento', 'Documentos', 'Pronto'] as const;
 const DAYS = [{ value: 1, label: 'Seg' }, { value: 2, label: 'Ter' }, { value: 3, label: 'Qua' }, { value: 4, label: 'Qui' }, { value: 5, label: 'Sex' }, { value: 6, label: 'Sáb' }, { value: 0, label: 'Dom' }];
@@ -40,7 +41,7 @@ export function OnboardingWizard() {
   const [hours, setHours] = useState<WizardHours>({ ...DEFAULT_AGENDA_HOURS, bays: '' });
   const [warranty, setWarranty] = useState('90');
   const [validity, setValidity] = useState('7');
-  const [terms, setTerms] = useState('');
+  const [terms, setTerms] = useState(SUGGESTED_WORKSHOP_TERMS);
   const [findingCep, setFindingCep] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -50,7 +51,7 @@ export function OnboardingWizard() {
     const agenda = branding.data.agendaHours;
     if (agenda) setHours({ ...agenda, bays: agenda.bays ? String(agenda.bays) : '' });
     const defaults = branding.data.orderDefaults;
-    if (defaults) { if (defaults.defaultWarrantyDays != null) setWarranty(String(defaults.defaultWarrantyDays)); if (defaults.quoteValidityDays != null) setValidity(String(defaults.quoteValidityDays)); setTerms(defaults.documentTerms ?? ''); }
+    if (defaults) { if (defaults.defaultWarrantyDays != null) setWarranty(String(defaults.defaultWarrantyDays)); if (defaults.quoteValidityDays != null) setValidity(String(defaults.quoteValidityDays)); setTerms(defaults.documentTerms ?? SUGGESTED_WORKSHOP_TERMS); }
   }, [settings.data, branding.data, company]);
 
   const saving = updateCompany.isPending || updateAgenda.isPending || updateDefaults.isPending || complete.isPending;
@@ -215,7 +216,7 @@ export function OnboardingWizard() {
             <Field label="Garantia dos serviços (dias)"><Input autoFocus inputMode="numeric" value={warranty} onChange={(e) => setWarranty(e.target.value.replace(/\D/g, ''))} /></Field>
             <Field label="Validade do orçamento (dias)"><Input inputMode="numeric" value={validity} onChange={(e) => setValidity(e.target.value.replace(/\D/g, ''))} /></Field>
           </div>
-          <Field label="Termos e condições (opcional)"><Textarea maxLength={2000} value={terms} onChange={(e) => setTerms(e.target.value)} placeholder="Ex.: Peças trocadas ficam à disposição do cliente por 7 dias." /></Field>
+          <Field label="Termos e condições"><Textarea maxLength={2000} rows={12} value={terms} onChange={(e) => setTerms(e.target.value)} /><p className="text-xs text-text-muted">Sugestão editável para proteger a oficina e informar o cliente. Confira suas práticas antes de usar. {terms.length}/2000</p></Field>
           <Field label="Frase no rodapé dos documentos (opcional)"><Textarea maxLength={500} value={company.documentFooter ?? ''} onChange={(e) => set('documentFooter', e.target.value)} placeholder="Ex.: Obrigado pela preferência." /></Field>
         </>}
 

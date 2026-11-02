@@ -68,7 +68,7 @@ describe('OnboardingWizard', () => {
     await waitFor(() => expect(mocks.agenda).toHaveBeenCalledWith(expect.objectContaining({ openHour: 8, closeHour: 18, workDays: [1, 2, 3, 4, 5, 6], bays: null, dayHours: { '6': { openHour: 8, closeHour: 12 } }, dateHours: { '2030-12-25': { openHour: 9, closeHour: 13 } } })));
     expect(await screen.findByText('Passo 5 de 6: Documentos')).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Avançar' }));
-    await waitFor(() => expect(mocks.defaults).toHaveBeenCalledWith({ defaultWarrantyDays: 90, quoteValidityDays: 7, documentTerms: null, acceptedPaymentMethods: [] }));
+    await waitFor(() => expect(mocks.defaults).toHaveBeenCalledWith({ defaultWarrantyDays: 90, quoteValidityDays: 7, documentTerms: expect.stringContaining('A execução dos serviços'), acceptedPaymentMethods: [] }));
     expect(await screen.findByText('Tudo pronto!')).toBeInTheDocument();
     expect(screen.getByText(/Rua das Flores/)).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Entrar no sistema' }));
