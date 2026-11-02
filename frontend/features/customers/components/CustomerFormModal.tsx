@@ -291,7 +291,7 @@ export function CustomerFormModal({ open, onOpenChange, customer, onCreated, pre
     <Dialog open={open} modal={presentation !== 'page'} onOpenChange={onOpenChange}>
       <DialogContent
         data-page={presentation === 'page' ? true : undefined}
-        className={presentation === 'page' ? 'max-h-[92vh]' : 'max-h-[92vh] sm:max-w-5xl lg:max-w-6xl'}
+        className={presentation === 'page' ? 'max-h-[92vh]' : 'sm:flex sm:h-[min(760px,calc(100dvh-2rem))] sm:max-h-[calc(100dvh-2rem)] sm:max-w-5xl sm:flex-col sm:overflow-hidden lg:max-w-6xl'}
       >
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2.5">
@@ -307,7 +307,7 @@ export function CustomerFormModal({ open, onOpenChange, customer, onCreated, pre
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit, onInvalid)} className="flex flex-col gap-4">
+          <form onSubmit={form.handleSubmit(onSubmit, onInvalid)} className="flex flex-col gap-4 sm:min-h-0 sm:flex-1">
             <p className="rounded-button bg-muted p-3 text-xs leading-5 text-text-muted">Para o cadastro básico, informe nome e telefone. CPF/CNPJ e os demais dados são opcionais: preencha apenas o necessário ao atendimento ou a uma obrigação legal. Dados de contato não autorizam marketing. <Link href="/privacidade" target="_blank" rel="noopener noreferrer" className="text-primary underline">Política de privacidade</Link>.</p>
             {isGuidedCreate ? (
               <div className="flex flex-col gap-5">
@@ -325,8 +325,8 @@ export function CustomerFormModal({ open, onOpenChange, customer, onCreated, pre
                 {activeTab === 'preferences' && <CustomerPreferencesTab form={form} />}
                 {activeTab === 'notes' && <CustomerNotesTab form={form} />}
               </div>
-            ) : <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsList className="flex w-full justify-start gap-1 overflow-x-auto p-1">
+            ) : <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-col sm:min-h-0 sm:flex-1">
+              <TabsList className="flex w-full shrink-0 justify-start gap-1 overflow-x-auto p-1">
                 <TabsTrigger className="shrink-0" value="general">Dados Gerais{hasGeneralErrors && <WarningCircle className="ml-1.5 size-3.5 text-danger" aria-label="com erros" />}</TabsTrigger>
                 <TabsTrigger className="shrink-0" value="address">Endereço{hasAddressErrors && <WarningCircle className="ml-1.5 size-3.5 text-danger" aria-label="com erros" />}</TabsTrigger>
                 <TabsTrigger className="shrink-0" value="contact">Contato{hasContactErrors && <WarningCircle className="ml-1.5 size-3.5 text-danger" aria-label="com erros" />}</TabsTrigger>
@@ -334,12 +334,7 @@ export function CustomerFormModal({ open, onOpenChange, customer, onCreated, pre
                 <TabsTrigger className="shrink-0" value="notes">Observações{hasNotesErrors && <WarningCircle className="ml-1.5 size-3.5 text-danger" aria-label="com erros" />}</TabsTrigger>
                 <TabsTrigger className="shrink-0" value="history">Histórico</TabsTrigger>
               </TabsList>
-              {/* Altura fixa (do tamanho da maior aba — Endereço): o conteúdo de
-                  cada aba tem um tamanho diferente. Sem isso, a altura do modal
-                  mudava a cada troca de aba e, como ele é centralizado na tela,
-                  parecia "pular" de posição. Fixar só esta área (em vez do
-                  modal inteiro) evita sobrar espaço vazio nas abas curtas. */}
-              <div className="h-[380px] overflow-y-auto pr-1 pt-1">
+              <div className="h-[380px] overflow-y-auto pr-1 pt-1 sm:h-auto sm:min-h-0 sm:flex-1">
                 <TabsContent value="general">
                   <CustomerGeneralTab form={form} isEditing={isEditing} />
                 </TabsContent>

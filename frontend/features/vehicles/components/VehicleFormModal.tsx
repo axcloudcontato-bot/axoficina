@@ -80,6 +80,7 @@ export function VehicleFormModal({ open, onOpenChange, vehicle, initialCustomer,
   // Lowering the odometer is almost always a typo: it asks first.
   const [lowerMileage, setLowerMileage] = useState(false);
   const pendingValues = useRef<VehicleFormValues | undefined>(undefined);
+  const lastResetKey = useRef<string | null>(null);
 
   // Só busca a lista de clientes quando o modal de criação está aberto —
   // em edição o cliente não é selecionável, não precisa da query.
@@ -92,8 +93,14 @@ export function VehicleFormModal({ open, onOpenChange, vehicle, initialCustomer,
 
   useEffect(() => {
     if (!open) {
+      lastResetKey.current = null;
       return;
     }
+    // Parent screens often pass new object instances after a background refresh.
+    // Reset only when opening a different record or receiving different seed data.
+    const resetKey = JSON.stringify({ vehicleId: vehicle?.id, customerId: initialCustomer?.id, initialValues });
+    if (lastResetKey.current === resetKey) return;
+    lastResetKey.current = resetKey;
     form.reset(
       vehicle
         ? {
@@ -110,7 +117,7 @@ export function VehicleFormModal({ open, onOpenChange, vehicle, initialCustomer,
           }
         : { ...EMPTY_VALUES, ...initialValues, customerId: initialCustomer?.id ?? '' },
     );
-  }, [open, vehicle, initialCustomer, initialValues, form]);
+  });
 
   // Year and chassis are only checked when they changed, so a record saved before these rules can still be edited.
   function onSubmit(values: VehicleFormValues) {

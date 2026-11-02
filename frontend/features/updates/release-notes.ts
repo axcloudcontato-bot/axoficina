@@ -1,5 +1,24 @@
 export const RELEASE_NOTES = [
   {
+    id: '2026-11-02-marca-modelo-veiculo', date: '2026-11-02', title: 'Correção da marca e modelo no cadastro de veículos',
+    items: [
+      'A escolha de marca e modelo na lista FIPE agora atualiza a validação e permanece preenchida quando a tela recebe novos dados em segundo plano.',
+    ],
+  },
+  {
+    id: '2026-11-02-modal-cliente-ampliado', date: '2026-11-02', title: 'Mais espaço para editar clientes',
+    items: [
+      'O modal de clientes usa a altura disponível no desktop e exibe mais campos das abas Endereço e Preferências sem rolagem.',
+    ],
+  },
+  {
+    id: '2026-11-02-catalogo-ampliado', date: '2026-11-02', title: 'Catálogo padrão ampliado',
+    items: [
+      'O botão Carregar itens padrão de oficina agora oferece mais serviços, peças e produtos organizados por sistemas do veículo.',
+      'A carga adiciona somente itens ausentes, mantém os cadastros da oficina e deixa os preços para cada empresa definir.',
+    ],
+  },
+  {
     id: '2026-11-02-aviso-plano-rodape', date: '2026-11-02', title: 'Aviso de teste grátis no rodapé',
     items: [
       'A mensagem para escolher um plano agora fica no rodapé das telas do sistema. Avisos urgentes sobre acesso e limites continuam no topo.',

@@ -132,6 +132,29 @@ describe('VehicleFormModal', () => {
     await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
   });
 
+  it('keeps FIPE selections after a parent refresh and clears old required errors', async () => {
+    vi.mocked(vehiclesApi.create).mockResolvedValue({ vehicle: editingVehicle });
+    const user = userEvent.setup();
+    const client = new QueryClient({ defaultOptions: { mutations: { retry: false }, queries: { retry: false } } });
+    const renderModal = () => <QueryClientProvider client={client}><VehicleFormModal open onOpenChange={() => {}} initialCustomer={{ ...customer }} initialValues={{ plate: 'ABC1D23' }} /></QueryClientProvider>;
+    const view = render(renderModal());
+
+    await user.click(screen.getByRole('button', { name: /cadastrar veículo/i }));
+    expect(await screen.findByText('Informe a marca')).toBeInTheDocument();
+    expect(screen.getByText('Informe o modelo')).toBeInTheDocument();
+
+    await user.click(screen.getByLabelText(/marca/i));
+    await user.click(await screen.findByRole('option', { name: 'Fiat' }));
+    await user.click(screen.getByLabelText(/modelo/i));
+    await user.click(await screen.findByRole('option', { name: 'Uno' }));
+    await waitFor(() => expect(screen.queryByText('Informe a marca')).not.toBeInTheDocument());
+    await waitFor(() => expect(screen.queryByText('Informe o modelo')).not.toBeInTheDocument());
+
+    view.rerender(renderModal());
+    await user.click(screen.getByRole('button', { name: /cadastrar veículo/i }));
+    await waitFor(() => expect(vehiclesApi.create).toHaveBeenCalledWith(expect.objectContaining({ brand: 'Fiat', model: 'Uno', plate: 'ABC1D23' })));
+  });
+
   it('submits only the editable fields in edit mode, without customerId', async () => {
     vi.mocked(vehiclesApi.update).mockResolvedValue({ vehicle: editingVehicle });
     const onOpenChange = vi.fn();

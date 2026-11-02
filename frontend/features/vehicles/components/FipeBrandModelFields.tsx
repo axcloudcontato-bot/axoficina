@@ -38,14 +38,18 @@ export function FipeBrandModelFields({ form, isEditing, initialBrand, initialMod
 
   const { data: brandsData, isLoading: isLoadingBrands } = useFipeBrands(category);
   const { data: modelsData, isLoading: isLoadingModels } = useFipeModels(selectedBrandId, { enabled: brandMode === 'select' });
+  const setSelection = (field: 'brand' | 'model', value: string) => form.setValue(field, value, {
+    shouldDirty: true,
+    shouldValidate: form.formState.isSubmitted,
+  });
 
   function resetBrandAndModel() {
     setSelectedBrandId(undefined);
     setSelectedModelId(undefined);
     setBrandMode('select');
     setModelMode('select');
-    form.setValue('brand', '');
-    form.setValue('model', '');
+    setSelection('brand', '');
+    setSelection('model', '');
   }
 
   function handleCategoryChange(value: string) {
@@ -60,17 +64,17 @@ export function FipeBrandModelFields({ form, isEditing, initialBrand, initialMod
     if (value === OTHER_OPTION_VALUE) {
       setBrandMode('manual');
       setSelectedBrandId(undefined);
-      form.setValue('brand', '');
+      setSelection('brand', '');
     } else {
       const brand = brandsData?.brands.find((item) => item.id === value);
       setSelectedBrandId(value);
-      form.setValue('brand', brand?.name ?? '');
+      setSelection('brand', brand?.name ?? '');
     }
     // Trocar de marca invalida o modelo escolhido antes.
     if (!keepInitialModel) {
       setModelMode(value === OTHER_OPTION_VALUE ? 'manual' : 'select');
       setSelectedModelId(undefined);
-      form.setValue('model', '');
+      setSelection('model', '');
     }
   }
 
@@ -78,27 +82,27 @@ export function FipeBrandModelFields({ form, isEditing, initialBrand, initialMod
     if (value === OTHER_OPTION_VALUE) {
       setModelMode('manual');
       setSelectedModelId(undefined);
-      form.setValue('model', '');
+      setSelection('model', '');
     } else {
       const model = modelsData?.models.find((item) => item.id === value);
       setSelectedModelId(value);
-      form.setValue('model', model?.name ?? '');
+      setSelection('model', model?.name ?? '');
     }
   }
 
   function switchBrandToFipeList() {
     setBrandMode('select');
     setSelectedBrandId(undefined);
-    form.setValue('brand', '');
+    setSelection('brand', '');
     setModelMode('select');
     setSelectedModelId(undefined);
-    form.setValue('model', '');
+    setSelection('model', '');
   }
 
   function switchModelToFipeList() {
     setModelMode('select');
     setSelectedModelId(undefined);
-    form.setValue('model', '');
+    setSelection('model', '');
   }
 
   return (

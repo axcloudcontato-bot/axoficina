@@ -63,6 +63,13 @@ describe('CatalogManager', () => {
 
   it('covers the three kinds a workshop sells', () => {
     expect(new Set(DEFAULT_CATALOG.map((item) => item.type))).toEqual(new Set(['PART', 'PRODUCT', 'LABOR']));
+    expect(DEFAULT_CATALOG.length).toBeGreaterThan(450);
+    expect(DEFAULT_CATALOG.every((item) => item.name.length <= 120 && item.category.length <= 60)).toBe(true);
+    expect(DEFAULT_CATALOG.some((item) => item.type === 'LABOR' && item.category === 'Arrefecimento')).toBe(true);
+    expect(DEFAULT_CATALOG.some((item) => item.type === 'PART' && item.category === 'Injeção e combustível')).toBe(true);
+    expect(DEFAULT_CATALOG.some((item) => item.type === 'PRODUCT' && item.name === 'ARLA 32')).toBe(true);
+    expect(DEFAULT_CATALOG.some((item) => item.type === 'LABOR' && item.category === 'Diesel')).toBe(true);
+    expect(DEFAULT_CATALOG.some((item) => item.type === 'LABOR' && item.category === 'Híbridos e elétricos')).toBe(true);
   });
 
   describe('cost and service details', () => {
@@ -108,6 +115,7 @@ describe('CatalogManager', () => {
       await manager.seedDefaults(user);
       const [, batch] = repository.createMany.mock.calls[0];
       expect(batch.find((item: { name: string }) => item.name === 'Troca de óleo e filtro')).toMatchObject({ careServiceKey: 'OIL_CHANGE' });
+      expect(batch.find((item: { name: string }) => item.name === 'Troca do fluido de freio')).toMatchObject({ careServiceKey: 'BRAKE_FLUID' });
       expect(batch.find((item: { name: string }) => item.name === 'Pastilha de freio dianteira')).toMatchObject({ careServiceKey: null });
     });
   });
