@@ -2,7 +2,7 @@
 # Atualização rápida: baixa o código e reconstrói só o que mudou.
 # Use deploy.sh para uma implantação completa (primeira vez ou após mudar o ambiente).
 #   bash deploy/debian/update.sh            # só o que mudou desde o último pull
-#   bash deploy/debian/update.sh --force    # reconstrói backend e frontend mesmo sem mudanças
+#   bash deploy/debian/update.sh --force    # reconstrói backend e frontend e recria o Caddy mesmo sem mudanças
 set -Eeuo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
@@ -25,7 +25,7 @@ fi
 
 backend=0; frontend=0; caddy=0
 if [[ "$FORCE" == "--force" ]]; then
-  backend=1; frontend=1
+  backend=1; frontend=1; caddy=1
 else
   while IFS= read -r file; do
     case "$file" in
