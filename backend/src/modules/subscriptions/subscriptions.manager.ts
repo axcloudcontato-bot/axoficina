@@ -28,7 +28,7 @@ export class SubscriptionsManager {
   constructor(private readonly repository: SubscriptionsRepository, private readonly entitlements: EntitlementsService) {}
 
   async list(query: SubscriptionListDto): Promise<SubscriptionListResponse> {
-    const { items, total, groups } = await this.repository.list(query);
+    const { items, total, groups, ownerEmails } = await this.repository.list(query);
     const summary = { total: 0, active: 0, trial: 0, pastDue: 0, mrrCents: 0 };
     let mrr = 0;
     for (const group of groups) {
@@ -41,7 +41,7 @@ export class SubscriptionsManager {
       }
     }
     summary.mrrCents = Math.round(mrr);
-    return { items: items.map(serialize), total, summary };
+    return { items: items.map((item) => ({ ...serialize(item), ownerEmail: ownerEmails.get(item.id) ?? null })), total, summary };
   }
 
   async update(id: string, input: UpdateSubscriptionDto, actor: AuthenticatedUser) {

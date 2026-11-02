@@ -31,12 +31,19 @@ export class SubscriptionsRepository {
     // Global access is intentional and only reachable behind SaasAdminGuard.
     return this.prisma.unscoped.$transaction(async (tx) => {
       const items = await tx.tenant.findMany({ where, select: SUBSCRIPTION_SELECT, orderBy: query.scope === 'closed' ? [{ purgeAfter: 'asc' }, { id: 'asc' }] : [{ createdAt: 'desc' }, { id: 'asc' }], skip: query.offset, take: query.limit });
+      // The account owner is the first user of the workshop (the one created at sign-up).
+      const users = items.length ? await tx.user.findMany({
+        where: { tenantId: { in: items.map((item) => item.id) }, deletedAt: null },
+        select: { tenantId: true, email: true }, orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+      }) : [];
+      const ownerEmails = new Map<string, string>();
+      for (const user of users) if (!ownerEmails.has(user.tenantId)) ownerEmails.set(user.tenantId, user.email);
       const total = await tx.tenant.count({ where });
       const groups = await tx.tenant.groupBy({
         by: ['subscriptionStatus', 'subscriptionCycle'], where: { deletedAt: null },
         _count: { _all: true }, _sum: { subscriptionAmountCents: true },
       });
-      return { items, total, groups };
+      return { items, total, groups, ownerEmails };
     }, { isolationLevel: 'RepeatableRead' });
   }
 

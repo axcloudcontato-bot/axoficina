@@ -9,6 +9,8 @@ export interface SubscriptionResponse {
   name: string;
   document: string;
   email: string | null;
+  /** Login of the account owner (the first user of the workshop); only the list fills it. */
+  ownerEmail?: string | null;
   plan: string;
   extraModules: ModuleKey[];
   subscriptionStatus: SubscriptionStatus;
