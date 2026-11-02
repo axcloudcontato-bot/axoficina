@@ -1,5 +1,11 @@
 export const RELEASE_NOTES = [
   {
+    id: '2026-11-02-dropdown-contraste', date: '2026-11-02', title: 'Menus suspensos mais visíveis',
+    items: [
+      'Campos de seleção e listas suspensas ganharam fundo, borda e sombra mais definidos em todo o sistema, inclusive nos formulários de clientes e veículos.',
+    ],
+  },
+  {
     id: '2026-11-02-orcamento-pdf-layout', date: '2026-11-02', title: 'Orçamento em PDF mais claro',
     items: [
       'O orçamento em PDF ganhou melhor hierarquia, blocos de dados, tabela com linhas alternadas, total em destaque e paginação para documentos longos.',

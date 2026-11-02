@@ -137,7 +137,7 @@ export const VehicleSearchCombobox = forwardRef<HTMLInputElement, VehicleSearchC
           role="listbox"
           aria-label="Veículos encontrados"
           aria-busy={isFetching}
-          className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-button border border-input bg-background shadow-md"
+          className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-button border border-border-strong bg-popover shadow-popover"
         >
           {isFetching && <li className="px-3 py-2 text-sm text-muted-foreground">Buscando...</li>}
           {!isFetching && results.length === 0 && <li className="px-3 py-2 text-sm text-muted-foreground">Nenhum veículo encontrado</li>}

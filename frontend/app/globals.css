@@ -333,3 +333,25 @@
 .hover\:text-primary:hover {
   color: var(--primary-ink);
 }
+
+/* Menus nativos também precisam se destacar dos painéis do formulário. */
+select:not([multiple]):not([size]) {
+  background-color: var(--card);
+  border-color: var(--border-strong);
+  color: var(--foreground);
+  box-shadow: var(--shadow-card);
+}
+
+select:not([multiple]):not([size]):hover {
+  border-color: var(--ring);
+}
+
+select:not([multiple]):not([size]):disabled {
+  background-color: var(--muted);
+  color: var(--muted-foreground);
+}
+
+select option {
+  background-color: var(--popover);
+  color: var(--popover-foreground);
+}
