@@ -28,7 +28,7 @@ export interface ModuleInfo { label: string; description: string; minPlan: PlanC
 export const MODULES: Record<ModuleKey, ModuleInfo> = {
   financeiro: { label: 'Financeiro', description: 'Contas a pagar e a receber, fluxo de caixa, fornecedores e comprovantes.', minPlan: 'profissional' },
   produtividade: { label: 'Produtividade', description: 'Metas, eficiência, comissões, garantia e retorno, e tempo ocioso dos técnicos.', minPlan: 'profissional' },
-  cuidado: { label: 'Cuidado com o cliente', description: 'Alertas de manutenção, régua de lembretes e aniversários.', minPlan: 'profissional' },
+  cuidado: { label: 'Fidelização de clientes', description: 'Alertas de manutenção, régua de lembretes e aniversários.', minPlan: 'profissional' },
   whatsapp: { label: 'WhatsApp', description: 'Conexão com o WhatsApp da oficina, mensagens e respostas dos clientes.', minPlan: 'completo' },
   governanca: { label: 'Histórico e exportação', description: 'Histórico de alterações, exportação dos dados e perfis de acesso personalizados.', minPlan: 'completo' },
 };

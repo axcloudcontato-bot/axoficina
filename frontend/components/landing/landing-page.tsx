@@ -2,7 +2,7 @@ import Link from 'next/link';
 import type { ComponentType, ReactNode } from 'react';
 import {
   ArrowRight, Buildings, CalendarCheck, Camera, Car, ChartLineUp, Check, ClipboardText, ClockCounterClockwise,
-  CurrencyCircleDollar, FileText, Gauge, Heart, Lock, Package, Printer, ShieldCheck, Star, UsersThree, WhatsappLogo, X,
+  CurrencyCircleDollar, FileText, Gauge, Lock, Package, Printer, ShieldCheck, Star, UsersThree, WhatsappLogo, X,
 } from '@phosphor-icons/react/dist/ssr';
 import { MODULE_KEYS, MODULES, PLANS, PLAN_CODES, TRIAL_DAYS, type ModuleKey } from '@oficina/contracts';
 import { formatCurrencyBRL } from '@/lib/format-currency';
@@ -62,7 +62,7 @@ const FEATURES: Array<{ icon: IconType; title: string; text: string; span?: stri
   { icon: WhatsappLogo, title: 'Orçamento aprovado pelo WhatsApp', text: 'O cliente recebe o orçamento e responde com um toque. Você acompanha a resposta direto na ordem de serviço.', chat: true, module: 'whatsapp' },
   { icon: CalendarCheck, title: 'Agenda com capacidade', text: 'Grade por horário, arraste para remarcar, capacidade de atendimentos ao mesmo tempo e horário por dia da semana, com feriados e férias.' },
   { icon: Car, title: 'Clientes e veículos com ficha', text: 'Histórico, total gasto e próximos cuidados de cada um. Veículo com dados da FIPE, importação por planilha e junção de cadastros duplicados.' },
-  { icon: Heart, title: 'Cuidado com o cliente', text: 'Alertas de manutenção, lembretes automáticos de revisão e aniversário, e uma lista para a equipe ligar para quem não autorizou mensagens.', module: 'cuidado' },
+  { icon: UsersThree, title: 'Fidelização de clientes', text: 'Alertas de manutenção, lembretes automáticos de revisão e aniversário, e uma lista para a equipe ligar para quem não autorizou mensagens.', module: 'cuidado' },
   { icon: Package, title: 'Catálogo e estoque', text: 'Peças e serviços com custo, margem e estoque mínimo, baixa automática na entrega, pacotes de serviço e relatório dos mais vendidos.' },
   { icon: CurrencyCircleDollar, title: 'Financeiro sem planilha', text: 'Contas a pagar e a receber, parcelas das OS, fornecedores, fluxo de caixa e relatórios analíticos.', module: 'financeiro' },
   { icon: Gauge, title: 'Produtividade e comissões', text: 'Tempo por técnico, eficiência, valor por hora, ocupação, metas, comissão e retornos em garantia, para decidir com dados.', module: 'produtividade' },

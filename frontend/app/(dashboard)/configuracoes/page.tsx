@@ -46,7 +46,7 @@ export default function SettingsPage() {
   const elsewhere = [
     { href: '/catalogo', label: 'Valor da hora da oficina', where: 'Peças e serviços', show: hasPermission(user, 'service_orders.prices') },
     { href: '/alertas-de-manutencao', label: 'Prazo dos alertas de manutenção', where: 'Alertas de manutenção', show: hasPermission(user, 'alerts.view') },
-    { href: '/relacionamento', label: 'Régua de lembretes e aniversários', where: 'Cuidado com o cliente, aba Ajustes da régua', show: hasPermission(user, 'alerts.view') },
+    { href: '/relacionamento', label: 'Régua de lembretes e aniversários', where: 'Fidelização de clientes, aba Ajustes da régua', show: hasPermission(user, 'alerts.view') },
     { href: '/produtividade', label: 'Metas e comissões dos técnicos', where: 'Produtividade', show: hasPermission(user, 'service_orders.prices') && Boolean(user && ['ADMIN', 'MANAGER'].includes(user.role)) },
   ].filter(entry => entry.show);
 

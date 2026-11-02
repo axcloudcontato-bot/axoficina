@@ -21,12 +21,14 @@ describe('PlanNotice', () => {
 
   it('counts the days left of the free trial for administrators only', () => {
     mocks.data = plan({ access: { state: 'active', daysLeft: 9, reason: 'trial' } });
-    const { unmount } = render(<PlanNotice />);
+    const { unmount } = render(<><PlanNotice /><PlanNotice placement="footer" /></>);
+    expect(screen.queryAllByRole('status')).toHaveLength(1);
+    expect(screen.getByRole('contentinfo')).toContainElement(screen.getByRole('status'));
     expect(screen.getByRole('status')).toHaveTextContent('Teste grátis: faltam 9 dias');
     expect(screen.getByRole('link', { name: 'escolha um plano' })).toHaveAttribute('href', '/configuracoes/assinatura');
     unmount();
     mocks.role = 'MECHANIC';
-    render(<PlanNotice />);
+    render(<PlanNotice placement="footer" />);
     expect(screen.queryByRole('status')).not.toBeInTheDocument();
   });
 

@@ -28,7 +28,7 @@ export const SPEC: Array<[string, string]> = [
   ['Agenda', 'Agendamentos com 6 situações: agendado, confirmado, em atendimento, concluído, cancelado e não compareceu'],
   ['Financeiro', 'Contas a pagar e a receber, parcelamento em até 24 vezes, 7 formas de pagamento, fornecedores, fluxo de caixa e relatórios'],
   ['Produtividade', 'Tempo por técnico, eficiência, valor por hora, ocupação, metas, comissões, retornos em garantia e tempo parado'],
-  ['Cuidado com o cliente', 'Alertas de manutenção, régua de lembretes por WhatsApp ou e-mail, aniversários e lista para a equipe ligar'],
+  ['Fidelização de clientes', 'Alertas de manutenção, régua de lembretes por WhatsApp ou e-mail, aniversários e lista para a equipe ligar'],
   ['Documentos', 'Orçamento em PDF e OS impressa com logo, CPF/CNPJ, validade, garantia e termos da oficina'],
   ['Equipe e acesso', '5 perfis prontos, 20 permissões e perfis personalizados'],
   ['Avaliação do cliente', 'Nota de 1 a 5 estrelas pedida pelo WhatsApp depois da entrega'],

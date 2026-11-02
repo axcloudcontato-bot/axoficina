@@ -1,5 +1,24 @@
 export const RELEASE_NOTES = [
   {
+    id: '2026-11-02-aviso-plano-rodape', date: '2026-11-02', title: 'Aviso de teste grátis no rodapé',
+    items: [
+      'A mensagem para escolher um plano agora fica no rodapé das telas do sistema. Avisos urgentes sobre acesso e limites continuam no topo.',
+    ],
+  },
+  {
+    id: '2026-11-02-menu-fidelizacao', date: '2026-11-02', title: 'Menu da Fidelização de clientes',
+    items: [
+      'As abas internas da Fidelização de clientes agora seguem o mesmo visual segmentado do menu Financeiro, com a seção ativa destacada.',
+    ],
+  },
+  {
+    id: '2026-11-02-fidelizacao-clientes', date: '2026-11-02', title: 'Fidelização de clientes',
+    items: [
+      'O módulo antes chamado Cuidado com o cliente agora aparece como Fidelização de clientes na navegação, nos planos e nas telas.',
+      'O ícone de coração foi substituído por um ícone de clientes.',
+    ],
+  },
+  {
     id: '2026-11-02-logo-orcamento', date: '2026-11-02', title: 'Logo maior e proporcional no orçamento',
     items: [
       'O PDF do orçamento ajusta a logo à proporção original e reserva espaço no cabeçalho para a marca e os dados da oficina.',
