@@ -16,12 +16,14 @@ import { parseMoneyToCents } from '@/lib/parse-money';
 import { useAuthStore } from '@/stores/auth-store';
 import { useCreateCatalogItem, useUpdateCatalogItem } from '../hooks/use-catalog';
 import { marginPercent, priceFromMinutes } from '../catalog-pricing';
+import { composeCatalogCategory, splitCatalogCategory, VEHICLE_GROUPS, type VehicleGroup } from '../catalog-vehicle';
 
 interface CatalogItemFormModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   item?: CatalogItemResponse;
   defaultType?: CatalogItemType;
+  defaultVehicle?: VehicleGroup;
   /** Categories already in use, offered as suggestions so "Freios" is not typed three different ways. */
   categories?: string[];
 }
@@ -30,7 +32,7 @@ const CARE_OPTIONS = CARE_CAMPAIGN_KEYS.filter((key): key is CareServiceKey => k
 const selectClass = 'h-10 w-full rounded-button border border-input bg-background px-3 text-sm';
 const toText = (cents?: number) => (cents === undefined ? '' : (cents / 100).toFixed(2).replace('.', ','));
 
-export function CatalogItemFormModal({ open, onOpenChange, item, defaultType = 'PART', categories = [] }: CatalogItemFormModalProps) {
+export function CatalogItemFormModal({ open, onOpenChange, item, defaultType = 'PART', defaultVehicle = 'Carro', categories = [] }: CatalogItemFormModalProps) {
   const create = useCreateCatalogItem();
   const update = useUpdateCatalogItem();
   const id = useId();
@@ -38,7 +40,7 @@ export function CatalogItemFormModal({ open, onOpenChange, item, defaultType = '
   const canSeeCost = hasPermission(user, 'finance.view');
   const suppliers = useSuppliers(canSeeCost);
   const laborRate = useLaborRate();
-  const [values, setValues] = useState({ type: defaultType as CatalogItemType, name: '', category: '', price: '', cost: '', code: '', brand: '', unit: 'un' as CatalogUnit, supplierId: '', minutes: '', care: '', trackStock: false, minStock: '' });
+  const [values, setValues] = useState({ type: defaultType as CatalogItemType, name: '', vehicle: 'Carro' as VehicleGroup, category: '', price: '', cost: '', code: '', brand: '', unit: 'un' as CatalogUnit, supplierId: '', minutes: '', care: '', trackStock: false, minStock: '' });
   const pending = create.isPending || update.isPending;
   const service = values.type === 'LABOR';
   const set = <K extends keyof typeof values>(key: K, value: (typeof values)[K]) => setValues(previous => ({ ...previous, [key]: value }));
@@ -46,12 +48,12 @@ export function CatalogItemFormModal({ open, onOpenChange, item, defaultType = '
   useEffect(() => {
     if (!open) return;
     setValues({
-      type: item?.type ?? defaultType, name: item?.name ?? '', category: item?.category ?? '', price: toText(item?.unitPriceCents), cost: toText(item?.costCents),
+      type: item?.type ?? defaultType, name: item?.name ?? '', vehicle: item ? splitCatalogCategory(item.category).vehicle : defaultVehicle, category: item ? splitCatalogCategory(item.category).category : '', price: toText(item?.unitPriceCents), cost: toText(item?.costCents),
       code: item?.code ?? '', brand: item?.brand ?? '', unit: item?.unit ?? (defaultType === 'LABOR' ? 'h' : 'un'), supplierId: item?.supplierId ?? '',
       minutes: item?.standardMinutes ? String(item.standardMinutes) : '', care: item?.careServiceKey ?? '',
       trackStock: item?.trackStock ?? false, minStock: item?.minStock === undefined ? '' : String(item.minStock).replace('.', ','),
     });
-  }, [open, item, defaultType]);
+  }, [open, item, defaultType, defaultVehicle]);
 
   const priceCents = values.price.trim() === '' ? 0 : parseMoneyToCents(values.price);
   const costCents = values.cost.trim() === '' ? undefined : parseMoneyToCents(values.cost);
@@ -69,7 +71,7 @@ export function CatalogItemFormModal({ open, onOpenChange, item, defaultType = '
     const minStock = values.minStock.trim() === '' ? null : Number(values.minStock.replace(',', '.'));
     if (!service && values.trackStock && minStock !== null && (!Number.isFinite(minStock) || minStock < 0 || Math.abs(Math.round(minStock * 100) / 100 - minStock) > 1e-9)) return toast.error('Informe o estoque mínimo com até duas casas decimais.');
     const request = {
-      type: values.type, name: values.name.trim(), category: values.category.trim() || undefined, unitPriceCents: priceCents,
+      type: values.type, name: values.name.trim(), category: composeCatalogCategory(values.vehicle, values.category), unitPriceCents: priceCents,
       code: values.code.trim() || undefined, brand: values.brand.trim() || undefined, unit: values.unit,
       ...(canSeeCost ? { costCents: costCents ?? null, supplierId: values.supplierId || null } : {}),
       ...(!service ? { trackStock: values.trackStock, minStock: values.trackStock ? minStock : null } : {}),
@@ -97,7 +99,8 @@ export function CatalogItemFormModal({ open, onOpenChange, item, defaultType = '
               {CATALOG_ITEM_TYPES.map(type => <option key={type} value={type}>{CATALOG_ITEM_TYPE_LABELS[type]}</option>)}
             </select>
           </div>
-          <div className="space-y-2"><Label htmlFor={`${id}-category`}>Categoria (opcional)</Label><Input id={`${id}-category`} list={`${id}-categories`} maxLength={60} value={values.category} onChange={event => set('category', event.target.value)} placeholder="Ex.: Freios" /><datalist id={`${id}-categories`}>{categories.map(category => <option key={category} value={category} />)}</datalist></div>
+          <div className="space-y-2"><Label htmlFor={`${id}-vehicle`}>Veículo</Label><select id={`${id}-vehicle`} className={selectClass} value={values.vehicle} onChange={event => set('vehicle', event.target.value as VehicleGroup)}>{VEHICLE_GROUPS.map(group => <option key={group} value={group}>{group === 'Geral' ? 'Uso geral' : group}</option>)}</select></div>
+          <div className="space-y-2"><Label htmlFor={`${id}-category`}>Categoria (opcional)</Label><Input id={`${id}-category`} list={`${id}-categories`} maxLength={60 - values.vehicle.length - 3} value={values.category} onChange={event => set('category', event.target.value)} placeholder="Ex.: Freios" /><datalist id={`${id}-categories`}>{categories.filter(category => splitCatalogCategory(category).vehicle === values.vehicle).map(category => <option key={category} value={splitCatalogCategory(category).category} />)}</datalist></div>
           <div className="space-y-2 sm:col-span-2"><Label htmlFor={`${id}-name`}>Nome</Label><Input id={`${id}-name`} value={values.name} onChange={event => set('name', event.target.value)} placeholder="Ex.: Pastilha de freio dianteira" /></div>
           {!service && <><div className="space-y-2"><Label htmlFor={`${id}-code`}>Código (opcional)</Label><Input id={`${id}-code`} maxLength={40} value={values.code} onChange={event => set('code', event.target.value)} placeholder="Referência ou código de barras" /></div>
           <div className="space-y-2"><Label htmlFor={`${id}-brand`}>Marca (opcional)</Label><Input id={`${id}-brand`} maxLength={60} value={values.brand} onChange={event => set('brand', event.target.value)} placeholder="Ex.: Cobreq" /></div></>}

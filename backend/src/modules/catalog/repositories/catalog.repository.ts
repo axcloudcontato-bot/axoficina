@@ -38,6 +38,19 @@ export class CatalogRepository {
   createMany(tenantId: string, inputs: Array<Partial<CatalogInput> & Pick<CatalogInput, 'type' | 'name' | 'category' | 'unitPriceCents'>>) {
     return this.prisma.client.catalogItem.createMany({ data: inputs.map((input) => ({ tenantId, ...input })), skipDuplicates: true });
   }
+  async reclassifyDefaults(tenantId: string, rows: Array<{ id: string; previousCategory: string; category: string }>) {
+    const groups = new Map<string, { previousCategory: string; category: string; ids: string[] }>();
+    for (const row of rows) {
+      const key = `${row.previousCategory}\0${row.category}`;
+      const group = groups.get(key) ?? { previousCategory: row.previousCategory, category: row.category, ids: [] };
+      group.ids.push(row.id);
+      groups.set(key, group);
+    }
+    await Promise.all([...groups.values()].map((group) => this.prisma.client.catalogItem.updateMany({
+      where: { tenantId, id: { in: group.ids }, category: group.previousCategory, deletedAt: null },
+      data: { category: group.category },
+    })));
+  }
   update(id: string, input: CatalogInput): Promise<CatalogItem> {
     return this.prisma.client.catalogItem.update({ where: { id }, data: input });
   }

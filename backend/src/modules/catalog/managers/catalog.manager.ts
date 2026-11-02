@@ -52,8 +52,17 @@ export class CatalogManager {
 
   // Idempotente: só cria o que a oficina ainda não tem (mesmo tipo e nome).
   async seedDefaults(user: AuthenticatedUser, viewer: CatalogViewer = NO_COST): Promise<SeedCatalogResponse> {
-    const existing = new Set((await this.repository.list()).map((item) => `${item.type}:${item.name.toLowerCase()}`));
+    const current = await this.repository.list();
+    const existing = new Map(current.map((item) => [`${item.type}:${item.name.toLowerCase()}`, item]));
     const missing = DEFAULT_CATALOG.filter((item) => !existing.has(`${item.type}:${item.name.toLowerCase()}`)).map((item) => ({ ...item, careServiceKey: item.careServiceKey ?? null, unitPriceCents: 0 }));
+    // Reclassify only rows that still carry the original default category. A workshop's own
+    // category, price, stock and other edits are never overwritten by loading defaults.
+    const reclassify = DEFAULT_CATALOG.flatMap((item) => {
+      const found = existing.get(`${item.type}:${item.name.toLowerCase()}`);
+      const previousCategory = item.category.replace(/^(Carro|Moto|Caminhão|Geral) · /, '');
+      return found?.category === previousCategory ? [{ id: found.id, previousCategory, category: item.category }] : [];
+    });
+    if (reclassify.length) await this.repository.reclassifyDefaults(user.tenantId, reclassify);
     if (missing.length) await this.repository.createMany(user.tenantId, missing);
     return { created: missing.length, items: (await this.repository.list()).map((item) => toResponse(item, viewer)) };
   }

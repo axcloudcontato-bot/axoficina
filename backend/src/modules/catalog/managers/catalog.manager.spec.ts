@@ -5,7 +5,7 @@ const user = { tenantId: 'tenant-1', userId: 'user-1' } as never;
 const row = (over: Record<string, unknown> = {}) => ({ id: 'item-1', type: 'PART', name: 'Filtro de óleo', category: null, unitPriceCents: 0, costCents: null, code: null, brand: null, unit: 'un', supplierId: null, standardMinutes: null, careServiceKey: null, trackStock: false, stockQuantity: 0, minStock: null, ...over });
 
 function setup() {
-  const repository = { adjustStock: jest.fn(), importRows: jest.fn(), reportLines: jest.fn().mockResolvedValue([]), listPackages: jest.fn().mockResolvedValue([]), packageById: jest.fn(), packageByName: jest.fn().mockResolvedValue(null), packageLines: jest.fn().mockResolvedValue([]), existingItemIds: jest.fn(), savePackage: jest.fn(), removePackage: jest.fn(), supplierExists: jest.fn().mockResolvedValue(true), list: jest.fn().mockResolvedValue([]), byId: jest.fn(), findByName: jest.fn().mockResolvedValue(null), create: jest.fn(), createMany: jest.fn().mockResolvedValue({ count: 0 }), update: jest.fn(), remove: jest.fn() };
+  const repository = { adjustStock: jest.fn(), importRows: jest.fn(), reportLines: jest.fn().mockResolvedValue([]), listPackages: jest.fn().mockResolvedValue([]), packageById: jest.fn(), packageByName: jest.fn().mockResolvedValue(null), packageLines: jest.fn().mockResolvedValue([]), existingItemIds: jest.fn(), savePackage: jest.fn(), removePackage: jest.fn(), supplierExists: jest.fn().mockResolvedValue(true), list: jest.fn().mockResolvedValue([]), byId: jest.fn(), findByName: jest.fn().mockResolvedValue(null), create: jest.fn(), createMany: jest.fn().mockResolvedValue({ count: 0 }), reclassifyDefaults: jest.fn().mockResolvedValue(undefined), update: jest.fn(), remove: jest.fn() };
   const audit = { record: jest.fn() };
   return { repository, audit, manager: new CatalogManager(repository as never, audit as never) };
 }
@@ -65,11 +65,28 @@ describe('CatalogManager', () => {
     expect(new Set(DEFAULT_CATALOG.map((item) => item.type))).toEqual(new Set(['PART', 'PRODUCT', 'LABOR']));
     expect(DEFAULT_CATALOG.length).toBeGreaterThan(450);
     expect(DEFAULT_CATALOG.every((item) => item.name.length <= 120 && item.category.length <= 60)).toBe(true);
-    expect(DEFAULT_CATALOG.some((item) => item.type === 'LABOR' && item.category === 'Arrefecimento')).toBe(true);
-    expect(DEFAULT_CATALOG.some((item) => item.type === 'PART' && item.category === 'Injeção e combustível')).toBe(true);
+    expect(DEFAULT_CATALOG.some((item) => item.type === 'LABOR' && item.category === 'Carro · Arrefecimento')).toBe(true);
+    expect(DEFAULT_CATALOG.some((item) => item.type === 'PART' && item.category === 'Carro · Injeção e combustível')).toBe(true);
     expect(DEFAULT_CATALOG.some((item) => item.type === 'PRODUCT' && item.name === 'ARLA 32')).toBe(true);
-    expect(DEFAULT_CATALOG.some((item) => item.type === 'LABOR' && item.category === 'Diesel')).toBe(true);
-    expect(DEFAULT_CATALOG.some((item) => item.type === 'LABOR' && item.category === 'Híbridos e elétricos')).toBe(true);
+    expect(DEFAULT_CATALOG.some((item) => item.type === 'LABOR' && item.category === 'Carro · Diesel')).toBe(true);
+    expect(DEFAULT_CATALOG.some((item) => item.type === 'LABOR' && item.category === 'Carro · Híbridos e elétricos')).toBe(true);
+    for (const vehicle of ['Carro', 'Moto', 'Caminhão']) {
+      for (const type of ['PART', 'PRODUCT', 'LABOR']) {
+        expect(DEFAULT_CATALOG.some((item) => item.type === type && item.category.startsWith(`${vehicle} · `))).toBe(true);
+      }
+    }
+  });
+
+  it('reclassifies old defaults while preserving custom categories and prices', async () => {
+    const { manager, repository } = setup();
+    repository.list.mockResolvedValue([
+      row({ id: 'old', type: 'PART', name: 'Filtro de óleo', category: 'Motor e transmissão', unitPriceCents: 4500 }),
+      row({ id: 'custom', type: 'PART', name: 'Filtro de ar do motor', category: 'Minha categoria', unitPriceCents: 7000 }),
+    ]);
+    await manager.seedDefaults(user);
+    const reclassified = repository.reclassifyDefaults.mock.calls[0][1];
+    expect(reclassified).toContainEqual(expect.objectContaining({ id: 'old', category: expect.stringMatching(/^Carro · /) }));
+    expect(reclassified).not.toContainEqual(expect.objectContaining({ id: 'custom' }));
   });
 
   describe('cost and service details', () => {

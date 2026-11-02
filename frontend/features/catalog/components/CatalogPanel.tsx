@@ -15,6 +15,7 @@ import { parseMoneyToCents } from '@/lib/parse-money';
 import { useLaborRate, useUpdateLaborRate } from '@/features/settings/hooks/use-settings';
 import { marginPercent } from '../catalog-pricing';
 import { formatStock, isLowStock } from '../catalog-stock';
+import { catalogVehicle, VEHICLE_GROUPS, type VehicleGroup } from '../catalog-vehicle';
 import { useCatalogItems, useDeleteCatalogItem, useSeedCatalogDefaults, useUpdateCatalogItem } from '../hooks/use-catalog';
 import { CatalogImportModal } from './CatalogImportModal';
 import { CatalogItemFormModal } from './CatalogItemFormModal';
@@ -34,6 +35,7 @@ export function CatalogPanel() {
   const [tab, setTab] = useState<CatalogItemType>('PART');
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('ALL');
+  const [vehicle, setVehicle] = useState<VehicleGroup | 'ALL'>('ALL');
   const [onlyUnpriced, setOnlyUnpriced] = useState(false);
   const [onlyLow, setOnlyLow] = useState(false);
   const [view, setView] = useState<View>('items');
@@ -46,20 +48,20 @@ export function CatalogPanel() {
   const updateLaborRate = useUpdateLaborRate();
   const [rateText, setRateText] = useState<string>();
 
-  const items = query.data?.items ?? [];
+  const items = useMemo(() => query.data?.items ?? [], [query.data?.items]);
   const counts = useMemo(() => Object.fromEntries(CATALOG_ITEM_TYPES.map(type => [type, items.filter(item => item.type === type).length])) as Record<CatalogItemType, number>, [items]);
   const categories = useMemo(() => [...new Set(items.map(item => item.category).filter((value): value is string => Boolean(value)))].sort((a, b) => a.localeCompare(b, 'pt-BR')), [items]);
-  const tabCategories = useMemo(() => [...new Set(items.filter(item => item.type === tab).map(item => item.category).filter((value): value is string => Boolean(value)))].sort((a, b) => a.localeCompare(b, 'pt-BR')), [items, tab]);
+  const tabCategories = useMemo(() => [...new Set(items.filter(item => item.type === tab && (vehicle === 'ALL' || catalogVehicle(item.category) === vehicle)).map(item => item.category).filter((value): value is string => Boolean(value)))].sort((a, b) => a.localeCompare(b, 'pt-BR')), [items, tab, vehicle]);
   const unpriced = items.filter(item => item.type === tab && item.unitPriceCents === 0).length;
   const lowStock = items.filter(isLowStock).length;
   const visible = useMemo(() => {
     const term = normalizeNavigationSearch(search);
-    return items.filter(item => item.type === tab && (category === 'ALL' || item.category === category) && (!onlyUnpriced || item.unitPriceCents === 0) && (!onlyLow || isLowStock(item)) && (!term || normalizeNavigationSearch(`${item.name} ${item.category ?? ''}`).includes(term)));
-  }, [items, tab, search, category, onlyUnpriced, onlyLow]);
+    return items.filter(item => item.type === tab && (vehicle === 'ALL' || catalogVehicle(item.category) === vehicle) && (category === 'ALL' || item.category === category) && (!onlyUnpriced || item.unitPriceCents === 0) && (!onlyLow || isLowStock(item)) && (!term || normalizeNavigationSearch(`${item.name} ${item.category ?? ''}`).includes(term)));
+  }, [items, tab, vehicle, search, category, onlyUnpriced, onlyLow]);
 
   function loadDefaults() {
     seed.mutate(undefined, {
-      onSuccess: result => toast.success(result.created ? `${result.created} itens padrão adicionados. Ajuste os preços de cada um.` : 'Os itens padrão já estavam no catálogo.'),
+      onSuccess: result => toast.success(result.created ? `${result.created} itens padrão adicionados. Ajuste os preços de cada um.` : 'Os itens padrão já estavam no catálogo. As categorias foram atualizadas.'),
       onError: error => toast.error(extractErrorMessage(error)),
     });
   }
@@ -132,6 +134,7 @@ export function CatalogPanel() {
         {CATALOG_ITEM_TYPES.map(type => <button key={type} role="tab" aria-selected={tab === type} onClick={() => { setTab(type); setCategory('ALL'); }} className={segmentedItem(tab === type, 'px-4')}>{TAB_LABELS[type]} <span className="text-xs font-normal opacity-70">{counts[type]}</span></button>)}
       </div>
       <div className="flex w-full flex-wrap gap-2 sm:w-auto">
+        <select aria-label="Filtrar por veículo" className="h-10 rounded-button border border-input bg-background px-3 text-sm" value={vehicle} onChange={event => { setVehicle(event.target.value as VehicleGroup | 'ALL'); setCategory('ALL'); }}><option value="ALL">Todos os veículos</option>{VEHICLE_GROUPS.map(group => <option key={group} value={group}>{group === 'Geral' ? 'Uso geral' : group}</option>)}</select>
         {tabCategories.length > 0 && <select aria-label="Filtrar por categoria" className="h-10 rounded-button border border-input bg-background px-3 text-sm" value={category} onChange={event => setCategory(event.target.value)}><option value="ALL">Todas as categorias</option>{tabCategories.map(name => <option key={name} value={name}>{name}</option>)}</select>}
         <div className="relative w-full sm:w-72">
           <MagnifyingGlass className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-text-muted" aria-hidden />
@@ -166,7 +169,7 @@ export function CatalogPanel() {
 
     <CatalogImportModal open={importing} existing={items} onOpenChange={setImporting} />
     <StockDialog item={stocking} onClose={() => setStocking(undefined)} />
-    <CatalogItemFormModal open={editing !== undefined} item={editing ?? undefined} defaultType={tab} categories={categories} onOpenChange={open => { if (!open) setEditing(undefined); }} />
-    <Dialog open={Boolean(deleting)} onOpenChange={open => { if (!open && !remove.isPending) setDeleting(undefined); }}><DialogContent className="sm:max-w-md"><DialogHeader><DialogTitle>Excluir do catálogo</DialogTitle><DialogDescription>"{deleting?.name}" deixa de aparecer para novos lançamentos. As ordens de serviço já lançadas não mudam.</DialogDescription></DialogHeader><DialogFooter><Button variant="outline" disabled={remove.isPending} onClick={() => setDeleting(undefined)}>Voltar</Button><Button variant="destructive" disabled={remove.isPending} onClick={confirmDelete}>{remove.isPending ? 'Excluindo...' : 'Excluir'}</Button></DialogFooter></DialogContent></Dialog>
+    <CatalogItemFormModal open={editing !== undefined} item={editing ?? undefined} defaultType={tab} defaultVehicle={vehicle === 'ALL' ? 'Carro' : vehicle} categories={categories} onOpenChange={open => { if (!open) setEditing(undefined); }} />
+    <Dialog open={Boolean(deleting)} onOpenChange={open => { if (!open && !remove.isPending) setDeleting(undefined); }}><DialogContent className="sm:max-w-md"><DialogHeader><DialogTitle>Excluir do catálogo</DialogTitle><DialogDescription>&ldquo;{deleting?.name}&rdquo; deixa de aparecer para novos lançamentos. As ordens de serviço já lançadas não mudam.</DialogDescription></DialogHeader><DialogFooter><Button variant="outline" disabled={remove.isPending} onClick={() => setDeleting(undefined)}>Voltar</Button><Button variant="destructive" disabled={remove.isPending} onClick={confirmDelete}>{remove.isPending ? 'Excluindo...' : 'Excluir'}</Button></DialogFooter></DialogContent></Dialog>
   </div>;
 }

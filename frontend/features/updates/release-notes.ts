@@ -1,5 +1,12 @@
 export const RELEASE_NOTES = [
   {
+    id: '2026-11-02-catalogo-por-veiculo', date: '2026-11-02', title: 'Catálogo separado por tipo de veículo',
+    items: [
+      'Peças, produtos e serviços agora podem ser filtrados por carro, moto, caminhão ou uso geral.',
+      'O cadastro de itens identifica o tipo de veículo. Carregar itens padrão adiciona opções para motos e caminhões e organiza os itens antigos sem alterar preços.',
+    ],
+  },
+  {
     id: '2026-11-02-orcamento-pdf-corrigido', date: '2026-11-02', title: 'Orçamento em PDF ajustado',
     items: [
       'O cabeçalho separa nome, identificação, contato e endereço em linhas próprias. Os dados do cliente e veículo ocupam duas colunas e a aprovação fica inteira após os termos.',

@@ -27,7 +27,11 @@ const CARE_BY_SERVICE: Record<string, CareServiceKey> = {
   "Troca de pneus dianteiros": "TIRES",
   "Troca de pneus traseiros": "TIRES",
 };
-const build = (type: CatalogItemType, category: string, names: string[]): DefaultItem[] => names.map((name) => ({ type, name, category, ...(type === 'LABOR' && CARE_BY_SERVICE[name] ? { careServiceKey: CARE_BY_SERVICE[name] } : {}) }));
+const buildFor = (vehicle: 'Carro' | 'Moto' | 'Caminhão' | 'Geral', type: CatalogItemType, category: string, names: string[]): DefaultItem[] => names.map((name) => ({ type, name, category: `${vehicle} · ${category}`, ...(type === 'LABOR' && CARE_BY_SERVICE[name] ? { careServiceKey: CARE_BY_SERVICE[name] } : {}) }));
+const build = (type: CatalogItemType, category: string, names: string[]) => names.flatMap((name) => {
+  const vehicle = /ARLA 32|ureia|Sensor NOx/i.test(name) ? 'Caminhão' : /^(Graxa|Desengripante|Fita isolante|Limpa contatos|Silicone|Trava rosca|Antiferrugem|Desengraxante|Abraçadeira|Presilha|Fita veda rosca|Terminal elétrico|Conector elétrico|O-ring)/i.test(name) ? 'Geral' : 'Carro';
+  return buildFor(vehicle, type, category, [name]);
+});
 
 // Itens comuns de oficina mecânica. Entram com preço zero: cada oficina define o seu.
 export const DEFAULT_CATALOG: DefaultItem[] = [
@@ -282,4 +286,18 @@ export const DEFAULT_CATALOG: DefaultItem[] = [
     'Limpa vidros', 'Limpa estofados',
     'Protetor de plásticos', 'Desengraxante de motor',
   ]),
+  ...buildFor('Moto', 'LABOR', 'Manutenção', ['Revisão de motocicleta', 'Troca de óleo de motocicleta', 'Troca de filtro de óleo de motocicleta', 'Troca de vela de motocicleta', 'Regulagem de válvulas de motocicleta', 'Limpeza de bico injetor de motocicleta']),
+  ...buildFor('Moto', 'LABOR', 'Transmissão', ['Troca de kit de transmissão de motocicleta', 'Ajuste e lubrificação de corrente', 'Troca de embreagem de motocicleta', 'Troca de cabo de embreagem de motocicleta']),
+  ...buildFor('Moto', 'LABOR', 'Freios e suspensão', ['Troca de pastilhas de freio de motocicleta', 'Troca de disco de freio de motocicleta', 'Troca de patim de freio de motocicleta', 'Sangria de freio de motocicleta', 'Troca de amortecedor de motocicleta', 'Revisão de suspensão dianteira de motocicleta']),
+  ...buildFor('Moto', 'PART', 'Motor e transmissão', ['Filtro de óleo de motocicleta', 'Filtro de ar de motocicleta', 'Vela de ignição de motocicleta', 'Kit coroa, pinhão e corrente', 'Corrente de transmissão de motocicleta', 'Cabo de embreagem de motocicleta', 'Disco de embreagem de motocicleta']),
+  ...buildFor('Moto', 'PART', 'Freios e suspensão', ['Pastilha de freio de motocicleta', 'Disco de freio de motocicleta', 'Patim de freio de motocicleta', 'Amortecedor de motocicleta', 'Tubo interno de bengala', 'Retentor de bengala']),
+  ...buildFor('Moto', 'PART', 'Elétrica e rodas', ['Bateria de motocicleta', 'Cabo de acelerador de motocicleta', 'Pneu dianteiro de motocicleta', 'Pneu traseiro de motocicleta', 'Câmara de ar de motocicleta']),
+  ...buildFor('Moto', 'PRODUCT', 'Óleos e fluidos', ['Óleo de motor 4T para motocicleta', 'Óleo de motor 2T para motocicleta', 'Óleo de suspensão dianteira', 'Lubrificante de corrente de motocicleta']),
+  ...buildFor('Caminhão', 'LABOR', 'Manutenção', ['Revisão de caminhão', 'Troca de óleo e filtros de caminhão', 'Troca de filtro separador de água de caminhão', 'Diagnóstico eletrônico de caminhão', 'Troca de óleo do diferencial de caminhão']),
+  ...buildFor('Caminhão', 'LABOR', 'Freios e suspensão', ['Revisão do freio pneumático', 'Troca de lona de freio de caminhão', 'Troca de tambor de freio de caminhão', 'Troca de bolsa de ar da suspensão', 'Troca de amortecedor de caminhão']),
+  ...buildFor('Caminhão', 'LABOR', 'Motor e transmissão', ['Teste de bicos injetores de caminhão', 'Troca de turbina de caminhão', 'Troca de embreagem de caminhão', 'Reparo de cardã de caminhão', 'Diagnóstico do sistema SCR de caminhão']),
+  ...buildFor('Caminhão', 'PART', 'Filtros e motor', ['Filtro de óleo de caminhão', 'Filtro de ar de caminhão', 'Filtro de combustível de caminhão', 'Filtro separador de água de caminhão', 'Filtro de ureia de caminhão', 'Turbina de caminhão']),
+  ...buildFor('Caminhão', 'PART', 'Freios e suspensão', ['Lona de freio de caminhão', 'Tambor de freio de caminhão', 'Câmara de freio pneumático', 'Válvula de freio pneumático', 'Bolsa de ar da suspensão de caminhão', 'Amortecedor de caminhão']),
+  ...buildFor('Caminhão', 'PART', 'Transmissão e emissões', ['Kit de embreagem de caminhão', 'Cruzeta de cardã de caminhão', 'Rolamento de roda de caminhão', 'Sensor NOx de caminhão', 'Bomba de ARLA 32 de caminhão']),
+  ...buildFor('Caminhão', 'PRODUCT', 'Óleos e fluidos', ['Óleo de motor diesel para caminhão', 'Óleo de diferencial de caminhão', 'Fluido de arrefecimento para caminhão', 'ARLA 32 para caminhão']),
 ];
