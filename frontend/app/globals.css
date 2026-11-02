@@ -2,6 +2,29 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Gradient Able's light admin surface stays readable when the workshop uses dark mode. */
+.saas-admin-surface {
+  color-scheme: light;
+  --background: #f6f7fb;
+  --foreground: #0f172a;
+  --card: #ffffff;
+  --card-foreground: #0f172a;
+  --surface: #ffffff;
+  --popover: #ffffff;
+  --popover-foreground: #0f172a;
+  --muted: #eef1f6;
+  --muted-foreground: #64748b;
+  --border: #e2e8f0;
+  --input: #cbd5e1;
+  --accent: #edf0ff;
+  --accent-foreground: #334155;
+  --color-bg: #f6f7fb;
+  --color-surface: #ffffff;
+  --color-border: #e2e8f0;
+  --color-text: #0f172a;
+  --color-text-muted: #64748b;
+}
+
 @layer base {
 :root {
   --sidebar-width: 16rem;

@@ -1,5 +1,12 @@
 export const RELEASE_NOTES = [
   {
+    id: '2026-11-02-painel-admin-saas', date: '2026-11-02', title: 'Novo painel da administração do SaaS',
+    items: [
+      'A administração do Ofix ganhou visão geral, indicadores reais de oficinas e assinaturas, distribuição por situação e lista de cadastros recentes.',
+      'O novo visual foi adaptado do template Gradient Able e inclui navegação própria para gestão da plataforma.',
+    ],
+  },
+  {
     id: '2026-11-02-catalogo-por-veiculo', date: '2026-11-02', title: 'Catálogo separado por tipo de veículo',
     items: [
       'Peças, produtos e serviços agora podem ser filtrados por carro, moto, caminhão ou uso geral.',
