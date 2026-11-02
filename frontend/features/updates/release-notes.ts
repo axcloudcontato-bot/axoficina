@@ -1,5 +1,11 @@
 export const RELEASE_NOTES = [
   {
+    id: '2026-11-02-orcamento-pdf-layout', date: '2026-11-02', title: 'Orçamento em PDF mais claro',
+    items: [
+      'O orçamento em PDF ganhou melhor hierarquia, blocos de dados, tabela com linhas alternadas, total em destaque e paginação para documentos longos.',
+    ],
+  },
+  {
     id: '2026-11-02-marca-modelo-veiculo', date: '2026-11-02', title: 'Correção da marca e modelo no cadastro de veículos',
     items: [
       'A escolha de marca e modelo na lista FIPE agora atualiza a validação e permanece preenchida quando a tela recebe novos dados em segundo plano.',
