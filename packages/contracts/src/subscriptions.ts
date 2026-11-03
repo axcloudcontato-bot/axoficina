@@ -11,6 +11,8 @@ export interface SubscriptionResponse {
   email: string | null;
   /** Login of the account owner (the first user of the workshop); only the list fills it. */
   ownerEmail?: string | null;
+  /** WA-AKG session (WhatsApp number) assigned to the workshop by the SaaS manager. */
+  whatsappSessionId: string | null;
   plan: string;
   extraModules: ModuleKey[];
   subscriptionStatus: SubscriptionStatus;
@@ -56,5 +58,7 @@ export interface UpdateSubscriptionRequest {
   subscriptionCycle: BillingCycle;
   subscriptionDueAt: string | null;
   subscriptionNotes: string | null;
+  /** Empty clears the session; undefined leaves it as it is. */
+  whatsappSessionId?: string | null;
   expectedUpdatedAt: string | null;
 }

@@ -24,6 +24,7 @@ export function SubscriptionEditDialog({ subscription, onClose }: { subscription
   const [cycle, setCycle] = useState<BillingCycle>(subscription.subscriptionCycle);
   const [dueAt, setDueAt] = useState(subscription.subscriptionDueAt?.slice(0, 10) ?? '');
   const [notes, setNotes] = useState(subscription.subscriptionNotes ?? '');
+  const [whatsappSession, setWhatsappSession] = useState(subscription.whatsappSessionId ?? '');
   const [error, setError] = useState<string | null>(null);
   const mutation = useUpdateSubscription();
 
@@ -48,7 +49,7 @@ export function SubscriptionEditDialog({ subscription, onClose }: { subscription
       await mutation.mutateAsync({ id: subscription.id, input: {
         plan, extraModules, subscriptionStatus: status, subscriptionAmountCents: Math.round(Number(normalized) * 100),
         subscriptionCycle: cycle, subscriptionDueAt: dueAt ? `${dueAt}T12:00:00.000Z` : null,
-        subscriptionNotes: notes.trim() || null, expectedUpdatedAt: subscription.updatedAt,
+        subscriptionNotes: notes.trim() || null, whatsappSessionId: whatsappSession.trim() || null, expectedUpdatedAt: subscription.updatedAt,
       } });
       toast.success('Assinatura atualizada.');
       onClose();
@@ -73,6 +74,7 @@ export function SubscriptionEditDialog({ subscription, onClose }: { subscription
             <div className="space-y-1.5"><Label htmlFor="subscription-cycle">Periodicidade</Label><select id="subscription-cycle" className={selectClass} value={cycle} onChange={(event) => setCycle(event.target.value as BillingCycle)}><option value="monthly">Mensal</option><option value="yearly">Anual</option></select></div>
           </div>
           <div className="space-y-1.5"><Label htmlFor="subscription-due">Próximo vencimento</Label><Input id="subscription-due" type="date" value={dueAt} onChange={(event) => setDueAt(event.target.value)} /></div>
+          <div className="space-y-1.5"><Label htmlFor="subscription-whatsapp">Sessão do WhatsApp (WA-AKG)</Label><Input id="subscription-whatsapp" maxLength={160} value={whatsappSession} onChange={(event) => setWhatsappSession(event.target.value)} placeholder="sessionId do número desta oficina" aria-describedby="subscription-whatsapp-help" /><p id="subscription-whatsapp-help" className="text-xs text-text-muted">A chave de API é única e fica só no servidor. A oficina só liga o envio depois que você informa a sessão dela. Cada sessão pertence a uma oficina.</p></div>
           <div className="space-y-1.5"><Label htmlFor="subscription-notes">Observações internas</Label><Textarea id="subscription-notes" maxLength={2000} rows={3} value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="Condições negociadas, descontos ou observações..." /></div>
         </fieldset>
         <p className="text-xs leading-relaxed text-text-muted">Registro administrativo manual. Salvar não realiza cobranças. O plano e os módulos escolhidos passam a valer na hora para a oficina.</p>

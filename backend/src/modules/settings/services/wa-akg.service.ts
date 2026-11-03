@@ -22,12 +22,19 @@ export class WaAkgService {
     private readonly entitlements: EntitlementsService,
   ) {}
 
+  // The platform key (WA_AKG_API_KEY, server environment only) serves every workshop. When it is set the workshop
+  // neither sees nor sends a key, a server or a session: the SaaS manager assigns the session in the subscription.
+  private get platformKey() { return this.config.get<string>('WA_AKG_API_KEY')?.trim() || null; }
+  private get platformBaseUrl() { return this.config.get<string>('WA_AKG_BASE_URL')?.trim() || 'https://chat.axcloud.com.br'; }
+
   async getSettings(tenantId: string): Promise<WhatsAppSettingsResponse> {
     const tenant = await this.requireTenant(tenantId);
+    const managed = Boolean(this.platformKey);
     const publicApi = this.config.get<string>('PUBLIC_API_URL') ?? this.config.get<string>('NEXT_PUBLIC_API_URL', 'http://localhost:3001');
     return {
-      baseUrl: tenant.waAkgBaseUrl ?? undefined, sessionId: tenant.waAkgSessionId ?? undefined,
-      apiKeyConfigured: Boolean(tenant.waAkgApiKey), webhookSecretConfigured: Boolean(tenant.waAkgWebhookSecret), enabled: tenant.waAkgEnabled,
+      managed,
+      baseUrl: (managed ? this.platformBaseUrl : tenant.waAkgBaseUrl) ?? undefined, sessionId: tenant.waAkgSessionId ?? undefined,
+      apiKeyConfigured: managed || Boolean(tenant.waAkgApiKey), webhookSecretConfigured: Boolean(tenant.waAkgWebhookSecret), enabled: tenant.waAkgEnabled,
       webhookUrl: `${publicApi.replace(/\/$/, '')}/api/v1/webhooks/wa-akg/${tenantId}`,
       connectionTestAt: tenant.waAkgTestedAt?.toISOString(), connectionSuccessAt: tenant.waAkgTestSuccessAt?.toISOString(), connectionTestError: tenant.waAkgTestError ?? undefined,
       webhookTestAt: tenant.waWebhookTestedAt?.toISOString(), webhookSuccessAt: tenant.waWebhookTestSuccessAt?.toISOString(), webhookTestError: tenant.waWebhookTestError ?? undefined,
@@ -36,16 +43,20 @@ export class WaAkgService {
 
   async update(user: AuthenticatedUser, input: UpdateWhatsAppSettingsRequest) {
     const current = await this.requireTenant(user.tenantId);
-    const baseUrl = clean(input.baseUrl) ? this.normalizeBaseUrl(input.baseUrl!) : null;
-    const sessionId = clean(input.sessionId);
+    const managed = Boolean(this.platformKey);
+    // With the platform key the workshop cannot choose the server, the session or a key of its own.
+    const baseUrl = managed ? current.waAkgBaseUrl : clean(input.baseUrl) ? this.normalizeBaseUrl(input.baseUrl!) : null;
+    const sessionId = managed ? current.waAkgSessionId : clean(input.sessionId);
     if (sessionId && !/^[a-zA-Z0-9_-]+$/.test(sessionId)) throw new BadRequestException('A sessão deve conter apenas letras, números, hífen ou sublinhado.');
-    const apiKey = clean(input.apiKey);
+    const apiKey = managed ? null : clean(input.apiKey);
     const webhookSecret = clean(input.webhookSecret);
     if (webhookSecret && webhookSecret.length < 32) throw new BadRequestException('Use um segredo do webhook com pelo menos 32 caracteres.');
     if (apiKey && /[\r\n]/.test(apiKey)) throw new BadRequestException('Chave de API inválida.');
-    if (input.enabled && (!baseUrl || !sessionId || !(apiKey || current.waAkgApiKey) || !(webhookSecret || current.waAkgWebhookSecret))) {
-      throw new BadRequestException('Informe endereço, sessão, chave de API e segredo do webhook antes de ativar o WhatsApp.');
+    if (input.enabled && managed && !sessionId) throw new BadRequestException('O número de WhatsApp desta oficina ainda não foi liberado pelo Ax Cloud. Fale com o suporte.');
+    if (input.enabled && !managed && (!baseUrl || !sessionId || !(apiKey || current.waAkgApiKey))) {
+      throw new BadRequestException('Informe endereço, sessão e chave de API antes de ativar o WhatsApp.');
     }
+    if (input.enabled && !(webhookSecret || current.waAkgWebhookSecret)) throw new BadRequestException('Informe o segredo do webhook antes de ativar o WhatsApp.');
     await this.tenants.updateSettings(user.tenantId, {
       waAkgBaseUrl: baseUrl, waAkgSessionId: sessionId,
       waAkgApiKey: apiKey ? this.secrets.encrypt(apiKey) : current.waAkgApiKey,
@@ -63,8 +74,10 @@ export class WaAkgService {
     if (requireEnabled && !tenant.waAkgEnabled) return null;
     // Every automatic or manual send asks for the connection here, so a plan without WhatsApp stops them all in one place.
     if (requireEnabled && !(await this.entitlements.forTenant(tenantId)).modules.includes('whatsapp')) return null;
-    if (!tenant.waAkgBaseUrl || !tenant.waAkgSessionId || !tenant.waAkgApiKey) throw new BadRequestException('Configure a conexão com o WA-AKG antes de continuar.');
-    return { baseUrl: this.normalizeBaseUrl(tenant.waAkgBaseUrl), sessionId: tenant.waAkgSessionId, apiKey: this.secrets.decrypt(tenant.waAkgApiKey) };
+    const platformKey = this.platformKey;
+    const baseUrl = platformKey ? this.platformBaseUrl : tenant.waAkgBaseUrl;
+    if (!baseUrl || !tenant.waAkgSessionId || !(platformKey || tenant.waAkgApiKey)) throw new BadRequestException('Configure a conexão com o WA-AKG antes de continuar.');
+    return { baseUrl: this.normalizeBaseUrl(baseUrl), sessionId: tenant.waAkgSessionId, apiKey: platformKey ?? this.secrets.decrypt(tenant.waAkgApiKey!) };
   }
 
   async testConnection(tenantId: string): Promise<WhatsAppConnectionResponse> {

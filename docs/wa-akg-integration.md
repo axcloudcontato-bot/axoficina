@@ -17,6 +17,14 @@ A integração envia os botões diretamente para a conversa pelo endpoint intera
 
 O domínio de saída permitido é `chat.axcloud.com.br`. Outras instalações precisam ser autorizadas no backend com `WA_AKG_ALLOWED_HOSTS`, uma lista de domínios separados por vírgula. Não há redirecionamento de requisições contendo a chave. O endpoint fica em `/api`; o campo de endereço aceita o domínio com ou sem esse sufixo.
 
+## Chave única da plataforma
+
+Com `WA_AKG_API_KEY` definida no servidor (em `deploy/debian/.env.production`, repassada pelo Compose), todas as oficinas usam essa chave e o servidor `WA_AKG_BASE_URL`. A chave nunca é gravada no banco nem devolvida pela API, e a tela de WhatsApp da oficina deixa de mostrar servidor, sessão e chave.
+
+O número de cada oficina é a **sessão** que o gestor do SaaS cadastra em **Assinaturas do SaaS → Gerenciar → Sessão do WhatsApp (WA-AKG)**. A oficina só liga ou desliga o envio depois que a sessão existe. Uma sessão não pode ser usada por duas oficinas, porque a chave única alcança todas as sessões. Trocar ou limpar a sessão zera os testes e, ao limpar, desativa o envio. Sem `WA_AKG_API_KEY`, o comportamento anterior continua: cada oficina informa a própria chave.
+
+O segredo do webhook segue por oficina, informado na tela de WhatsApp.
+
 ## Recebimento e histórico
 
 Cada botão contém um identificador aleatório da pergunta e o índice da opção. O callback valida o HMAC SHA-256 (`X-Webhook-Signature`) sobre os bytes originais, a oficina, a sessão, o destinatário e o tipo da resposta. Texto livre, grupos, mensagens da própria sessão e escolhas de outras perguntas não são registrados como resposta.

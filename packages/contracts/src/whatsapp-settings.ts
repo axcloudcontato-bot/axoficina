@@ -7,6 +7,8 @@ export interface UpdateWhatsAppSettingsRequest {
 }
 
 export interface WhatsAppSettingsResponse {
+  /** True when the platform supplies the server and the API key: the workshop only turns the sending on or off. */
+  managed?: boolean;
   baseUrl?: string;
   sessionId?: string;
   apiKeyConfigured: boolean;

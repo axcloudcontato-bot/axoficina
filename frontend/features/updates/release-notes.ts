@@ -1,6 +1,12 @@
 // This feed is visible to every workshop account. Keep SaaS administration changes out of it.
 export const RELEASE_NOTES = [
   {
+    id: '2026-11-03-whatsapp-gerenciado', date: '2026-11-03', title: 'WhatsApp sem chave para configurar',
+    items: [
+      'A conexão com o WhatsApp agora é mantida pelo Ax Cloud: a tela de WhatsApp não pede mais servidor nem chave de API. Quando o número da oficina estiver liberado, basta ligar o envio.',
+    ],
+  },
+  {
     id: '2026-11-03-suporte-e-admin-ofix', date: '2026-11-03', title: 'Suporte dentro do Ofix',
     items: [
       'O menu Suporte permite abrir chamados com prioridade baixa, normal ou alta e acompanhar a resposta da equipe.',

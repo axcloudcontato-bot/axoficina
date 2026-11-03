@@ -8,9 +8,10 @@ import { SubscriptionsRepository } from './subscriptions.repository';
 type SubscriptionRecord = Awaited<ReturnType<SubscriptionsRepository['update']>>;
 
 function serialize(item: SubscriptionRecord): SubscriptionResponse {
-  const { deletedAt, purgeAfter, closedBy, closureReason, ...rest } = item;
+  const { deletedAt, purgeAfter, closedBy, closureReason, waAkgSessionId, ...rest } = item;
   return {
     ...rest,
+    whatsappSessionId: waAkgSessionId,
     closedAt: deletedAt?.toISOString() ?? null,
     purgeAfter: purgeAfter?.toISOString() ?? null,
     closedBy: closedBy as SubscriptionResponse['closedBy'],

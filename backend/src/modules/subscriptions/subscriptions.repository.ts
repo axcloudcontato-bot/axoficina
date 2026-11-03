@@ -8,7 +8,7 @@ export const SUBSCRIPTION_SELECT = {
   id: true, name: true, document: true, email: true, plan: true, extraModules: true,
   subscriptionStatus: true, subscriptionAmountCents: true, subscriptionCycle: true,
   subscriptionDueAt: true, subscriptionNotes: true, deletedAt: true, closedBy: true, closureReason: true, purgeAfter: true,
-  createdAt: true, updatedAt: true,
+  waAkgSessionId: true, createdAt: true, updatedAt: true,
 } satisfies Prisma.TenantSelect;
 
 @Injectable()
@@ -54,9 +54,20 @@ export class SubscriptionsRepository {
       if (input.expectedUpdatedAt === undefined || input.subscriptionDueAt === undefined || input.subscriptionNotes === undefined) {
         throw new ConflictException('Recarregue a assinatura antes de salvar.');
       }
+      // The WhatsApp number is chosen here, never by the workshop: two workshops sharing a session would share a number.
+      const session = input.whatsappSessionId === undefined ? undefined : input.whatsappSessionId?.trim() || null;
+      const sessionChanged = session !== undefined && session !== before.waAkgSessionId;
+      if (sessionChanged && session && await tx.tenant.findFirst({ where: { waAkgSessionId: session, id: { not: id } }, select: { id: true } })) {
+        throw new ConflictException('Esta sessão do WhatsApp já está em uso por outra oficina.');
+      }
       const result = await tx.tenant.updateMany({
         where: { id, deletedAt: null, updatedAt: input.expectedUpdatedAt ? new Date(input.expectedUpdatedAt) : null },
         data: {
+          ...(sessionChanged ? {
+            waAkgSessionId: session, waAkgTestedAt: null, waAkgTestSuccessAt: null, waAkgTestError: null,
+            waWebhookTestedAt: null, waWebhookTestSuccessAt: null, waWebhookTestError: null,
+            ...(session ? {} : { waAkgEnabled: false }),
+          } : {}),
           plan: input.plan, extraModules: input.extraModules, subscriptionStatus: input.subscriptionStatus,
           subscriptionAmountCents: input.subscriptionAmountCents, subscriptionCycle: input.subscriptionCycle,
           subscriptionDueAt: input.subscriptionDueAt ? new Date(input.subscriptionDueAt) : null,

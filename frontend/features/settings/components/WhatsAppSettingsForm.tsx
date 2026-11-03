@@ -91,15 +91,19 @@ export function WhatsAppSettingsForm() {
     <section className="rounded-card border border-border bg-card p-5 shadow-sm">
       <div className="flex items-start justify-between gap-4"><div><h2 className="text-base font-bold">WhatsApp via WA-AKG</h2><p className="mt-1 text-sm text-text-muted">Envie as perguntas da OS com botões na conversa e receba as escolhas automaticamente.</p></div><span className="rounded-full bg-muted px-2.5 py-1 text-xs font-semibold">{settings.data.enabled ? 'Ativo' : 'Inativo'}</span></div>
       <fieldset disabled={!canManage || busy} className="mt-5 space-y-4">
-        <p className="text-sm"><span className="font-semibold">Servidor:</span> <span className="text-text-muted">{form.baseUrl || EMPTY.baseUrl}</span></p>
-        <label className="grid gap-1.5 text-sm font-semibold">ID da sessão<Input value={form.sessionId ?? ''} onChange={(event) => set('sessionId', event.target.value)} placeholder="Copie o sessionId exibido no WA-AKG" maxLength={160} /></label>
-        <label className="grid gap-1.5 text-sm font-semibold">Chave de API<Input type="password" value={form.apiKey ?? ''} onChange={(event) => set('apiKey', event.target.value)} autoComplete="new-password" placeholder={settings.data.apiKeyConfigured ? 'Chave configurada · deixe vazio para manter' : 'Chave de API com acesso à sessão'} maxLength={1000} /></label>
+        {settings.data.managed
+          ? <p className="rounded-button border border-border bg-muted/40 p-3 text-sm text-text-muted">{settings.data.sessionId ? <>A conexão com o WhatsApp é mantida pelo Ax Cloud. Número liberado para esta oficina: sessão <strong className="text-text">{settings.data.sessionId}</strong>.</> : 'A conexão com o WhatsApp é mantida pelo Ax Cloud. O número desta oficina ainda não foi liberado: fale com o suporte para ativar o envio.'}</p>
+          : <>
+            <p className="text-sm"><span className="font-semibold">Servidor:</span> <span className="text-text-muted">{form.baseUrl || EMPTY.baseUrl}</span></p>
+            <label className="grid gap-1.5 text-sm font-semibold">ID da sessão<Input value={form.sessionId ?? ''} onChange={(event) => set('sessionId', event.target.value)} placeholder="Copie o sessionId exibido no WA-AKG" maxLength={160} /></label>
+            <label className="grid gap-1.5 text-sm font-semibold">Chave de API<Input type="password" value={form.apiKey ?? ''} onChange={(event) => set('apiKey', event.target.value)} autoComplete="new-password" placeholder={settings.data.apiKeyConfigured ? 'Chave configurada · deixe vazio para manter' : 'Chave de API com acesso à sessão'} maxLength={1000} /></label>
+          </>}
         <label className="grid gap-1.5 text-sm font-semibold">Segredo do webhook<Input type="password" value={form.webhookSecret ?? ''} onChange={(event) => set('webhookSecret', event.target.value)} autoComplete="new-password" placeholder={settings.data.webhookSecretConfigured ? 'Segredo configurado · deixe vazio para manter' : 'Use o mesmo segredo no WA-AKG (mínimo 32 caracteres)'} maxLength={500} /></label>
         <div className="flex flex-wrap gap-2"><Button type="button" variant="outline" size="sm" onClick={() => {
           const bytes = crypto.getRandomValues(new Uint8Array(32));
           set('webhookSecret', Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join(''));
         }}>Gerar segredo</Button><Button type="button" variant="outline" size="sm" disabled={!form.webhookSecret} onClick={() => copy(form.webhookSecret!)}>Copiar segredo antes de salvar</Button></div>
-        <label className="flex items-center gap-2 text-sm font-semibold"><input type="checkbox" checked={form.enabled} onChange={(event) => set('enabled', event.target.checked)} className="size-4 accent-primary" />Ativar envio de botões pelo WA-AKG</label>
+        <label className="flex items-center gap-2 text-sm font-semibold"><input type="checkbox" checked={form.enabled} disabled={Boolean(settings.data.managed && !settings.data.sessionId)} onChange={(event) => set('enabled', event.target.checked)} className="size-4 accent-primary" />Ativar envio de botões pelo WA-AKG</label>
         <div className="flex justify-end"><Button type="button" onClick={save} disabled={!dirty}>{update.isPending ? 'Salvando...' : 'Salvar configuração'}</Button></div>
       </fieldset>
       <p className="mt-4 text-xs text-text-muted">A chave e o segredo são criptografados e não são exibidos novamente. O envio direto usa os botões quando “Solicitar resposta por botões” estiver ativado na OS. Mensagens de texto continuam com o compartilhamento manual.</p>

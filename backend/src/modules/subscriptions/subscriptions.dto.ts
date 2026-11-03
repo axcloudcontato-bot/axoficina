@@ -1,5 +1,5 @@
 import { Transform, Type } from 'class-transformer';
-import { ArrayUnique, IsArray, IsDateString, IsIn, IsInt, IsOptional, IsString, Max, MaxLength, Min } from 'class-validator';
+import { ArrayUnique, IsArray, IsDateString, IsIn, IsInt, IsOptional, IsString, Matches, Max, MaxLength, Min } from 'class-validator';
 import { BILLING_CYCLES, MODULE_KEYS, PLAN_CODES, SUBSCRIPTION_STATUSES } from '@oficina/contracts';
 import type { BillingCycle, ModuleKey, SubscriptionStatus, UpdateSubscriptionRequest } from '@oficina/contracts';
 
@@ -42,6 +42,9 @@ export class UpdateSubscriptionDto implements UpdateSubscriptionRequest {
 
   @IsOptional() @IsString() @MaxLength(2000)
   subscriptionNotes!: string | null;
+
+  @IsOptional() @Transform(({ value }: { value: unknown }) => typeof value === 'string' ? value.trim() : value) @IsString() @MaxLength(160) @Matches(/^[a-zA-Z0-9_-]*$/, { message: 'A sessão deve conter apenas letras, números, hífen ou sublinhado.' })
+  whatsappSessionId?: string | null;
 
   @IsOptional() @IsDateString({ strict: true })
   expectedUpdatedAt!: string | null;

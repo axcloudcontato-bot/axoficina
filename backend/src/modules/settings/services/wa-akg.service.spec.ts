@@ -16,6 +16,40 @@ function setup() {
   return { service, tenants, tenant, secrets, entitlements };
 }
 
+describe('WA-AKG with the platform key', () => {
+  afterEach(() => jest.restoreAllMocks());
+  const platformConfig = new ConfigService({ SETTINGS_ENCRYPTION_KEY: 'test-encryption-key', PUBLIC_API_URL: 'https://api.oficina.example', WA_AKG_API_KEY: 'platform-key' });
+  function managed(tenantOverrides: Record<string, unknown> = {}) {
+    const secrets = new SecretEncryptionService(platformConfig);
+    let tenant: Record<string, unknown> = { id: 'tenant-a', waAkgBaseUrl: null, waAkgSessionId: 'oficina', waAkgEnabled: false, waAkgApiKey: null, waAkgWebhookSecret: secrets.encrypt(secret), ...tenantOverrides };
+    const tenants = { byId: jest.fn(async () => tenant), updateSettings: jest.fn(async (_id, changes) => { tenant = { ...tenant, ...changes }; return tenant; }) };
+    const entitlements = { forTenant: jest.fn(async () => ({ modules: ['whatsapp'] })) };
+    return { tenants, service: new WaAkgService(tenants as never, secrets, platformConfig, { record: jest.fn() } as never, entitlements as never) };
+  }
+  const actor = { tenantId: 'tenant-a', userId: 'user-a', role: 'ADMIN' as const };
+
+  it('connects with the key from the environment and tells the screen the workshop has none to enter', async () => {
+    const { service } = managed();
+    expect(await service.getConnection('tenant-a', false)).toEqual({ baseUrl: 'https://chat.axcloud.com.br/api', sessionId: 'oficina', apiKey: 'platform-key' });
+    const settings = await service.getSettings('tenant-a');
+    expect(settings).toMatchObject({ managed: true, apiKeyConfigured: true, sessionId: 'oficina', baseUrl: 'https://chat.axcloud.com.br' });
+    expect(JSON.stringify(settings)).not.toContain('platform-key');
+  });
+
+  it('ignores the server, session and key a workshop sends and keeps the session the manager assigned', async () => {
+    const { service, tenants } = managed();
+    await service.update(actor, { baseUrl: 'https://chat.axcloud.com.br', sessionId: 'outra-oficina', apiKey: 'workshop-key', enabled: true });
+    const stored = tenants.updateSettings.mock.calls[0][1];
+    expect(stored).toMatchObject({ waAkgSessionId: 'oficina', waAkgEnabled: true });
+    expect(stored.waAkgApiKey).toBeNull();
+  });
+
+  it('refuses to turn the sending on while the manager has not assigned a session', async () => {
+    const { service } = managed({ waAkgSessionId: null });
+    await expect(service.update(actor, { enabled: true })).rejects.toThrow('ainda não foi liberado');
+  });
+});
+
 describe('WA-AKG connection', () => {
   afterEach(() => jest.restoreAllMocks());
 
