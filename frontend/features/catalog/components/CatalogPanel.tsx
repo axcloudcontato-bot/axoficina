@@ -38,6 +38,7 @@ export function CatalogPanel() {
   const [vehicle, setVehicle] = useState<VehicleGroup | 'ALL'>('ALL');
   const [onlyUnpriced, setOnlyUnpriced] = useState(false);
   const [onlyLow, setOnlyLow] = useState(false);
+  const [onlyLowMargin, setOnlyLowMargin] = useState(false);
   const [sort, setSort] = useState<'name' | 'price' | 'margin' | 'stock'>('name');
   const [view, setView] = useState<View>('items');
   const [importing, setImporting] = useState(false);
@@ -56,11 +57,12 @@ export function CatalogPanel() {
   const unpriced = items.filter(item => item.type === tab && item.unitPriceCents === 0).length;
   const lowStock = items.filter(isLowStock).length;
   const lowStockHere = items.filter(item => item.type === tab && isLowStock(item)).length;
+  const lowMargin = items.filter(item => item.type === tab && item.costCents !== undefined && item.unitPriceCents > 0 && (marginPercent(item.unitPriceCents, item.costCents) ?? 0) < 20).length;
   const visible = useMemo(() => {
     const term = normalizeNavigationSearch(search);
-    const filtered = items.filter(item => item.type === tab && (vehicle === 'ALL' || catalogVehicle(item.category) === vehicle) && (category === 'ALL' || item.category === category) && (!onlyUnpriced || item.unitPriceCents === 0) && (!onlyLow || isLowStock(item)) && (!term || normalizeNavigationSearch(`${item.name} ${item.category ?? ''} ${item.code ?? ''} ${item.brand ?? ''}`).includes(term)));
+    const filtered = items.filter(item => item.type === tab && (vehicle === 'ALL' || catalogVehicle(item.category) === vehicle) && (category === 'ALL' || item.category === category) && (!onlyUnpriced || item.unitPriceCents === 0) && (!onlyLow || isLowStock(item)) && (!onlyLowMargin || (item.costCents !== undefined && item.unitPriceCents > 0 && (marginPercent(item.unitPriceCents, item.costCents) ?? 0) < 20)) && (!term || normalizeNavigationSearch(`${item.name} ${item.category ?? ''} ${item.code ?? ''} ${item.brand ?? ''}`).includes(term)));
     return filtered.sort((a, b) => sort === 'price' ? b.unitPriceCents - a.unitPriceCents : sort === 'margin' ? (marginPercent(b.unitPriceCents, b.costCents ?? 0) ?? -Infinity) - (marginPercent(a.unitPriceCents, a.costCents ?? 0) ?? -Infinity) : sort === 'stock' ? (a.stockQuantity ?? Infinity) - (b.stockQuantity ?? Infinity) : a.name.localeCompare(b.name, 'pt-BR'));
-  }, [items, tab, vehicle, search, category, onlyUnpriced, onlyLow, sort]);
+  }, [items, tab, vehicle, search, category, onlyUnpriced, onlyLow, onlyLowMargin, sort]);
 
   function loadDefaults() {
     seed.mutate(undefined, {
@@ -132,7 +134,7 @@ export function CatalogPanel() {
     {view === 'items' && <>
     <div className="flex flex-wrap items-center justify-between gap-3">
       <div role="tablist" aria-label="Tipo de item" className={segmentedList}>
-        {CATALOG_ITEM_TYPES.map(type => <button key={type} role="tab" aria-selected={tab === type} onClick={() => { setTab(type); setCategory('ALL'); setOnlyLow(false); }} className={segmentedItem(tab === type, 'px-4')}>{TAB_LABELS[type]} <span className="text-xs font-normal opacity-70">{counts[type]}</span></button>)}
+        {CATALOG_ITEM_TYPES.map(type => <button key={type} role="tab" aria-selected={tab === type} onClick={() => { setTab(type); setCategory('ALL'); setOnlyLow(false); setOnlyUnpriced(false); setOnlyLowMargin(false); }} className={segmentedItem(tab === type, 'px-4')}>{TAB_LABELS[type]} <span className="text-xs font-normal opacity-70">{counts[type]}</span></button>)}
       </div>
       <div className="flex w-full flex-wrap gap-2 sm:w-auto">
         <select aria-label="Filtrar por veículo" className="h-10 rounded-button border border-input bg-background px-3 text-sm" value={vehicle} onChange={event => { setVehicle(event.target.value as VehicleGroup | 'ALL'); setCategory('ALL'); }}><option value="ALL">Todos os veículos</option>{VEHICLE_GROUPS.map(group => <option key={group} value={group}>{group === 'Geral' ? 'Uso geral' : group}</option>)}</select>
@@ -144,28 +146,26 @@ export function CatalogPanel() {
       </div>
     </div>
 
-    {lowStock > 0 && <div className="flex flex-wrap items-center justify-between gap-2 rounded-button border border-danger/30 bg-danger-subtle p-3 text-sm"><span>{lowStock} {lowStock === 1 ? 'item com estoque baixo' : 'itens com estoque baixo'} no catálogo{lowStockHere ? ` · ${lowStockHere} nesta aba` : ''}. Hora de repor.</span><button type="button" className="font-semibold underline" onClick={() => { if (onlyLow) { setOnlyLow(false); return; } const target = items.find(isLowStock); if (target) setTab(target.type); setVehicle('ALL'); setCategory('ALL'); setOnlyUnpriced(false); setSearch(''); setOnlyLow(true); }}>{onlyLow ? 'Ver todos' : 'Mostrar só os de estoque baixo'}</button></div>}
+    {lowStock > 0 && <div className="flex flex-wrap items-center justify-between gap-2 rounded-button border border-danger/30 bg-danger-subtle p-3 text-sm"><span>{lowStock} {lowStock === 1 ? 'item com estoque baixo' : 'itens com estoque baixo'} no catálogo{lowStockHere ? ` · ${lowStockHere} nesta aba` : ''}. Hora de repor.</span><button type="button" className="font-semibold underline" onClick={() => { if (onlyLow) { setOnlyLow(false); return; } const target = items.find(isLowStock); if (target) setTab(target.type); setVehicle('ALL'); setCategory('ALL'); setOnlyUnpriced(false); setOnlyLowMargin(false); setSearch(''); setOnlyLow(true); }}>{onlyLow ? 'Ver todos' : 'Mostrar só os de estoque baixo'}</button></div>}
 
-    {unpriced > 0 && <div className="flex flex-wrap items-center justify-between gap-2 rounded-button border border-warning/30 bg-warning-subtle p-3 text-sm"><span>{unpriced} {unpriced === 1 ? 'item sem preço' : 'itens sem preço'} em {TAB_LABELS[tab].toLowerCase()}. Clique no valor de cada linha para preencher.</span><button type="button" className="font-semibold underline" onClick={() => setOnlyUnpriced(current => !current)}>{onlyUnpriced ? 'Ver todos' : 'Mostrar só os sem preço'}</button></div>}
+    {unpriced > 0 && <div className="flex flex-wrap items-center justify-between gap-2 rounded-button border border-warning/30 bg-warning-subtle p-3 text-sm"><span>{unpriced} {unpriced === 1 ? 'item sem preço' : 'itens sem preço'} em {TAB_LABELS[tab].toLowerCase()}. Clique no valor de cada linha para preencher.</span><button type="button" className="font-semibold underline" onClick={() => { setOnlyUnpriced(current => !current); setOnlyLow(false); setOnlyLowMargin(false); }}>{onlyUnpriced ? 'Ver todos' : 'Mostrar só os sem preço'}</button></div>}
+
+    {lowMargin > 0 && <div className="flex flex-wrap items-center justify-between gap-2 rounded-button border border-warning/30 bg-warning-subtle p-3 text-sm"><span>{lowMargin} {lowMargin === 1 ? 'item com margem abaixo de 20%' : 'itens com margem abaixo de 20%'} em {TAB_LABELS[tab].toLowerCase()}.</span><button type="button" className="font-semibold underline" onClick={() => { setOnlyLowMargin(current => !current); setOnlyLow(false); setOnlyUnpriced(false); setVehicle('ALL'); setCategory('ALL'); setSearch(''); }}>{onlyLowMargin ? 'Ver todos' : 'Mostrar só os de margem baixa'}</button></div>}
 
     <div className="flex flex-wrap items-center justify-between gap-2"><p className="text-xs text-text-muted">{visible.length} de {counts[tab]} itens nesta seção</p><div className="flex flex-wrap gap-2"><select aria-label="Ordenar itens" className="h-9 rounded-button border border-input bg-background px-3 text-sm" value={sort} onChange={event => setSort(event.target.value as typeof sort)}><option value="name">Nome</option><option value="price">Maior preço</option><option value="margin">Maior margem</option><option value="stock">Menor estoque</option></select><Button variant="outline" onClick={() => setImporting(true)}><UploadSimple className="size-4" />Importar planilha</Button><Button variant="outline" onClick={loadDefaults} disabled={seed.isPending}>{seed.isPending ? 'Carregando...' : 'Carregar itens padrão'}</Button></div></div>
-    <section className="overflow-hidden rounded-card border border-border bg-card shadow-sm">
-      {visible.map(item => <div key={item.id} className="flex flex-wrap items-center justify-between gap-4 border-b border-border px-5 py-3 last:border-0">
-        <div className="min-w-0">
-          <p className="font-semibold">{item.name}</p>
-          <p className="text-xs text-text-muted">{[item.category, item.code, item.brand, item.type === 'LABOR' ? (item.standardMinutes ? `${item.standardMinutes} min` : undefined) : `por ${item.unit}`].filter(Boolean).join(' · ')}</p>
-        </div>
-        <div className="flex items-center gap-3">
-          {item.trackStock && <button type="button" aria-label={`Estoque de ${item.name}`} onClick={() => setStocking(item)} className={`rounded-full px-2 py-0.5 text-xs font-bold hover:opacity-80 ${isLowStock(item) ? 'bg-danger-subtle text-danger' : 'bg-muted text-text'}`}>{formatStock(item.stockQuantity)} {item.unit}{isLowStock(item) ? ' · baixo' : ''}</button>}
-          {item.costCents !== undefined && item.unitPriceCents > 0 && (() => { const margin = marginPercent(item.unitPriceCents, item.costCents); return margin === null ? null : <span title={`Custo ${formatCurrencyBRL(item.costCents)}`} className={`rounded-full px-2 py-0.5 text-xs font-bold ${margin < 0 ? 'bg-danger-subtle text-danger' : margin < 20 ? 'bg-warning-subtle text-warning' : 'bg-success-subtle text-success'}`}>{margin}%</span>; })()}
-          {pricing?.id === item.id
-            ? <Input autoFocus aria-label={`Preço de ${item.name}`} inputMode="decimal" className="h-9 w-28 text-right" placeholder="0,00" value={pricing.text} onChange={event => setPricing({ id: item.id, text: event.target.value })} onBlur={() => savePrice(item)} onKeyDown={event => { if (event.key === 'Enter') event.currentTarget.blur(); if (event.key === 'Escape') setPricing(undefined); }} />
-            : <button type="button" aria-label={`Alterar preço de ${item.name}`} onClick={() => setPricing({ id: item.id, text: item.unitPriceCents > 0 ? (item.unitPriceCents / 100).toFixed(2).replace('.', ',') : '' })} className="rounded-button px-2 py-1 text-sm font-bold tabular-nums hover:bg-muted">{item.unitPriceCents > 0 ? formatCurrencyBRL(item.unitPriceCents) : <span className="font-medium text-warning">Sem preço</span>}</button>}
-          <Button variant="ghost" size="icon" onClick={() => setEditing(item)} aria-label={`Editar ${item.name}`}><PencilSimple className="size-4" /></Button>
-          <Button variant="ghost" size="icon" className="text-danger" aria-label={`Excluir ${item.name}`} onClick={() => setDeleting(item)}><Trash className="size-4" /></Button>
-        </div>
-      </div>)}
-      {!query.isLoading && visible.length === 0 && <p className="p-10 text-center text-sm text-text-muted">{items.length === 0 ? 'Catálogo vazio. Use "Carregar itens padrão de oficina" ou cadastre o primeiro item.' : 'Nenhum item encontrado nesta aba.'}</p>}
+    <section className="overflow-x-auto rounded-card border border-border bg-card shadow-sm">
+      <table className="w-full min-w-[760px] text-sm">
+        <thead><tr className="border-b border-border bg-surface text-left text-xs uppercase tracking-wide text-text-muted"><th scope="col" className="px-5 py-3 font-semibold">Item</th><th scope="col" className="px-3 py-3 text-right font-semibold">Custo</th><th scope="col" className="px-3 py-3 text-right font-semibold">Preço</th><th scope="col" className="px-3 py-3 text-right font-semibold">Margem</th><th scope="col" className="px-3 py-3 text-right font-semibold">Estoque</th><th scope="col" className="px-5 py-3 text-right font-semibold">Ações</th></tr></thead>
+        <tbody>{visible.map(item => { const margin = item.costCents !== undefined && item.unitPriceCents > 0 ? marginPercent(item.unitPriceCents, item.costCents) : null; return <tr key={item.id} className="border-b border-border align-middle last:border-0">
+          <td className="min-w-56 px-5 py-3"><p className="font-semibold">{item.name}</p><p className="text-xs text-text-muted">{[item.category, item.code, item.brand, item.type === 'LABOR' ? (item.standardMinutes ? `${item.standardMinutes} min` : undefined) : `por ${item.unit}`].filter(Boolean).join(' · ')}</p></td>
+          <td className="px-3 py-3 text-right tabular-nums">{item.costCents === undefined ? <span className="text-text-muted">—</span> : formatCurrencyBRL(item.costCents)}</td>
+          <td className="px-3 py-3 text-right">{pricing?.id === item.id ? <Input autoFocus aria-label={`Preço de ${item.name}`} inputMode="decimal" className="ml-auto h-9 w-28 text-right" placeholder="0,00" value={pricing.text} onChange={event => setPricing({ id: item.id, text: event.target.value })} onBlur={() => savePrice(item)} onKeyDown={event => { if (event.key === 'Enter') event.currentTarget.blur(); if (event.key === 'Escape') setPricing(undefined); }} /> : <button type="button" aria-label={`Alterar preço de ${item.name}`} onClick={() => setPricing({ id: item.id, text: item.unitPriceCents > 0 ? (item.unitPriceCents / 100).toFixed(2).replace('.', ',') : '' })} className="rounded-button px-2 py-1 font-bold tabular-nums hover:bg-muted">{item.unitPriceCents > 0 ? formatCurrencyBRL(item.unitPriceCents) : <span className="font-medium text-warning">Sem preço</span>}</button>}</td>
+          <td className="px-3 py-3 text-right">{margin === null ? <span className="text-text-muted">—</span> : <span className={`rounded-full px-2 py-0.5 text-xs font-bold ${margin < 0 ? 'bg-danger-subtle text-danger' : margin < 20 ? 'bg-warning-subtle text-warning' : 'bg-success-subtle text-success'}`}>{margin}%</span>}</td>
+          <td className="px-3 py-3 text-right">{item.trackStock ? <button type="button" aria-label={`Estoque de ${item.name}`} onClick={() => setStocking(item)} className={`rounded-full px-2 py-0.5 text-xs font-bold hover:opacity-80 ${isLowStock(item) ? 'bg-danger-subtle text-danger' : 'bg-muted text-text'}`}>{formatStock(item.stockQuantity)} {item.unit}{isLowStock(item) ? ' · baixo' : ''}</button> : <span className="text-text-muted">—</span>}</td>
+          <td className="whitespace-nowrap px-5 py-3 text-right"><Button variant="ghost" size="icon" onClick={() => setEditing(item)} aria-label={`Editar ${item.name}`}><PencilSimple className="size-4" /></Button><Button variant="ghost" size="icon" className="text-danger" aria-label={`Excluir ${item.name}`} onClick={() => setDeleting(item)}><Trash className="size-4" /></Button></td>
+        </tr>; })}</tbody>
+      </table>
+      {!query.isLoading && visible.length === 0 && <p className="p-10 text-center text-sm text-text-muted">{items.length === 0 ? 'Catálogo vazio. Use "Carregar itens padrão" ou cadastre o primeiro item.' : 'Nenhum item encontrado. Ajuste os filtros ou a busca.'}</p>}
     </section>
     </>}
 

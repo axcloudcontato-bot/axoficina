@@ -57,6 +57,27 @@ describe('CatalogPanel', () => {
     expect(screen.getByText('Vela de ignição')).toBeInTheDocument();
   });
 
+  it('finds items by code or brand', async () => {
+    const user = userEvent.setup();
+    renderPanel();
+    await screen.findByText('Pastilha de freio dianteira');
+    await user.type(screen.getByLabelText('Buscar no catálogo'), 'PF-1');
+    expect(screen.getByText('Pastilha de freio dianteira')).toBeInTheDocument();
+    expect(screen.queryByText('Disco de freio')).not.toBeInTheDocument();
+    await user.clear(screen.getByLabelText('Buscar no catálogo'));
+    await user.type(screen.getByLabelText('Buscar no catálogo'), 'Cobreq');
+    expect(screen.getByText('Pastilha de freio dianteira')).toBeInTheDocument();
+    expect(screen.queryByText('Disco de freio')).not.toBeInTheDocument();
+  });
+
+  it('shows cost, price, margin and stock in separate columns', async () => {
+    renderPanel();
+    await screen.findByText('Pastilha de freio dianteira');
+    for (const heading of ['Custo', 'Preço', 'Margem', 'Estoque']) expect(screen.getByRole('columnheader', { name: heading })).toBeInTheDocument();
+    expect(screen.getByText(/R\$\s90,00/)).toBeInTheDocument();
+    expect(screen.getByText('50%')).toBeInTheDocument();
+  });
+
   it('asks for confirmation in its own dialog before deleting', async () => {
     const user = userEvent.setup();
     renderPanel();
