@@ -108,7 +108,7 @@ describe('CatalogPanel', () => {
     expect(await screen.findByText('Revisão básica')).toBeInTheDocument();
     expect(screen.getByText(/2× Pastilha de freio dianteira/)).toBeInTheDocument();
     expect(screen.getByText(/R\$\s360,00/)).toBeInTheDocument();
-    await user.click(screen.getByRole('tab', { name: 'Mais vendidos' }));
+    await user.click(screen.getByRole('tab', { name: 'Análise' }));
     expect(await screen.findByText(/R\$\s1\.080,00/)).toBeInTheDocument();
     expect(screen.getByText(/R\$\s540,00/)).toBeInTheDocument();
   });

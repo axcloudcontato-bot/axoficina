@@ -24,7 +24,7 @@ import { CatalogReport } from './CatalogReport';
 import { StockDialog } from './StockDialog';
 
 const TAB_LABELS: Record<CatalogItemType, string> = { PART: 'Peças', PRODUCT: 'Produtos', LABOR: 'Serviços' };
-const VIEWS = [{ key: 'items', label: 'Itens' }, { key: 'packages', label: 'Pacotes' }, { key: 'report', label: 'Mais vendidos' }] as const;
+const VIEWS = [{ key: 'items', label: 'Catálogo' }, { key: 'packages', label: 'Pacotes' }, { key: 'report', label: 'Análise' }] as const;
 type View = (typeof VIEWS)[number]['key'];
 
 export function CatalogPanel() {
@@ -38,6 +38,7 @@ export function CatalogPanel() {
   const [vehicle, setVehicle] = useState<VehicleGroup | 'ALL'>('ALL');
   const [onlyUnpriced, setOnlyUnpriced] = useState(false);
   const [onlyLow, setOnlyLow] = useState(false);
+  const [sort, setSort] = useState<'name' | 'price' | 'margin' | 'stock'>('name');
   const [view, setView] = useState<View>('items');
   const [importing, setImporting] = useState(false);
   const [stocking, setStocking] = useState<CatalogItemResponse>();
@@ -54,10 +55,12 @@ export function CatalogPanel() {
   const tabCategories = useMemo(() => [...new Set(items.filter(item => item.type === tab && (vehicle === 'ALL' || catalogVehicle(item.category) === vehicle)).map(item => item.category).filter((value): value is string => Boolean(value)))].sort((a, b) => a.localeCompare(b, 'pt-BR')), [items, tab, vehicle]);
   const unpriced = items.filter(item => item.type === tab && item.unitPriceCents === 0).length;
   const lowStock = items.filter(isLowStock).length;
+  const lowStockHere = items.filter(item => item.type === tab && isLowStock(item)).length;
   const visible = useMemo(() => {
     const term = normalizeNavigationSearch(search);
-    return items.filter(item => item.type === tab && (vehicle === 'ALL' || catalogVehicle(item.category) === vehicle) && (category === 'ALL' || item.category === category) && (!onlyUnpriced || item.unitPriceCents === 0) && (!onlyLow || isLowStock(item)) && (!term || normalizeNavigationSearch(`${item.name} ${item.category ?? ''}`).includes(term)));
-  }, [items, tab, vehicle, search, category, onlyUnpriced, onlyLow]);
+    const filtered = items.filter(item => item.type === tab && (vehicle === 'ALL' || catalogVehicle(item.category) === vehicle) && (category === 'ALL' || item.category === category) && (!onlyUnpriced || item.unitPriceCents === 0) && (!onlyLow || isLowStock(item)) && (!term || normalizeNavigationSearch(`${item.name} ${item.category ?? ''} ${item.code ?? ''} ${item.brand ?? ''}`).includes(term)));
+    return filtered.sort((a, b) => sort === 'price' ? b.unitPriceCents - a.unitPriceCents : sort === 'margin' ? (marginPercent(b.unitPriceCents, b.costCents ?? 0) ?? -Infinity) - (marginPercent(a.unitPriceCents, a.costCents ?? 0) ?? -Infinity) : sort === 'stock' ? (a.stockQuantity ?? Infinity) - (b.stockQuantity ?? Infinity) : a.name.localeCompare(b.name, 'pt-BR'));
+  }, [items, tab, vehicle, search, category, onlyUnpriced, onlyLow, sort]);
 
   function loadDefaults() {
     seed.mutate(undefined, {
@@ -103,19 +106,17 @@ export function CatalogPanel() {
   return <div className="space-y-5">
     <header className="flex flex-wrap items-end justify-between gap-3 border-b border-border pb-5">
       <div>
-        <p className="text-xs font-bold uppercase tracking-[0.14em] text-primary">Orçamento mais rápido</p>
+        <p className="text-xs font-bold uppercase tracking-[0.14em] text-primary">Catálogo</p>
         <h2 className="mt-1 text-2xl font-bold">Peças, produtos e serviços</h2>
         <p className="mt-1 text-sm text-text-muted">Cadastre o que a oficina vende e escolha na ordem de serviço, sem digitar de novo.</p>
       </div>
       <div className="flex flex-wrap gap-2">
-        <Button variant="outline" onClick={() => setImporting(true)}><UploadSimple className="size-4" />Importar planilha</Button>
-        <Button variant="outline" onClick={loadDefaults} disabled={seed.isPending}>{seed.isPending ? 'Carregando...' : 'Carregar itens padrão de oficina'}</Button>
-        <Button onClick={() => setEditing(null)}><Plus className="size-4" />Novo item</Button>
+        <Button onClick={() => setEditing(null)}><Plus className="size-4" />{tab === 'PART' ? 'Nova peça' : tab === 'PRODUCT' ? 'Novo produto' : 'Novo serviço'}</Button>
       </div>
     </header>
 
     <div className="flex flex-wrap items-center justify-between gap-2 rounded-card border border-border bg-surface px-4 py-3 text-sm">
-      <span><strong>Valor da hora da oficina</strong> <span className="text-text-muted">· usado para calcular o preço dos serviços pelo tempo padrão</span></span>
+      <span><strong>Precificação de serviços · Valor da hora</strong> <span className="text-text-muted">· calcula uma sugestão pelo tempo padrão; preços já cadastrados não mudam automaticamente</span></span>
       {rateText !== undefined
         ? <Input autoFocus aria-label="Valor da hora" inputMode="decimal" className="h-9 w-32 text-right" placeholder="0,00" value={rateText} onChange={event => setRateText(event.target.value)} onBlur={saveRate} onKeyDown={event => { if (event.key === 'Enter') event.currentTarget.blur(); if (event.key === 'Escape') setRateText(undefined); }} />
         : <button type="button" aria-label="Alterar valor da hora" onClick={() => setRateText(laborRate === null ? '' : (laborRate / 100).toFixed(2).replace('.', ','))} className="rounded-button px-2 py-1 font-bold tabular-nums hover:bg-muted">{laborRate === null ? <span className="font-medium text-warning">Definir</span> : `${formatCurrencyBRL(laborRate)}/h`}</button>}
@@ -131,22 +132,23 @@ export function CatalogPanel() {
     {view === 'items' && <>
     <div className="flex flex-wrap items-center justify-between gap-3">
       <div role="tablist" aria-label="Tipo de item" className={segmentedList}>
-        {CATALOG_ITEM_TYPES.map(type => <button key={type} role="tab" aria-selected={tab === type} onClick={() => { setTab(type); setCategory('ALL'); }} className={segmentedItem(tab === type, 'px-4')}>{TAB_LABELS[type]} <span className="text-xs font-normal opacity-70">{counts[type]}</span></button>)}
+        {CATALOG_ITEM_TYPES.map(type => <button key={type} role="tab" aria-selected={tab === type} onClick={() => { setTab(type); setCategory('ALL'); setOnlyLow(false); }} className={segmentedItem(tab === type, 'px-4')}>{TAB_LABELS[type]} <span className="text-xs font-normal opacity-70">{counts[type]}</span></button>)}
       </div>
       <div className="flex w-full flex-wrap gap-2 sm:w-auto">
         <select aria-label="Filtrar por veículo" className="h-10 rounded-button border border-input bg-background px-3 text-sm" value={vehicle} onChange={event => { setVehicle(event.target.value as VehicleGroup | 'ALL'); setCategory('ALL'); }}><option value="ALL">Todos os veículos</option>{VEHICLE_GROUPS.map(group => <option key={group} value={group}>{group === 'Geral' ? 'Uso geral' : group}</option>)}</select>
         {tabCategories.length > 0 && <select aria-label="Filtrar por categoria" className="h-10 rounded-button border border-input bg-background px-3 text-sm" value={category} onChange={event => setCategory(event.target.value)}><option value="ALL">Todas as categorias</option>{tabCategories.map(name => <option key={name} value={name}>{name}</option>)}</select>}
         <div className="relative w-full sm:w-72">
           <MagnifyingGlass className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-text-muted" aria-hidden />
-          <Input aria-label="Buscar no catálogo" className="pl-9" placeholder="Buscar por nome ou categoria" value={search} onChange={event => setSearch(event.target.value)} />
+          <Input aria-label="Buscar no catálogo" className="pl-9" placeholder="Nome, categoria, código ou marca" value={search} onChange={event => setSearch(event.target.value)} />
         </div>
       </div>
     </div>
 
-    {lowStock > 0 && <div className="flex flex-wrap items-center justify-between gap-2 rounded-button border border-danger/30 bg-danger-subtle p-3 text-sm"><span>{lowStock} {lowStock === 1 ? 'item com estoque baixo' : 'itens com estoque baixo'}. Hora de repor.</span><button type="button" className="font-semibold underline" onClick={() => { setOnlyLow(current => !current); }}>{onlyLow ? 'Ver todos' : 'Mostrar só os de estoque baixo'}</button></div>}
+    {lowStock > 0 && <div className="flex flex-wrap items-center justify-between gap-2 rounded-button border border-danger/30 bg-danger-subtle p-3 text-sm"><span>{lowStock} {lowStock === 1 ? 'item com estoque baixo' : 'itens com estoque baixo'} no catálogo{lowStockHere ? ` · ${lowStockHere} nesta aba` : ''}. Hora de repor.</span><button type="button" className="font-semibold underline" onClick={() => { if (onlyLow) { setOnlyLow(false); return; } const target = items.find(isLowStock); if (target) setTab(target.type); setVehicle('ALL'); setCategory('ALL'); setOnlyUnpriced(false); setSearch(''); setOnlyLow(true); }}>{onlyLow ? 'Ver todos' : 'Mostrar só os de estoque baixo'}</button></div>}
 
     {unpriced > 0 && <div className="flex flex-wrap items-center justify-between gap-2 rounded-button border border-warning/30 bg-warning-subtle p-3 text-sm"><span>{unpriced} {unpriced === 1 ? 'item sem preço' : 'itens sem preço'} em {TAB_LABELS[tab].toLowerCase()}. Clique no valor de cada linha para preencher.</span><button type="button" className="font-semibold underline" onClick={() => setOnlyUnpriced(current => !current)}>{onlyUnpriced ? 'Ver todos' : 'Mostrar só os sem preço'}</button></div>}
 
+    <div className="flex flex-wrap items-center justify-between gap-2"><p className="text-xs text-text-muted">{visible.length} de {counts[tab]} itens nesta seção</p><div className="flex flex-wrap gap-2"><select aria-label="Ordenar itens" className="h-9 rounded-button border border-input bg-background px-3 text-sm" value={sort} onChange={event => setSort(event.target.value as typeof sort)}><option value="name">Nome</option><option value="price">Maior preço</option><option value="margin">Maior margem</option><option value="stock">Menor estoque</option></select><Button variant="outline" onClick={() => setImporting(true)}><UploadSimple className="size-4" />Importar planilha</Button><Button variant="outline" onClick={loadDefaults} disabled={seed.isPending}>{seed.isPending ? 'Carregando...' : 'Carregar itens padrão'}</Button></div></div>
     <section className="overflow-hidden rounded-card border border-border bg-card shadow-sm">
       {visible.map(item => <div key={item.id} className="flex flex-wrap items-center justify-between gap-4 border-b border-border px-5 py-3 last:border-0">
         <div className="min-w-0">

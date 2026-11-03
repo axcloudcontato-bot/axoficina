@@ -22,6 +22,7 @@ export function CatalogReport() {
   }, [rows, sort]);
 
   return <div className="space-y-4">
+    <h3 className="text-lg font-semibold">Mais vendidos</h3>
     <div className="flex flex-wrap items-center justify-between gap-3">
       <p className="max-w-2xl text-sm text-text-muted">O que mais saiu nas ordens de serviço entregues no período, antes do desconto da OS. {hasMargin ? 'O lucro só aparece para itens com custo conhecido.' : ''}</p>
       <div className="flex gap-2">
