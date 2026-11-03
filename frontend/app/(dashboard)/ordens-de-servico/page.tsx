@@ -59,7 +59,10 @@ export default function ServiceOrdersPage() {
     // Deep links from the dashboard cards (?status=COMPLETED, ?attention=OVERDUE).
     const params = new URLSearchParams(window.location.search);
     const linkedStatus = params.get('status'); const linkedAttention = params.get('attention');
-    if (linkedStatus && (ALL_STATUSES as string[]).includes(linkedStatus)) setStatus(linkedStatus as ServiceOrderStatus);
+    if (linkedStatus && (ALL_STATUSES as string[]).includes(linkedStatus)) {
+      setStatus(linkedStatus as ServiceOrderStatus);
+      if (!linkedAttention) setAttention('ALL');
+    }
     if (linkedAttention && ['ACTIVE', 'OVERDUE', 'UNASSIGNED', 'PAYMENT_PENDING'].includes(linkedAttention)) setAttention(linkedAttention as ServiceOrderAttentionFilter);
     const linkedSearch = params.get('q');
     if (linkedSearch) { setSearch(linkedSearch); setDebouncedSearch(linkedSearch); }
