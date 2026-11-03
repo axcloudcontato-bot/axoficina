@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 
 type SpecialDates = Pick<AgendaHours, 'openHour' | 'closeHour' | 'closedDates' | 'dateHours'>;
 const label = (hour: number) => `${String(hour).padStart(2, '0')}:00`;
-const selectClass = 'h-10 rounded-button border border-input bg-background px-3 text-sm';
+const selectClass = 'h-10 rounded-button border border-input bg-card px-3 text-sm';
 
 export function SpecialDatesEditor({ hours, onChange }: { hours: SpecialDates; onChange: (next: Pick<AgendaHours, 'closedDates' | 'dateHours'>) => void }) {
   const [date, setDate] = useState('');

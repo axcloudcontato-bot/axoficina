@@ -12,7 +12,7 @@ import { useCareDeliveries, useResolveCareDelivery, useRetryCareDelivery } from 
 
 const PAGE_SIZE = 30;
 const date = (value: string) => new Date(value).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' });
-const selectClass = 'h-10 rounded-button border border-input bg-background px-3 text-sm';
+const selectClass = 'h-10 rounded-button border border-input bg-card px-3 text-sm';
 const STATUS: Record<CareDeliveryStatus, { label: string; className: string }> = {
   PENDING: { label: 'Na fila', className: 'bg-info-subtle text-info-strong' }, SENDING: { label: 'Enviando', className: 'bg-info-subtle text-info-strong' },
   SENT: { label: 'Enviado', className: 'bg-success-subtle text-success-strong' }, FAILED: { label: 'Revisar configuração', className: 'bg-danger-subtle text-danger-strong' },

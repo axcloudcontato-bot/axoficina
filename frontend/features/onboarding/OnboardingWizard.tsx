@@ -19,7 +19,7 @@ import { SUGGESTED_WORKSHOP_TERMS } from '@/features/settings/workshop-terms';
 
 const STEPS = ['Sua oficina', 'Contato', 'Endereço', 'Funcionamento', 'Documentos', 'Pronto'] as const;
 const DAYS = [{ value: 1, label: 'Seg' }, { value: 2, label: 'Ter' }, { value: 3, label: 'Qua' }, { value: 4, label: 'Qui' }, { value: 5, label: 'Sex' }, { value: 6, label: 'Sáb' }, { value: 0, label: 'Dom' }];
-const selectClass = 'h-10 w-full rounded-button border border-input bg-background px-3 text-sm';
+const selectClass = 'h-10 w-full rounded-button border border-input bg-card px-3 text-sm';
 const hourLabel = (hour: number) => `${String(hour).padStart(2, '0')}:00`;
 
 const validPhone = (value?: string) => /^\d{10,13}$/.test(onlyDigits(value));

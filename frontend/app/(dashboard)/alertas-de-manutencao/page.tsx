@@ -84,8 +84,8 @@ export default function MaintenanceAlertsPage() {
       </div>
 
       {narrowing && <div className="flex flex-wrap items-center gap-2">
-        <select aria-label="Tempo sem visita" className="h-10 rounded-button border border-input bg-background px-3 text-sm" value={age} onChange={(event) => { setAge(event.target.value as typeof age); setOffset(0); }}>{AGE_RANGES.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select>
-        <select aria-label="Situação do contato" className="h-10 rounded-button border border-input bg-background px-3 text-sm" value={contact} onChange={(event) => { setContact(event.target.value as typeof contact); setOffset(0); }}><option value="">Todos, contatados ou não</option><option value="NEVER">Ainda sem contato</option><option value="CONTACTED">Já contatados</option></select>
+        <select aria-label="Tempo sem visita" className="h-10 rounded-button border border-input bg-card px-3 text-sm" value={age} onChange={(event) => { setAge(event.target.value as typeof age); setOffset(0); }}>{AGE_RANGES.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select>
+        <select aria-label="Situação do contato" className="h-10 rounded-button border border-input bg-card px-3 text-sm" value={contact} onChange={(event) => { setContact(event.target.value as typeof contact); setOffset(0); }}><option value="">Todos, contatados ou não</option><option value="NEVER">Ainda sem contato</option><option value="CONTACTED">Já contatados</option></select>
       </div>}
 
       {canConfigure && <div className="flex flex-wrap items-center gap-2 rounded-card border border-border bg-surface px-4 py-3 text-sm">

@@ -29,7 +29,7 @@ interface CatalogItemFormModalProps {
 }
 
 const CARE_OPTIONS = CARE_CAMPAIGN_KEYS.filter((key): key is CareServiceKey => key !== 'BIRTHDAY');
-const selectClass = 'h-10 w-full rounded-button border border-input bg-background px-3 text-sm';
+const selectClass = 'h-10 w-full rounded-button border border-input bg-card px-3 text-sm';
 const toText = (cents?: number) => (cents === undefined ? '' : (cents / 100).toFixed(2).replace('.', ','));
 
 export function CatalogItemFormModal({ open, onOpenChange, item, defaultType = 'PART', defaultVehicle = 'Carro', categories = [] }: CatalogItemFormModalProps) {

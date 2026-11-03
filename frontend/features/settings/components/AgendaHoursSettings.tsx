@@ -14,7 +14,7 @@ import { DEFAULT_AGENDA_HOURS } from '@oficina/contracts';
 import { SpecialDatesEditor } from './SpecialDatesEditor';
 
 const DAYS = [{ value: 1, label: 'Seg', name: 'Segunda' }, { value: 2, label: 'Ter', name: 'Terça' }, { value: 3, label: 'Qua', name: 'Quarta' }, { value: 4, label: 'Qui', name: 'Quinta' }, { value: 5, label: 'Sex', name: 'Sexta' }, { value: 6, label: 'Sáb', name: 'Sábado' }, { value: 0, label: 'Dom', name: 'Domingo' }];
-const selectClass = 'h-10 rounded-button border border-input bg-background px-3 text-sm';
+const selectClass = 'h-10 rounded-button border border-input bg-card px-3 text-sm';
 const HOURS = Array.from({ length: 25 }, (_, hour) => hour);
 const label = (hour: number) => `${String(hour).padStart(2, '0')}:00`;
 // Only what the server keeps: hours of their own for work days, closed dates in order.

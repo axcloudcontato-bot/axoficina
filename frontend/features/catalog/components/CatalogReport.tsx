@@ -7,7 +7,7 @@ import { marginPercent } from '../catalog-pricing';
 import { useCatalogReport } from '../hooks/use-catalog';
 
 type Sort = 'revenue' | 'quantity' | 'margin';
-const selectClass = 'h-10 rounded-button border border-input bg-background px-3 text-sm';
+const selectClass = 'h-10 rounded-button border border-input bg-card px-3 text-sm';
 
 export function CatalogReport() {
   const [days, setDays] = useState<number>(90);

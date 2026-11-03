@@ -73,7 +73,7 @@ export function DismissAlertDialog({ alert, onClose }: { alert?: MaintenanceAler
         <fieldset disabled={dismiss.isPending} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor={`${id}-reason`}>Motivo</Label>
-            <select id={`${id}-reason`} className="h-10 w-full rounded-button border border-input bg-background px-3 text-sm" value={reason} onChange={(event) => setReason(event.target.value as MaintenanceAlertDismissReason)}>
+            <select id={`${id}-reason`} className="h-10 w-full rounded-button border border-input bg-card px-3 text-sm" value={reason} onChange={(event) => setReason(event.target.value as MaintenanceAlertDismissReason)}>
               <option value="">Escolha o motivo</option>
               {MAINTENANCE_ALERT_DISMISS_REASONS.map((value) => <option key={value} value={value}>{MAINTENANCE_ALERT_DISMISS_REASON_LABELS[value]}</option>)}
             </select>

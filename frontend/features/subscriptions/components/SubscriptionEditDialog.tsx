@@ -14,7 +14,7 @@ import { formatCurrencyBRL } from '@/lib/format-currency';
 import { useUpdateSubscription } from '../hooks/use-subscriptions';
 import { SUBSCRIPTION_LABELS } from '../subscription-labels';
 
-const selectClass = 'h-10 w-full rounded-button border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring';
+const selectClass = 'h-10 w-full rounded-button border border-input bg-card px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring';
 
 export function SubscriptionEditDialog({ subscription, onClose }: { subscription: SubscriptionResponse; onClose: () => void }) {
   const [plan, setPlan] = useState<PlanCode>(resolvePlan(subscription.plan).code);

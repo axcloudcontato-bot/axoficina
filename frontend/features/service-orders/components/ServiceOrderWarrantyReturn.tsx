@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { extractErrorMessage } from '@/lib/api/client';
 import { useMarkWarrantyReturn, useWarrantyReturn } from '../hooks/use-service-orders';
 
-const selectClass = 'h-10 w-full rounded-button border border-input bg-background px-3 text-sm';
+const selectClass = 'h-10 w-full rounded-button border border-input bg-card px-3 text-sm';
 
 // When the vehicle had an order delivered still under warranty, the team says whether this one is a return.
 // A return counts as rework for the technicians of the earlier order.

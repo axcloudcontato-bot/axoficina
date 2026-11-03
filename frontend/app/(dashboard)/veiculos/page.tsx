@@ -117,7 +117,7 @@ export default function VehiclesPage() {
           />
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          {!archived && <select aria-label="Filtrar veículos" className="h-10 rounded-button border border-input bg-background px-3 text-sm" value={filter} onChange={(event) => { setFilter(event.target.value as typeof filter); setOffset(0); }}><option value="">Todos os veículos</option><option value="IN_SERVICE">Em andamento na oficina</option><option value="INACTIVE">Sem visita há mais de 6 meses</option></select>}
+          {!archived && <select aria-label="Filtrar veículos" className="h-10 rounded-button border border-input bg-card px-3 text-sm" value={filter} onChange={(event) => { setFilter(event.target.value as typeof filter); setOffset(0); }}><option value="">Todos os veículos</option><option value="IN_SERVICE">Em andamento na oficina</option><option value="INACTIVE">Sem visita há mais de 6 meses</option></select>}
           {canManage && (
             <div role="tablist" aria-label="Situação do cadastro" className={segmentedList}>
               {[{ value: false, label: 'Ativos' }, { value: true, label: 'Arquivados' }].map((option) => (

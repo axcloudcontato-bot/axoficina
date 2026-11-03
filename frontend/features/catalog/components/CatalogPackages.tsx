@@ -12,7 +12,7 @@ import { extractErrorMessage } from '@/lib/api/client';
 import { formatCurrencyBRL } from '@/lib/format-currency';
 import { useCatalogPackages, useDeleteCatalogPackage, useSaveCatalogPackage } from '../hooks/use-catalog';
 
-const selectClass = 'h-10 w-full rounded-button border border-input bg-background px-3 text-sm';
+const selectClass = 'h-10 w-full rounded-button border border-input bg-card px-3 text-sm';
 interface Line { catalogItemId: string; quantity: string }
 
 export function packageTotalCents(pack: CatalogPackageResponse, items: CatalogItemResponse[]): number {

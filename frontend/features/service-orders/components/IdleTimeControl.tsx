@@ -14,7 +14,7 @@ export const IDLE_REASON_LABELS: Record<IdleReason, string> = {
   TRAINING: 'Treinamento',
   OTHER: 'Outro',
 };
-const selectClass = 'h-9 rounded-button border border-input bg-background px-3 text-sm';
+const selectClass = 'h-9 rounded-button border border-input bg-card px-3 text-sm';
 const duration = (minutes: number) => minutes >= 60 ? `${Math.floor(minutes / 60)} h ${String(minutes % 60).padStart(2, '0')}` : `${minutes} min`;
 
 // Time at work but not on an order. Starting work on an order ends it on its own.

@@ -49,7 +49,7 @@ export function ContactAlertDialog({ alert, onClose }: { alert?: MaintenanceAler
         <fieldset disabled={record.isPending} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor={`${id}-outcome`}>O que aconteceu</Label>
-            <select id={`${id}-outcome`} className="h-10 w-full rounded-button border border-input bg-background px-3 text-sm" value={outcome} onChange={(event) => setOutcome(event.target.value as MaintenanceAlertContactOutcome)}>
+            <select id={`${id}-outcome`} className="h-10 w-full rounded-button border border-input bg-card px-3 text-sm" value={outcome} onChange={(event) => setOutcome(event.target.value as MaintenanceAlertContactOutcome)}>
               <option value="">Escolha</option>
               {MAINTENANCE_ALERT_CONTACT_OUTCOMES.map((value) => <option key={value} value={value}>{MAINTENANCE_ALERT_CONTACT_OUTCOME_LABELS[value]}</option>)}
             </select>

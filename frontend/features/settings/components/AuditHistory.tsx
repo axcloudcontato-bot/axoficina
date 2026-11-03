@@ -7,7 +7,7 @@ import { AUDIT_AREAS, auditLabel } from '../audit-labels';
 import { useAuditLog } from '../hooks/use-settings';
 
 const PAGE = 30;
-const selectClass = 'h-10 rounded-button border border-input bg-background px-3 text-sm';
+const selectClass = 'h-10 rounded-button border border-input bg-card px-3 text-sm';
 
 // Who did what and when, for the owner: the answer to "who changed this?".
 export function AuditHistory() {

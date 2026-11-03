@@ -48,7 +48,7 @@ export function CarePlansPanel({ enabled, canRecord, onRecord, mode = 'all', ini
       : <div><h2 className="text-xl font-bold">Cada carro tem seu tempo.</h2><p className="mt-2 text-sm leading-6 text-muted-foreground">O próximo cuidado de cada carro, do que vence primeiro ao mais distante. Óleo, freios e filtros mantêm prazos independentes.</p></div>}
     <div className="flex flex-wrap items-center gap-2">
       <div className="relative w-full sm:max-w-xs"><MagnifyingGlass className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" /><Input aria-label="Buscar planos" className="pl-9" placeholder="Placa, modelo ou cliente" value={searchInput} onChange={event => { setSearchInput(event.target.value); setOffset(0); }} /></div>
-      <select aria-label="Situação do plano" className="h-10 rounded-button border border-input bg-background px-3 text-sm" value={filter} onChange={event => { setFilter(event.target.value as CarePlanFilter); setOffset(0); }}>{filters.map(item => <option key={item.value} value={item.value}>{item.label}</option>)}</select>
+      <select aria-label="Situação do plano" className="h-10 rounded-button border border-input bg-card px-3 text-sm" value={filter} onChange={event => { setFilter(event.target.value as CarePlanFilter); setOffset(0); }}>{filters.map(item => <option key={item.value} value={item.value}>{item.label}</option>)}</select>
       {canRecord && !manual && <Button variant="outline" onClick={() => onRecord()}>Registrar cuidado</Button>}
     </div>
     {query.isLoading && <div role="status" aria-label="Carregando planos" className="h-32 animate-pulse rounded-card bg-surface" />}

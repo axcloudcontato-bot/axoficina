@@ -285,7 +285,7 @@ export function VehicleFormModal({ open, onOpenChange, vehicle, initialCustomer,
                     <FormLabel>Combustível (opcional)</FormLabel>
                     <FormControl>
                       {/* A value saved before the list existed stays selectable instead of silently disappearing. */}
-                      <select className="h-10 w-full rounded-button border border-input bg-background px-3 text-sm" {...field}>
+                      <select className="h-10 w-full rounded-button border border-input bg-card px-3 text-sm" {...field}>
                         <option value="">Não informado</option>
                         {field.value && !FUEL_TYPES.includes(field.value) && <option value={field.value}>{field.value}</option>}
                         {FUEL_TYPES.map((fuel) => <option key={fuel} value={fuel}>{fuel}</option>)}

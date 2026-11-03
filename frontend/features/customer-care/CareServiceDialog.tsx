@@ -9,7 +9,7 @@ import { VehicleSearchCombobox } from '@/features/vehicles/components/VehicleSea
 import { extractErrorMessage } from '@/lib/api/client';
 import { useRecordCareService } from './use-customer-care';
 
-const inputClass = 'h-10 w-full rounded-button border border-input bg-background px-3 text-sm';
+const inputClass = 'h-10 w-full rounded-button border border-input bg-card px-3 text-sm';
 export function CareServiceDialog({ open, onOpenChange, plan, campaigns = DEFAULT_CARE_CAMPAIGNS, vehicle, defaultServiceKey }: { open: boolean; onOpenChange: (open: boolean) => void; plan?: CarePlanResponse; campaigns?: CareCampaign[]; /** The car is already known (opened from its page): no search needed. */ vehicle?: { id: string; label: string }; defaultServiceKey?: CareServiceKey }) {
   const save = useRecordCareService();
   const [vehicleId, setVehicleId] = useState(''); const [serviceKey, setServiceKey] = useState<CareServiceKey>('PERIODIC_REVIEW');

@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils"
 
 const Calendar = React.lazy(() => import('@/components/ui/calendar').then((module) => ({ default: module.Calendar })))
 
-const inputClass = "flex h-10 w-full rounded-button border border-input bg-background px-3 py-2 text-base text-foreground shadow-inner-subtle ring-offset-background placeholder:text-muted-foreground transition-[color,background-color,border-color,box-shadow] duration-fast hover:border-border-strong focus-visible:border-ring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground disabled:opacity-100 md:text-sm"
+const inputClass = "flex h-10 w-full rounded-button border border-input bg-card px-3 py-2 text-base text-foreground shadow-inner-subtle ring-offset-background placeholder:text-muted-foreground transition-[color,background-color,border-color,box-shadow] duration-fast hover:border-border-strong focus-visible:border-ring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground disabled:opacity-100 md:text-sm"
 type DateType = 'date' | 'datetime-local' | 'month'
 type InputProps = React.ComponentProps<'input'>
 

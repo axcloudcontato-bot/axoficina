@@ -18,7 +18,7 @@ import { legalIdentity } from '../legal-content';
 
 const typeLabels: Record<PrivacyRequestType, string> = { ACCESS: 'Acesso e confirmação de dados', CORRECTION: 'Correção de dados', PORTABILITY: 'Portabilidade', RESTRICTION: 'Bloqueio, oposição ou revogação', DELETION: 'Exclusão de dados', REFUND: 'Reembolso', CANCELLATION: 'Cancelamento da contratação' };
 const statusLabels: Record<PrivacyRequestStatus, string> = { OPEN: 'Recebida', IN_REVIEW: 'Em análise', COMPLETED: 'Concluída', RETAINED: 'Conservação justificada' };
-const selectClass = 'h-10 w-full rounded-button border border-input bg-background px-3 text-sm text-text';
+const selectClass = 'h-10 w-full rounded-button border border-input bg-card px-3 text-sm text-text';
 const cardClass = 'rounded-card border border-border bg-surface p-5 sm:p-6';
 
 async function downloadData(url: string, filename: string, body?: object) {

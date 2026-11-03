@@ -11,7 +11,7 @@ import { extractErrorMessage } from '@/lib/api/client';
 import { formatStock } from '../catalog-stock';
 import { useAdjustStock } from '../hooks/use-catalog';
 
-const selectClass = 'h-10 w-full rounded-button border border-input bg-background px-3 text-sm';
+const selectClass = 'h-10 w-full rounded-button border border-input bg-card px-3 text-sm';
 
 // Stock moves in two ways here: goods arriving (entrada) and a physical count (contagem).
 // Sales leave on their own when the order is delivered.
