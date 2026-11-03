@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { PERMISSION_KEYS } from '@oficina/contracts';
 import { HeaderDock } from '../header-dock';
 import { useAuthStore } from '@/stores/auth-store';
+import { RELEASE_NOTES } from '@/features/updates/release-notes';
 
 const { setTheme } = vi.hoisted(() => ({ setTheme: vi.fn() }));
 vi.mock('next/navigation', () => ({ usePathname: () => '/clientes' }));
@@ -32,7 +33,8 @@ describe('header keyboard navigation', () => {
     expect(screen.queryByRole('heading', { name: 'Novo painel da administração do SaaS' })).not.toBeInTheDocument();
     expect(screen.queryByText(/A administração do SaaS ganhou uma fila/)).not.toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Envio de fotos pelo celular' })).toBeVisible();
-    expect(localStorage.getItem('ax-updates-seen:t1:u1')).toBe('2026-11-03-suporte-e-admin-ofix');
+    // The newest note changes with every release, so the test follows the feed instead of a fixed id.
+    expect(localStorage.getItem('ax-updates-seen:t1:u1')).toBe(RELEASE_NOTES[0].id);
     expect(screen.queryByTestId('unread-updates-indicator')).not.toBeInTheDocument();
     await user.keyboard('{Escape}');
     await waitFor(() => expect(updates).toHaveFocus());
