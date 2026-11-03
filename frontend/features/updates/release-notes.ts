@@ -1,5 +1,11 @@
 export const RELEASE_NOTES = [
   {
+    id: '2026-11-03-rodape-admin', date: '2026-11-03', title: 'Rodapé da administração ajustado',
+    items: [
+      'O acesso para voltar à oficina e o perfil do administrador voltaram a aparecer juntos no rodapé do menu.',
+    ],
+  },
+  {
     id: '2026-11-03-suporte-e-admin-ofix', date: '2026-11-03', title: 'Suporte dentro do Ofix',
     items: [
       'O menu Suporte permite abrir chamados com prioridade baixa, normal ou alta e acompanhar a resposta da equipe.',
