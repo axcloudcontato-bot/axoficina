@@ -27,7 +27,12 @@ describe('header keyboard navigation', () => {
     await user.click(updates);
     // The panel fades in (opacity 0 to 1); on a slow machine the check can run before the animation ends.
     await waitFor(() => expect(screen.getByRole('dialog', { name: 'Novidades do sistema' })).toBeVisible());
+    expect(screen.getByRole('heading', { name: 'Suporte dentro do Ofix' })).toBeVisible();
+    expect(screen.queryByRole('heading', { name: 'Rodapé da administração ajustado' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Novo painel da administração do SaaS' })).not.toBeInTheDocument();
+    expect(screen.queryByText(/A administração do SaaS ganhou uma fila/)).not.toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Envio de fotos pelo celular' })).toBeVisible();
+    expect(localStorage.getItem('ax-updates-seen:t1:u1')).toBe('2026-11-03-suporte-e-admin-ofix');
     expect(screen.queryByTestId('unread-updates-indicator')).not.toBeInTheDocument();
     await user.keyboard('{Escape}');
     await waitFor(() => expect(updates).toHaveFocus());

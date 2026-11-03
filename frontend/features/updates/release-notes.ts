@@ -1,15 +1,9 @@
+// This feed is visible to every workshop account. Keep SaaS administration changes out of it.
 export const RELEASE_NOTES = [
-  {
-    id: '2026-11-03-rodape-admin', date: '2026-11-03', title: 'Rodapé da administração ajustado',
-    items: [
-      'O acesso para voltar à oficina e o perfil do administrador voltaram a aparecer juntos no rodapé do menu.',
-    ],
-  },
   {
     id: '2026-11-03-suporte-e-admin-ofix', date: '2026-11-03', title: 'Suporte dentro do Ofix',
     items: [
       'O menu Suporte permite abrir chamados com prioridade baixa, normal ou alta e acompanhar a resposta da equipe.',
-      'A administração do SaaS ganhou uma fila para responder chamados e passou a seguir as cores, os cartões e a navegação do Ofix.',
     ],
   },
   {
@@ -23,13 +17,6 @@ export const RELEASE_NOTES = [
     items: [
       'Os campos de data, mês e data com hora agora abrem o mesmo calendário visual, com navegação em português e limites de datas respeitados.',
       'A consulta de histórico de ordens de serviço ganhou seleção de período. A agenda permite ir direto para uma data e a visão mensal acompanha o novo visual.',
-    ],
-  },
-  {
-    id: '2026-11-02-painel-admin-saas', date: '2026-11-02', title: 'Novo painel da administração do SaaS',
-    items: [
-      'A administração do Ofix ganhou visão geral, indicadores reais de oficinas e assinaturas, distribuição por situação e lista de cadastros recentes.',
-      'O novo visual foi adaptado do template Gradient Able e inclui navegação própria para gestão da plataforma.',
     ],
   },
   {
