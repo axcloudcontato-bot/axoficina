@@ -51,7 +51,7 @@ export interface ServiceOrderListRequest extends PageableRequest {
   startDate?: string;
   endDate?: string;
   dateField?: 'OPENED' | 'CLOSED';
-  attention?: 'ACTIVE' | 'OVERDUE' | 'UNASSIGNED' | 'PAYMENT_PENDING';
+  attention?: 'ACTIVE' | 'ARCHIVED' | 'OVERDUE' | 'UNASSIGNED' | 'PAYMENT_PENDING';
   includeMetrics?: boolean;
   status?: ServiceOrderStatus;
   vehicleId?: string;

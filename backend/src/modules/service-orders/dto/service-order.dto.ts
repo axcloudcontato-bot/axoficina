@@ -110,7 +110,7 @@ export class ServiceOrderListDto implements ServiceOrderListRequest {
   @IsOptional() @IsIn(['OPENED', 'CLOSED'])
   dateField?: ServiceOrderListRequest['dateField'];
 
-  @IsOptional() @IsIn(['ACTIVE', 'OVERDUE', 'UNASSIGNED', 'PAYMENT_PENDING'])
+  @IsOptional() @IsIn(['ACTIVE', 'ARCHIVED', 'OVERDUE', 'UNASSIGNED', 'PAYMENT_PENDING'])
   attention?: ServiceOrderListRequest['attention'];
 
   @IsOptional() @IsBoolean()

@@ -169,6 +169,7 @@ export class ServiceOrderRepository {
     const conditions: Prisma.ServiceOrderWhereInput[] = [];
     if (status) conditions.push({ status });
     if (filters.attention === 'ACTIVE') conditions.push({ status: active });
+    if (filters.attention === 'ARCHIVED') conditions.push({ status: { in: ['DELIVERED', 'CANCELLED'] } });
     if (filters.attention === 'OVERDUE') conditions.push({ status: active, expectedDeliveryAt: { lt: now } });
     if (filters.attention === 'UNASSIGNED') conditions.push({ status: active, technicianId: null });
     if (filters.attention === 'PAYMENT_PENDING') {
