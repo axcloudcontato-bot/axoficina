@@ -1,5 +1,11 @@
 export const RELEASE_NOTES = [
   {
+    id: '2026-11-03-setas-calendario', date: '2026-11-03', title: 'Seleção de mês e ano ajustada',
+    items: [
+      'As setas dos seletores de mês e ano agora aparecem ao lado dos nomes no calendário.',
+    ],
+  },
+  {
     id: '2026-11-02-calendario-compartilhado', date: '2026-11-02', title: 'Novo calendário para escolher datas',
     items: [
       'Os campos de data, mês e data com hora agora abrem o mesmo calendário visual, com navegação em português e limites de datas respeitados.',
