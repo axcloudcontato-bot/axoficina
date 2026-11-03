@@ -12,6 +12,7 @@ export const NAVIGATION_DESTINATIONS: Array<{ href: string; label: string; permi
   { href: '/financeiro', label: 'Financeiro', permission: 'finance.view' },
   { href: '/financeiro/fornecedores', label: 'Fornecedores', permission: 'finance.manage' },
   { href: '/produtividade', label: 'Produtividade', permission: 'service_orders.view' },
+  { href: '/suporte', label: 'Suporte: abrir e acompanhar chamados' },
   { href: '/configuracoes/empresa', label: 'Configurações: empresa e marca', permission: 'settings.view' },
   { href: '/configuracoes/email', label: 'Configurações: e-mail', permission: 'settings.view' },
   { href: '/configuracoes/equipe', label: 'Equipe e acesso', permission: 'team.view' },

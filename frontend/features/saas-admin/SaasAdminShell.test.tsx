@@ -24,5 +24,6 @@ describe('SaaS admin shell', () => {
     expect(screen.getByText('Dados globais')).toBeVisible();
     expect(screen.getByRole('navigation', { name: 'Administração do SaaS' })).toBeVisible();
     expect(screen.getByRole('link', { name: 'Oficinas e assinaturas' })).toHaveAttribute('href', '/admin/assinaturas');
+    expect(screen.getByRole('link', { name: 'Chamados de suporte' })).toHaveAttribute('href', '/admin/suporte');
   });
 });

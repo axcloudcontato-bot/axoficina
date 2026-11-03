@@ -21,6 +21,12 @@ function currentDocs(): ControllerDoc[] {
 }
 
 describe('parseController', () => {
+  it('identifica as rotas restritas ao administrador do SaaS', () => {
+    expect(parseController("@Controller('api/v1/admin/support')\n@UseGuards(SaasAdminGuard)\nexport class SupportController {\n  @Get()\n  list() {}\n}"))
+      .toEqual([{ method: 'GET', path: '/api/v1/admin/support', handler: 'list', access: 'administrador do SaaS', permissions: '', extras: '' }]);
+    expect(parseController("@Controller('api/v1/admin')\nexport class AdminController {\n  @Get('items') @UseGuards(SaasAdminGuard)\n  list() {}\n}"))
+      .toEqual([{ method: 'GET', path: '/api/v1/admin/items', handler: 'list', access: 'administrador do SaaS', permissions: '', extras: '' }]);
+  });
   it('reads the route, access and plan rules from a controller', () => {
     const source = [
       "const STAFF = ['ADMIN', 'MECHANIC'] as const;",

@@ -9,5 +9,6 @@ import { SubscriptionsRepository } from './subscriptions.repository';
   imports: [AccountClosureModule],
   controllers: [SubscriptionsController],
   providers: [SaasAdminService, SaasAdminGuard, SubscriptionsManager, SubscriptionsRepository],
+  exports: [SaasAdminGuard],
 })
 export class SubscriptionsModule {}

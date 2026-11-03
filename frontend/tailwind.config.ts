@@ -11,6 +11,7 @@ const config: Config = {
           hover: 'var(--primary-hover)',
           active: 'var(--primary-active)',
           foreground: 'var(--primary-foreground)',
+          ink: 'var(--primary-ink)',
         },
         bg: 'var(--background)',
         surface: 'var(--surface)',

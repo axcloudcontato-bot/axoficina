@@ -2,7 +2,7 @@
 
 import type { ModuleKey, PermissionKey } from '@oficina/contracts';
 import type { Icon as PhosphorIcon } from '@phosphor-icons/react';
-import { Bell, Buildings, CalendarBlank, Car, ChartBar, ChartLine, ClipboardText, Envelope, Package, Gear, Lock, SidebarSimple, SignOut, SquaresFour, Users, UsersThree, WhatsappLogo, Clock } from '@phosphor-icons/react';
+import { Bell, Buildings, CalendarBlank, Car, ChartBar, ChartLine, ChatCircleText, ClipboardText, Envelope, Package, Gear, Lock, SidebarSimple, SignOut, SquaresFour, Users, UsersThree, WhatsappLogo, Clock } from '@phosphor-icons/react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -100,6 +100,7 @@ export function Sidebar() {
           return items.length ? <div key={group}>{!collapsed && <p className="px-3 pb-2 pt-4 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">{group}</p>}{items.map((item) => <DesktopNavItem key={item.href} item={item} active={isActive(pathname, item.href)} collapsed={collapsed} locked={!hasModule(item.module)} />)}</div> : null;
         })}
       </nav>
+      <div className="border-t border-border px-3 py-2"><Link href="/suporte" aria-current={isActive(pathname, '/suporte') ? 'page' : undefined} aria-label="Suporte" title={collapsed ? 'Suporte' : undefined} className={cn('flex min-h-10 items-center rounded-button text-sm font-semibold', collapsed ? 'justify-center' : 'gap-3 px-3', isActive(pathname, '/suporte') ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted hover:text-foreground')}><AnimatedIcon icon={ChatCircleText} active={isActive(pathname, '/suporte')} className="size-[18px] shrink-0" />{!collapsed && 'Suporte'}</Link></div>
       {user && <div className={cn('flex items-center border-t border-border py-4', collapsed ? 'justify-center px-3' : 'gap-2.5 px-4')}><div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">{initials(user.name)}</div>{!collapsed && <div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold">{user.name}</p><p className="text-xs text-muted-foreground">{ROLE_LABELS[user.profileName ?? ''] ?? user.profileName ?? ROLE_LABELS[user.role] ?? user.role}</p></div>}<button type="button" aria-label="Sair" onClick={() => logout.mutate()} className="group flex size-9 items-center justify-center rounded-button text-muted-foreground hover:text-danger"><AnimatedIcon icon={SignOut} className="size-[18px]" /></button></div>}
       {collapsed && <button type="button" ref={toggleRef} aria-expanded={!collapsed} aria-controls={navigationId} onClick={toggleSidebar} aria-label="Expandir menu lateral" className="group absolute right-[-14px] top-5 flex size-7 items-center justify-center rounded-full border border-border bg-background text-muted-foreground hover:text-foreground"><AnimatedIcon icon={SidebarSimple} className="size-3.5" /></button>}
     </aside>

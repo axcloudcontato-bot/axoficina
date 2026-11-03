@@ -2,7 +2,7 @@
 
 import { usePathname } from 'next/navigation';
 import type { Icon as PhosphorIcon } from '@phosphor-icons/react';
-import { Bell, Buildings, Car, CalendarBlank, ChartBar, ChartLine, ClipboardText, Clock, Envelope, Gear, Package, ShieldCheck, SquaresFour, Users, UsersThree, UserCircle, WhatsappLogo, CreditCard, ClockCounterClockwise } from '@phosphor-icons/react';
+import { Bell, Buildings, Car, CalendarBlank, ChartBar, ChartLine, ChatCircleText, ClipboardText, Clock, Envelope, Gear, Package, ShieldCheck, SquaresFour, Users, UsersThree, UserCircle, WhatsappLogo, CreditCard, ClockCounterClockwise } from '@phosphor-icons/react';
 import { HeaderDock } from '@/components/dashboard/header-dock';
 
 interface PageMeta { title: string; description: string; icon: PhosphorIcon }
@@ -18,6 +18,7 @@ const PAGE_META: Record<string, PageMeta> = {
   '/ordens-de-servico': { title: 'Ordens de Serviço', description: 'Acompanhe o atendimento dos veículos da sua oficina.', icon: ClipboardText },
   '/catalogo': { title: 'Peças, produtos e serviços', description: 'Catálogo padrão para montar orçamentos mais rápido.', icon: Package },
   '/produtividade': { title: 'Produtividade', description: 'OS entregues, mão de obra gerada e carga por técnico.', icon: ChartBar },
+  '/suporte': { title: 'Suporte', description: 'Abra e acompanhe seus chamados com a equipe Ofix.', icon: ChatCircleText },
   '/alertas-de-manutencao': { title: 'Alertas de manutenção', description: 'Acompanhe os contatos preventivos pendentes.', icon: Bell },
   '/usuarios': { title: 'Equipe e acesso', description: 'Gerencie usuários, perfis e permissões.', icon: UsersThree },
   '/configuracoes': { title: 'Configurações', description: 'Estado da oficina e integrações.', icon: Gear },

@@ -1,5 +1,12 @@
 export const RELEASE_NOTES = [
   {
+    id: '2026-11-03-suporte-e-admin-ofix', date: '2026-11-03', title: 'Suporte dentro do Ofix',
+    items: [
+      'O menu Suporte permite abrir chamados com prioridade baixa, normal ou alta e acompanhar a resposta da equipe.',
+      'A administração do SaaS ganhou uma fila para responder chamados e passou a seguir as cores, os cartões e a navegação do Ofix.',
+    ],
+  },
+  {
     id: '2026-11-03-setas-calendario', date: '2026-11-03', title: 'Seleção de mês e ano ajustada',
     items: [
       'As setas dos seletores de mês e ano agora aparecem ao lado dos nomes no calendário.',

@@ -183,6 +183,24 @@ model Tenant {
   @@map("tenants")
 }
 
+model SupportTicket {
+  id          String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  tenantId    String    @map("tenant_id") @db.Uuid
+  createdById String    @map("created_by_id") @db.Uuid
+  subject     String    @db.VarChar(120)
+  description String
+  priority    String    @default("NORMAL") @db.VarChar(10)
+  status      String    @default("OPEN") @db.VarChar(15)
+  response    String?
+  respondedAt DateTime? @map("responded_at") @db.Timestamptz
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@index([tenantId, createdById, createdAt(sort: Desc)])
+  @@index([status, createdAt(sort: Desc)])
+  @@map("support_tickets")
+}
+
 model User {
   id              String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
   tenantId        String    @map("tenant_id") @db.Uuid

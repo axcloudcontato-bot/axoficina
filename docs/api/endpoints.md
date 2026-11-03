@@ -3,7 +3,7 @@
 > Gerado a partir dos controllers do backend. Não edite à mão: rode `UPDATE_API_DOCS=1 pnpm --filter @oficina/backend exec jest src/shared/api-docs`
 > depois de mudar uma rota ou seus decorators. O teste `api-docs.spec.ts` falha se este arquivo ficar desatualizado.
 
-São 158 endpoints em 24 controllers.
+São 162 endpoints em 25 controllers.
 
 ## Convenções
 
@@ -265,11 +265,20 @@ São 158 endpoints em 24 controllers.
 | Método | Rota | Ação | Quem acessa | Permissão | Módulo/limite |
 | --- | --- | --- | --- | --- | --- |
 | GET | `/api/v1/admin/access` | `access` | qualquer usuário autenticado |  |  |
-| GET | `/api/v1/admin/subscriptions` | `list` | qualquer usuário autenticado |  |  |
-| PATCH | `/api/v1/admin/subscriptions/:id` | `update` | qualquer usuário autenticado |  |  |
-| POST | `/api/v1/admin/subscriptions/:id/close` | `close` | qualquer usuário autenticado |  |  |
-| POST | `/api/v1/admin/subscriptions/:id/restore` | `restore` | qualquer usuário autenticado |  |  |
-| POST | `/api/v1/admin/subscriptions/:id/purge` | `purge` | qualquer usuário autenticado |  |  |
+| GET | `/api/v1/admin/subscriptions` | `list` | administrador do SaaS |  |  |
+| PATCH | `/api/v1/admin/subscriptions/:id` | `update` | administrador do SaaS |  |  |
+| POST | `/api/v1/admin/subscriptions/:id/close` | `close` | administrador do SaaS |  |  |
+| POST | `/api/v1/admin/subscriptions/:id/restore` | `restore` | administrador do SaaS |  |  |
+| POST | `/api/v1/admin/subscriptions/:id/purge` | `purge` | administrador do SaaS |  |  |
+
+## modules/support/support.controller.ts
+
+| Método | Rota | Ação | Quem acessa | Permissão | Módulo/limite |
+| --- | --- | --- | --- | --- | --- |
+| GET | `/api/v1/support/tickets` | `list` | qualquer usuário autenticado |  |  |
+| POST | `/api/v1/support/tickets` | `create` | qualquer usuário autenticado |  |  |
+| GET | `/api/v1/admin/support/tickets` | `list` | administrador do SaaS |  |  |
+| PATCH | `/api/v1/admin/support/tickets/:id` | `update` | administrador do SaaS |  |  |
 
 ## modules/vehicles/controllers/vehicles.controller.ts
 

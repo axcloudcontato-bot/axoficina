@@ -149,6 +149,7 @@ export class PrivacyService {
         await tx.refreshToken.deleteMany({ where: { userId: user.userId } });
         await tx.auditLog.updateMany({ where: { tenantId: user.tenantId, OR: [{ userId: user.userId }, { entity: 'user', entityId: user.userId }] }, data: { metadata: {} } });
         await tx.privacyRequest.updateMany({ where: { tenantId: user.tenantId, userId: user.userId, customerId: null }, data: { details: null, response: null } });
+        await tx.supportTicket.updateMany({ where: { tenantId: user.tenantId, createdById: user.userId }, data: { subject: 'Chamado de conta excluída', description: 'Conteúdo removido após exclusão da conta.', response: null } });
         const response = 'Dados de identificação, credenciais e sessões da conta apagados na base ativa. Identificadores técnicos e registro de aceite permanecem para rastreabilidade e exercício regular de direitos, sujeitos a revisão da necessidade pelo controlador. Registros operacionais da oficina, documentos exportados, backups e serviços externos exigem análise separada.';
         await tx.privacyRequest.updateMany({ where: { id: requestId, tenantId: user.tenantId }, data: { status: 'COMPLETED', response, resolvedAt: new Date(), resolvedBy: user.userId } });
         await tx.auditLog.create({ data: { tenantId: user.tenantId, userId: user.userId, action: 'privacy.account_erased', entity: 'user', entityId: user.userId, metadata: { requestId } } });

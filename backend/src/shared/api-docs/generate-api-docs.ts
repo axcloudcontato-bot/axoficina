@@ -67,11 +67,16 @@ function balanced(text: string): boolean {
 export function parseController(source: string): Endpoint[] {
   const endpoints: Endpoint[] = [];
   let prefix = '';
+  let controllerSaasAdmin = false;
   const normalized = source.replace(/\r\n/g, '\n');
   const lists = constantLists(normalized);
   for (const group of decoratorGroups(normalized)) {
     const controller = group.decorators.find((decorator) => name(decorator) === 'Controller');
-    if (controller) { prefix = args(controller)[0] ?? ''; continue; }
+    if (controller) {
+      prefix = args(controller)[0] ?? '';
+      controllerSaasAdmin = group.decorators.some((decorator) => decorator.includes('@UseGuards(SaasAdminGuard)'));
+      continue;
+    }
     const http = group.decorators.find((decorator) => HTTP_DECORATORS.includes(name(decorator)));
     if (!http) continue;
     const roles = group.decorators.find((decorator) => name(decorator) === 'Roles');
@@ -79,12 +84,13 @@ export function parseController(source: string): Endpoint[] {
     const module = group.decorators.find((decorator) => name(decorator) === 'RequiresModule');
     const limit = group.decorators.find((decorator) => name(decorator) === 'PlanLimit');
     const isPublic = group.decorators.some((decorator) => name(decorator) === 'Public');
+    const isSaasAdmin = controllerSaasAdmin || group.decorators.some((decorator) => decorator.includes('@UseGuards(SaasAdminGuard)'));
     const path = ['/' + prefix.replace(/^\/+|\/+$/g, ''), args(http)[0]?.replace(/^\/+|\/+$/g, '')].filter(Boolean).join('/').replace(/\/{2,}/g, '/');
     endpoints.push({
       method: name(http).toUpperCase(),
       path,
       handler: group.signature.replace(/^async\s+/, '').split('(')[0],
-      access: isPublic ? 'público' : roles ? args(roles, lists).join(', ') : 'qualquer usuário autenticado',
+      access: isPublic ? 'público' : isSaasAdmin ? 'administrador do SaaS' : roles ? args(roles, lists).join(', ') : 'qualquer usuário autenticado',
       permissions: permissions ? args(permissions).join(', ') : '',
       extras: [module ? `módulo ${args(module).join(', ')}` : '', limit ? `limite ${args(limit).join(', ')}` : ''].filter(Boolean).join('; '),
     });

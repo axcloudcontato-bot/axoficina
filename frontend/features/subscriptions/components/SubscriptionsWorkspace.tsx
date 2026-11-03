@@ -41,7 +41,7 @@ export function SubscriptionsWorkspace() {
 
   return <div className="space-y-6">
     <div className="flex flex-wrap items-center justify-between gap-4">
-      <div><div className="mb-2 flex items-center gap-2 text-xs font-semibold text-[#7759de]"><ShieldCheck className="size-4" aria-hidden="true" />Gestão da plataforma<Badge variant="outline">Todas as oficinas</Badge></div><h2 className="text-2xl font-bold tracking-tight text-text">Oficinas e assinaturas</h2><p className="mt-1 text-sm text-text-muted">Acompanhe os planos, os vencimentos e a situação de cada oficina.</p></div>
+      <div><div className="mb-2 flex items-center gap-2 text-xs font-semibold text-text-muted"><ShieldCheck className="size-4" aria-hidden="true" />Gestão da plataforma<Badge variant="outline">Todas as oficinas</Badge></div><h2 className="text-2xl font-bold tracking-tight text-text">Oficinas e assinaturas</h2><p className="mt-1 text-sm text-text-muted">Acompanhe os planos, os vencimentos e a situação de cada oficina.</p></div>
       <div className="flex gap-2"><Button asChild variant="ghost" size="sm"><Link href="/admin"><ArrowLeft className="mr-2 size-4" aria-hidden="true" />Visão geral</Link></Button><Button variant="outline" size="sm" disabled={subscriptions.isFetching} onClick={() => subscriptions.refetch()}><ArrowClockwise className="mr-2 size-4" aria-hidden="true" />{subscriptions.isFetching ? 'Atualizando...' : 'Atualizar'}</Button></div>
     </div>
 
@@ -52,10 +52,10 @@ export function SubscriptionsWorkspace() {
         { label: 'Receita mensal recorrente', value: data ? formatCurrencyBRL(data.summary.mrrCents) : undefined, hint: 'Ativas · planos anuais ÷ 12' },
         { label: 'Em teste', value: data?.summary.trial, hint: 'Período de avaliação' },
         { label: 'Inadimplentes', value: data?.summary.pastDue, hint: 'Situação informada manualmente' },
-      ].map((metric, index) => <div key={metric.label} className={`rounded-xl bg-gradient-to-r p-4 text-white shadow-[0_6px_22px_rgba(26,43,74,0.12)] ${['from-[#4099ff] to-[#73b4ff]', 'from-[#2bc6a5] to-[#63dfc7]', 'from-[#7759de] to-[#ab82ee]', 'from-[#ffb64d] to-[#ffd481]', 'from-[#ff8a65] to-[#ff5370]'][index]}`}><p className="text-xs font-semibold text-white/90">{metric.label}</p><p className="mt-3 text-2xl font-bold tracking-tight tabular-nums">{subscriptions.isError ? '—' : metric.value ?? '—'}</p><p className="mt-1 text-[11px] text-white/80">{metric.hint}</p></div>)}
+      ].map((metric) => <div key={metric.label} className="rounded-card border border-border bg-card p-4 shadow-card"><p className="text-xs font-semibold text-text-muted">{metric.label}</p><p className="mt-3 text-2xl font-bold tracking-tight tabular-nums text-text">{subscriptions.isError ? '—' : metric.value ?? '—'}</p><p className="mt-1 text-xs text-text-muted">{metric.hint}</p></div>)}
     </section>
 
-    <section className="overflow-hidden rounded-xl border border-[#e7eaf0] bg-white shadow-[0_2px_12px_rgba(26,43,74,0.05)]" aria-label="Lista de assinaturas">
+    <section className="overflow-hidden rounded-card border border-border bg-card shadow-card" aria-label="Lista de assinaturas">
       <div role="tablist" aria-label="Oficinas" className="flex gap-1 border-b border-border px-4 pt-3">{([['active', 'Ativas'], ['closed', 'Encerradas']] as const).map(([value, label]) => <button key={value} type="button" role="tab" aria-selected={scope === value} onClick={() => { setScope(value); setOffset(0); }} className={`-mb-px border-b-2 px-3 py-2 text-sm font-bold ${scope === value ? 'border-primary text-primary-strong' : 'border-transparent text-text-muted hover:text-text'}`}>{label}</button>)}</div>
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border p-4">
         <div className="relative w-full sm:max-w-sm"><MagnifyingGlass className="pointer-events-none absolute left-3 top-3 size-4 text-text-muted" aria-hidden="true" /><Input aria-label="Buscar oficina, documento ou e-mail" placeholder="Buscar oficina, CPF/CNPJ ou e-mail..." maxLength={120} className="pl-9" value={search} onChange={(event) => setSearch(event.target.value)} /></div>

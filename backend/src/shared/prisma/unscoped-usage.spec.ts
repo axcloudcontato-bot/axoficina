@@ -29,6 +29,7 @@ const EXPECTED_USES: Record<string, number> = {
   'modules/service-orders/services/productivity.service.ts': 2,
   'modules/service-orders/services/service-order-status-notification.service.ts': 6,
   'modules/settings/services/workshop-account.service.ts': 1,
+  'modules/support/support.repository.ts': 2,
   'modules/subscriptions/subscriptions.repository.ts': 2,
   'modules/vehicles/repositories/vehicle.repository.ts': 2,
   'shared/audit-log/audit-log.repository.ts': 1,
