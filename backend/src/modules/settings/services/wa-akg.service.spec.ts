@@ -139,6 +139,39 @@ describe('WA-AKG connection', () => {
     expect(tenants.updateSettings).toHaveBeenCalledWith('tenant-a', expect.objectContaining({ waWebhookTestError: expect.stringContaining('Nenhum webhook ativo') }));
   });
 
+  it('registers the missing session webhook and validates a delivery from the gateway', async () => {
+    const webhookUrl = 'https://api.oficina.example/api/v1/webhooks/wa-akg/tenant-a';
+    const hook = { id: 'hook-1', url: webhookUrl, session: { sessionId: 'oficina' }, isActive: true, events: ['message.received'], secret };
+    const fetchMock = jest.spyOn(global, 'fetch')
+      .mockResolvedValueOnce(new Response(JSON.stringify({ status: true, data: [] }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ status: true, data: hook }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ received: true, recorded: false }), { status: 200, headers: { 'content-type': 'application/json' } }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ status: true, data: [hook] }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ status: true, data: { success: true, statusCode: 200, responseBody: JSON.stringify({ received: true, recorded: false }) } }), { status: 200 }));
+    const { service } = setup();
+    await expect(service.configureWebhook({ tenantId: 'tenant-a', userId: 'user-a', role: 'ADMIN' })).resolves.toMatchObject({ reachable: true });
+    expect(fetchMock.mock.calls[1][0]).toBe('https://chat.axcloud.com.br/api/webhooks/oficina');
+    expect(JSON.parse(fetchMock.mock.calls[1][1]!.body as string)).toMatchObject({ url: webhookUrl, events: ['message.received'], secret });
+    expect(fetchMock).toHaveBeenCalledTimes(5);
+  });
+
+  it('repairs only this session webhook and preserves its other events', async () => {
+    const webhookUrl = 'https://api.oficina.example/api/v1/webhooks/wa-akg/tenant-a';
+    const oldHook = { id: 'hook-1', url: webhookUrl, session: { sessionId: 'oficina' }, isActive: false, events: ['message.status'], secret: 'old-secret' };
+    const fixedHook = { ...oldHook, isActive: true, events: ['message.status', 'message.received'], secret };
+    const fetchMock = jest.spyOn(global, 'fetch')
+      .mockResolvedValueOnce(new Response(JSON.stringify({ status: true, data: [oldHook] }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify(fixedHook), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ received: true, recorded: false }), { status: 200, headers: { 'content-type': 'application/json' } }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ status: true, data: [fixedHook] }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ status: true, data: { success: true, statusCode: 200, responseBody: JSON.stringify({ received: true, recorded: false }) } }), { status: 200 }));
+    const { service } = setup();
+    await expect(service.configureWebhook({ tenantId: 'tenant-a', userId: 'user-a', role: 'ADMIN' })).resolves.toMatchObject({ reachable: true });
+    expect(fetchMock.mock.calls[1][0]).toBe('https://chat.axcloud.com.br/api/webhooks/oficina/hook-1');
+    expect(fetchMock.mock.calls[1][1]?.method).toBe('PUT');
+    expect(JSON.parse(fetchMock.mock.calls[1][1]!.body as string)).toEqual({ isActive: true, events: ['message.status', 'message.received'], secret });
+  });
+
   it('rejects a webhook whose event or secret cannot receive valid responses', async () => {
     const { service } = setup();
     const callback = new Response(JSON.stringify({ received: true, recorded: false }), { status: 200, headers: { 'content-type': 'application/json' } });

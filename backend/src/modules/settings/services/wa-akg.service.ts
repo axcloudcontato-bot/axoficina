@@ -132,6 +132,35 @@ export class WaAkgService {
     }
   }
 
+  async configureWebhook(user: AuthenticatedUser): Promise<WhatsAppWebhookTestResponse> {
+    const tenant = await this.requireTenant(user.tenantId);
+    if (!tenant.waAkgEnabled || !tenant.waAkgWebhookSecret) throw new BadRequestException('Ative a integração e salve o segredo antes de configurar o webhook.');
+    const connection = (await this.getConnection(user.tenantId, false))!;
+    const { webhookUrl } = await this.getSettings(user.tenantId);
+    const path = `/webhooks/${encodeURIComponent(connection.sessionId)}`;
+    const list = await this.request(connection, path);
+    const hooks = isRecord(list) && list.status === true && Array.isArray(list.data) ? list.data : null;
+    if (!hooks) throw new BadGatewayException('O WA-AKG não retornou os webhooks da sessão. Confira o acesso da chave de API.');
+    const secret = this.secrets.decrypt(tenant.waAkgWebhookSecret);
+    const alreadyConfigured = hooks.some((item: unknown) => isRecord(item) && item.url === webhookUrl && item.isActive === true && item.secret === secret && Array.isArray(item.events) && item.events.some((event: unknown) => event === 'message.received' || event === '*'));
+    if (alreadyConfigured) return this.testWebhook(user.tenantId);
+    // Only edit a webhook attached to this session and this workshop URL. A
+    // global hook or another workshop's hook must never be changed here.
+    const existing = hooks.find((item: unknown) => isRecord(item) && item.url === webhookUrl && isRecord(item.session) && item.session.sessionId === connection.sessionId);
+    if (isRecord(existing) && typeof existing.id === 'string') {
+      const events = Array.isArray(existing.events) ? existing.events.filter((event): event is string => typeof event === 'string') : [];
+      if (!events.includes('message.received') && !events.includes('*')) events.push('message.received');
+      if (existing.isActive !== true || existing.secret !== secret || !Array.isArray(existing.events) || !existing.events.includes('message.received') && !existing.events.includes('*')) {
+        await this.request(connection, `${path}/${encodeURIComponent(existing.id)}`, { method: 'PUT', body: JSON.stringify({ isActive: true, events, secret }) });
+      }
+    } else {
+      const created = await this.request(connection, path, { method: 'POST', body: JSON.stringify({ name: 'Ofix - respostas dos clientes', url: webhookUrl, events: ['message.received'], secret }) });
+      if (!isRecord(created) || created.status !== true) throw new BadGatewayException('O WA-AKG não confirmou o cadastro do webhook.');
+    }
+    await this.audit.record({ tenantId: user.tenantId, userId: user.userId, action: 'settings.whatsapp_webhook_configured', entity: 'tenant', entityId: user.tenantId, metadata: { webhookUrl } });
+    return this.testWebhook(user.tenantId);
+  }
+
   private async performWebhookTest(tenantId: string, testedAt: Date): Promise<WhatsAppWebhookTestResponse> {
     const tenant = await this.requireTenant(tenantId);
     if (!tenant.waAkgEnabled || !tenant.waAkgWebhookSecret) throw new BadRequestException('Salve o segredo e ative a integração antes de testar o recebimento.');
