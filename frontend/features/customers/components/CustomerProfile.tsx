@@ -66,7 +66,7 @@ export function CustomerProfile({ customer }: { customer: CustomerResponse }) {
     {data && <>
       <section aria-label="Resumo" className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Stat label="Ordens de serviço" value={String(data.orderCount)} hint={`${data.deliveredCount} entregue${data.deliveredCount === 1 ? '' : 's'}`} />
-        <Stat label="Última visita" value={data.lastVisitAt ? new Date(data.lastVisitAt).toLocaleDateString('pt-BR') : '—'} hint={data.lastVisitAt ? undefined : 'Nenhuma OS entregue'} />
+        <Stat label="Última visita" value={data.lastVisitAt ? new Date(data.lastVisitAt).toLocaleDateString('pt-BR') : 'Sem visita'} hint={data.lastVisitAt ? undefined : 'Nenhuma OS entregue'} />
         {money && <Stat label="Total gasto" value={formatCurrencyBRL(money.totalSpentCents)} hint="OS entregues, com desconto" />}
         {money && <Stat label="Ticket médio" value={formatCurrencyBRL(money.averageTicketCents)} />}
       </section>

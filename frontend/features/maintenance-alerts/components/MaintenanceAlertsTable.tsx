@@ -49,9 +49,9 @@ function reminderMessage(alert: MaintenanceAlertListItemResponse, workshop?: str
 
 // What the list says about each alert's situation, depending on which list it is.
 function situation(alert: MaintenanceAlertListItemResponse, filter: MaintenanceAlertFilter): React.ReactNode {
-  if (filter === 'SNOOZED') return alert.snoozedUntil ? `Volta em ${day(alert.snoozedUntil)}` : '—';
+  if (filter === 'SNOOZED') return alert.snoozedUntil ? `Volta em ${day(alert.snoozedUntil)}` : 'Data não informada';
   if (filter === 'RESOLVED') {
-    if (!alert.resolvedAt) return '—';
+    if (!alert.resolvedAt) return 'Data não informada';
     return alert.resolvedByName ? `Resolvido em ${day(alert.resolvedAt)} por ${alert.resolvedByName}` : `Resolvido em ${day(alert.resolvedAt)} pela entrega de uma OS`;
   }
   if (filter === 'DISMISSED') {

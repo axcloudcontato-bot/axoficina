@@ -39,11 +39,12 @@ export function CatalogReport() {
             <td className="px-3 py-3 text-right tabular-nums">{row.quantity.toLocaleString('pt-BR')}</td>
             <td className="px-3 py-3 text-right tabular-nums">{row.orders}</td>
             <td className="px-3 py-3 text-right font-bold tabular-nums">{formatCurrencyBRL(row.revenueCents)}</td>
-            {hasMargin && <td className="px-5 py-3 text-right tabular-nums">{row.marginCents === undefined ? <span className="text-text-muted">—</span> : <><span className={`font-bold ${row.marginCents < 0 ? 'text-danger' : ''}`}>{formatCurrencyBRL(row.marginCents)}</span> <span className="text-xs text-text-muted">{marginPercent(row.revenueCents, row.revenueCents - row.marginCents)}%</span></>}</td>}
+            {hasMargin && <td className="px-5 py-3 text-right tabular-nums">{row.marginCents === undefined ? <span className="text-xs text-text-muted">Custo não informado</span> : <><span className={`font-bold ${row.marginCents < 0 ? 'text-danger' : ''}`}>{formatCurrencyBRL(row.marginCents)}</span> <span className="text-xs text-text-muted">{marginPercent(row.revenueCents, row.revenueCents - row.marginCents)}%</span></>}</td>}
           </tr>)}
         </tbody>
       </table>
-      {!query.isLoading && sorted.length === 0 && <p className="p-10 text-center text-sm text-text-muted">Nenhuma venda nas OS entregues neste período.</p>}
+      {query.isError && <p role="alert" className="p-10 text-center text-sm text-danger-strong">Não foi possível carregar a análise. <button type="button" className="font-semibold underline" onClick={() => query.refetch()}>Tentar novamente</button></p>}
+      {!query.isLoading && !query.isError && sorted.length === 0 && <p className="p-10 text-center text-sm text-text-muted">Nenhuma venda nas OS entregues neste período.</p>}
     </section>
   </div>;
 }

@@ -5,13 +5,13 @@ export function displayDocument(value: string): string {
   const digits = value.replace(/\D/g, '');
   if (digits.length === 11) return formatCPF(digits);
   if (digits.length === 14) return formatCNPJ(digits);
-  return value.trim() || '—';
+  return value.trim() || 'Não informado';
 }
 
 export function displayPhone(value: string): string {
   let digits = value.replace(/\D/g, '');
   if (digits.startsWith('55') && [12, 13].includes(digits.length)) digits = digits.slice(2);
-  return [10, 11].includes(digits.length) ? formatPhone(digits) : value.trim() || '—';
+  return [10, 11].includes(digits.length) ? formatPhone(digits) : value.trim() || 'Não informado';
 }
 
 // Same number whatever the mask or country code, for spotting a customer that is already registered.

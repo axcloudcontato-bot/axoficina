@@ -54,7 +54,7 @@ export function WorkshopPlanAndData({ children }: { children?: React.ReactNode }
         <div className="mt-3 flex flex-wrap items-center gap-3"><span className="text-xl font-bold capitalize">{resolvePlan(plan.plan).name}</span><span className={`rounded-full px-2.5 py-1 text-xs font-bold ${STATUS[plan.status].tone}`}>{STATUS[plan.status].label}</span></div>
         <dl className="mt-4 grid gap-4 text-sm sm:grid-cols-3">
           <div><dt className="text-xs font-semibold text-text-muted">Valor</dt><dd className="mt-1 font-semibold">{plan.amountCents > 0 ? `${formatCurrencyBRL(plan.amountCents)} por ${plan.cycle === 'yearly' ? 'ano' : 'mês'}` : 'A definir'}</dd></div>
-          <div><dt className="text-xs font-semibold text-text-muted">{plan.status === 'trial' ? 'O teste termina em' : plan.status === 'canceled' ? 'Acesso até' : 'Próximo vencimento'}</dt><dd className="mt-1 font-semibold">{plan.dueAt ? new Date(plan.dueAt).toLocaleDateString('pt-BR') : '—'}</dd></div>
+          <div><dt className="text-xs font-semibold text-text-muted">{plan.status === 'trial' ? 'O teste termina em' : plan.status === 'canceled' ? 'Acesso até' : 'Próximo vencimento'}</dt><dd className="mt-1 font-semibold">{plan.dueAt ? new Date(plan.dueAt).toLocaleDateString('pt-BR') : 'A definir'}</dd></div>
           <div><dt className="text-xs font-semibold text-text-muted">Cliente desde</dt><dd className="mt-1 font-semibold">{new Date(plan.customerSince).toLocaleDateString('pt-BR')}</dd></div>
         </dl>
         {plan.status === 'past_due' && <p role="alert" className="mt-4 rounded-button bg-danger-subtle p-3 text-sm text-danger">O pagamento está em atraso. Fale com o suporte do Ofix para regularizar e evitar a suspensão do acesso.</p>}

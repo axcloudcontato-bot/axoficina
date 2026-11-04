@@ -1,6 +1,15 @@
 // This feed is visible to every workshop account. Keep SaaS administration changes out of it.
 export const RELEASE_NOTES = [
   {
+    id: '2026-11-04-catalogo-campos-claros', date: '2026-11-04', title: 'Campos do catálogo mais claros',
+    items: [
+      'A lista do catálogo agora indica quando falta informar custo ou preço, oferece acesso direto ao cadastro e mostra quando o controle de estoque precisa ser ativado.',
+      'As colunas financeiras aparecem somente para quem tem acesso a custos. Uma falha ao carregar os itens mostra uma opção para tentar novamente.',
+      'As listas de clientes e veículos agora dizem o que está faltando em vez de mostrar apenas um traço. A análise do catálogo distingue custo ausente de falha de carregamento.',
+      'Resumos de clientes, veículos, ordens de serviço, produtividade, manutenção e assinaturas também identificam dados ausentes ou indisponíveis com texto claro. Lançamentos financeiros sem vínculo deixam de mostrar uma linha vazia.',
+    ],
+  },
+  {
     id: '2026-11-03-clientes-acoes-exportacao', date: '2026-11-03', title: 'Clientes com próximas ações e exportação completa',
     items: [
       'A lista destaca a criação de OS e reúne as ações menos frequentes em um menu por cliente.',

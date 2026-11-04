@@ -52,6 +52,7 @@ describe('CatalogManager', () => {
     const [, firstBatch] = repository.createMany.mock.calls[0];
     expect(firstBatch).toHaveLength(DEFAULT_CATALOG.length);
     expect(firstBatch.every((item: { unitPriceCents: number }) => item.unitPriceCents === 0)).toBe(true);
+    expect(firstBatch.every((item: { type: string; unit: string }) => item.unit === (item.type === 'LABOR' ? 'h' : 'un'))).toBe(true);
     expect(new Set(firstBatch.map((item: { type: string; name: string }) => `${item.type}:${item.name.toLowerCase()}`)).size).toBe(DEFAULT_CATALOG.length);
 
     repository.createMany.mockClear();

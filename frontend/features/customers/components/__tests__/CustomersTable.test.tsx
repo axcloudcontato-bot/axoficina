@@ -76,13 +76,13 @@ describe('CustomersTable', () => {
     expect(onDelete).toHaveBeenCalledWith(customer);
   });
 
-  it('formats a CNPJ and a phone stored with the country code, and shows a dash when there is no document', () => {
+  it('formats a CNPJ and a phone stored with the country code, and explains when there is no document', () => {
     const company: CustomerListItemResponse = { ...customer, id: 'c2', type: 'PJ', name: 'Frota LTDA', document: '11222333000181', phone: '5511988887777' };
     const noDocument: CustomerListItemResponse = { ...customer, id: 'c3', name: 'Sem Documento', document: '' };
     render(<CustomersTable items={[company, noDocument]} isLoading={false} isError={false} onRetry={noop} canManage onEdit={noop} onDelete={noop} />);
     expect(screen.getByText('11.222.333/0001-81')).toBeInTheDocument();
     expect(screen.getByText('(11) 98888-7777')).toBeInTheDocument();
-    expect(screen.getAllByText('—').length).toBeGreaterThan(0);
+    expect(screen.getByText('Não informado')).toBeInTheDocument();
   });
 
   it('tells a search with no match apart from an empty registry', () => {

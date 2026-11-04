@@ -15,6 +15,8 @@ import { formatCurrencyBRL } from '@/lib/format-currency';
 import { normalizeNavigationSearch } from '@/lib/navigation';
 import { parseMoneyToCents } from '@/lib/parse-money';
 import { useLaborRate, useUpdateLaborRate } from '@/features/settings/hooks/use-settings';
+import { hasPermission } from '@/features/auth/permissions';
+import { useAuthStore } from '@/stores/auth-store';
 import { marginPercent } from '../catalog-pricing';
 import { formatStock, isLowStock } from '../catalog-stock';
 import { catalogVehicle, VEHICLE_GROUPS, type VehicleGroup } from '../catalog-vehicle';
@@ -49,6 +51,8 @@ export function CatalogPanel() {
   const [deleting, setDeleting] = useState<CatalogItemResponse>();
   const [pricing, setPricing] = useState<{ id: string; text: string }>();
   const laborRate = useLaborRate();
+  const user = useAuthStore(state => state.user);
+  const canSeeCost = hasPermission(user, 'finance.view');
   const updateLaborRate = useUpdateLaborRate();
   const [rateText, setRateText] = useState<string>();
 
@@ -59,11 +63,12 @@ export function CatalogPanel() {
   const unpriced = items.filter(item => item.type === tab && item.unitPriceCents === 0).length;
   const lowStock = items.filter(isLowStock).length;
   const lowStockHere = items.filter(item => item.type === tab && isLowStock(item)).length;
-  const lowMargin = items.filter(item => item.type === tab && item.costCents !== undefined && item.unitPriceCents > 0 && (marginPercent(item.unitPriceCents, item.costCents) ?? 0) < 20).length;
+  const lowMargin = canSeeCost ? items.filter(item => item.type === tab && item.costCents !== undefined && item.unitPriceCents > 0 && (marginPercent(item.unitPriceCents, item.costCents) ?? 0) < 20).length : 0;
   const visible = useMemo(() => {
     const term = normalizeNavigationSearch(search);
     const filtered = items.filter(item => item.type === tab && (vehicle === 'ALL' || catalogVehicle(item.category) === vehicle) && (category === 'ALL' || item.category === category) && (!onlyUnpriced || item.unitPriceCents === 0) && (!onlyLow || isLowStock(item)) && (!onlyLowMargin || (item.costCents !== undefined && item.unitPriceCents > 0 && (marginPercent(item.unitPriceCents, item.costCents) ?? 0) < 20)) && (!term || normalizeNavigationSearch(`${item.name} ${item.category ?? ''} ${item.code ?? ''} ${item.brand ?? ''}`).includes(term)));
-    return filtered.sort((a, b) => sort === 'price' ? b.unitPriceCents - a.unitPriceCents : sort === 'margin' ? (marginPercent(b.unitPriceCents, b.costCents ?? 0) ?? -Infinity) - (marginPercent(a.unitPriceCents, a.costCents ?? 0) ?? -Infinity) : sort === 'stock' ? (a.stockQuantity ?? Infinity) - (b.stockQuantity ?? Infinity) : a.name.localeCompare(b.name, 'pt-BR'));
+    const marginScore = (item: CatalogItemResponse) => item.costCents === undefined || item.unitPriceCents <= 0 ? -Infinity : marginPercent(item.unitPriceCents, item.costCents) ?? -Infinity;
+    return filtered.sort((a, b) => sort === 'price' ? b.unitPriceCents - a.unitPriceCents : sort === 'margin' ? marginScore(b) - marginScore(a) || a.name.localeCompare(b.name, 'pt-BR') : sort === 'stock' ? (a.stockQuantity ?? Infinity) - (b.stockQuantity ?? Infinity) : a.name.localeCompare(b.name, 'pt-BR'));
   }, [items, tab, vehicle, search, category, onlyUnpriced, onlyLow, onlyLowMargin, sort]);
 
   function loadDefaults() {
@@ -145,21 +150,23 @@ export function CatalogPanel() {
 
     {lowMargin > 0 && <div className="flex flex-wrap items-center justify-between gap-2 rounded-button border border-warning/30 bg-warning-subtle p-3 text-sm"><span>{lowMargin} {lowMargin === 1 ? 'item com margem abaixo de 20%' : 'itens com margem abaixo de 20%'} em {TAB_LABELS[tab].toLowerCase()}.</span><button type="button" className="font-semibold underline" onClick={() => { setOnlyLowMargin(current => !current); setOnlyLow(false); setOnlyUnpriced(false); setVehicle('ALL'); setCategory('ALL'); setSearch(''); }}>{onlyLowMargin ? 'Ver todos' : 'Mostrar só os de margem baixa'}</button></div>}
 
-    <div className="flex flex-wrap items-center justify-between gap-2"><p className="text-xs text-text-muted">{visible.length} de {counts[tab]} itens nesta seção</p><div className="flex flex-wrap gap-2"><select aria-label="Ordenar itens" className="h-9 rounded-button border border-input bg-card px-3 text-sm" value={sort} onChange={event => setSort(event.target.value as typeof sort)}><option value="name">Nome</option><option value="price">Maior preço</option><option value="margin">Maior margem</option><option value="stock">Menor estoque</option></select><Button variant="outline" onClick={() => setImporting(true)}><UploadSimple className="size-4" />Importar planilha</Button><Button variant="outline" onClick={loadDefaults} disabled={seed.isPending}>{seed.isPending ? 'Carregando...' : 'Carregar itens padrão'}</Button></div></div>
-    <section className="overflow-x-auto rounded-card border border-border bg-card shadow-sm">
+    <div className="flex flex-wrap items-center justify-between gap-2"><p className="text-xs text-text-muted">{visible.length} de {counts[tab]} itens nesta seção</p><div className="flex flex-wrap gap-2"><select aria-label="Ordenar itens" className="h-9 rounded-button border border-input bg-card px-3 text-sm" value={sort} onChange={event => setSort(event.target.value as typeof sort)}><option value="name">Nome</option><option value="price">Maior preço</option>{canSeeCost && <option value="margin">Maior margem</option>}<option value="stock">Menor estoque</option></select><Button variant="outline" onClick={() => setImporting(true)}><UploadSimple className="size-4" />Importar planilha</Button><Button variant="outline" onClick={loadDefaults} disabled={seed.isPending} title="Adiciona sugestões de itens sem definir preços, custos ou estoque da oficina">{seed.isPending ? 'Carregando...' : 'Carregar itens padrão'}</Button></div></div>
+    {query.isError && <div role="alert" className="rounded-button border border-danger/30 bg-danger-subtle p-4 text-sm">Não foi possível carregar o catálogo. <button type="button" className="font-semibold underline" onClick={() => query.refetch()}>Tentar novamente</button></div>}
+    {query.isLoading && <p role="status" className="text-sm text-text-muted">Carregando itens do catálogo...</p>}
+    {!query.isError && <section className="overflow-x-auto rounded-card border border-border bg-card shadow-sm">
       <table className="w-full min-w-[760px] text-sm">
-        <thead><tr className="border-b border-border bg-surface text-left text-xs uppercase tracking-wide text-text-muted"><th scope="col" className="px-5 py-3 font-semibold">Item</th><th scope="col" className="px-3 py-3 text-right font-semibold">Custo</th><th scope="col" className="px-3 py-3 text-right font-semibold">Preço</th><th scope="col" className="px-3 py-3 text-right font-semibold">Margem</th><th scope="col" className="px-3 py-3 text-right font-semibold">Estoque</th><th scope="col" className="px-5 py-3 text-right font-semibold">Ações</th></tr></thead>
+        <thead><tr className="border-b border-border bg-surface text-left text-xs uppercase tracking-wide text-text-muted"><th scope="col" className="px-5 py-3 font-semibold">Item</th>{canSeeCost && <th scope="col" className="px-3 py-3 text-right font-semibold">Custo</th>}<th scope="col" className="px-3 py-3 text-right font-semibold">Preço</th>{canSeeCost && <th scope="col" className="px-3 py-3 text-right font-semibold">Margem</th>}<th scope="col" className="px-3 py-3 text-right font-semibold">Estoque</th><th scope="col" className="px-5 py-3 text-right font-semibold">Ações</th></tr></thead>
         <tbody>{visible.map(item => { const margin = item.costCents !== undefined && item.unitPriceCents > 0 ? marginPercent(item.unitPriceCents, item.costCents) : null; return <tr key={item.id} className="border-b border-border align-middle last:border-0">
           <td className="min-w-56 px-5 py-3"><p className="font-semibold">{item.name}</p><p className="text-xs text-text-muted">{[item.category, item.code, item.brand, item.type === 'LABOR' ? (item.standardMinutes ? `${item.standardMinutes} min` : undefined) : `por ${item.unit}`].filter(Boolean).join(' · ')}</p></td>
-          <td className="px-3 py-3 text-right tabular-nums">{item.costCents === undefined ? <span className="text-text-muted">—</span> : formatCurrencyBRL(item.costCents)}</td>
+          {canSeeCost && <td className="px-3 py-3 text-right tabular-nums">{item.costCents === undefined ? <button type="button" className="font-medium text-primary underline-offset-2 hover:underline" onClick={() => setEditing(item)} aria-label={`Informar custo de ${item.name}`}>Informar custo</button> : formatCurrencyBRL(item.costCents)}</td>}
           <td className="px-3 py-3 text-right">{pricing?.id === item.id ? <Input autoFocus aria-label={`Preço de ${item.name}`} inputMode="decimal" className="ml-auto h-9 w-28 text-right" placeholder="0,00" value={pricing.text} onChange={event => setPricing({ id: item.id, text: event.target.value })} onBlur={() => savePrice(item)} onKeyDown={event => { if (event.key === 'Enter') event.currentTarget.blur(); if (event.key === 'Escape') setPricing(undefined); }} /> : <button type="button" aria-label={`Alterar preço de ${item.name}`} onClick={() => setPricing({ id: item.id, text: item.unitPriceCents > 0 ? (item.unitPriceCents / 100).toFixed(2).replace('.', ',') : '' })} className="rounded-button px-2 py-1 font-bold tabular-nums hover:bg-muted">{item.unitPriceCents > 0 ? formatCurrencyBRL(item.unitPriceCents) : <span className="font-medium text-warning">Sem preço</span>}</button>}</td>
-          <td className="px-3 py-3 text-right">{margin === null ? <span className="text-text-muted">—</span> : <span className={`rounded-full px-2 py-0.5 text-xs font-bold ${margin < 0 ? 'bg-danger-subtle text-danger' : margin < 20 ? 'bg-warning-subtle text-warning' : 'bg-success-subtle text-success'}`}>{margin}%</span>}</td>
-          <td className="px-3 py-3 text-right">{item.trackStock ? <button type="button" aria-label={`Estoque de ${item.name}`} onClick={() => setStocking(item)} className={`rounded-full px-2 py-0.5 text-xs font-bold hover:opacity-80 ${isLowStock(item) ? 'bg-danger-subtle text-danger' : 'bg-muted text-text'}`}>{formatStock(item.stockQuantity)} {item.unit}{isLowStock(item) ? ' · baixo' : ''}</button> : <span className="text-text-muted">—</span>}</td>
+          {canSeeCost && <td className="px-3 py-3 text-right">{margin === null ? <span className="text-xs text-text-muted">{item.unitPriceCents === 0 ? 'Defina o preço' : 'Informe o custo'}</span> : <span className={`rounded-full px-2 py-0.5 text-xs font-bold ${margin < 0 ? 'bg-danger-subtle text-danger' : margin < 20 ? 'bg-warning-subtle text-warning' : 'bg-success-subtle text-success'}`}>{margin}%</span>}</td>}
+          <td className="px-3 py-3 text-right">{item.type === 'LABOR' ? <span className="text-xs text-text-muted">Não se aplica</span> : item.trackStock ? <button type="button" aria-label={`Estoque de ${item.name}`} onClick={() => setStocking(item)} className={`rounded-full px-2 py-0.5 text-xs font-bold hover:opacity-80 ${isLowStock(item) ? 'bg-danger-subtle text-danger' : 'bg-muted text-text'}`}>{formatStock(item.stockQuantity)} {item.unit}{isLowStock(item) ? ' · baixo' : ''}</button> : <button type="button" className="text-xs font-medium text-primary underline-offset-2 hover:underline" onClick={() => setEditing(item)} aria-label={`Ativar estoque de ${item.name}`}>Ativar controle</button>}</td>
           <td className="whitespace-nowrap px-5 py-3 text-right"><Button variant="ghost" size="icon" onClick={() => setEditing(item)} aria-label={`Editar ${item.name}`}><PencilSimple className="size-4" /></Button><Button variant="ghost" size="icon" className="text-danger" aria-label={`Excluir ${item.name}`} onClick={() => setDeleting(item)}><Trash className="size-4" /></Button></td>
         </tr>; })}</tbody>
       </table>
       {!query.isLoading && visible.length === 0 && <p className="p-10 text-center text-sm text-text-muted">{items.length === 0 ? 'Catálogo vazio. Use "Carregar itens padrão" ou cadastre o primeiro item.' : 'Nenhum item encontrado. Ajuste os filtros ou a busca.'}</p>}
-    </section>
+    </section>}
     </>}
 
     <CatalogImportModal open={importing} existing={items} onOpenChange={setImporting} />

@@ -52,7 +52,7 @@ export function SubscriptionsWorkspace() {
         { label: 'Receita mensal recorrente', value: data ? formatCurrencyBRL(data.summary.mrrCents) : undefined, hint: 'Ativas · planos anuais ÷ 12' },
         { label: 'Em teste', value: data?.summary.trial, hint: 'Período de avaliação' },
         { label: 'Inadimplentes', value: data?.summary.pastDue, hint: 'Situação informada manualmente' },
-      ].map((metric) => <div key={metric.label} className="rounded-card border border-border bg-card p-4 shadow-card"><p className="text-xs font-semibold text-text-muted">{metric.label}</p><p className="mt-3 text-2xl font-bold tracking-tight tabular-nums text-text">{subscriptions.isError ? '—' : metric.value ?? '—'}</p><p className="mt-1 text-xs text-text-muted">{metric.hint}</p></div>)}
+      ].map((metric) => <div key={metric.label} className="rounded-card border border-border bg-card p-4 shadow-card"><p className="text-xs font-semibold text-text-muted">{metric.label}</p><p className="mt-3 text-2xl font-bold tracking-tight tabular-nums text-text">{subscriptions.isError ? 'Indisponível' : metric.value ?? 'Carregando'}</p><p className="mt-1 text-xs text-text-muted">{metric.hint}</p></div>)}
     </section>
 
     <section className="overflow-hidden rounded-card border border-border bg-card shadow-card" aria-label="Lista de assinaturas">

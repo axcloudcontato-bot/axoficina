@@ -92,12 +92,12 @@ export function VehiclesTable({ items, isLoading, isError, onRetry, canManage, o
               <TableCell className="font-medium text-text">{vehicle.brand}</TableCell>
               <TableCell className="text-text-muted">{vehicle.model}</TableCell>
               <TableCell className="text-text-muted">{archived ? formatPlate(vehicle.plate) : <Link href={`/veiculos/${vehicle.id}`} className="font-semibold hover:text-primary hover:underline">{formatPlate(vehicle.plate)}</Link>}{vehicle.plate === 'Sem placa' && vehicle.chassis && <span className="block text-xs">Chassi {vehicle.chassis}</span>}</TableCell>
-              {!archived && <TableCell className="text-text-muted">{vehicle.year ?? '—'}</TableCell>}
-              {!archived && <TableCell className="text-right tabular-nums text-text-muted">{vehicle.mileage != null ? vehicle.mileage.toLocaleString('pt-BR') : '—'}</TableCell>}
+              {!archived && <TableCell className="text-text-muted">{vehicle.year ?? 'Não informado'}</TableCell>}
+              {!archived && <TableCell className="text-right tabular-nums text-text-muted">{vehicle.mileage != null ? vehicle.mileage.toLocaleString('pt-BR') : 'Não informada'}</TableCell>}
               <TableCell className="text-text-muted">{archived ? vehicle.customerName : <Link href={`/clientes/${vehicle.customerId}`} className="hover:text-primary hover:underline">{vehicle.customerName}</Link>}</TableCell>
-              {!archived && <TableCell className="text-right tabular-nums text-text-muted">{vehicle.stats?.orderCount ?? '—'}</TableCell>}
-              {!archived && <TableCell className="text-text-muted">{vehicle.stats ? (vehicle.stats.lastVisitAt ? new Date(vehicle.stats.lastVisitAt).toLocaleDateString('pt-BR') : 'Nunca') : '—'}</TableCell>}
-              {archived && <TableCell className="text-text-muted">{vehicle.archivedAt ? new Date(vehicle.archivedAt).toLocaleDateString('pt-BR') : '—'}</TableCell>}
+              {!archived && <TableCell className="text-right tabular-nums text-text-muted">{vehicle.stats?.orderCount ?? 'Não disponível'}</TableCell>}
+              {!archived && <TableCell className="text-text-muted">{vehicle.stats ? (vehicle.stats.lastVisitAt ? new Date(vehicle.stats.lastVisitAt).toLocaleDateString('pt-BR') : 'Nunca') : 'Não disponível'}</TableCell>}
+              {archived && <TableCell className="text-text-muted">{vehicle.archivedAt ? new Date(vehicle.archivedAt).toLocaleDateString('pt-BR') : 'Data não informada'}</TableCell>}
               {canManage && (
                 <TableCell className="text-right">
                   <div className="flex justify-end gap-2">

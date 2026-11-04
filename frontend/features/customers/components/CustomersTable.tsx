@@ -87,10 +87,10 @@ export function CustomersTable({ items, isLoading, isError, onRetry, canManage, 
             <TableRow key={customer.id}>
               <TableCell><div className="space-y-1"><div className="font-medium text-text">{archived ? customer.name : <Link href={`/clientes/${customer.id}`} className="hover:text-primary hover:underline">{customer.name}</Link>}</div><div className="flex flex-wrap items-center gap-2 text-xs text-text-muted"><Badge variant="outline">{TYPE_LABELS[customer.type] ?? customer.type}</Badge><span>{displayDocument(customer.document)}</span></div></div></TableCell>
               <TableCell className="text-text-muted">{displayPhone(customer.phone)}</TableCell>
-              {!archived && <TableCell className="text-text-muted">{customer.stats?.plates.length ? customer.stats.plates.slice(0, 2).join(', ') + (customer.stats.plates.length > 2 ? ` +${customer.stats.plates.length - 2}` : '') : '—'}</TableCell>}
+              {!archived && <TableCell className="text-text-muted">{customer.stats?.plates.length ? customer.stats.plates.slice(0, 2).join(', ') + (customer.stats.plates.length > 2 ? ` +${customer.stats.plates.length - 2}` : '') : 'Nenhum veículo'}</TableCell>}
               {!archived && <TableCell className="text-text-muted">{customer.stats?.lastVisitAt ? dateOnly(customer.stats.lastVisitAt) : 'Nunca'}</TableCell>}
-              {!archived && showSpend && <TableCell className="text-right tabular-nums text-text-muted">{customer.stats?.totalSpentCents !== undefined ? formatCurrencyBRL(customer.stats.totalSpentCents) : '—'}</TableCell>}
-              {archived && <TableCell className="text-text-muted">{customer.archivedAt ? new Date(customer.archivedAt).toLocaleDateString('pt-BR') : '—'}</TableCell>}
+              {!archived && showSpend && <TableCell className="text-right tabular-nums text-text-muted">{customer.stats?.totalSpentCents !== undefined ? formatCurrencyBRL(customer.stats.totalSpentCents) : 'Não disponível'}</TableCell>}
+              {archived && <TableCell className="text-text-muted">{customer.archivedAt ? new Date(customer.archivedAt).toLocaleDateString('pt-BR') : 'Data não informada'}</TableCell>}
               {canManage && (
                 <TableCell className="text-right">
                   <div className="flex justify-end gap-2">

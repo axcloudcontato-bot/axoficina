@@ -84,7 +84,7 @@ export function ServiceOrderPrintDocument({
           <PrintSection title="Inspeção técnica">
             <table className="w-full border-collapse text-left text-xs">
               <thead><tr className="border-b border-slate-400"><th className="py-2 pr-3">Item</th><th className="py-2 pr-3">Situação</th><th className="py-2">Observação</th></tr></thead>
-              <tbody>{checklist.map((item) => <tr key={item.id} className="border-b border-slate-200"><td className="py-2 pr-3 font-medium">{item.label}</td><td className="py-2 pr-3">{INSPECTION_STATUS_LABELS[item.status]}</td><td className="py-2">{item.note || '—'}</td></tr>)}</tbody>
+              <tbody>{checklist.map((item) => <tr key={item.id} className="border-b border-slate-200"><td className="py-2 pr-3 font-medium">{item.label}</td><td className="py-2">{INSPECTION_STATUS_LABELS[item.status]}</td><td className="py-2">{item.note || 'Sem observação'}</td></tr>)}</tbody>
             </table>
           </PrintSection>
 

@@ -6,6 +6,8 @@ import { settingsApi } from '@/features/settings/api/settings-api';
 import { catalogApi } from '../api/catalog-api';
 import { CatalogPanel } from './CatalogPanel';
 
+const auth = vi.hoisted(() => ({ permissions: ['finance.view', 'service_orders.prices'] as string[] }));
+vi.mock('@/stores/auth-store', () => ({ useAuthStore: (selector: (state: unknown) => unknown) => selector({ user: { role: 'MANAGER', permissions: auth.permissions } }) }));
 vi.mock('@/features/settings/api/settings-api', () => ({ settingsApi: { branding: vi.fn().mockResolvedValue({ company: { name: 'Oficina', document: '1' }, laborRateCents: 12000 }), updateLaborRate: vi.fn().mockResolvedValue({ laborRateCents: 15000 }) } }));
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 vi.mock('../api/catalog-api', () => ({
@@ -21,7 +23,7 @@ const items = [
 const renderPanel = () => render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><CatalogPanel /></QueryClientProvider>);
 
 describe('CatalogPanel', () => {
-  beforeEach(() => { vi.mocked(catalogApi.list).mockResolvedValue({ items } as never); vi.mocked(catalogApi.update).mockClear(); vi.mocked(catalogApi.remove).mockClear(); });
+  beforeEach(() => { auth.permissions = ['finance.view', 'service_orders.prices']; vi.mocked(catalogApi.list).mockResolvedValue({ items } as never); vi.mocked(catalogApi.update).mockClear(); vi.mocked(catalogApi.remove).mockClear(); });
 
   it('edits a price in place, reading a decimal typed with a dot as reais, not hundreds of reais', async () => {
     const user = userEvent.setup();
@@ -76,6 +78,24 @@ describe('CatalogPanel', () => {
     for (const heading of ['Custo', 'Preço', 'Margem', 'Estoque']) expect(screen.getByRole('columnheader', { name: heading })).toBeInTheDocument();
     expect(screen.getByText(/R\$\s90,00/)).toBeInTheDocument();
     expect(screen.getByText('50%')).toBeInTheDocument();
+  });
+
+  it('explains missing values and opens the relevant item for completion', async () => {
+    const user = userEvent.setup();
+    renderPanel();
+    await screen.findByText('Disco de freio');
+    expect(screen.getAllByText('Informe o custo').length).toBeGreaterThan(0);
+    expect(screen.getByRole('button', { name: 'Ativar estoque de Disco de freio' })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Informar custo de Disco de freio' }));
+    expect(await screen.findByRole('dialog', { name: 'Editar item do catálogo' })).toBeInTheDocument();
+  });
+
+  it('does not show financial columns without permission', async () => {
+    auth.permissions = ['service_orders.prices'];
+    renderPanel();
+    await screen.findByText('Disco de freio');
+    expect(screen.queryByRole('columnheader', { name: 'Custo' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('columnheader', { name: 'Margem' })).not.toBeInTheDocument();
   });
 
   it('asks for confirmation in its own dialog before deleting', async () => {

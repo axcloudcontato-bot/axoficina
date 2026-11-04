@@ -54,7 +54,7 @@ export class CatalogManager {
   async seedDefaults(user: AuthenticatedUser, viewer: CatalogViewer = NO_COST): Promise<SeedCatalogResponse> {
     const current = await this.repository.list();
     const existing = new Map(current.map((item) => [`${item.type}:${item.name.toLowerCase()}`, item]));
-    const missing = DEFAULT_CATALOG.filter((item) => !existing.has(`${item.type}:${item.name.toLowerCase()}`)).map((item) => ({ ...item, careServiceKey: item.careServiceKey ?? null, unitPriceCents: 0 }));
+    const missing = DEFAULT_CATALOG.filter((item) => !existing.has(`${item.type}:${item.name.toLowerCase()}`)).map((item) => ({ ...item, careServiceKey: item.careServiceKey ?? null, unitPriceCents: 0, unit: item.type === 'LABOR' ? 'h' : 'un' }));
     // Reclassify only rows that still carry the original default category. A workshop's own
     // category, price, stock and other edits are never overwritten by loading defaults.
     const reclassify = DEFAULT_CATALOG.flatMap((item) => {

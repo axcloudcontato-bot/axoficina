@@ -26,7 +26,7 @@ export function MyProductivityCard() {
         <dl className="grid grid-cols-3 gap-3 text-sm">
           <div><dt className="text-xs text-text-muted">OS entregues</dt><dd className="text-xl font-bold tabular-nums">{data.completedCount}{data.target ? <span className="text-sm font-normal text-text-muted"> / {data.target.completedCount}</span> : null}</dd></div>
           <div><dt className="text-xs text-text-muted">Tempo em OS</dt><dd className="text-xl font-bold tabular-nums">{hours(data.workedMinutes)}</dd></div>
-          <div><dt className="text-xs text-text-muted">Eficiência</dt><dd className="text-xl font-bold tabular-nums">{data.efficiencyPercent != null ? `${data.efficiencyPercent}%` : '—'}</dd></div>
+          <div><dt className="text-xs text-text-muted">Eficiência</dt><dd className="text-xl font-bold tabular-nums">{data.efficiencyPercent != null ? `${data.efficiencyPercent}%` : 'Sem dados'}</dd></div>
         </dl>
         {progress != null && <div><div className="h-2 rounded-full bg-surface" role="progressbar" aria-label="Meta de OS do mês" aria-valuenow={progress} aria-valuemin={0} aria-valuemax={100}><div className="h-2 rounded-full bg-primary" style={{ width: `${progress}%` }} /></div><p className="mt-1 text-xs text-text-muted">{progress}% da meta de OS</p></div>}
         {data.reworkCount ? <p className="text-xs text-warning">{data.reworkCount === 1 ? '1 OS sua voltou em garantia neste mês.' : `${data.reworkCount} OS suas voltaram em garantia neste mês.`}</p> : null}

@@ -65,9 +65,9 @@ export function VehicleProfile({ vehicle }: { vehicle: VehicleResponse }) {
 
     {data && <>
       <section aria-label="Resumo" className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <Stat label="Quilometragem" value={vehicle.mileage != null ? km(vehicle.mileage) : '—'} hint={vehicle.mileage != null ? undefined : 'Ainda não informada'} />
+        <Stat label="Quilometragem" value={vehicle.mileage != null ? km(vehicle.mileage) : 'Não informada'} hint={vehicle.mileage != null ? undefined : 'Ainda não informada'} />
         <Stat label="Ordens de serviço" value={String(data.orderCount)} hint={`${data.deliveredCount} entregue${data.deliveredCount === 1 ? '' : 's'}`} />
-        <Stat label="Última visita" value={data.lastVisitAt ? day(data.lastVisitAt) : '—'} hint={data.lastVisitAt ? undefined : 'Nenhuma OS entregue'} />
+        <Stat label="Última visita" value={data.lastVisitAt ? day(data.lastVisitAt) : 'Sem visita'} hint={data.lastVisitAt ? undefined : 'Nenhuma OS entregue'} />
         <Stat label="Em andamento" value={String(data.openServiceOrders.length)} />
       </section>
 
