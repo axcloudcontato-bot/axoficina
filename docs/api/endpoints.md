@@ -3,7 +3,7 @@
 > Gerado a partir dos controllers do backend. Não edite à mão: rode `UPDATE_API_DOCS=1 pnpm --filter @oficina/backend exec jest src/shared/api-docs`
 > depois de mudar uma rota ou seus decorators. O teste `api-docs.spec.ts` falha se este arquivo ficar desatualizado.
 
-São 163 endpoints em 25 controllers.
+São 164 endpoints em 25 controllers.
 
 ## Convenções
 
@@ -252,6 +252,7 @@ São 163 endpoints em 25 controllers.
 | POST | `/api/v1/settings/whatsapp/settings.manage` | `update` | qualquer usuário autenticado |  |  |
 | POST | `/api/v1/settings/whatsapp/test` | `test` | qualquer usuário autenticado |  |  |
 | POST | `/api/v1/settings/whatsapp/webhook/test` | `testWebhook` | qualquer usuário autenticado |  |  |
+| POST | `/api/v1/settings/whatsapp/webhook/configure` | `configureWebhook` | qualquer usuário autenticado |  |  |
 
 ## modules/settings/controllers/workshop-account.controller.ts
 
