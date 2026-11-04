@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
+import { CheckCircle, XCircle } from '@phosphor-icons/react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import type { UpdateWhatsAppSettingsRequest } from '@oficina/contracts';
@@ -16,6 +17,14 @@ import { useAuthStore } from '@/stores/auth-store';
 const SETTINGS_KEY = ['whatsapp-settings'];
 const EMPTY: UpdateWhatsAppSettingsRequest = { baseUrl: 'https://chat.axcloud.com.br', sessionId: '', apiKey: '', webhookSecret: '', enabled: false };
 
+function TestStatus({ success, children, compact = false }: { success: boolean; children: ReactNode; compact?: boolean }) {
+  const Icon = success ? CheckCircle : XCircle;
+  return <p role={compact ? undefined : success ? 'status' : 'alert'} className={`flex items-start gap-2 ${compact ? 'mt-2 text-xs text-text-muted' : 'mt-3 text-sm text-text'}`}>
+    <Icon weight="fill" className={`mt-0.5 size-4 shrink-0 ${success ? 'text-success-strong' : 'text-danger'}`} aria-hidden="true" />
+    <span>{children}</span>
+  </p>;
+}
+
 export function WhatsAppSettingsForm() {
   const user = useAuthStore((state) => state.user);
   const canView = hasPermission(user, 'settings.view');
@@ -26,7 +35,9 @@ export function WhatsAppSettingsForm() {
   const [dirty, setDirty] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState('');
+  const [connectionValidated, setConnectionValidated] = useState<boolean | null>(null);
   const [webhookStatus, setWebhookStatus] = useState('');
+  const [webhookValidated, setWebhookValidated] = useState<boolean | null>(null);
   const update = useMutation({ mutationFn: settingsApi.updateWhatsApp });
   const testConnection = useMutation({ mutationFn: settingsApi.testWhatsApp });
   const testWebhook = useMutation({ mutationFn: settingsApi.testWhatsAppWebhook });
@@ -44,7 +55,9 @@ export function WhatsAppSettingsForm() {
     setForm((current) => ({ ...current, [key]: value }));
     setDirty(true);
     setConnectionStatus('');
+    setConnectionValidated(null);
     setWebhookStatus('');
+    setWebhookValidated(null);
   }
 
   async function save() {
@@ -65,8 +78,9 @@ export function WhatsAppSettingsForm() {
     try {
       const result = await testConnection.mutateAsync();
       await queryClient.invalidateQueries({ queryKey: SETTINGS_KEY });
+      setConnectionValidated(result.connected);
       setConnectionStatus(result.connected ? 'Conexão validada. A sessão está conectada ao WhatsApp.' : `A API respondeu, mas a sessão está desconectada (${result.status}). Conecte o número no WA-AKG.`);
-    } catch (error) { setConnectionStatus(extractErrorMessage(error, 'Não foi possível verificar a conexão com o WA-AKG.')); }
+    } catch (error) { setConnectionValidated(false); setConnectionStatus(extractErrorMessage(error, 'Não foi possível verificar a conexão com o WA-AKG.')); await queryClient.invalidateQueries({ queryKey: SETTINGS_KEY }); }
   }
 
   async function copy(value: string) {
@@ -79,8 +93,9 @@ export function WhatsAppSettingsForm() {
     try {
       await testWebhook.mutateAsync();
       await queryClient.invalidateQueries({ queryKey: SETTINGS_KEY });
+      setWebhookValidated(true);
       setWebhookStatus('Recebimento validado: o webhook está ativo no WA-AKG para esta sessão, com a URL, o evento e o segredo corretos. O teste enviado pelo WA-AKG foi confirmado pelo Ofix.');
-    } catch (error) { setWebhookStatus(extractErrorMessage(error, 'Não foi possível validar o recebimento.')); }
+    } catch (error) { setWebhookValidated(false); setWebhookStatus(extractErrorMessage(error, 'Não foi possível validar o recebimento.')); await queryClient.invalidateQueries({ queryKey: SETTINGS_KEY }); }
   }
 
   async function configureReceiving() {
@@ -88,8 +103,9 @@ export function WhatsAppSettingsForm() {
     try {
       await configureWebhook.mutateAsync();
       await queryClient.invalidateQueries({ queryKey: SETTINGS_KEY });
+      setWebhookValidated(true);
       setWebhookStatus('Webhook configurado no WA-AKG e recebimento validado. Novas respostas pelos botões poderão aparecer na OS e no sino de notificações.');
-    } catch (error) { setWebhookStatus(extractErrorMessage(error, 'Não foi possível configurar o webhook no WA-AKG.')); }
+    } catch (error) { setWebhookValidated(false); setWebhookStatus(extractErrorMessage(error, 'Não foi possível configurar o webhook no WA-AKG.')); await queryClient.invalidateQueries({ queryKey: SETTINGS_KEY }); }
   }
 
   if (!canView) return <p className="text-sm text-text-muted">Seu perfil não permite consultar esta configuração.</p>;
@@ -125,15 +141,15 @@ export function WhatsAppSettingsForm() {
       <Button type="button" variant="outline" size="sm" className="mt-2" onClick={() => copy(settings.data.webhookUrl)}>Copiar URL do webhook</Button>
       <Button type="button" variant="outline" size="sm" className="ml-2 mt-2" onClick={checkWebhook} disabled={!canManage || busy || dirty || !settings.data.enabled}>{testWebhook.isPending ? 'Validando...' : 'Testar recebimento'}</Button>
       <Button type="button" size="sm" className="ml-2 mt-2" onClick={configureReceiving} disabled={!canManage || busy || dirty || !settings.data.enabled}>{configureWebhook.isPending ? 'Configurando...' : 'Configurar no WA-AKG'}</Button>
-      {webhookStatus && <p role="status" className="mt-3 text-sm">{webhookStatus}</p>}
+      {webhookStatus && webhookValidated !== null && <TestStatus success={webhookValidated}>{webhookStatus}</TestStatus>}
       <p className="mt-3 text-xs text-text-muted">Se aparecer localhost, configure o endereço público da API antes de cadastrar o webhook. O teste confere o cadastro do webhook nesta sessão e envia um evento pelo WA-AKG até o Ofix; uma página HTML com status 200 não confirma o recebimento. Use WA-AKG 1.7.0 ou superior com sessão conectada. Cada resposta fica vinculada à pergunta e à OS; mensagens digitadas livremente não são consideradas escolhas de botão.</p>
     </section>
-    <section className="rounded-card border border-primary/20 bg-primary-subtle p-5">
+    <section className="rounded-card border border-border bg-card p-5 shadow-sm">
       <h2 className="font-bold">Verificar conexão</h2><p className="mt-2 text-sm text-text-muted">Confere a chave e a sessão, sem enviar mensagens aos clientes. O teste de recebimento acima também verifica o webhook cadastrado no WA-AKG.</p>
       <Button variant="outline" className="mt-4" onClick={test} disabled={!canManage || busy || dirty}>{testConnection.isPending ? 'Verificando...' : 'Testar conexão'}</Button>
-      {connectionStatus && <p role="status" className="mt-3 text-sm">{connectionStatus}</p>}
-      {settings.data.connectionTestAt && <p className="mt-2 text-xs text-text-muted">Último teste da conexão: {new Date(settings.data.connectionTestAt).toLocaleString('pt-BR')} · {settings.data.connectionTestError ? `falhou — ${settings.data.connectionTestError}` : 'sessão conectada'}. Último sucesso: {settings.data.connectionSuccessAt ? new Date(settings.data.connectionSuccessAt).toLocaleString('pt-BR') : 'nenhum'}.</p>}
-      {settings.data.webhookTestAt && <p className="mt-2 text-xs text-text-muted">Último teste do recebimento: {new Date(settings.data.webhookTestAt).toLocaleString('pt-BR')} · {settings.data.webhookTestError ? `falhou — ${settings.data.webhookTestError}` : 'webhook do WA-AKG validado'}. Último sucesso: {settings.data.webhookSuccessAt ? new Date(settings.data.webhookSuccessAt).toLocaleString('pt-BR') : 'nenhum'}.</p>}
+      {connectionStatus && connectionValidated !== null && <TestStatus success={connectionValidated}>{connectionStatus}</TestStatus>}
+      {settings.data.connectionTestAt && <TestStatus success={!settings.data.connectionTestError} compact>Último teste da conexão: {new Date(settings.data.connectionTestAt).toLocaleString('pt-BR')} · {settings.data.connectionTestError ? `falhou — ${settings.data.connectionTestError}` : 'sessão conectada'}. Último sucesso: {settings.data.connectionSuccessAt ? new Date(settings.data.connectionSuccessAt).toLocaleString('pt-BR') : 'nenhum'}.</TestStatus>}
+      {settings.data.webhookTestAt && <TestStatus success={!settings.data.webhookTestError} compact>Último teste do recebimento: {new Date(settings.data.webhookTestAt).toLocaleString('pt-BR')} · {settings.data.webhookTestError ? `falhou — ${settings.data.webhookTestError}` : 'webhook do WA-AKG validado'}. Último sucesso: {settings.data.webhookSuccessAt ? new Date(settings.data.webhookSuccessAt).toLocaleString('pt-BR') : 'nenhum'}.</TestStatus>}
     </section>
   </div>;
 }
