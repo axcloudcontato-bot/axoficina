@@ -10,6 +10,7 @@ function buildManager() {
     insert: jest.fn(),
     byId: jest.fn(),
     byPlate: jest.fn(),
+    byChassis: jest.fn().mockResolvedValue(null),
     update: jest.fn(),
     softDelete: jest.fn(),
     listByTenant: jest.fn(),
@@ -56,6 +57,7 @@ const baseVehicle = {
   id: 'vehicle-1',
   tenantId: 'tenant-1',
   customerId: 'customer-1',
+  category: 'CAR',
   brand: 'Fiat',
   model: 'Uno',
   year: 2015,
@@ -72,6 +74,26 @@ const baseVehicle = {
 
 describe('VehicleManager', () => {
   describe('create', () => {
+    it('registers an unplated truck by chassis and prevents a duplicate chassis', async () => {
+      const deps = buildManager();
+      deps.customerRepository.byId.mockResolvedValue(baseCustomer);
+      deps.vehicleRepository.insert.mockResolvedValue({ ...baseVehicle, category: 'TRUCK', plate: null, chassis: '9BWZZZ377VT004251' });
+      const request = { customerId: 'customer-1', category: 'TRUCK' as const, brand: 'Volvo', model: 'FH', chassis: '9BWZZZ377VT004251' };
+      const result = await deps.manager.create(actingUser, request);
+      expect(deps.vehicleRepository.insert).toHaveBeenCalledWith(expect.objectContaining({ plate: null, chassis: request.chassis, category: 'TRUCK' }));
+      expect(result.vehicle.plate).toBe('Sem placa');
+      deps.vehicleRepository.byChassis.mockResolvedValue(baseVehicle);
+      await expect(deps.manager.create(actingUser, request)).rejects.toThrow('Já existe um veículo com este chassi');
+    });
+    it('persists the selected motorcycle category', async () => {
+      const deps = buildManager();
+      deps.customerRepository.byId.mockResolvedValue(baseCustomer);
+      deps.vehicleRepository.byPlate.mockResolvedValue(null);
+      deps.vehicleRepository.insert.mockResolvedValue({ ...baseVehicle, category: 'MOTORCYCLE' });
+      const result = await deps.manager.create(actingUser, { customerId: 'customer-1', category: 'MOTORCYCLE', brand: 'Honda', model: 'CG', plate: 'ABC1D23' });
+      expect(deps.vehicleRepository.insert).toHaveBeenCalledWith(expect.objectContaining({ category: 'MOTORCYCLE' }));
+      expect(result.vehicle.category).toBe('MOTORCYCLE');
+    });
     it('creates a vehicle linked to an existing customer and records the audit log', async () => {
       const deps = buildManager();
       deps.customerRepository.byId.mockResolvedValue(baseCustomer);
@@ -233,7 +255,7 @@ describe('VehicleManager', () => {
 
       const result = await deps.manager.list({ offset: 0, limit: 20, search: 'Uno' });
 
-      expect(deps.vehicleRepository.listByTenant).toHaveBeenCalledWith(0, 20, 'Uno', undefined, undefined, false, undefined, undefined, undefined);
+      expect(deps.vehicleRepository.listByTenant).toHaveBeenCalledWith(0, 20, 'Uno', undefined, undefined, false, undefined, undefined, undefined, undefined);
       expect(deps.customerRepository.byIds).toHaveBeenCalledWith(['customer-1']);
       expect(result.items[0].customerName).toBe('João da Silva');
     });
@@ -246,7 +268,7 @@ describe('VehicleManager', () => {
       await deps.manager.list({ offset: 0, limit: 20, customerId: 'customer-1' });
 
       expect(deps.customerRepository.searchIdsByNameOrDocument).not.toHaveBeenCalled();
-      expect(deps.vehicleRepository.listByTenant).toHaveBeenCalledWith(0, 20, undefined, 'customer-1', undefined, false, undefined, undefined, undefined);
+      expect(deps.vehicleRepository.listByTenant).toHaveBeenCalledWith(0, 20, undefined, 'customer-1', undefined, false, undefined, undefined, undefined, undefined);
     });
 
     it('does not match by owner name/document when matchOwner is not set, even with a search term', async () => {
@@ -257,7 +279,7 @@ describe('VehicleManager', () => {
       await deps.manager.list({ offset: 0, limit: 20, search: 'João' });
 
       expect(deps.customerRepository.searchIdsByNameOrDocument).not.toHaveBeenCalled();
-      expect(deps.vehicleRepository.listByTenant).toHaveBeenCalledWith(0, 20, 'João', undefined, undefined, false, undefined, undefined, undefined);
+      expect(deps.vehicleRepository.listByTenant).toHaveBeenCalledWith(0, 20, 'João', undefined, undefined, false, undefined, undefined, undefined, undefined);
     });
 
     it('also matches vehicles whose owning customer name or document matches the search term when matchOwner is set', async () => {
@@ -269,7 +291,7 @@ describe('VehicleManager', () => {
       const result = await deps.manager.list({ offset: 0, limit: 20, search: 'João', matchOwner: true });
 
       expect(deps.customerRepository.searchIdsByNameOrDocument).toHaveBeenCalledWith('João');
-      expect(deps.vehicleRepository.listByTenant).toHaveBeenCalledWith(0, 20, 'João', undefined, ['customer-1'], false, undefined, undefined, undefined);
+      expect(deps.vehicleRepository.listByTenant).toHaveBeenCalledWith(0, 20, 'João', undefined, ['customer-1'], false, undefined, undefined, undefined, undefined);
       expect(result.items[0].plate).toBe('ABC1D23');
     });
   });
@@ -347,7 +369,7 @@ describe('VehicleManager', () => {
       deps.vehicleRepository.listByTenant.mockResolvedValue({ items: [{ ...baseVehicle, deletedAt: new Date('2026-10-01T00:00:00Z') }], total: 1 });
       deps.customerRepository.byIds.mockResolvedValue([baseCustomer]);
       const result = await deps.manager.list({ offset: 0, limit: 20, archived: true });
-      expect(deps.vehicleRepository.listByTenant).toHaveBeenCalledWith(0, 20, undefined, undefined, undefined, true, undefined, undefined, undefined);
+      expect(deps.vehicleRepository.listByTenant).toHaveBeenCalledWith(0, 20, undefined, undefined, undefined, true, undefined, undefined, undefined, undefined);
       expect(result.items[0].archivedAt).toBe('2026-10-01T00:00:00.000Z');
     });
 
@@ -401,10 +423,10 @@ describe('VehicleManager', () => {
       deps.customerRepository.byIds.mockResolvedValue([]);
       deps.vehicleRepository.listByTenant.mockResolvedValue({ items: [], total: 0 });
       await deps.manager.list({ offset: 0, limit: 20, filter: 'IN_SERVICE' });
-      expect(deps.vehicleRepository.listByTenant).toHaveBeenLastCalledWith(0, 20, undefined, undefined, undefined, false, { in: ['vehicle-1'] }, undefined, undefined);
+      expect(deps.vehicleRepository.listByTenant).toHaveBeenLastCalledWith(0, 20, undefined, undefined, undefined, false, { in: ['vehicle-1'] }, undefined, undefined, undefined);
       await deps.manager.list({ offset: 0, limit: 20, filter: 'INACTIVE' }, new Date('2026-10-29T12:00:00Z'));
       expect(deps.vehicleRepository.idsDeliveredSince).toHaveBeenCalledWith(new Date('2026-05-02T12:00:00Z'));
-      expect(deps.vehicleRepository.listByTenant).toHaveBeenLastCalledWith(0, 20, undefined, undefined, undefined, false, { notIn: ['vehicle-9'] }, undefined, undefined);
+      expect(deps.vehicleRepository.listByTenant).toHaveBeenLastCalledWith(0, 20, undefined, undefined, undefined, false, { notIn: ['vehicle-9'] }, undefined, undefined, undefined);
       deps.vehicleRepository.listByTenant.mockClear();
       deps.vehicleRepository.idsWithOpenOrders.mockResolvedValue([]);
       expect(await deps.manager.list({ offset: 0, limit: 20, filter: 'IN_SERVICE' })).toMatchObject({ items: [], total: 0, hasMore: false });
@@ -477,7 +499,7 @@ describe('VehicleManager', () => {
     deps.vehicleRepository.listByTenant.mockResolvedValue({ items: [], total: 0 });
     deps.customerRepository.byIds.mockResolvedValue([]);
     await deps.manager.list({ offset: 0, limit: 20, sort: 'mileage', direction: 'asc' });
-    expect(deps.vehicleRepository.listByTenant).toHaveBeenCalledWith(0, 20, undefined, undefined, undefined, false, undefined, 'mileage', 'asc');
+    expect(deps.vehicleRepository.listByTenant).toHaveBeenCalledWith(0, 20, undefined, undefined, undefined, false, undefined, 'mileage', 'asc', undefined);
   });
 
   describe('spreadsheet import', () => {

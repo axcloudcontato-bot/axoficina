@@ -56,6 +56,7 @@ const vehicle = {
   tenantId: 't1',
   customerId: 'c1',
   customerName: 'João da Silva',
+  category: 'CAR' as const,
   brand: 'Fiat',
   model: 'Uno',
   plate: 'ABC1D23',

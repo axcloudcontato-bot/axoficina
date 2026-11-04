@@ -360,12 +360,13 @@ model Vehicle {
   id         String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
   tenantId   String    @map("tenant_id") @db.Uuid
   customerId String    @map("customer_id") @db.Uuid
+  category   String?
   brand      String
   model      String
   year       Int?
   engine     String?
   fuelType   String?   @map("fuel_type")
-  plate      String
+  plate      String?
   chassis    String?
   mileage    Int?
   color      String?

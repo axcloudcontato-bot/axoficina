@@ -181,7 +181,7 @@ export class FinancialManager {
     const supplierMap = new Map(suppliers.map((supplier) => [supplier.id, supplier.name]));
     const customerMap = new Map(customers.map((customer) => [customer.id, customer.name]));
     const categoryMap = new Map(categories.map((item) => [item.id, item.name]));
-    const vehicleMap = new Map(vehicles.map(vehicle => [vehicle.id, vehicle.plate]));
+    const vehicleMap = new Map(vehicles.map(vehicle => [vehicle.id, vehicle.plate ?? 'Sem placa']));
     const paymentEntryMap = new Map(paymentEntries.map(entry => [entry.id, entry]));
     const orderMap = new Map(orders.map(order => [order.id, { serviceOrderNumber: order.orderNumber, customerId: order.customerId, customerName: customerMap.get(order.customerId), vehiclePlate: vehicleMap.get(order.vehicleId) }]));
     const entries: FinancialEntryResponse[] = [

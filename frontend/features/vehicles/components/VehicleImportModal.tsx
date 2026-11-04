@@ -60,7 +60,7 @@ export function VehicleImportModal({ open, onOpenChange }: { open: boolean; onOp
           <Button type="button" variant="ghost" onClick={() => downloadCsv('modelo-veiculos.csv', VEHICLE_IMPORT_TEMPLATE.split('\r\n').map((line) => line.split(';')))}><DownloadSimple className="size-4" />Baixar planilha modelo</Button>
           <input ref={input} type="file" accept=".csv,text/csv" aria-label="Arquivo CSV" className="hidden" onChange={pick} />
         </div>
-        <p className="text-xs text-text-muted">Colunas aceitas: Placa, Marca e Modelo (obrigatórias), Ano, Cor, Combustível, Chassi, Km, e a identificação do dono: Documento do dono ou Telefone do dono (com o Nome do dono quando o telefone é compartilhado). Até 300 veículos por vez.</p>
+        <p className="text-xs text-text-muted">Colunas obrigatórias: Tipo (Carro, Moto ou Caminhão), Marca, Modelo e Placa ou Chassi. Também aceita Ano, Cor, Combustível, Km e identificação do dono por documento ou telefone. Até 300 veículos por vez.</p>
         {parsed && parsed.rows.length > 0 && <p className="rounded-button border border-border bg-surface p-3 text-sm"><strong>{parsed.rows.length}</strong> {parsed.rows.length === 1 ? 'veículo pronto' : 'veículos prontos'} para importar.</p>}
         {parsed && parsed.errors.length > 0 && <div role="alert" className="rounded-button border border-warning/30 bg-warning-subtle p-3 text-sm"><p className="font-semibold">{parsed.errors.length} {parsed.errors.length === 1 ? 'linha ignorada' : 'linhas ignoradas'}:</p><ul className="mt-1 max-h-40 list-disc space-y-0.5 overflow-y-auto pl-5">{parsed.errors.slice(0, 20).map((message) => <li key={message}>{message}</li>)}</ul></div>}
         {result && <div className="space-y-2 text-sm">

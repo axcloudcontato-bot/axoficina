@@ -214,7 +214,7 @@ export class AppointmentManager {
       vehicleId: appointment.vehicleId,
       vehicleBrand: vehicle?.brand ?? '—',
       vehicleModel: vehicle?.model ?? '—',
-      vehiclePlate: vehicle?.plate ?? 'Veículo removido',
+      vehiclePlate: vehicle ? vehicle.plate ?? 'Sem placa' : 'Veículo removido',
       technicianId: appointment.technicianId ?? undefined,
       technicianName: technician?.name,
       serviceOrderId: appointment.serviceOrderId ?? undefined,

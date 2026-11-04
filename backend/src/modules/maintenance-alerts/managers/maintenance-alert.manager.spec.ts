@@ -48,7 +48,7 @@ describe('MaintenanceAlertManager', () => {
         ],
         total: 1,
       });
-      deps.vehicleRepository.byIds.mockResolvedValue([{ id: 'vehicle-1', brand: 'Fiat', model: 'Uno', plate: 'ABC1234' }]);
+      deps.vehicleRepository.byIds.mockResolvedValue([{ id: 'vehicle-1', category: 'CAR', brand: 'Fiat', model: 'Uno', plate: 'ABC1234' }]);
       deps.customerRepository.byIds.mockResolvedValue([{ id: 'customer-1', name: 'João' }]);
 
       const result = await deps.manager.list({ offset: 0, limit: 20, status: 'OPEN' });
@@ -112,7 +112,7 @@ describe('MaintenanceAlertManager', () => {
   describe('postponing, dismissing and reopening', () => {
     const base = { id: 'alert-1', tenantId: 'tenant-1', vehicleId: 'vehicle-1', customerId: 'customer-1', referenceDate: new Date('2026-01-01T00:00:00Z'), status: 'OPEN', resolvedAt: null, resolvedBy: null, snoozedUntil: null, dismissReason: null, dismissNote: null };
     const withRelations = (deps: ReturnType<typeof buildManager>) => {
-      deps.vehicleRepository.byIds.mockResolvedValue([{ id: 'vehicle-1', brand: 'Fiat', model: 'Uno', plate: 'ABC1234' }]);
+      deps.vehicleRepository.byIds.mockResolvedValue([{ id: 'vehicle-1', category: 'CAR', brand: 'Fiat', model: 'Uno', plate: 'ABC1234' }]);
       deps.customerRepository.byIds.mockResolvedValue([{ id: 'customer-1', name: 'João' }]);
     };
     const now = new Date('2026-10-29T12:00:00Z');
@@ -193,7 +193,7 @@ describe('MaintenanceAlertManager', () => {
       const deps = buildManager();
       const closed = { id: 'a1', tenantId: 't', vehicleId: 'vehicle-1', customerId: 'customer-1', referenceDate: new Date('2026-01-01T00:00:00Z'), status: 'RESOLVED', resolvedAt: new Date('2026-10-01T00:00:00Z'), snoozedUntil: null, dismissReason: null, dismissNote: null };
       deps.maintenanceAlertRepository.listByTenant.mockResolvedValue({ items: [{ ...closed, resolvedBy: 'user-1' }, { ...closed, id: 'a2', resolvedBy: null }], total: 2 });
-      deps.vehicleRepository.byIds.mockResolvedValue([{ id: 'vehicle-1', brand: 'Fiat', model: 'Uno', plate: 'ABC1234' }]);
+      deps.vehicleRepository.byIds.mockResolvedValue([{ id: 'vehicle-1', category: 'CAR', brand: 'Fiat', model: 'Uno', plate: 'ABC1234' }]);
       deps.customerRepository.byIds.mockResolvedValue([{ id: 'customer-1', name: 'João' }]);
       deps.userRepository.byIds.mockResolvedValue([{ id: 'user-1', name: 'Ana Recepção' }]);
       const result = await deps.manager.list({ offset: 0, limit: 20, status: 'RESOLVED' });
@@ -219,7 +219,7 @@ describe('MaintenanceAlertManager', () => {
     it('records an attempt on an open alert and returns it with the last contact and the count', async () => {
       const deps = buildManager();
       deps.maintenanceAlertRepository.byId.mockResolvedValue(open);
-      deps.vehicleRepository.byIds.mockResolvedValue([{ id: 'vehicle-1', brand: 'Fiat', model: 'Uno', plate: 'ABC1234', mileage: 98000 }]);
+      deps.vehicleRepository.byIds.mockResolvedValue([{ id: 'vehicle-1', category: 'CAR', brand: 'Fiat', model: 'Uno', plate: 'ABC1234', mileage: 98000 }]);
       deps.customerRepository.byIds.mockResolvedValue([{ id: 'customer-1', name: 'João', phone: '11999998888', careMessagesEnabled: false }]);
       deps.userRepository.byIds.mockResolvedValue([{ id: 'user-1', name: 'Ana Recepção' }]);
       deps.maintenanceAlertRepository.contactsForAlerts.mockResolvedValue([contact({ id: 'c2', outcome: 'WILL_SCHEDULE', note: 'Quer sexta', createdAt: new Date('2026-10-29T11:00:00Z') }), contact({})]);
@@ -256,7 +256,7 @@ describe('MaintenanceAlertManager', () => {
     it('shows the cares of the car that are already overdue, by time or by mileage', async () => {
       const deps = buildManager();
       deps.maintenanceAlertRepository.listByTenant.mockResolvedValue({ items: [open], total: 1 });
-      deps.vehicleRepository.byIds.mockResolvedValue([{ id: 'vehicle-1', brand: 'Fiat', model: 'Uno', plate: 'ABC1234', mileage: 105000 }]);
+      deps.vehicleRepository.byIds.mockResolvedValue([{ id: 'vehicle-1', category: 'CAR', brand: 'Fiat', model: 'Uno', plate: 'ABC1234', mileage: 105000 }]);
       deps.maintenanceAlertRepository.carePlansForVehicles.mockResolvedValue([
         { vehicleId: 'vehicle-1', serviceKey: 'OIL_CHANGE', completedAt: new Date('2026-01-10T12:00:00Z'), mileage: 90000, intervalMonths: 6, intervalKm: 10000 },
         { vehicleId: 'vehicle-1', serviceKey: 'BRAKES', completedAt: new Date('2026-09-01T12:00:00Z'), mileage: 94000, intervalMonths: 12, intervalKm: 10000 },
@@ -292,7 +292,7 @@ describe('MaintenanceAlertManager', () => {
     const deps = buildManager();
     const alert = { id: 'alert-1', tenantId: 'tenant-1', vehicleId: 'vehicle-1', customerId: 'customer-1', referenceDate: new Date('2026-01-01T00:00:00Z'), status: 'OPEN', resolvedAt: null, resolvedBy: null, snoozedUntil: null, dismissReason: null, dismissNote: null };
     deps.maintenanceAlertRepository.listByTenant.mockResolvedValue({ items: [alert], total: 1 });
-    deps.vehicleRepository.byIds.mockResolvedValue([{ id: 'vehicle-1', brand: 'Fiat', model: 'Uno', plate: 'ABC1234', mileage: null }]);
+    deps.vehicleRepository.byIds.mockResolvedValue([{ id: 'vehicle-1', category: 'CAR', brand: 'Fiat', model: 'Uno', plate: 'ABC1234', mileage: null }]);
     // Oil done 8 months ago: due with the default 6 months, not yet with the workshop's 12.
     deps.maintenanceAlertRepository.carePlansForVehicles.mockResolvedValue([{ vehicleId: 'vehicle-1', serviceKey: 'OIL_CHANGE', completedAt: new Date('2026-02-28T12:00:00Z'), mileage: null, intervalMonths: null, intervalKm: null }]);
     const now = new Date('2026-10-29T12:00:00Z');

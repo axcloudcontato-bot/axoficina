@@ -10,6 +10,7 @@ export function isValidPlate(plate: string): boolean {
 
 // How people read it: the old format has a hyphen, the Mercosul one does not.
 export function formatPlate(plate: string): string {
+  if (plate === 'Sem placa') return plate;
   const normalized = normalizePlate(plate);
   return /^[A-Z]{3}\d{4}$/.test(normalized) ? `${normalized.slice(0, 3)}-${normalized.slice(3)}` : normalized;
 }

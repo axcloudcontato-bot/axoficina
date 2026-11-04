@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { DownloadSimple, MagnifyingGlass, UploadSimple } from '@phosphor-icons/react';
 import { toast } from 'sonner';
-import type { VehicleListItemResponse } from '@oficina/contracts';
+import type { FipeCategory, VehicleListItemResponse } from '@oficina/contracts';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { segmentedItem, segmentedList } from '@/components/ui/segmented';
@@ -37,6 +37,7 @@ export default function VehiclesPage() {
   const [searchInput, setSearchInput] = useState('');
   const [archived, setArchived] = useState(false);
   const [filter, setFilter] = useState<'' | 'INACTIVE' | 'IN_SERVICE'>('');
+  const [category, setCategory] = useState<'' | FipeCategory | 'UNCLASSIFIED'>('');
   const restore = useRestoreVehicle();
   const [importing, setImporting] = useState(false);
   const [exporting, setExporting] = useState(false);
@@ -48,7 +49,7 @@ export default function VehiclesPage() {
 
   // The list follows the box once typing pauses, not on every keystroke. The owner's name and document match too.
   const search = useDebouncedValue(searchInput.trim(), 300);
-  const { data, isLoading, isError, refetch } = useVehiclesList({ offset, limit: PAGE_SIZE, search: search || undefined, matchOwner: search ? true : undefined, archived: archived || undefined, withStats: archived ? undefined : true, filter: archived || !filter ? undefined : filter, sort: archived || sort === 'recent' ? undefined : sort, direction: archived || sort === 'recent' ? undefined : direction });
+  const { data, isLoading, isError, refetch } = useVehiclesList({ offset, limit: PAGE_SIZE, search: search || undefined, matchOwner: search ? true : undefined, category: category || undefined, archived: archived || undefined, withStats: archived ? undefined : true, filter: archived || !filter ? undefined : filter, sort: archived || sort === 'recent' ? undefined : sort, direction: archived || sort === 'recent' ? undefined : direction });
 
   function openCreateModal() {
     setEditingVehicle(undefined);
@@ -74,7 +75,7 @@ export default function VehiclesPage() {
     try {
       const items: VehicleListItemResponse[] = [];
       for (let from = 0; from < EXPORT_MAX; from += EXPORT_PAGE_SIZE) {
-        const page = await vehiclesApi.list({ offset: from, limit: EXPORT_PAGE_SIZE, search: search || undefined, matchOwner: search ? true : undefined, archived: archived || undefined, withStats: archived ? undefined : true, filter: archived || !filter ? undefined : filter, sort: archived || sort === 'recent' ? undefined : sort, direction: archived || sort === 'recent' ? undefined : direction });
+        const page = await vehiclesApi.list({ offset: from, limit: EXPORT_PAGE_SIZE, search: search || undefined, matchOwner: search ? true : undefined, category: category || undefined, archived: archived || undefined, withStats: archived ? undefined : true, filter: archived || !filter ? undefined : filter, sort: archived || sort === 'recent' ? undefined : sort, direction: archived || sort === 'recent' ? undefined : direction });
         items.push(...page.items);
         if (!page.hasMore) break;
       }
@@ -102,6 +103,7 @@ export default function VehiclesPage() {
 
   return (
     <div className="flex flex-col gap-4">
+      <header><h1 className="text-2xl font-bold text-text">Veículos</h1><p className="mt-1 text-sm text-text-muted">Consulte carros, motos e caminhões, acompanhe as ordens de serviço e classifique os cadastros antigos antes de programar manutenções.</p></header>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="relative w-full sm:max-w-xs">
           <MagnifyingGlass className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-text-muted" />
@@ -117,6 +119,7 @@ export default function VehiclesPage() {
           />
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <select aria-label="Tipo de veículo" className="h-10 rounded-button border border-input bg-card px-3 text-sm" value={category} onChange={(event) => { setCategory(event.target.value as typeof category); setOffset(0); }}><option value="">Todos os tipos</option><option value="CAR">Carros</option><option value="MOTORCYCLE">Motos</option><option value="TRUCK">Caminhões</option><option value="UNCLASSIFIED">A classificar</option></select>
           {!archived && <select aria-label="Filtrar veículos" className="h-10 rounded-button border border-input bg-card px-3 text-sm" value={filter} onChange={(event) => { setFilter(event.target.value as typeof filter); setOffset(0); }}><option value="">Todos os veículos</option><option value="IN_SERVICE">Em andamento na oficina</option><option value="INACTIVE">Sem visita há mais de 6 meses</option></select>}
           {canManage && (
             <div role="tablist" aria-label="Situação do cadastro" className={segmentedList}>
@@ -143,7 +146,7 @@ export default function VehiclesPage() {
         onDelete={setDeletingVehicle}
         archived={archived}
         onRestore={restoreVehicle}
-        searching={Boolean(search) || Boolean(filter)}
+        searching={Boolean(search) || Boolean(filter) || Boolean(category)}
         sort={sort}
         direction={direction}
         onSort={sortBy}

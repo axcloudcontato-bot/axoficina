@@ -1,3 +1,4 @@
+import type { FipeCategory } from './fipe.response';
 export interface VehicleResponse {
   id: string;
   tenantId: string;
@@ -6,6 +7,7 @@ export interface VehicleResponse {
   // do dono a partir do id em toda tela que lista veículos (ver
   // VehicleManager.toResponse).
   customerName: string;
+  category: FipeCategory | null;
   brand: string;
   model: string;
   year?: number;

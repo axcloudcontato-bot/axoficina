@@ -670,7 +670,7 @@ export class ServiceOrderManager {
             status: order.status as 'OPEN' | 'AWAITING_APPROVAL' | 'IN_PROGRESS' | 'WAITING_PARTS' | 'COMPLETED' | 'DELIVERED',
             customerName: customerById.get(order.customerId)?.name ?? 'Cliente removido',
             vehicleLabel: vehicle ? `${vehicle.brand} ${vehicle.model}` : 'Veículo removido',
-            vehiclePlate: vehicle?.plate ?? '—',
+            vehiclePlate: vehicle ? vehicle.plate ?? 'Sem placa' : '—',
             amountCents: outstanding(order),
             expectedDeliveryAt: order.expectedDeliveryAt?.toISOString(),
           };
@@ -959,7 +959,7 @@ export class ServiceOrderManager {
           ...this.toInstallmentResponse(installment),
           orderNumber: order?.orderNumber,
           customerName: order ? customerMap.get(order.customerId)?.name : undefined,
-          vehiclePlate: order ? vehicleMap.get(order.vehicleId)?.plate : undefined,
+          vehiclePlate: order ? vehicleMap.get(order.vehicleId)?.plate ?? 'Sem placa' : undefined,
         };
       }),
     };
@@ -1065,7 +1065,7 @@ export class ServiceOrderManager {
       vehicleId: serviceOrder.vehicleId,
       vehicleBrand: vehicle?.brand ?? '—',
       vehicleModel: vehicle?.model ?? '—',
-      vehiclePlate: vehicle?.plate ?? 'Veículo removido',
+      vehiclePlate: vehicle ? vehicle.plate ?? 'Sem placa' : 'Veículo removido',
       status: serviceOrder.status as ServiceOrderResponse['status'],
       checklist: (serviceOrder.checklist as Record<string, unknown> | null) ?? undefined,
       diagnosis: serviceOrder.diagnosis ?? undefined,

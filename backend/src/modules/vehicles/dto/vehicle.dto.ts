@@ -19,6 +19,7 @@ const MAX_PHOTOS = 20;
 const MAX_MILEAGE = 2_000_000;
 
 export class CreateVehicleDto implements CreateVehicleRequest {
+  @IsOptional() @IsIn(['CAR', 'MOTORCYCLE', 'TRUCK']) category?: CreateVehicleRequest['category'];
   @IsUUID('4', { message: 'customer_id must be a valid id' })
   customerId!: string;
 
@@ -30,9 +31,10 @@ export class CreateVehicleDto implements CreateVehicleRequest {
   @MaxLength(80)
   model!: string;
 
-  @IsNotEmpty({ message: 'plate is required' })
+  @IsOptional()
+  @IsString()
   @MaxLength(12)
-  plate!: string;
+  plate?: string;
 
   @IsOptional()
   @IsInt()
@@ -69,6 +71,7 @@ export class CreateVehicleDto implements CreateVehicleRequest {
 }
 
 export class UpdateVehicleDto implements UpdateVehicleRequest {
+  @IsOptional() @IsIn(['CAR', 'MOTORCYCLE', 'TRUCK']) category?: UpdateVehicleRequest['category'];
   @IsNotEmpty({ message: 'id is required' })
   @IsUUID('4', { message: 'id must be a valid id' })
   id!: string;
@@ -82,7 +85,7 @@ export class UpdateVehicleDto implements UpdateVehicleRequest {
   model?: string;
 
   @IsOptional()
-  @IsNotEmpty({ message: 'plate cannot be empty' })
+  @IsString()
   plate?: string;
 
   @IsOptional()
@@ -161,6 +164,7 @@ export class GetVehicleDto {
 }
 
 export class VehicleListDto implements VehicleListRequest {
+  @IsOptional() @IsIn(['CAR', 'MOTORCYCLE', 'TRUCK', 'UNCLASSIFIED']) category?: VehicleListRequest['category'];
   @IsOptional()
   @IsString()
   search?: string;
@@ -204,8 +208,9 @@ export class VehicleListDto implements VehicleListRequest {
 }
 
 export class ImportVehicleRowDto implements ImportVehicleRow {
+  @IsOptional() @IsIn(['CAR', 'MOTORCYCLE', 'TRUCK']) category?: ImportVehicleRow['category'];
   @IsInt() @Min(1) line!: number;
-  @IsString() @MaxLength(20) plate!: string;
+  @IsOptional() @IsString() @MaxLength(20) plate?: string;
   @IsString() @MaxLength(60) brand!: string;
   @IsString() @MaxLength(80) model!: string;
   @IsOptional() @IsInt() year?: number;

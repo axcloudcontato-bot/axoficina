@@ -1,10 +1,12 @@
 import type { PageableRequest } from '../response/pagination.response';
+import type { FipeCategory } from '../response/fipe.response';
 
 export interface CreateVehicleRequest {
   customerId: string;
+  category?: FipeCategory;
   brand: string;
   model: string;
-  plate: string;
+  plate?: string;
   year?: number;
   engine?: string;
   fuelType?: string;
@@ -16,6 +18,7 @@ export interface CreateVehicleRequest {
 
 export interface UpdateVehicleRequest {
   id: string;
+  category?: FipeCategory;
   brand?: string;
   model?: string;
   year?: number;
@@ -35,6 +38,7 @@ export interface DeleteVehicleRequest {
 }
 
 export interface VehicleListRequest extends PageableRequest {
+  category?: FipeCategory | 'UNCLASSIFIED';
   search?: string;
   customerId?: string;
   // Além de marca/modelo/placa, também casa `search` contra o nome/documento
@@ -74,7 +78,8 @@ export interface VehicleArchiveImpactRequest {
 export interface ImportVehicleRow {
   // Line in the spreadsheet, so a problem can point at it.
   line: number;
-  plate: string;
+  category?: FipeCategory;
+  plate?: string;
   brand: string;
   model: string;
   year?: number;

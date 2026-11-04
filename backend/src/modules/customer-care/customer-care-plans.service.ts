@@ -1,5 +1,5 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { CARE_SERVICE_KEYS, type CareContactOutcome, type CarePlanContactsResponse, type CarePlanResponse, type CarePlansRequest, type CarePlansResponse, type CareServiceKey, type RecordCarePlanContactRequest, type RecordCareServiceRequest } from '@oficina/contracts';
+import { CARE_SERVICE_KEYS, careAppliesToVehicle, type CareContactOutcome, type CarePlanContactsResponse, type CarePlanResponse, type CarePlansRequest, type CarePlansResponse, type CareServiceKey, type FipeCategory, type RecordCarePlanContactRequest, type RecordCareServiceRequest } from '@oficina/contracts';
 import { Prisma } from '@oficina/database';
 import type { CustomerCarePlan, ServiceOrder } from '@oficina/database';
 import { PrismaService } from '../../shared/prisma/prisma.service';
@@ -17,6 +17,13 @@ export class CustomerCarePlansService {
     if (!Number.isFinite(date.getTime()) || date.toISOString().slice(0, 10) !== input.completedAt || input.completedAt > localClock(new Date(), settings.timeZone).date || input.completedAt < '1970-01-01') throw new BadRequestException('Informe a data real de um serviço já realizado.');
     const vehicle = await this.prisma.client.vehicle.findFirst({ where: { id: input.vehicleId, tenantId: user.tenantId, deletedAt: null } });
     if (!vehicle) throw new NotFoundException('Veículo não encontrado.');
+    if (!careAppliesToVehicle(vehicle.category as FipeCategory, input.serviceKey)) throw new BadRequestException('Este cuidado não se aplica ao tipo do veículo.');
+    if (vehicle.category !== 'CAR') {
+      const campaign = settings.campaigns.find(item => item.key === input.serviceKey);
+      if (input.intervalMonths === undefined || (campaign?.intervalKm !== null && input.intervalKm == null)) {
+        throw new BadRequestException('Para moto ou caminhão, informe os intervalos em meses e km conforme o manual e o uso do veículo.');
+      }
+    }
     const customer = await this.prisma.client.customer.findFirst({ where: { id: vehicle.customerId, tenantId: user.tenantId, deletedAt: null } });
     if (!customer) throw new NotFoundException('Cliente não encontrado.');
     const plan = await this.prisma.unscoped.$transaction(async tx => {
@@ -38,9 +45,11 @@ export class CustomerCarePlansService {
   async recordDelivered(tx: Prisma.TransactionClient, order: ServiceOrder, completedAt: Date) {
     const vehicle = await tx.vehicle.findFirst({ where: { id: order.vehicleId, tenantId: order.tenantId, customerId: order.customerId, deletedAt: null } });
     if (!vehicle) return;
+    if (vehicle.category !== 'CAR') return;
     const items = await tx.serviceOrderItem.findMany({ where: { serviceOrderId: order.id, deletedAt: null, careServiceKey: { not: null } }, select: { careServiceKey: true } });
-    const keys = new Set<CareServiceKey>(['PERIODIC_REVIEW']);
-    for (const item of items) if (CARE_SERVICE_KEYS.includes(item.careServiceKey as CareServiceKey)) keys.add(item.careServiceKey as CareServiceKey);
+    const category = vehicle.category as FipeCategory;
+    const keys = new Set<CareServiceKey>(category === 'CAR' ? ['PERIODIC_REVIEW'] : []);
+    for (const item of items) if (CARE_SERVICE_KEYS.includes(item.careServiceKey as CareServiceKey) && careAppliesToVehicle(category, item.careServiceKey as CareServiceKey)) keys.add(item.careServiceKey as CareServiceKey);
     for (const key of [...keys].sort()) {
       await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`care-plan:${order.tenantId}:${order.vehicleId}:${key}`}, 0))::text`;
       const where = { tenantId: order.tenantId, vehicleId: order.vehicleId, serviceKey: key };
@@ -69,7 +78,11 @@ export class CustomerCarePlansService {
       JOIN customers c ON c.id = p.customer_id AND c.tenant_id = p.tenant_id AND c.deleted_at IS NULL
       JOIN vehicles v ON v.id = p.vehicle_id AND v.tenant_id = p.tenant_id AND v.customer_id = p.customer_id AND v.deleted_at IS NULL
       JOIN jsonb_array_elements(${JSON.stringify(settings.campaigns)}::jsonb) r ON r->>'key' = p.service_key
-      WHERE p.tenant_id = ${tenantId}::uuid ${search} ${filter} ${consent}`;
+      WHERE p.tenant_id = ${tenantId}::uuid AND v.category IS NOT NULL
+        AND (v.category = 'CAR' OR (p.interval_months IS NOT NULL AND ((r->>'intervalKm') IS NULL OR p.interval_km IS NOT NULL)
+          AND ((v.category = 'MOTORCYCLE' AND p.service_key NOT IN ('CABIN_FILTER', 'WIPERS', 'BELTS'))
+            OR (v.category = 'TRUCK' AND p.service_key <> 'SPARK_PLUGS'))))
+        ${search} ${filter} ${consent}`;
     const [rows, counted] = await Promise.all([
       this.prisma.unscoped.$queryRaw<Array<{ id: string }>>(Prisma.sql`SELECT p.id ${from} ORDER BY ${due} ASC, p.id ASC LIMIT ${limit} OFFSET ${offset}`),
       this.prisma.unscoped.$queryRaw<Array<{ count: bigint }>>(Prisma.sql`SELECT count(*) ${from}`),
@@ -83,7 +96,7 @@ export class CustomerCarePlansService {
     const ordered = ids.flatMap((id) => {
       const plan = plans.find((item) => item.id === id); if (!plan) return [];
       const customer = customers.find((item) => item.id === plan.customerId); const vehicle = vehicles.find((item) => item.id === plan.vehicleId);
-      return customer && vehicle ? [this.response(plan, settings, customer, vehicle, now)] : [];
+      return customer && vehicle ? [this.response(plan, settings, customer, { ...vehicle, plate: vehicle.plate ?? 'Sem placa' }, now)] : [];
     });
     return { plans: await this.withContacts(tenantId, ordered), total: Number(counted[0]?.count ?? 0) };
   }

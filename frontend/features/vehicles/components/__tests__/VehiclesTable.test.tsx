@@ -9,6 +9,7 @@ const vehicle: VehicleListItemResponse = {
   tenantId: 't1',
   customerId: 'c1',
   customerName: 'João da Silva',
+  category: 'CAR',
   brand: 'Fiat',
   model: 'Uno',
   plate: 'ABC1D23',

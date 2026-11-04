@@ -53,6 +53,7 @@ const editingVehicle: VehicleListItemResponse = {
   tenantId: 't1',
   customerId: 'c1',
   customerName: 'João da Silva',
+  category: 'CAR',
   brand: 'Fiat',
   model: 'Uno',
   plate: 'ABC1D23',
@@ -130,6 +131,19 @@ describe('VehicleFormModal', () => {
       ),
     );
     await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
+  });
+
+  it('creates a vehicle without plate when a valid chassis is provided', async () => {
+    vi.mocked(vehiclesApi.create).mockResolvedValue({ vehicle: editingVehicle });
+    const user = userEvent.setup();
+    renderWithClient(<VehicleFormModal open onOpenChange={() => {}} initialCustomer={customer} />);
+    await user.click(screen.getByLabelText(/marca/i));
+    await user.click(await screen.findByRole('option', { name: 'Fiat' }));
+    await user.click(screen.getByLabelText(/modelo/i));
+    await user.click(await screen.findByRole('option', { name: 'Uno' }));
+    await user.type(screen.getByLabelText('Chassi (opcional)'), '9BWZZZ377VT004251');
+    await user.click(screen.getByRole('button', { name: /cadastrar veículo/i }));
+    await waitFor(() => expect(vehiclesApi.create).toHaveBeenCalledWith(expect.objectContaining({ plate: undefined, chassis: '9BWZZZ377VT004251' })));
   });
 
   it('keeps FIPE selections after a parent refresh and clears old required errors', async () => {

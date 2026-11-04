@@ -1,6 +1,6 @@
 import { BadRequestException, ConflictException, Injectable, Logger } from '@nestjs/common';
 import { randomBytes } from 'node:crypto';
-import type { CareSettings, CareTestSendRequest } from '@oficina/contracts';
+import { careAppliesToVehicle, type CareServiceKey, type CareSettings, type CareTestSendRequest, type FipeCategory } from '@oficina/contracts';
 import type { Customer, CustomerCareDelivery, Prisma, Tenant } from '@oficina/database';
 import { PrismaService } from '../../shared/prisma/prisma.service';
 import { WaAkgService } from '../settings/services/wa-akg.service';
@@ -60,7 +60,7 @@ export class CustomerCareAutomationService {
         FROM service_orders o
         JOIN vehicles v ON v.id = o.vehicle_id AND v.tenant_id = o.tenant_id AND v.customer_id = o.customer_id AND v.deleted_at IS NULL
         JOIN customers c ON c.id = o.customer_id AND c.tenant_id = o.tenant_id AND c.deleted_at IS NULL AND c.care_messages_enabled = true
-        WHERE o.tenant_id = ${tenantId}::uuid AND o.customer_id = ${customer.id}::uuid
+        WHERE o.tenant_id = ${tenantId}::uuid AND o.customer_id = ${customer.id}::uuid AND v.category = 'CAR'
           AND o.status = 'DELIVERED' AND o.closed_at IS NOT NULL AND o.deleted_at IS NULL
         ORDER BY o.vehicle_id, o.closed_at DESC, o.id DESC
         ON CONFLICT (tenant_id, vehicle_id, service_key) DO NOTHING`;
@@ -75,9 +75,9 @@ export class CustomerCareAutomationService {
       const candidates = plans.flatMap(plan => {
         const vehicle = vehicles.find(item => item.id === plan.vehicleId);
         const campaign = settings.campaigns.find(item => item.key === plan.serviceKey);
-        if (!vehicle || !campaign || activeOrders.some(order => order.vehicleId === vehicle.id)) return [];
+        if (!vehicle || !campaign || !vehicle.category || !careAppliesToVehicle(vehicle.category as FipeCategory, plan.serviceKey as CareServiceKey) || (vehicle.category !== 'CAR' && (plan.intervalMonths === null || (campaign.intervalKm !== null && plan.intervalKm === null))) || activeOrders.some(order => order.vehicleId === vehicle.id)) return [];
         const event = maintenanceEvent(plan, campaign, now, settings.timeZone, vehicle.mileage);
-        return event ? [{ ...event, vehicleName: `${vehicle.brand} ${vehicle.model}`, plate: vehicle.plate }] : [];
+        return event ? [{ ...event, vehicleName: `${vehicle.brand} ${vehicle.model}`, plate: vehicle.plate ?? 'Sem placa' }] : [];
       });
       const prior = candidates.length ? await this.prisma.unscoped.customerCareDelivery.findMany({ where: { tenantId, customerId: customer.id, eventKeys: { hasSome: candidates.map(event => event.key) } }, select: { eventKeys: true } }) : [];
       const used = new Set(prior.flatMap(item => item.eventKeys));
@@ -148,7 +148,7 @@ export class CustomerCareAutomationService {
           this.prisma.unscoped.vehicle.findFirst({ where: { id: event.vehicleId, tenantId: tenant.id, customerId: customer.id, deletedAt: null } }),
           this.prisma.unscoped.serviceOrder.findFirst({ where: { vehicleId: event.vehicleId, tenantId: tenant.id, deletedAt: null, status: { notIn: ['DELIVERED', 'CANCELLED'] } } }),
         ]);
-        if (plan && vehicle && !activeOrder && plan.completedAt.toISOString() === event.completedAt && maintenanceEvent(plan, campaign, now, settings.timeZone, vehicle.mileage)) valid.push({ ...event, vehicleName: `${vehicle.brand} ${vehicle.model}`, plate: vehicle.plate });
+        if (plan && vehicle && !activeOrder && plan.completedAt.toISOString() === event.completedAt && maintenanceEvent(plan, campaign, now, settings.timeZone, vehicle.mileage)) valid.push({ ...event, vehicleName: `${vehicle.brand} ${vehicle.model}`, plate: vehicle.plate ?? 'Sem placa' });
       }
     }
     if (!valid.length) return this.finish(record, 'SKIPPED', 'O cuidado já foi realizado, a campanha foi pausada ou a data mudou.');

@@ -72,6 +72,7 @@ export function VehiclesTable({ items, isLoading, isError, onRetry, canManage, o
       <Table>
         <TableHeader>
           <TableRow className="hover:bg-transparent">
+            <TableHead>Tipo</TableHead>
             <TableHead>Marca</TableHead>
             <TableHead>Modelo</TableHead>
             {archived ? <TableHead>Placa</TableHead> : header('plate', 'Placa')}
@@ -87,9 +88,10 @@ export function VehiclesTable({ items, isLoading, isError, onRetry, canManage, o
         <TableBody>
           {items.map((vehicle) => (
             <TableRow key={vehicle.id}>
+              <TableCell className="text-text-muted">{vehicle.category ? ({ CAR: 'Carro', MOTORCYCLE: 'Moto', TRUCK: 'Caminhão' } as const)[vehicle.category] : 'A classificar'}</TableCell>
               <TableCell className="font-medium text-text">{vehicle.brand}</TableCell>
               <TableCell className="text-text-muted">{vehicle.model}</TableCell>
-              <TableCell className="text-text-muted">{archived ? formatPlate(vehicle.plate) : <Link href={`/veiculos/${vehicle.id}`} className="font-semibold hover:text-primary hover:underline">{formatPlate(vehicle.plate)}</Link>}</TableCell>
+              <TableCell className="text-text-muted">{archived ? formatPlate(vehicle.plate) : <Link href={`/veiculos/${vehicle.id}`} className="font-semibold hover:text-primary hover:underline">{formatPlate(vehicle.plate)}</Link>}{vehicle.plate === 'Sem placa' && vehicle.chassis && <span className="block text-xs">Chassi {vehicle.chassis}</span>}</TableCell>
               {!archived && <TableCell className="text-text-muted">{vehicle.year ?? '—'}</TableCell>}
               {!archived && <TableCell className="text-right tabular-nums text-text-muted">{vehicle.mileage != null ? vehicle.mileage.toLocaleString('pt-BR') : '—'}</TableCell>}
               <TableCell className="text-text-muted">{archived ? vehicle.customerName : <Link href={`/clientes/${vehicle.customerId}`} className="hover:text-primary hover:underline">{vehicle.customerName}</Link>}</TableCell>

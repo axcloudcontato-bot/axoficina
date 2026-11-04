@@ -27,13 +27,13 @@ export class ServiceOrderStatusNotificationRepository {
       fromStatus: event.fromStatus, toStatus: event.toStatus, occurredAt: event.changedAt,
       recipient: whatsappRecipient(customer.phone) ?? '',
       message: serviceOrderStatusMessage({ companyName: tenant.name, customerName: customer.name, orderNumber: order.orderNumber,
-        vehicle: `${vehicle.brand} ${vehicle.model}`, plate: vehicle.plate, openedAt: order.openedAt,
+        vehicle: `${vehicle.brand} ${vehicle.model}`, plate: vehicle.plate ?? 'Sem placa', openedAt: order.openedAt,
         expectedDeliveryAt: order.expectedDeliveryAt, complaint: order.customerComplaint,
         fromStatus: event.fromStatus, toStatus: event.toStatus, occurredAt: event.changedAt }),
     } });
     if (event.toStatus === 'DELIVERED') {
       const token = randomBytes(32).toString('hex');
-      const message = serviceRatingMessage({ companyName: tenant.name, customerName: customer.name, orderNumber: order.orderNumber, vehicle: `${vehicle.brand} ${vehicle.model}`, plate: vehicle.plate });
+      const message = serviceRatingMessage({ companyName: tenant.name, customerName: customer.name, orderNumber: order.orderNumber, vehicle: `${vehicle.brand} ${vehicle.model}`, plate: vehicle.plate ?? 'Sem placa' });
       const recipient = whatsappRecipient(customer.phone) ?? '';
       const request = await tx.customerMessage.create({ data: {
         tenantId: order.tenantId, serviceOrderId: order.id, customerId: customer.id, channel: 'WHATSAPP', purpose: 'RATING',

@@ -30,13 +30,13 @@ interface FipeBrandModelFieldsProps {
 }
 
 export function FipeBrandModelFields({ form, isEditing, initialBrand, initialModel }: FipeBrandModelFieldsProps) {
-  const [category, setCategory] = useState<FipeCategory>('CAR');
+  const category = form.watch('category');
   const [brandMode, setBrandMode] = useState<'select' | 'manual'>(isEditing || initialBrand ? 'manual' : 'select');
   const [modelMode, setModelMode] = useState<'select' | 'manual'>(isEditing || initialBrand || initialModel ? 'manual' : 'select');
   const [selectedBrandId, setSelectedBrandId] = useState<string | undefined>(undefined);
   const [selectedModelId, setSelectedModelId] = useState<string | undefined>(undefined);
 
-  const { data: brandsData, isLoading: isLoadingBrands } = useFipeBrands(category);
+  const { data: brandsData, isLoading: isLoadingBrands } = useFipeBrands(category === 'UNCLASSIFIED' ? 'CAR' : category);
   const { data: modelsData, isLoading: isLoadingModels } = useFipeModels(selectedBrandId, { enabled: brandMode === 'select' });
   const setSelection = (field: 'brand' | 'model', value: string) => form.setValue(field, value, {
     shouldDirty: true,
@@ -53,7 +53,8 @@ export function FipeBrandModelFields({ form, isEditing, initialBrand, initialMod
   }
 
   function handleCategoryChange(value: string) {
-    setCategory(value as FipeCategory);
+    form.setValue('category', value as FipeCategory, { shouldDirty: true });
+    if (category === 'UNCLASSIFIED') return;
     // Edge Case 4 da spec: trocar categoria invalida a marca/modelo já
     // escolhidos (a lista antiga não faz sentido pra categoria nova).
     resetBrandAndModel();
@@ -116,6 +117,7 @@ export function FipeBrandModelFields({ form, isEditing, initialBrand, initialMod
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
+            {category === 'UNCLASSIFIED' && <SelectItem value="UNCLASSIFIED" disabled>A classificar — escolha o tipo</SelectItem>}
             {CATEGORY_OPTIONS.map((option) => (
               <SelectItem key={option.value} value={option.value}>
                 {option.label}
@@ -123,6 +125,7 @@ export function FipeBrandModelFields({ form, isEditing, initialBrand, initialMod
             ))}
           </SelectContent>
         </Select>
+        {form.formState.errors.category && <p className="text-xs text-danger" role="alert">{form.formState.errors.category.message}</p>}
       </div>
 
       <div className="grid grid-cols-2 gap-4">

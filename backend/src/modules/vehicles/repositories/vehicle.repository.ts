@@ -1,9 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import type { Prisma } from '@oficina/database';
+import type { FipeCategory } from '@oficina/contracts';
 import { PrismaService } from '../../../shared/prisma/prisma.service';
 import { careSettings } from '../../customer-care/care-policy';
 
 export interface CreateVehicleInput {
+  category?: FipeCategory;
   // O Prisma Middleware sobrescreve isto com o tenant do contexto ativo em
   // runtime (ver CREATE_OPERATIONS em tenant-isolation.middleware.ts) — só
   // existe aqui para satisfazer o tipo `VehicleCreateInput` do Prisma.
@@ -11,7 +13,7 @@ export interface CreateVehicleInput {
   customerId: string;
   brand: string;
   model: string;
-  plate: string;
+  plate?: string | null;
   year?: number;
   engine?: string;
   fuelType?: string;
@@ -22,12 +24,13 @@ export interface CreateVehicleInput {
 }
 
 export interface UpdateVehicleInput {
+  category?: FipeCategory;
   brand?: string;
   model?: string;
   year?: number;
   engine?: string;
   fuelType?: string;
-  plate?: string;
+  plate?: string | null;
   chassis?: string;
   mileage?: number;
   color?: string;
@@ -51,9 +54,10 @@ export class VehicleRepository {
       data: {
         tenantId: input.tenantId,
         customerId: input.customerId,
+        category: input.category ?? 'CAR',
         brand: input.brand,
         model: input.model,
-        plate: input.plate,
+        plate: input.plate ?? null,
         year: input.year,
         engine: input.engine,
         fuelType: input.fuelType,
@@ -88,6 +92,10 @@ export class VehicleRepository {
     return this.prisma.client.vehicle.findFirst({
       where: { plate, deletedAt: null },
     });
+  }
+
+  async byChassis(chassis: string, excludeId?: string) {
+    return this.prisma.client.vehicle.findFirst({ where: { chassis, deletedAt: null, ...(excludeId ? { id: { not: excludeId } } : {}) } });
   }
 
   async update(id: string, patch: UpdateVehicleInput) {
@@ -230,11 +238,12 @@ export class VehicleRepository {
     return [{ createdAt: direction ?? 'desc' }];
   }
 
-  async listByTenant(offset: number, limit: number, search?: string, customerId?: string, matchingCustomerIds?: string[], archived = false, ids?: { in?: string[]; notIn?: string[] }, sort?: 'recent' | 'plate' | 'year' | 'mileage', direction?: 'asc' | 'desc') {
+  async listByTenant(offset: number, limit: number, search?: string, customerId?: string, matchingCustomerIds?: string[], archived = false, ids?: { in?: string[]; notIn?: string[] }, sort?: 'recent' | 'plate' | 'year' | 'mileage', direction?: 'asc' | 'desc', category?: FipeCategory | 'UNCLASSIFIED') {
     const where = {
       deletedAt: archived ? { not: null } : null,
       ...(ids ? { id: ids } : {}),
       ...(customerId ? { customerId } : {}),
+      ...(category ? { category: category === 'UNCLASSIFIED' ? null : category } : {}),
       ...(search
         ? {
             OR: [

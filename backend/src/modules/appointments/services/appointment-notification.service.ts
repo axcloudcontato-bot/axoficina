@@ -41,7 +41,7 @@ export class AppointmentNotificationService {
     ]);
     const recipient = customer ? whatsappRecipient(customer.phone) : null;
     if (!tenant || !customer || !recipient) return null;
-    return { recipient, text: appointmentMessage(kind, { customerName: customer.name, workshopName: tenant.name, startsAt: appointment.startsAt, timeZone, service: appointment.serviceDescription, vehicle: vehicle ? `${vehicle.brand} ${vehicle.model} · ${vehicle.plate}` : 'seu veículo' }) };
+    return { recipient, text: appointmentMessage(kind, { customerName: customer.name, workshopName: tenant.name, startsAt: appointment.startsAt, timeZone, service: appointment.serviceDescription, vehicle: vehicle ? `${vehicle.brand} ${vehicle.model} · ${vehicle.plate ?? `chassi ${vehicle.chassis}`}` : 'seu veículo' }) };
   }
 
   // Sent by someone at the front desk; failures surface to them.

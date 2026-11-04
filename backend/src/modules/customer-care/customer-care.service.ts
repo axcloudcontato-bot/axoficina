@@ -101,7 +101,7 @@ export class CustomerCareService {
     if (input.customerId && !customer) throw new NotFoundException('Cliente não encontrado.');
     const vehicle = input.vehicleId ? await this.prisma.unscoped.vehicle.findFirst({ where: { id: input.vehicleId, tenantId, ...(customer ? { customerId: customer.id } : {}), deletedAt: null } }) : null;
     if (input.vehicleId && !vehicle) throw new NotFoundException('Veículo não encontrado.');
-    return renderCareMessage(settings, [{ key: 'preview', campaignKey: input.campaignKey, vehicleName: vehicle ? `${vehicle.brand} ${vehicle.model}` : 'carro', plate: vehicle?.plate }], { customerName: customer?.name ?? 'Mariana', workshopName: tenant?.name ?? 'Sua oficina', contact: tenant?.whatsapp ?? tenant?.phone, unsubscribeUrl: '[link pessoal para pausar os lembretes]' });
+    return renderCareMessage(settings, [{ key: 'preview', campaignKey: input.campaignKey, vehicleName: vehicle ? `${vehicle.brand} ${vehicle.model}` : 'veículo', plate: vehicle?.plate ?? undefined }], { customerName: customer?.name ?? 'Mariana', workshopName: tenant?.name ?? 'Sua oficina', contact: tenant?.whatsapp ?? tenant?.phone, unsubscribeUrl: '[link pessoal para pausar os lembretes]' });
   }
 
   publicUrl(token: string) { return `${this.config.get<string>('FRONTEND_URL', 'http://localhost:3000').replace(/\/$/, '')}/preferencias-de-contato/${token}`; }

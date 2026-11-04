@@ -366,10 +366,10 @@ export class CustomerManager {
       this.customerRepository.upcomingAppointmentsOf(id, now),
     ]);
     const summary = summarizeHistory(history.orders, history.items);
-    const labelOf = new Map(vehicles.map((vehicle) => [vehicle.id, `${vehicle.brand} ${vehicle.model} · ${vehicle.plate}`]));
+    const labelOf = new Map(vehicles.map((vehicle) => [vehicle.id, `${vehicle.brand} ${vehicle.model} · ${vehicle.plate ?? 'Sem placa'}`]));
     const pendingOrders = viewer.canViewPrices ? await this.customerRepository.pendingOrdersOf(id) : [];
     return {
-      vehicles: vehicles.map((vehicle) => ({ id: vehicle.id, brand: vehicle.brand, model: vehicle.model, plate: vehicle.plate, year: vehicle.year ?? undefined, mileage: vehicle.mileage ?? undefined })),
+      vehicles: vehicles.map((vehicle) => ({ id: vehicle.id, brand: vehicle.brand, model: vehicle.model, plate: vehicle.plate ?? 'Sem placa', year: vehicle.year ?? undefined, mileage: vehicle.mileage ?? undefined })),
       orderCount: summary.orderCount,
       deliveredCount: summary.deliveredCount,
       lastVisitAt: summary.lastVisitAt?.toISOString(),
@@ -401,7 +401,7 @@ export class CustomerManager {
     return new Map(ids.map((id) => {
       const summary = summarizeHistory(history.orders.filter((order) => order.customerId === id), history.items);
       return [id, {
-        plates: vehicles.filter((vehicle) => vehicle.customerId === id).map((vehicle) => vehicle.plate),
+        plates: vehicles.filter((vehicle) => vehicle.customerId === id).map((vehicle) => vehicle.plate ?? 'Sem placa'),
         orderCount: summary.orderCount,
         lastVisitAt: summary.lastVisitAt?.toISOString(),
         ...(viewer.canViewPrices ? { totalSpentCents: summary.totalSpentCents } : {}),

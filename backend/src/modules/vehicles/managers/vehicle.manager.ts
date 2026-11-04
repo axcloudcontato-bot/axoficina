@@ -1,6 +1,6 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
 import { Prisma } from '@oficina/database';
-import { isValidChassis, isValidPlate, normalizePlate } from '@oficina/contracts';
+import { careAppliesToVehicle, isValidChassis, isValidPlate, normalizePlate, type CareServiceKey } from '@oficina/contracts';
 import { addMonthsClamped } from '../../customer-care/care-policy';
 import type {
   CreateVehicleRequest,
@@ -42,13 +42,15 @@ export class VehicleManager {
       throw new AppException(AppErrorCode.VEHICLE_CUSTOMER_NOT_FOUND, 'Cliente informado não encontrado.', HttpStatus.BAD_REQUEST);
     }
 
-    const plate = this.validPlate(request.plate);
+    const plate = request.plate?.trim() ? this.validPlate(request.plate) : null;
     const chassis = this.validChassis(request.chassis);
+    if (!plate && !chassis) throw new AppException(AppErrorCode.VALIDATION_ERROR, 'Informe a placa ou o chassi para identificar o veículo.', HttpStatus.BAD_REQUEST);
     this.validateYear(request.year);
-    const existingPlate = await this.vehicleRepository.byPlate(plate);
+    const existingPlate = plate ? await this.vehicleRepository.byPlate(plate) : null;
     if (existingPlate) {
       throw new AppException(AppErrorCode.VEHICLE_PLATE_ALREADY_EXISTS, 'Já existe um veículo cadastrado com esta placa.', HttpStatus.CONFLICT);
     }
+    if (chassis && await this.vehicleRepository.byChassis(chassis)) throw new AppException(AppErrorCode.VALIDATION_ERROR, 'Já existe um veículo com este chassi.', HttpStatus.CONFLICT);
 
     // Mesma rede de segurança contra corrida do CustomerManager.create —
     // ver comentário lá.
@@ -57,6 +59,7 @@ export class VehicleManager {
       vehicle = await this.vehicleRepository.insert({
         tenantId: actingUser.tenantId,
         customerId: request.customerId,
+        category: request.category ?? 'CAR',
         brand: request.brand,
         model: request.model,
         plate,
@@ -94,8 +97,9 @@ export class VehicleManager {
     }
 
     // Only what changed is checked: a record saved before these rules existed can still be edited.
-    const plate = request.plate !== undefined && normalizePlate(request.plate) !== existing.plate ? this.validPlate(request.plate) : undefined;
+    const plate = request.plate !== undefined && (request.plate.trim() ? normalizePlate(request.plate) : null) !== existing.plate ? (request.plate.trim() ? this.validPlate(request.plate) : null) : undefined;
     const chassis = request.chassis !== undefined && request.chassis.trim().toUpperCase() !== (existing.chassis ?? '').toUpperCase() ? this.validChassis(request.chassis) : undefined;
+    if ((plate === undefined ? existing.plate : plate) === null && !(chassis ?? existing.chassis)) throw new AppException(AppErrorCode.VALIDATION_ERROR, 'Informe a placa ou o chassi para identificar o veículo.', HttpStatus.BAD_REQUEST);
     if (request.year !== undefined && request.year !== existing.year) this.validateYear(request.year);
     if (request.mileage !== undefined && existing.mileage != null && request.mileage < existing.mileage && !request.confirmMileageDecrease) {
       throw new AppException(AppErrorCode.VEHICLE_MILEAGE_DECREASE, `A quilometragem informada (${request.mileage.toLocaleString('pt-BR')} km) é menor que a atual (${existing.mileage.toLocaleString('pt-BR')} km). Confirme para corrigir.`, HttpStatus.BAD_REQUEST, [{ field: 'mileage', message: 'Menor que a quilometragem atual.' }]);
@@ -106,9 +110,11 @@ export class VehicleManager {
         throw new AppException(AppErrorCode.VEHICLE_PLATE_ALREADY_EXISTS, 'Já existe um veículo cadastrado com esta placa.', HttpStatus.CONFLICT);
       }
     }
+    if ((chassis || plate === null) && (chassis ?? existing.chassis) && await this.vehicleRepository.byChassis((chassis ?? existing.chassis)!, existing.id)) throw new AppException(AppErrorCode.VALIDATION_ERROR, 'Já existe um veículo com este chassi.', HttpStatus.CONFLICT);
 
     try {
       await this.vehicleRepository.update(request.id, {
+        category: request.category,
         brand: request.brand,
         model: request.model,
         year: request.year,
@@ -181,9 +187,10 @@ export class VehicleManager {
     const archived = await this.vehicleRepository.archivedById(id);
     if (!archived) throw new AppException(AppErrorCode.VEHICLE_NOT_FOUND, 'Veículo arquivado não encontrado.', HttpStatus.NOT_FOUND);
     // The plate is unique among active vehicles: the same car may have been registered again meanwhile.
-    if (await this.vehicleRepository.byPlate(archived.plate)) {
+    if (archived.plate && await this.vehicleRepository.byPlate(archived.plate)) {
       throw new AppException(AppErrorCode.VEHICLE_PLATE_ALREADY_EXISTS, 'Já existe um veículo ativo com esta placa. Arquive ou corrija o outro cadastro antes de reativar.', HttpStatus.CONFLICT);
     }
+    if (archived.chassis && await this.vehicleRepository.byChassis(archived.chassis)) throw new AppException(AppErrorCode.VALIDATION_ERROR, 'Já existe um veículo ativo com este chassi.', HttpStatus.CONFLICT);
     try {
       await this.vehicleRepository.restore(id);
     } catch (error) {
@@ -196,7 +203,8 @@ export class VehicleManager {
   }
 
   async archiveImpact(id: string, now = new Date()): Promise<VehicleArchiveImpactResponse> {
-    if (!(await this.vehicleRepository.byId(id))) throw new AppException(AppErrorCode.VEHICLE_NOT_FOUND, 'Veículo não encontrado.', HttpStatus.NOT_FOUND);
+    const vehicle = await this.vehicleRepository.byId(id);
+    if (!vehicle) throw new AppException(AppErrorCode.VEHICLE_NOT_FOUND, 'Veículo não encontrado.', HttpStatus.NOT_FOUND);
     return this.vehicleRepository.archiveImpact(id, now);
   }
 
@@ -229,6 +237,7 @@ export class VehicleManager {
       ids,
       request.sort,
       request.direction,
+      request.category,
     );
 
     const customerIds = [...new Set(items.map((item) => item.customerId))];
@@ -253,30 +262,34 @@ export class VehicleManager {
   async importRows(actingUser: AuthenticatedUser, request: ImportVehiclesRequest): Promise<ImportVehiclesResponse> {
     const customers = await this.customerRepository.allForMatching();
     const plates = new Set<string>();
+    const unplatedChassis = new Set<string>();
     const problems: ImportVehiclesProblem[] = [];
     let created = 0;
 
     for (const row of request.rows) {
-      const fail = (reason: string) => problems.push({ line: row.line, plate: row.plate.trim() || '(sem placa)', reason });
+      const fail = (reason: string) => problems.push({ line: row.line, plate: row.plate?.trim() || '(sem placa)', reason });
       const brand = row.brand.trim();
       const model = row.model.trim();
       if (!brand || !model) { fail('Faltam a marca ou o modelo.'); continue; }
-      let plate: string;
+      let plate: string | null;
       let chassis: string | undefined;
       try {
-        plate = this.validPlate(row.plate);
+        plate = row.plate?.trim() ? this.validPlate(row.plate) : null;
         chassis = this.validChassis(row.chassis);
+        if (!plate && !chassis) throw new AppException(AppErrorCode.VALIDATION_ERROR, 'Informe a placa ou o chassi.', HttpStatus.BAD_REQUEST);
         this.validateYear(row.year);
       } catch (error) {
         fail(error instanceof AppException ? error.message : 'Dados inválidos.');
         continue;
       }
-      if (plates.has(plate) || (await this.vehicleRepository.byPlate(plate))) { fail('Já existe um veículo com esta placa.'); continue; }
+      if (plate && (plates.has(plate) || (await this.vehicleRepository.byPlate(plate)))) { fail('Já existe um veículo com esta placa.'); continue; }
+      if (chassis && (unplatedChassis.has(chassis) || await this.vehicleRepository.byChassis(chassis))) { fail('Já existe um veículo com este chassi.'); continue; }
       const owner = this.findOwner(customers, row);
       if (typeof owner === 'string') { fail(owner); continue; }
       try {
-        await this.vehicleRepository.insert({ tenantId: actingUser.tenantId, customerId: owner.id, brand, model, plate, year: row.year, color: row.color?.trim() || undefined, fuelType: row.fuelType?.trim() || undefined, chassis, mileage: row.mileage });
-        plates.add(plate);
+        await this.vehicleRepository.insert({ tenantId: actingUser.tenantId, customerId: owner.id, category: row.category ?? 'CAR', brand, model, plate, year: row.year, color: row.color?.trim() || undefined, fuelType: row.fuelType?.trim() || undefined, chassis, mileage: row.mileage });
+        if (plate) plates.add(plate);
+        if (chassis) unplatedChassis.add(chassis);
         created += 1;
       } catch (error) {
         if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') { fail('Já existe um veículo com esta placa.'); continue; }
@@ -309,7 +322,8 @@ export class VehicleManager {
 
   // Everything the vehicle's page needs in one call.
   async overview(id: string, now = new Date()): Promise<VehicleOverviewResponse> {
-    if (!(await this.vehicleRepository.byId(id))) throw new AppException(AppErrorCode.VEHICLE_NOT_FOUND, 'Veículo não encontrado.', HttpStatus.NOT_FOUND);
+    const vehicle = await this.vehicleRepository.byId(id);
+    if (!vehicle) throw new AppException(AppErrorCode.VEHICLE_NOT_FOUND, 'Veículo não encontrado.', HttpStatus.NOT_FOUND);
     const [orders, plans, appointments, campaigns] = await Promise.all([
       this.vehicleRepository.ordersOf([id]),
       this.vehicleRepository.carePlansOf(id),
@@ -323,7 +337,11 @@ export class VehicleManager {
       deliveredCount: live.filter((order) => order.status === 'DELIVERED').length,
       openServiceOrders: live.filter((order) => order.status !== 'DELIVERED').sort((a, b) => b.openedAt.getTime() - a.openedAt.getTime()).map((order) => ({ id: order.id, orderNumber: order.orderNumber, status: order.status })),
       upcomingAppointments: appointments.map((appointment) => ({ id: appointment.id, startsAt: appointment.startsAt.toISOString(), status: appointment.status, serviceDescription: appointment.serviceDescription })),
-      care: plans.map((plan) => {
+      care: plans.filter((plan) => {
+        const campaign = campaigns.find((item) => item.key === plan.serviceKey);
+        return careAppliesToVehicle(vehicle.category as VehicleResponse['category'], plan.serviceKey as CareServiceKey)
+          && (vehicle.category === 'CAR' || (plan.intervalMonths !== null && (campaign?.intervalKm === null || plan.intervalKm !== null)));
+      }).map((plan) => {
         const campaign = campaigns.find((item) => item.key === plan.serviceKey);
         const dueAt = addMonthsClamped(plan.completedAt, plan.intervalMonths ?? campaign?.intervalMonths ?? 12);
         const intervalKm = plan.intervalKm ?? campaign?.intervalKm ?? null;
@@ -371,12 +389,13 @@ export class VehicleManager {
       tenantId: vehicle.tenantId,
       customerId: vehicle.customerId,
       customerName: customer?.name ?? 'Cliente removido',
+      category: vehicle.category as VehicleResponse['category'],
       brand: vehicle.brand,
       model: vehicle.model,
       year: vehicle.year ?? undefined,
       engine: vehicle.engine ?? undefined,
       fuelType: vehicle.fuelType ?? undefined,
-      plate: vehicle.plate,
+      plate: vehicle.plate ?? 'Sem placa',
       chassis: vehicle.chassis ?? undefined,
       mileage: vehicle.mileage ?? undefined,
       color: vehicle.color ?? undefined,

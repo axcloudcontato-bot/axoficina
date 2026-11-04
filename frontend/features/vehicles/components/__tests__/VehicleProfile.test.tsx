@@ -19,7 +19,7 @@ vi.mock('sonner', () => ({ toast: toastMock }));
 
 const wrap = (ui: React.ReactElement) => render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })}>{ui}</QueryClientProvider>);
 
-const vehicle: VehicleResponse = { id: 'v1', tenantId: 't', customerId: 'c1', customerName: 'João da Silva', brand: 'Fiat', model: 'Uno', year: 2012, color: 'Prata', fuelType: 'Flex', plate: 'ABC1234', mileage: 98000, photos: [], createdAt: '2026-01-01T00:00:00Z' };
+const vehicle: VehicleResponse = { id: 'v1', tenantId: 't', customerId: 'c1', customerName: 'João da Silva', category: 'CAR', brand: 'Fiat', model: 'Uno', year: 2012, color: 'Prata', fuelType: 'Flex', plate: 'ABC1234', mileage: 98000, photos: [], createdAt: '2026-01-01T00:00:00Z' };
 const overview: VehicleOverviewResponse = {
   orderCount: 4, deliveredCount: 3, lastVisitAt: '2026-09-20T12:00:00Z',
   openServiceOrders: [{ id: 'so-9', orderNumber: 41, status: 'IN_PROGRESS' }],
@@ -41,7 +41,7 @@ describe('VehicleProfile', () => {
     wrap(<VehicleProfile vehicle={vehicle} />);
     expect(await screen.findByRole('heading', { name: 'Fiat Uno' })).toBeInTheDocument();
     expect(screen.getByText('ABC-1234')).toBeInTheDocument();
-    expect(screen.getByText('2012 · Prata · Flex')).toBeInTheDocument();
+    expect(screen.getByText('Carro · 2012 · Prata · Flex')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'João da Silva' })).toHaveAttribute('href', '/clientes/c1');
     const newOrder = screen.getByRole('link', { name: /nova os/i }).getAttribute('href') ?? '';
     expect(newOrder).toContain('customerId=c1');

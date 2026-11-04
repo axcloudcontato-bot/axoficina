@@ -1,4 +1,5 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
+import { careAppliesToVehicle, type CareServiceKey, type FipeCategory } from '@oficina/contracts';
 import type {
   DismissMaintenanceAlertRequest,
   MaintenanceAlertContactOutcome,
@@ -183,7 +184,7 @@ export class MaintenanceAlertManager {
         vehicleId: alert.vehicleId,
         vehicleBrand: vehicle?.brand ?? '—',
         vehicleModel: vehicle?.model ?? '—',
-        vehiclePlate: vehicle?.plate ?? 'Veículo removido',
+        vehiclePlate: vehicle ? vehicle.plate ?? 'Sem placa' : 'Veículo removido',
         customerId: alert.customerId,
         customerName: customer?.name ?? 'Cliente removido',
         referenceDate: alert.referenceDate.toISOString(),
@@ -198,7 +199,11 @@ export class MaintenanceAlertManager {
         customerPhone: customer?.phone,
         customerCareEnabled: customer?.careMessagesEnabled ?? false,
         vehicleMileage: vehicle?.mileage ?? undefined,
-        overdueCare: overdueCare(plans.filter((plan) => plan.vehicleId === alert.vehicleId), vehicle?.mileage ?? null, now, campaigns),
+        overdueCare: overdueCare(plans.filter((plan) => {
+          if (plan.vehicleId !== alert.vehicleId || !vehicle?.category || !careAppliesToVehicle(vehicle.category as FipeCategory, plan.serviceKey as CareServiceKey)) return false;
+          const campaign = campaigns.find((item) => item.key === plan.serviceKey);
+          return vehicle.category === 'CAR' || (plan.intervalMonths !== null && (campaign?.intervalKm === null || plan.intervalKm !== null));
+        }), vehicle?.mileage ?? null, now, campaigns),
         contactCount: own.length,
         lastContact: last ? { outcome: last.outcome as MaintenanceAlertContactOutcome, at: last.createdAt.toISOString(), byName: last.createdBy ? userById.get(last.createdBy)?.name : undefined, note: last.note ?? undefined } : undefined,
       };

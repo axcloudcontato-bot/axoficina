@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 import { z } from 'zod';
-import { isValidChassis, isValidPlate, normalizePlate, type VehicleListItemResponse } from '@oficina/contracts';
+import { isValidChassis, isValidPlate, normalizePlate, type FipeCategory, type VehicleListItemResponse } from '@oficina/contracts';
 import { Car } from '@phosphor-icons/react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -24,10 +24,11 @@ import type { VehicleRegistrationSeed } from '@/lib/registration-seed';
 const CUSTOMER_PICKER_LIMIT = 100;
 
 const vehicleSchema = z.object({
+  category: z.enum(['CAR', 'MOTORCYCLE', 'TRUCK', 'UNCLASSIFIED']),
   customerId: z.string().min(1, 'Selecione um cliente'),
   brand: z.string().min(1, 'Informe a marca'),
   model: z.string().min(1, 'Informe o modelo'),
-  plate: z.string().min(1, 'Informe a placa').refine((value) => isValidPlate(normalizePlate(value)), 'Placa inválida. Use o formato ABC1234 ou ABC1D23.'),
+  plate: z.string().refine((value) => !value.trim() || isValidPlate(normalizePlate(value)), 'Placa inválida. Use o formato ABC1234 ou ABC1D23.'),
   year: z.string().optional(),
   engine: z.string().optional(),
   fuelType: z.string().optional(),
@@ -39,6 +40,7 @@ const vehicleSchema = z.object({
 export type VehicleFormValues = z.infer<typeof vehicleSchema>;
 
 const EMPTY_VALUES: VehicleFormValues = {
+  category: 'CAR',
   customerId: '',
   brand: '',
   model: '',
@@ -104,10 +106,11 @@ export function VehicleFormModal({ open, onOpenChange, vehicle, initialCustomer,
     form.reset(
       vehicle
         ? {
+            category: vehicle.category ?? 'UNCLASSIFIED',
             customerId: vehicle.customerId,
             brand: vehicle.brand,
             model: vehicle.model,
-            plate: normalizePlate(vehicle.plate),
+            plate: vehicle.plate === 'Sem placa' ? '' : normalizePlate(vehicle.plate),
             year: vehicle.year?.toString() ?? '',
             engine: vehicle.engine ?? '',
             fuelType: vehicle.fuelType ?? '',
@@ -121,6 +124,8 @@ export function VehicleFormModal({ open, onOpenChange, vehicle, initialCustomer,
 
   // Year and chassis are only checked when they changed, so a record saved before these rules can still be edited.
   function onSubmit(values: VehicleFormValues) {
+    if (values.category === 'UNCLASSIFIED') { form.setError('category', { message: 'Escolha o tipo do veículo' }); return; }
+    if (!values.plate?.trim() && !values.chassis?.trim()) { form.setError('plate', { message: 'Informe a placa ou o chassi' }); return; }
     const year = toOptionalNumber(values.year);
     const latest = new Date().getFullYear() + 1;
     if (year !== undefined && year !== vehicle?.year && (!Number.isInteger(year) || year < 1900 || year > latest)) {
@@ -159,9 +164,10 @@ export function VehicleFormModal({ open, onOpenChange, vehicle, initialCustomer,
     };
 
     const commonFields = {
+      category: values.category === 'UNCLASSIFIED' ? undefined : values.category,
       brand: values.brand,
       model: values.model,
-      plate: normalizePlate(values.plate),
+      plate: values.plate?.trim() ? normalizePlate(values.plate) : isEditing ? '' : undefined,
       year: toOptionalNumber(values.year),
       engine: values.engine || undefined,
       fuelType: values.fuelType || undefined,
@@ -241,7 +247,7 @@ export function VehicleFormModal({ open, onOpenChange, vehicle, initialCustomer,
                 name="plate"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Placa</FormLabel>
+                    <FormLabel>Placa (opcional)</FormLabel>
                     <FormControl>
                       <Input placeholder="ABC1D23" maxLength={8} autoCapitalize="characters" {...field} onChange={(event) => field.onChange(normalizePlate(event.target.value).slice(0, 7))} />
                     </FormControl>

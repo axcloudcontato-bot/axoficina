@@ -19,7 +19,7 @@ interface VehicleSearchComboboxProps extends Omit<ComponentPropsWithoutRef<typeo
 }
 
 function vehicleLabel(vehicle: VehicleListItemResponse): string {
-  return `${vehicle.customerName} — ${vehicle.brand} ${vehicle.model} · ${vehicle.plate}`;
+  return `${vehicle.customerName} — ${vehicle.brand} ${vehicle.model} · ${vehicle.plate === 'Sem placa' && vehicle.chassis ? `chassi ${vehicle.chassis}` : vehicle.plate}`;
 }
 
 // Sem lib de combobox nova (mesma restrição pragmática já aceita na Feature 4)
@@ -156,7 +156,7 @@ export const VehicleSearchCombobox = forwardRef<HTMLInputElement, VehicleSearchC
                   onClick={() => handleSelect(vehicle)}
                 >
                   <span className="block font-semibold">{vehicle.customerName}</span>
-                  <span className="mt-0.5 block text-xs text-text-muted">{vehicle.brand} {vehicle.model} · {vehicle.plate}</span>
+                  <span className="mt-0.5 block text-xs text-text-muted">{vehicle.brand} {vehicle.model} · {vehicle.plate === 'Sem placa' && vehicle.chassis ? `chassi ${vehicle.chassis}` : vehicle.plate}</span>
                 </button>
               </li>
             ))}

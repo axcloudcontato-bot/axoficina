@@ -28,6 +28,7 @@ if (!Element.prototype.scrollIntoView) {
 }
 
 const EMPTY_VALUES: VehicleFormValues = {
+  category: 'CAR',
   customerId: '',
   brand: '',
   model: '',

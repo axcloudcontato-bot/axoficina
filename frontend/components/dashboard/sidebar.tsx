@@ -31,7 +31,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: '/ordens-de-servico', label: 'Ordens de serviço', shortLabel: 'OS', icon: ClipboardText, permission: 'service_orders.view', group: 'Operação' },
   { href: '/agenda', label: 'Agenda', shortLabel: 'Agenda', icon: CalendarBlank, permission: 'appointments.view', group: 'Operação' },
   { href: '/clientes', label: 'Clientes', shortLabel: 'Clientes', icon: Users, permission: 'customers.view', group: 'Relacionamento' },
-  { href: '/veiculos', label: 'Veículos', shortLabel: 'Veículos', icon: Car, permission: 'vehicles.view', group: 'Relacionamento' },
+  { href: '/veiculos', label: 'Veículos', shortLabel: 'Veículos', icon: Car, permission: 'vehicles.view', group: 'Operação' },
   { href: '/alertas-de-manutencao', label: 'Alertas de manutenção', shortLabel: 'Alertas', icon: Bell, permission: 'alerts.view', group: 'Relacionamento', module: 'cuidado' },
   { href: '/relacionamento', label: 'Fidelização de clientes', shortLabel: 'Fidelização', icon: UsersThree, permission: 'alerts.view', group: 'Relacionamento', module: 'cuidado' },
   { href: '/catalogo', label: 'Catálogo', shortLabel: 'Catálogo', icon: Package, permission: 'service_orders.prices', group: 'Operação' },

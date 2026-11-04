@@ -35,13 +35,13 @@ export function VehicleProfile({ vehicle }: { vehicle: VehicleResponse }) {
   const [transferring, setTransferring] = useState(false);
   // Registering a care already done (also the way to correct a deadline for this car). Needs the care permission.
   const { hasModule } = useEntitlements();
-  const canRecordCare = hasPermission(user, 'alerts.manage') && hasModule('cuidado');
+  const canRecordCare = vehicle.category !== null && hasPermission(user, 'alerts.manage') && hasModule('cuidado');
   const [recording, setRecording] = useState<{ serviceKey?: CareServiceKey } | undefined>();
   const history = useServiceOrdersList({ vehicleId: vehicle.id, offset, limit: HISTORY_PAGE_SIZE });
   const data = overview.data;
   const owner = { id: vehicle.customerId, name: vehicle.customerName };
   const label = `${vehicle.brand} ${vehicle.model} · ${formatPlate(vehicle.plate)}`;
-  const details = [vehicle.year, vehicle.color, vehicle.engine, vehicle.fuelType].filter(Boolean).join(' · ');
+  const details = [vehicle.category ? ({ CAR: 'Carro', MOTORCYCLE: 'Moto', TRUCK: 'Caminhão' } as const)[vehicle.category] : 'A classificar', vehicle.year, vehicle.color, vehicle.engine, vehicle.fuelType].filter(Boolean).join(' · ');
 
   return <div className="flex flex-col gap-5">
     <Link href="/veiculos" className="inline-flex w-fit items-center gap-2 text-sm font-semibold text-text-muted transition-colors hover:text-text"><ArrowLeft className="size-4" aria-hidden="true" /> Voltar para veículos</Link>
@@ -112,7 +112,7 @@ export function VehicleProfile({ vehicle }: { vehicle: VehicleResponse }) {
       {history.data && history.data.total > HISTORY_PAGE_SIZE && <div className="flex items-center justify-between text-sm text-text-muted"><span>{history.data.total} ordens de serviço no total</span><div className="flex gap-2"><Button variant="outline" size="sm" disabled={offset === 0} onClick={() => setOffset(Math.max(0, offset - HISTORY_PAGE_SIZE))}>Anterior</Button><Button variant="outline" size="sm" disabled={!history.data.hasMore} onClick={() => setOffset(offset + HISTORY_PAGE_SIZE)}>Próxima</Button></div></div>}
     </section>
 
-    {canRecordCare && <CareServiceDialog open={Boolean(recording)} onOpenChange={(next) => { if (!next) setRecording(undefined); }} vehicle={{ id: vehicle.id, label }} defaultServiceKey={recording?.serviceKey} />}
+    {canRecordCare && <CareServiceDialog open={Boolean(recording)} onOpenChange={(next) => { if (!next) setRecording(undefined); }} vehicle={{ id: vehicle.id, label, category: vehicle.category ?? undefined }} defaultServiceKey={recording?.serviceKey} />}
     <VehicleFormModal open={editing} onOpenChange={setEditing} vehicle={vehicle} />
     {canManage && <TransferVehicleDialog vehicle={vehicle} open={transferring} onOpenChange={setTransferring} />}
   </div>;
