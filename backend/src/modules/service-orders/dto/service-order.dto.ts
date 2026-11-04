@@ -72,6 +72,9 @@ export class UpdateServiceOrderDto implements UpdateServiceOrderRequest {
   @IsOptional() @IsISO8601() expectedDeliveryAt?: string | null;
   @IsOptional() @IsIn(PAYMENT_METHODS) paymentMethod?: UpdateServiceOrderRequest['paymentMethod'];
   @IsOptional() @IsInt() @Min(1) @Max(24) paymentInstallments?: number | null;
+  @IsOptional() @IsInt() @Min(0) @Max(2_147_483_647) discountCents?: number;
+  @IsOptional() @IsInt() @Min(0) @Max(3650) warrantyDays?: number | null;
+  @IsOptional() @IsInt() @Min(0) @Max(2_147_483_647) exitMileage?: number | null;
 }
 
 export class TransitionServiceOrderDto implements TransitionServiceOrderRequest {

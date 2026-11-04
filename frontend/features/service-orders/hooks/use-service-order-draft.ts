@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import type { ServiceOrderResponse } from '@oficina/contracts';
 import { parseChecklist, serializeChecklist } from '../checklist';
 import { useUpdateServiceOrder } from './use-service-orders';
-import { extractErrorMessage } from '@/lib/api/client';
+import { extractErrorMessage, extractFieldErrors } from '@/lib/api/client';
 import { toast } from 'sonner';
 
 function valuesFrom(order: ServiceOrderResponse) {
@@ -56,7 +56,21 @@ export function useServiceOrderDraft(order: ServiceOrderResponse) {
       setState(current => ({ ...current, baseline: values }));
       toast.success('Alterações salvas.');
       return true;
-    } catch (error) { toast.error(extractErrorMessage(error)); return false; }
+    } catch (error) {
+      const message = extractErrorMessage(error);
+      const fields = Object.keys(extractFieldErrors(error));
+      const labels: Record<string, string> = {
+        technicianId: 'técnico responsável', checklist: 'checklist', diagnosis: 'diagnóstico',
+        entryMileage: 'quilometragem de entrada', exitMileage: 'quilometragem de saída',
+        warrantyDays: 'garantia', expectedDeliveryAt: 'previsão de entrega',
+        customerComplaint: 'solicitação do cliente', receptionNotes: 'observações da recepção',
+        recommendedService: 'serviço recomendado',
+      };
+      toast.error(message === 'Dados inválidos.' && fields.length > 0
+        ? `Confira ${fields.map((field) => labels[field] ?? field).join(', ')} antes de salvar.`
+        : message);
+      return false;
+    }
   }
   return { values: state.values, set, dirty, saving: update.isPending, save, discard: () => setState(current => ({ ...current, values: current.baseline })) };
 }
