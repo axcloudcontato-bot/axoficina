@@ -1,5 +1,7 @@
 'use client';
 
+import { PageHero } from '@/components/dashboard/PageHero';
+
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
@@ -85,18 +87,12 @@ export default function DashboardPage() {
 
   return (
     <div className="flex flex-col gap-5">
-      <header data-reveal className="flex flex-col gap-4 border-b border-border pb-6 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight text-text">Operação de hoje</h2>
-          <p className="mt-1.5 text-sm text-text-muted">{new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' })} · Agenda, pendências e veículos que exigem decisão agora.</p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2 sm:shrink-0">
+      <PageHero eyebrow="Painel" title="Operação de hoje" description={`${new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' })} · Agenda, pendências e veículos que exigem decisão agora.`} actions={<>
           {canViewFinance && <Link href="/financeiro" className="flex items-center gap-2 rounded-button border border-border bg-card px-3 py-1.5 text-sm transition-colors hover:bg-muted/40"><CurrencyCircleDollar className="size-4 text-text-muted" aria-hidden="true" /><span className="text-text-muted">Recebido hoje</span><strong className="tabular-nums text-text">{dailyCashFlow.isLoading ? '…' : formatCurrencyBRL(dailyCashFlow.data?.realizedIncomeCents ?? 0)}</strong></Link>}
           {lastUpdatedAt && <span className="text-xs text-text-muted" aria-live="polite">Atualizado às {lastUpdatedAt}</span>}
           <Button variant="outline" size="sm" onClick={refreshDashboard} disabled={isRefreshing}><ArrowClockwise className={`size-4 ${isRefreshing ? 'animate-spin' : ''}`} />Atualizar</Button>
           {canManageServiceOrders && <NewServiceOrderQuickStart size="sm" />}
-        </div>
-      </header>
+      </>} />
 
       <section className="grid gap-5 xl:grid-cols-[minmax(0,1.4fr)_minmax(320px,0.8fr)]">
         <Card data-reveal style={{ '--reveal-order': 8 } as React.CSSProperties} className="flex h-full flex-col overflow-hidden">

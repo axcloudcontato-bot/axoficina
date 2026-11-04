@@ -1,5 +1,7 @@
 'use client';
 
+import { PageHero } from '@/components/dashboard/PageHero';
+
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { DownloadSimple, MagnifyingGlass, UploadSimple } from '@phosphor-icons/react';
@@ -86,6 +88,7 @@ export default function CustomersPage() {
 
   return (
     <div className="flex flex-col gap-4">
+      <PageHero eyebrow="Cadastro da oficina" title="Clientes" description="Encontre os clientes da oficina, consulte o histórico e mantenha os dados atualizados." actions={canManage && !archived && <Button onClick={openCreateModal}>Novo cliente</Button>} />
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="relative w-full sm:max-w-xs">
           <MagnifyingGlass className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-text-muted" />
@@ -114,7 +117,6 @@ export default function CustomersPage() {
           )}
           {canManage && <Button variant="outline" onClick={exportList} disabled={exporting}><DownloadSimple className="size-4" aria-hidden="true" />{exporting ? 'Exportando...' : 'Exportar CSV'}</Button>}
           {canManage && !archived && <Button variant="outline" onClick={() => setImporting(true)}><UploadSimple className="size-4" aria-hidden="true" />Importar CSV</Button>}
-          {canManage && !archived && <Button onClick={openCreateModal}>Novo cliente</Button>}
         </div>
       </div>
 

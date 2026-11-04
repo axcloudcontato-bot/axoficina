@@ -1,5 +1,7 @@
 'use client';
 
+import { PageHero } from '@/components/dashboard/PageHero';
+
 import { useMemo, useState } from 'react';
 import { CATALOG_ITEM_TYPES, type CatalogItemResponse, type CatalogItemType } from '@oficina/contracts';
 import { MagnifyingGlass, PencilSimple, Plus, Trash, UploadSimple } from '@phosphor-icons/react';
@@ -106,16 +108,7 @@ export function CatalogPanel() {
   }
 
   return <div className="space-y-5">
-    <header className="flex flex-wrap items-end justify-between gap-3 border-b border-border pb-5">
-      <div>
-        <p className="text-xs font-bold uppercase tracking-[0.14em] text-primary">Catálogo</p>
-        <h2 className="mt-1 text-2xl font-bold">Peças, produtos e serviços</h2>
-        <p className="mt-1 text-sm text-text-muted">Cadastre o que a oficina vende e escolha na ordem de serviço, sem digitar de novo.</p>
-      </div>
-      <div className="flex flex-wrap gap-2">
-        <Button onClick={() => setEditing(null)}><Plus className="size-4" />{tab === 'PART' ? 'Nova peça' : tab === 'PRODUCT' ? 'Novo produto' : 'Novo serviço'}</Button>
-      </div>
-    </header>
+    <PageHero eyebrow="Catálogo" title="Peças, produtos e serviços" description="Cadastre o que a oficina vende e escolha na ordem de serviço, sem digitar de novo." actions={<Button onClick={() => setEditing(null)}><Plus className="size-4" />{tab === 'PART' ? 'Nova peça' : tab === 'PRODUCT' ? 'Novo produto' : 'Novo serviço'}</Button>} />
 
     <div className="flex flex-wrap items-center justify-between gap-2 rounded-card border border-border bg-surface px-4 py-3 text-sm">
       <span><strong>Precificação de serviços · Valor da hora</strong> <span className="text-text-muted">· calcula uma sugestão pelo tempo padrão; preços já cadastrados não mudam automaticamente</span></span>

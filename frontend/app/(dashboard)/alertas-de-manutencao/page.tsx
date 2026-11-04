@@ -1,5 +1,7 @@
 'use client';
 
+import { PageHero } from '@/components/dashboard/PageHero';
+
 import { useState } from 'react';
 import { MagnifyingGlass } from '@phosphor-icons/react';
 import { toast } from 'sonner';
@@ -69,6 +71,7 @@ export default function MaintenanceAlertsPage() {
 
   return (
     <div className="flex flex-col gap-4">
+      <PageHero eyebrow="Acompanhamento" title="Alertas de manutenção" description="Encontre veículos que precisam de atenção e acompanhe o contato com cada cliente." />
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div role="tablist" aria-label="Situação dos alertas" className={segmentedList}>
           {TABS.map((item) => (

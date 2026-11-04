@@ -1,5 +1,7 @@
 'use client';
 
+import { PageHero } from '@/components/dashboard/PageHero';
+
 import { useEffect, useState } from 'react';
 import { Warning, CheckCircle, ClipboardText, GridFour, List, Package, MagnifyingGlass, SlidersHorizontal, X } from '@phosphor-icons/react';
 import type { ServiceOrderStatus, ServiceOrderListRequest } from '@oficina/contracts';
@@ -124,14 +126,7 @@ export default function ServiceOrdersPage() {
 
   return (
     <div className="flex flex-col gap-5 pb-24 md:pb-0">
-      <header className="flex flex-col gap-4 border-b border-border pb-5 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <p className="text-xs font-bold uppercase tracking-[0.12em] text-primary">Controle operacional</p>
-          <h2 className="mt-1 text-2xl font-bold tracking-tight text-text">Ordens de serviço</h2>
-          <p className="mt-1 text-sm text-text-muted">Acompanhe a fila de trabalho, consulte todas as ordens ou veja o histórico.</p>
-        </div>
-        {canManage && <NewServiceOrderQuickStart className="shrink-0" label="Nova ordem de serviço" />}
-      </header>
+      <PageHero eyebrow="Controle operacional" title="Ordens de serviço" description="Acompanhe a fila de trabalho, consulte todas as ordens ou veja o histórico." actions={canManage && <NewServiceOrderQuickStart className="shrink-0" label="Nova ordem de serviço" />} />
 
       <nav aria-label="Seções de ordens de serviço" className="flex flex-wrap gap-2 border-b border-border pb-3">
         {([['queue', 'Fila de trabalho'], ['all', 'Todas as ordens'], ['history', 'Histórico']] as const).map(([key, label]) => <button key={key} type="button" aria-current={section === key ? 'page' : undefined} onClick={() => changeSection(key)} className={`rounded-button px-4 py-2 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${section === key ? 'bg-primary text-white' : 'bg-surface text-text-muted hover:text-text'}`}>{label}</button>)}

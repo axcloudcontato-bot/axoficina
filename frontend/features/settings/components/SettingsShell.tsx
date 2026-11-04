@@ -1,5 +1,7 @@
 'use client';
 
+import { PageHero } from '@/components/dashboard/PageHero';
+
 import { Buildings, ClockCounterClockwise, CreditCard, Envelope, UsersThree, ShieldCheck, WhatsappLogo, SquaresFour, Clock, UserCircle, Lock } from '@phosphor-icons/react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -27,13 +29,9 @@ export function SettingsShell({ children }: { children: React.ReactNode }) {
   // The personal area (my account, my privacy) is for everyone and has its own tabs.
   const privacy = pathname === '/configuracoes/privacidade' || pathname === '/configuracoes/conta';
   const tabs = privacy ? [{ href: '/configuracoes/conta', label: 'Minha conta', icon: UserCircle }, { href: '/configuracoes/privacidade', label: 'Privacidade e solicitações', icon: ShieldCheck }] : items.filter((item) => (item.permission === null || hasPermission(user, item.permission)) && (!['/configuracoes/privacidade-da-oficina', '/configuracoes/assinatura', '/configuracoes/historico'].includes(item.href) || user?.role === 'ADMIN'));
+  const currentSection = items.find((item) => item.href === pathname && item.href !== '/configuracoes');
   return <div className="space-y-6">
-    <header>
-      <p className="text-xs font-bold uppercase tracking-[0.14em] text-primary">{privacy ? 'Minha conta' : 'Administração'}</p>
-      <h1 className="mt-1 text-3xl font-bold tracking-tight text-text">{privacy ? 'Minha conta' : 'Configurações'}</h1>
-      <p className="mt-1 text-sm text-text-muted">{privacy ? 'Sua senha, seus dados e seus pedidos de privacidade.' : 'Personalize a oficina, as comunicações e o acesso da equipe.'}</p>
-      {privacy && (hasPermission(user, 'settings.view') || hasPermission(user, 'team.view')) && <Link href="/configuracoes" className="mt-3 inline-block text-sm font-semibold text-primary hover:underline">Voltar às configurações</Link>}
-    </header>
+    <PageHero eyebrow={privacy ? 'Minha conta' : currentSection ? 'Configurações' : 'Administração'} title={privacy ? 'Minha conta' : currentSection?.label ?? 'Configurações'} description={privacy ? 'Sua senha, seus dados e seus pedidos de privacidade.' : currentSection?.description ?? 'Personalize a oficina, as comunicações e o acesso da equipe.'} actions={privacy && (hasPermission(user, 'settings.view') || hasPermission(user, 'team.view')) && <Link href="/configuracoes" className="text-sm font-semibold text-primary hover:underline">Voltar às configurações</Link>} />
     <nav aria-label="Seções das configurações" className={segmentedList}>
       {tabs.map((tab) => {
         const { href, label, icon: Icon } = tab;

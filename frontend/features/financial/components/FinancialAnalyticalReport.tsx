@@ -1,5 +1,7 @@
 'use client';
 
+import { PageHero } from '@/components/dashboard/PageHero';
+
 import { useId, useState } from 'react';
 import { Printer } from '@phosphor-icons/react';
 import { Button } from '@/components/ui/button';
@@ -29,7 +31,7 @@ export function FinancialAnalyticalReport() {
   function change(next: Partial<FinancialReportFilters>) { setFilters(previous => ({ ...previous, ...next })); setPage(0); }
 
   return <div className="space-y-5">
-    <header className="flex flex-wrap items-end justify-between gap-4 border-b border-border pb-5"><div><p className="text-xs font-bold uppercase tracking-[0.14em] text-primary">Controle financeiro</p><h2 className="mt-1 text-2xl font-bold text-text">Relatório financeiro analítico</h2><p className="mt-1 text-sm text-text-muted">Cada receita e despesa, com identificação, datas, situação e observações.</p></div><Button disabled={!request || !flow.data || flow.isFetching} onClick={() => window.open(reportPrintUrl(filters), '_blank', 'noopener,noreferrer')}><Printer className="size-4" />Imprimir analítico / PDF</Button></header>
+    <PageHero eyebrow="Controle financeiro" title="Relatório financeiro analítico" description="Cada receita e despesa, com identificação, datas, situação e observações." actions={<Button disabled={!request || !flow.data || flow.isFetching} onClick={() => window.open(reportPrintUrl(filters), '_blank', 'noopener,noreferrer')}><Printer className="size-4" />Imprimir analítico / PDF</Button>} />
     <section aria-label="Filtros do relatório analítico" className="rounded-card border border-border bg-card p-4 sm:p-5">
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <Field label="Atalho de mês" id={`${id}-month`}><Input id={`${id}-month`} type="month" value={month} onChange={event => { setMonth(event.target.value); if (/^\d{4}-(0[1-9]|1[0-2])$/.test(event.target.value)) change(monthReportRange(event.target.value)); }} /></Field>

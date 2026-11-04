@@ -1,5 +1,7 @@
 'use client';
 
+import { PageHero } from '@/components/dashboard/PageHero';
+
 import { Fragment, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { ChartBar, ShieldWarning, Timer } from '@phosphor-icons/react';
@@ -73,6 +75,7 @@ export default function ProductivityPage() {
 
   return (
     <div className="flex flex-col gap-5">
+      <PageHero eyebrow="Desempenho da equipe" title="Produtividade" description="Acompanhe as entregas, as horas registradas e as metas dos técnicos." />
       <div className="flex flex-wrap items-end gap-3 sm:justify-between">
         <div className="max-w-[220px]">
           <Label htmlFor="productivity-month">Período</Label>

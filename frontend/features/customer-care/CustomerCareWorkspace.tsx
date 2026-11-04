@@ -1,4 +1,5 @@
 'use client';
+import { PageHero } from '@/components/dashboard/PageHero';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { CalendarBlank, CheckCircle, Clock, ClockCounterClockwise, Gear, Megaphone, PaperPlaneTilt, PhoneCall, Plus, SquaresFour, Car, ShieldCheck, Users } from '@phosphor-icons/react';
@@ -49,7 +50,7 @@ export function CustomerCareWorkspace() {
   const samples: Record<string, string> = { cliente: 'Mariana', oficina: 'Sua oficina', veiculo: 'Honda Fit', placa: 'ABC1D23', cuidados: campaign.name };
   const sample = campaign.message.replace(/\{(cliente|oficina|veiculo|placa|cuidados)\}/g, (_token, key: string) => samples[key]);
   return <div className="mx-auto max-w-[1440px] space-y-6 pb-8">
-    <header className="flex flex-wrap items-start justify-between gap-4"><div><p className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.14em] text-primary"><Users weight="fill" className="size-4" aria-hidden="true" /> Fidelização de clientes</p><h1 className="mt-2 text-3xl font-bold tracking-tight">O cuidado continua.</h1><p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">Seu cliente sai da oficina. A atenção com ele e com o carro fica.</p></div><div className="flex items-center gap-3"><span className={cn('rounded-full px-3 py-1.5 text-xs font-bold', data.settings.enabled ? 'bg-success-subtle text-success-strong' : 'bg-muted text-muted-foreground')}>{data.settings.enabled ? 'Régua ativa' : 'Régua pausada'}</span>{canRecord && <Button onClick={() => { setEditingPlan(undefined); setServiceOpen(true); }}><Plus className="mr-2 size-4" aria-hidden="true" /> Registrar cuidado</Button>}</div></header>
+    <PageHero eyebrow="Fidelização de clientes" title="O cuidado continua." description="Seu cliente sai da oficina. A atenção com ele e com o carro fica." actions={<><span className={cn('rounded-full px-3 py-1.5 text-xs font-bold', data.settings.enabled ? 'bg-success-subtle text-success-strong' : 'bg-muted text-muted-foreground')}>{data.settings.enabled ? 'Régua ativa' : 'Régua pausada'}</span>{canRecord && <Button onClick={() => { setEditingPlan(undefined); setServiceOpen(true); }}><Plus className="mr-2 size-4" aria-hidden="true" /> Registrar cuidado</Button>}</>} />
     <section aria-label="Resumo do relacionamento" className="grid grid-cols-2 gap-3 xl:grid-cols-4">{[
       { label: 'Clientes participantes', value: data.stats.optedIn, icon: Users, detail: 'Com autorização registrada' },
       { label: 'Aniversários no mês', value: data.stats.birthdaysThisMonth, icon: CalendarBlank, detail: 'Uma mensagem especial por ano', open: () => setTab('forecast') },

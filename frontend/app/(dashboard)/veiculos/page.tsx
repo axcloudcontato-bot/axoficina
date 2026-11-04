@@ -1,5 +1,7 @@
 'use client';
 
+import { PageHero } from '@/components/dashboard/PageHero';
+
 import { useState } from 'react';
 import { DownloadSimple, MagnifyingGlass, UploadSimple } from '@phosphor-icons/react';
 import { toast } from 'sonner';
@@ -103,7 +105,7 @@ export default function VehiclesPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <header><h1 className="text-2xl font-bold text-text">Veículos</h1><p className="mt-1 text-sm text-text-muted">Consulte carros, motos e caminhões, acompanhe as ordens de serviço e classifique os cadastros antigos antes de programar manutenções.</p></header>
+      <PageHero eyebrow="Cadastro da oficina" title="Veículos" description="Consulte carros, motos e caminhões, acompanhe as ordens de serviço e classifique os cadastros antigos antes de programar manutenções." actions={canManage && <Button onClick={openCreateModal}>Novo veículo</Button>} />
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="relative w-full sm:max-w-xs">
           <MagnifyingGlass className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-text-muted" />
@@ -132,7 +134,6 @@ export default function VehiclesPage() {
           )}
           {canManage && <Button variant="outline" onClick={exportList} disabled={exporting}><DownloadSimple className="size-4" aria-hidden="true" />{exporting ? 'Exportando...' : 'Exportar CSV'}</Button>}
           {canManage && !archived && <Button variant="outline" onClick={() => setImporting(true)}><UploadSimple className="size-4" aria-hidden="true" />Importar planilha</Button>}
-          {canManage && <Button onClick={openCreateModal}>Novo veículo</Button>}
         </div>
       </div>
 

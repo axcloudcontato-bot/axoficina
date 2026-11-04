@@ -1,5 +1,7 @@
 'use client';
 
+import { PageHero } from '@/components/dashboard/PageHero';
+
 import { useEffect, useMemo, useState } from 'react';
 import { CaretLeft, CaretRight, Plus } from '@phosphor-icons/react';
 import type { AppointmentResponse, AppointmentStatus } from '@oficina/contracts';
@@ -71,10 +73,7 @@ export default function AppointmentsPage() {
 
   function createAt(value = new Date()) { setSelected(undefined); setPrefill(undefined); setFormDate(value); setFormOpen(true); }
   return <div className="flex flex-col gap-5">
-    <section className="flex flex-col gap-4 rounded-card border border-border bg-card p-4 shadow-sm sm:p-5 lg:flex-row lg:items-end lg:justify-between">
-      <div><p className="mb-1 text-xs font-bold uppercase tracking-[0.12em] text-primary">{hours.openHour}h às {hours.closeHour}h</p><h1 className="text-2xl font-bold tracking-tight text-text">Agenda da oficina</h1><p className="mt-1 text-sm text-text-muted">Organize chegadas, equipe e próximos atendimentos.</p></div>
-      <Button onClick={() => createAt()}><Plus className="size-4" aria-hidden="true" /> Novo agendamento</Button>
-    </section>
+    <PageHero eyebrow={`${hours.openHour}h às ${hours.closeHour}h`} title="Agenda da oficina" description="Organize chegadas, equipe e próximos atendimentos." actions={<Button onClick={() => createAt()}><Plus className="size-4" aria-hidden="true" /> Novo agendamento</Button>} />
     <section className="flex flex-col gap-3 rounded-card border border-border bg-surface p-3 lg:flex-row lg:items-center lg:justify-between">
       <div className="flex flex-wrap items-center gap-2"><Button variant="outline" size="icon" aria-label="Período anterior" onClick={() => shift(-1)}><CaretLeft className="size-4" /></Button><Button variant="outline" onClick={() => setDate(new Date())}>Hoje</Button><Button variant="outline" size="icon" aria-label="Próximo período" onClick={() => shift(1)}><CaretRight className="size-4" /></Button><h2 className="ml-2 capitalize text-sm font-bold text-text">{title}</h2><Input type="date" aria-label="Ir para a data na agenda" className="w-40" value={`${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`} onChange={(event) => { if (event.target.value) setDate(new Date(`${event.target.value}T12:00:00`)); }} /></div>
       <div className="flex flex-col gap-2 sm:flex-row"><Select value={technicianId} onValueChange={setTechnicianId}><SelectTrigger aria-label="Filtrar por técnico" className="w-full sm:w-48"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="ALL">Toda a equipe</SelectItem>{users.data?.items.map((item) => <SelectItem key={item.id} value={item.id}>{item.name}</SelectItem>)}</SelectContent></Select><Select value={status} onValueChange={(value) => setStatus(value as AppointmentStatus | 'ALL' | 'ACTIVE')}><SelectTrigger aria-label="Filtrar por status" className="w-full sm:w-48"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="ACTIVE">Ativos (sem cancelados)</SelectItem><SelectItem value="ALL">Todos os status</SelectItem>{Object.entries(STATUS_LABELS).map(([value, label]) => <SelectItem key={value} value={value}>{label}</SelectItem>)}</SelectContent></Select><div className="flex rounded-button border border-border bg-background p-1">{(['DAY', 'WEEK', 'MONTH'] as const).map((value) => <button key={value} type="button" onClick={() => setView(value)} className={`rounded-sm px-3 py-1.5 text-xs font-semibold ${view === value ? 'bg-selection text-primary' : 'text-text-muted'}`}>{value === 'DAY' ? 'Dia' : value === 'WEEK' ? 'Semana' : 'Mês'}</button>)}</div></div>

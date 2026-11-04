@@ -1,5 +1,7 @@
 'use client';
 
+import { PageHero } from '@/components/dashboard/PageHero';
+
 import { useState } from 'react';
 import type { FinancialEntryResponse, FinancialEntryType } from '@oficina/contracts';
 import { ArrowCircleDown, ArrowCircleUp, Check, PencilSimple, Plus, Printer, Trash, TreeStructure } from '@phosphor-icons/react';
@@ -47,7 +49,7 @@ export function FinancialWorkspace({ mode }: { mode: Mode }) {
   const overdueEntries = (overdue.data?.entries ?? []).filter(entry => entry.status === 'PENDING' && new Date(entry.dueAt) < new Date());
 
   return <div className="space-y-5">
-    <header className="flex flex-col gap-3 border-b border-border pb-5 sm:flex-row sm:items-end sm:justify-between"><div><p className="text-xs font-bold uppercase tracking-[0.14em] text-primary">Controle financeiro</p><h2 className="mt-1 text-2xl font-bold text-text">{MODE_TITLES[mode]}</h2><p className="mt-1 text-sm text-text-muted">{MODE_DESCRIPTIONS[mode]}</p></div><div className="flex flex-wrap gap-2"><Input className="w-40" type="month" value={month} onChange={(event) => setMonth(event.target.value)} />{mode === 'transactions' && <Button variant="outline" onClick={() => window.open(`/financeiro/imprimir?mode=transactions&month=${month}`, '_blank', 'noopener,noreferrer')}><Printer className="size-4" />Imprimir</Button>}{canManage && ['payables', 'receivables', 'transactions'].includes(mode) && <Button onClick={() => setEntryOpen(true)}><Plus className="size-4" />Novo lançamento</Button>}{canManage && mode === 'categories' && <Button onClick={() => setCategoryOpen(true)}><Plus className="size-4" />Nova categoria</Button>}</div></header>
+    <PageHero eyebrow="Controle financeiro" title={MODE_TITLES[mode]} description={MODE_DESCRIPTIONS[mode]} actions={<><Input className="w-40" type="month" value={month} onChange={(event) => setMonth(event.target.value)} />{mode === 'transactions' && <Button variant="outline" onClick={() => window.open(`/financeiro/imprimir?mode=transactions&month=${month}`, '_blank', 'noopener,noreferrer')}><Printer className="size-4" />Imprimir</Button>}{canManage && ['payables', 'receivables', 'transactions'].includes(mode) && <Button onClick={() => setEntryOpen(true)}><Plus className="size-4" />Novo lançamento</Button>}{canManage && mode === 'categories' && <Button onClick={() => setCategoryOpen(true)}><Plus className="size-4" />Nova categoria</Button>}</>} />
 
     {mode === 'overview' && <FinancialOverview data={data} overdueEntries={overdueEntries} />}
     {mode === 'cash-flow' && <CashFlow data={data} canManage={canManage} />}
