@@ -41,7 +41,7 @@ describe('Reception search (HTTP + PostgreSQL)', () => {
   it('matches masked documents, unmasked phones and case-insensitive emails within each workshop', async () => {
     await Promise.all(workshops.map(async (workshop) => {
       const masked = workshop.document.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, '$1.$2.$3-$4');
-      for (const search of [masked, '11988887766', '+55 (11) 98888-7766', 'existing@example.INVALID']) {
+      for (const search of [masked, '11988887766', '+55 (11) 98888-7766', 'existing@example.INVALID', 'abc1234', 'ABC-1234']) {
         const found = await request(app.getHttpServer()).post('/api/v1/customers/list').set('Authorization', `Bearer ${workshop.token}`).send({ offset: 0, limit: 20, search }).expect(200);
         expect(found.body.items.map((item: { id: string }) => item.id)).toEqual([workshop.customerId]);
       }

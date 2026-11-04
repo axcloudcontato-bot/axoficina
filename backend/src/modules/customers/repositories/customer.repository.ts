@@ -76,6 +76,15 @@ export class CustomerRepository {
       { email: { contains: term, mode: 'insensitive' } },
       { phone: { contains: term } },
     ];
+    const plate = term.replace(/[^a-zA-Z0-9]/g, '');
+    if (plate.length >= 3 && plate.length <= 7) {
+      const vehicles = await this.prisma.client.vehicle.findMany({
+        where: { plate: { contains: plate, mode: 'insensitive' }, deletedAt: null },
+        select: { customerId: true },
+        take: 500,
+      });
+      if (vehicles.length) OR.push({ id: { in: [...new Set(vehicles.map((item) => item.customerId))] } });
+    }
     if (numeric && digits.length >= 8) {
       // Phone numbers are stored with different masks. Raw queries do not
       // receive Prisma's tenant extension, so scope this lookup explicitly.
@@ -282,6 +291,16 @@ export class CustomerRepository {
     return [...new Set(orders.map((order) => order.customerId))];
   }
 
+  async idsDeliveredBefore(since: Date): Promise<string[]> {
+    const orders = await this.prisma.client.serviceOrder.findMany({ where: { status: 'DELIVERED', closedAt: { lt: since }, deletedAt: null }, select: { customerId: true } });
+    return [...new Set(orders.map((order) => order.customerId))];
+  }
+
+  async idsEverDelivered(): Promise<string[]> {
+    const orders = await this.prisma.client.serviceOrder.findMany({ where: { status: 'DELIVERED', deletedAt: null }, select: { customerId: true } });
+    return [...new Set(orders.map((order) => order.customerId))];
+  }
+
   // Just what is needed to recognise a customer that is already registered.
   async allForMatching() {
     return this.prisma.client.customer.findMany({ where: { deletedAt: null }, select: { id: true, name: true, phone: true, document: true } });
@@ -317,7 +336,7 @@ export class CustomerRepository {
     });
   }
 
-  async listByTenant(offset: number, limit: number, search?: string, archived = false, ids?: { in?: string[]; notIn?: string[] }) {
+  async listByTenant(offset: number, limit: number, search?: string, archived = false, ids?: { in?: string[]; notIn?: string[] }, sort?: 'NAME') {
     const where = {
       deletedAt: archived ? { not: null } : null,
       ...(ids ? { id: ids } : {}),
@@ -327,7 +346,7 @@ export class CustomerRepository {
     const [items, total] = await Promise.all([
       this.prisma.client.customer.findMany({
         where,
-        orderBy: archived ? { deletedAt: 'desc' as const } : { createdAt: 'desc' as const },
+        orderBy: archived ? { deletedAt: 'desc' as const } : sort === 'NAME' ? { name: 'asc' as const } : { createdAt: 'desc' as const },
         skip: offset,
         take: limit,
       }),

@@ -16,6 +16,7 @@ import { displayDocument, displayPhone, newServiceOrderHref, phoneDigits, whatsa
 import { useCustomerOverview } from '../hooks/use-customers';
 import { CustomerFormModal } from './CustomerFormModal';
 import { MergeCustomerDialog } from './MergeCustomerDialog';
+import { VehicleFormModal } from '@/features/vehicles/components/VehicleFormModal';
 
 const HISTORY_PAGE_SIZE = 10;
 const dateTime = (value: string) => new Date(value).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
@@ -31,6 +32,7 @@ export function CustomerProfile({ customer }: { customer: CustomerResponse }) {
   const [offset, setOffset] = useState(0);
   const [editing, setEditing] = useState(false);
   const [merging, setMerging] = useState(false);
+  const [addingVehicle, setAddingVehicle] = useState(false);
   // Joining registrations moves a customer's whole history; the server limits it to managers.
   const canMerge = canManage && (user?.role === 'ADMIN' || user?.role === 'MANAGER');
   const history = useServiceOrdersList({ customerId: customer.id, offset, limit: HISTORY_PAGE_SIZE });
@@ -78,11 +80,11 @@ export function CustomerProfile({ customer }: { customer: CustomerResponse }) {
 
       <div className="grid gap-5 lg:grid-cols-2">
         <section aria-label="Veículos" className="rounded-card border border-border bg-card p-5 shadow-sm">
-          <h2 className="flex items-center gap-2 text-sm font-bold text-text"><CarProfile className="size-4" aria-hidden="true" />Veículos ({data.vehicles.length})</h2>
+          <div className="flex items-center justify-between gap-2"><h2 className="flex items-center gap-2 text-sm font-bold text-text"><CarProfile className="size-4" aria-hidden="true" />Veículos ({data.vehicles.length})</h2>{hasPermission(user, 'vehicles.manage') && <Button variant="outline" size="sm" onClick={() => setAddingVehicle(true)}><Plus className="size-3.5" aria-hidden="true" />Adicionar veículo</Button>}</div>
           {data.vehicles.length === 0 && <p className="mt-3 text-sm text-text-muted">Nenhum veículo cadastrado para este cliente.</p>}
           <ul className="mt-3 divide-y divide-border">
             {data.vehicles.map((vehicle) => <li key={vehicle.id} className="flex flex-wrap items-center justify-between gap-2 py-2.5">
-              <div><p className="font-semibold text-text">{vehicle.brand} {vehicle.model}{vehicle.year ? ` · ${vehicle.year}` : ''}</p><p className="text-xs text-text-muted">{vehicle.plate}{vehicle.mileage ? ` · ${vehicle.mileage.toLocaleString('pt-BR')} km` : ''}</p></div>
+              <div><Link href={`/veiculos/${vehicle.id}`} className="font-semibold text-text hover:text-primary hover:underline">{vehicle.brand} {vehicle.model}{vehicle.year ? ` · ${vehicle.year}` : ''}</Link><p className="text-xs text-text-muted">{vehicle.plate}{vehicle.mileage ? ` · ${vehicle.mileage.toLocaleString('pt-BR')} km` : ''}</p></div>
               {canManage && <Button variant="outline" size="sm" asChild><Link href={newServiceOrderHref(customer, { id: vehicle.id, label: `${vehicle.brand} ${vehicle.model} · ${vehicle.plate}` })}><Plus className="size-3.5" aria-hidden="true" />Nova OS</Link></Button>}
             </li>)}
           </ul>
@@ -94,7 +96,7 @@ export function CustomerProfile({ customer }: { customer: CustomerResponse }) {
           <ul className="mt-3 divide-y divide-border">
             {data.upcomingAppointments.map((appointment) => <li key={appointment.id} className="py-2.5"><p className="font-semibold text-text">{dateTime(appointment.startsAt)}</p><p className="text-xs text-text-muted">{appointment.serviceDescription}</p></li>)}
           </ul>
-          <Button variant="ghost" size="sm" className="mt-2" asChild><Link href="/agenda">Abrir a agenda</Link></Button>
+          <Button variant="ghost" size="sm" className="mt-2" asChild><Link href={`/agenda?cliente=${encodeURIComponent(customer.id)}&nome=${encodeURIComponent(customer.name)}`}>Agendar para este cliente</Link></Button>
         </section>
       </div>
     </>}
@@ -108,6 +110,7 @@ export function CustomerProfile({ customer }: { customer: CustomerResponse }) {
     {customer.notes && <section aria-label="Observações" className="rounded-card border border-border bg-card p-5 shadow-sm"><h2 className="text-sm font-bold text-text">Observações internas</h2><p className="mt-2 whitespace-pre-wrap text-sm text-text-muted">{customer.notes}</p></section>}
 
     <CustomerFormModal open={editing} onOpenChange={setEditing} customer={customer} />
+    {hasPermission(user, 'vehicles.manage') && <VehicleFormModal open={addingVehicle} onOpenChange={setAddingVehicle} initialCustomer={{ id: customer.id, name: customer.name }} />}
     {canMerge && <MergeCustomerDialog customer={customer} open={merging} onOpenChange={setMerging} />}
   </div>;
 }

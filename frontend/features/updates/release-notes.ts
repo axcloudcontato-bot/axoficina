@@ -1,6 +1,14 @@
 // This feed is visible to every workshop account. Keep SaaS administration changes out of it.
 export const RELEASE_NOTES = [
   {
+    id: '2026-11-03-clientes-atendimento', date: '2026-11-03', title: 'Clientes mais rápidos de atender',
+    items: [
+      'O cadastro rápido pede só os dados essenciais e abre a ficha do novo cliente. Os dados complementares continuam disponíveis em Mais dados.',
+      'A ficha permite adicionar veículo e agendar com o cliente preenchido. Os filtros agora separam clientes sem primeira visita daqueles que não retornam há mais de seis meses.',
+      'A busca aceita placa, a lista pode ser ordenada por nome, a importação mostra uma prévia do CSV e a exportação avisa quando atinge o limite de registros.',
+    ],
+  },
+  {
     id: '2026-11-03-whatsapp-gerenciado', date: '2026-11-03', title: 'WhatsApp sem chave para configurar',
     items: [
       'A conexão com o WhatsApp agora é mantida pelo Ax Cloud: a tela de WhatsApp não pede mais servidor nem chave de API. Quando o número da oficina estiver liberado, basta ligar o envio.',

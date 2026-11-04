@@ -47,7 +47,9 @@ describe('CustomerProfile', () => {
     expect(screen.getByRole('link', { name: 'OS #41' })).toHaveAttribute('href', '/ordens-de-servico/so-9');
     expect(screen.getByText(/R\$\s75,00/)).toBeInTheDocument();
     expect(screen.getByText('Fiat Uno · 2012')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Fiat Uno · 2012' })).toHaveAttribute('href', '/veiculos/v1');
     expect(screen.getByText('Revisão dos 100 mil')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Agendar para este cliente' }).getAttribute('href')).toContain('cliente=c1');
     const newOrder = screen.getAllByRole('link', { name: /nova os/i }).map((link) => link.getAttribute('href'));
     expect(newOrder.some((href) => href?.includes('vehicleId=v1'))).toBe(true);
   });

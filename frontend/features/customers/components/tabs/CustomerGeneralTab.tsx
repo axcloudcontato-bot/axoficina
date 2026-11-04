@@ -15,9 +15,10 @@ const TYPE_OPTIONS: Array<{ value: CustomerFormValues['type']; label: string }> 
 interface CustomerGeneralTabProps {
   form: UseFormReturn<CustomerFormValues>;
   isEditing: boolean;
+  quick?: boolean;
 }
 
-export function CustomerGeneralTab({ form, isEditing }: CustomerGeneralTabProps) {
+export function CustomerGeneralTab({ form, isEditing, quick = false }: CustomerGeneralTabProps) {
   const type = form.watch('type');
 
   return (
@@ -101,7 +102,7 @@ export function CustomerGeneralTab({ form, isEditing }: CustomerGeneralTabProps)
           )}
         />
       </div>
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      {!quick && <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <FormField
           control={form.control}
           name="email"
@@ -155,7 +156,7 @@ export function CustomerGeneralTab({ form, isEditing }: CustomerGeneralTabProps)
             )}
           />
         )}
-      </div>
+      </div>}
     </div>
   );
 }

@@ -25,6 +25,7 @@ export function useCreateVehicle() {
     mutationFn: (request: CreateVehicleRequest) => vehiclesApi.create(request),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [VEHICLES_LIST_KEY] });
+      queryClient.invalidateQueries({ queryKey: ['customer-overview'] });
     },
   });
 }

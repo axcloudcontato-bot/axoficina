@@ -208,8 +208,11 @@ export class CustomerListDto implements CustomerListRequest {
   @IsOptional() @IsBoolean()
   archived?: boolean;
 
-  @IsOptional() @IsIn(['DEBT', 'INACTIVE'])
+  @IsOptional() @IsIn(['DEBT', 'INACTIVE', 'NEVER_VISITED'])
   filter?: CustomerListRequest['filter'];
+
+  @IsOptional() @IsIn(['NAME'])
+  sort?: CustomerListRequest['sort'];
 
   @IsInt()
   @Min(0)

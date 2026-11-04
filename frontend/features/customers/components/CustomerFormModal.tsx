@@ -21,7 +21,6 @@ import { CustomerAddressTab } from './tabs/CustomerAddressTab';
 import { CustomerContactTab } from './tabs/CustomerContactTab';
 import { CustomerPreferencesTab } from './tabs/CustomerPreferencesTab';
 import { CustomerNotesTab } from './tabs/CustomerNotesTab';
-import { CustomerHistoryTab } from './tabs/CustomerHistoryTab';
 import type { CustomerRegistrationSeed } from '@/lib/registration-seed';
 
 const addressSchema = z.object({
@@ -127,7 +126,9 @@ interface CustomerFormModalProps {
 export function CustomerFormModal({ open, onOpenChange, customer, onCreated, presentation = 'modal', initialValues }: CustomerFormModalProps) {
   const isEditing = Boolean(customer);
   const isGuidedCreate = presentation === 'page' && !isEditing;
+  const isQuickCreate = presentation === 'modal' && !isEditing;
   const [activeTab, setActiveTab] = useState('general');
+  const [showMore, setShowMore] = useState(false);
   const create = useCreateCustomer();
   const update = useUpdateCustomer();
   const isPending = create.isPending || update.isPending;
@@ -146,6 +147,7 @@ export function CustomerFormModal({ open, onOpenChange, customer, onCreated, pre
       return;
     }
     setActiveTab('general');
+    setShowMore(false);
     form.reset(
       customer
         ? {
@@ -291,7 +293,7 @@ export function CustomerFormModal({ open, onOpenChange, customer, onCreated, pre
     <Dialog open={open} modal={presentation !== 'page'} onOpenChange={onOpenChange}>
       <DialogContent
         data-page={presentation === 'page' ? true : undefined}
-        className={presentation === 'page' ? 'max-h-[92vh]' : 'sm:flex sm:h-[min(760px,calc(100dvh-2rem))] sm:max-h-[calc(100dvh-2rem)] sm:max-w-5xl sm:flex-col sm:overflow-hidden lg:max-w-6xl'}
+        className={presentation === 'page' ? 'max-h-[92vh]' : isQuickCreate && !showMore ? 'sm:max-w-xl' : 'sm:flex sm:h-[min(760px,calc(100dvh-2rem))] sm:max-h-[calc(100dvh-2rem)] sm:max-w-5xl sm:flex-col sm:overflow-hidden lg:max-w-6xl'}
       >
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2.5">
@@ -303,13 +305,13 @@ export function CustomerFormModal({ open, onOpenChange, customer, onCreated, pre
           <DialogDescription>
             {isEditing
               ? 'Corrija os dados e remova informações opcionais quando deixarem de ser necessárias.'
-              : 'Cadastre um cliente pessoa física ou jurídica da sua oficina.'}
+              : isQuickCreate ? 'Informe os dados básicos e continue o atendimento pela ficha do cliente.' : 'Cadastre um cliente pessoa física ou jurídica da sua oficina.'}
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit, onInvalid)} className="flex flex-col gap-4 sm:min-h-0 sm:flex-1">
-            <p className="rounded-button bg-muted p-3 text-xs leading-5 text-text-muted">Para o cadastro básico, informe nome e telefone. CPF/CNPJ e os demais dados são opcionais: preencha apenas o necessário ao atendimento ou a uma obrigação legal. Dados de contato não autorizam marketing. <Link href="/privacidade" target="_blank" rel="noopener noreferrer" className="text-primary underline">Política de privacidade</Link>.</p>
-            {isGuidedCreate ? (
+            {!isQuickCreate && <p className="rounded-button bg-muted p-3 text-xs leading-5 text-text-muted">Para o cadastro básico, informe nome e telefone. CPF/CNPJ e os demais dados são opcionais: preencha apenas o necessário ao atendimento ou a uma obrigação legal. Dados de contato não autorizam marketing. <Link href="/privacidade" target="_blank" rel="noopener noreferrer" className="text-primary underline">Política de privacidade</Link>.</p>}
+            {isQuickCreate && !showMore ? <div className="space-y-4 overflow-y-auto"><CustomerGeneralTab form={form} isEditing={false} quick /><p className="text-xs text-text-muted">Nome e telefone são suficientes. Documento é opcional. Dados de contato não autorizam marketing. <Link href="/privacidade" target="_blank" rel="noopener noreferrer" className="text-primary underline">Política de privacidade</Link>.</p></div> : isGuidedCreate ? (
               <div className="flex flex-col gap-5">
                 <ol aria-label="Etapas do cadastro do cliente" className="grid gap-2 sm:grid-cols-5">
                   {GUIDED_STEPS.map((item, index) => {
@@ -332,7 +334,6 @@ export function CustomerFormModal({ open, onOpenChange, customer, onCreated, pre
                 <TabsTrigger className="shrink-0" value="contact">Contato{hasContactErrors && <WarningCircle className="ml-1.5 size-3.5 text-danger" aria-label="com erros" />}</TabsTrigger>
                 <TabsTrigger className="shrink-0" value="preferences">Preferências{hasPreferenceErrors && <WarningCircle className="ml-1.5 size-3.5 text-danger" aria-label="com erros" />}</TabsTrigger>
                 <TabsTrigger className="shrink-0" value="notes">Observações{hasNotesErrors && <WarningCircle className="ml-1.5 size-3.5 text-danger" aria-label="com erros" />}</TabsTrigger>
-                <TabsTrigger className="shrink-0" value="history">Histórico</TabsTrigger>
               </TabsList>
               <div className="h-[380px] overflow-y-auto pr-1 pt-1 sm:h-auto sm:min-h-0 sm:flex-1">
                 <TabsContent value="general">
@@ -350,15 +351,13 @@ export function CustomerFormModal({ open, onOpenChange, customer, onCreated, pre
                 <TabsContent value="notes">
                   <CustomerNotesTab form={form} />
                 </TabsContent>
-                <TabsContent value="history">
-                  <CustomerHistoryTab customer={customer} />
-                </TabsContent>
               </div>
             </Tabs>}
             <DialogFooter className="gap-2 border-t border-border pt-4 sm:gap-2">
               <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={isPending || checking}>
                 Cancelar
               </Button>
+              {isQuickCreate && <Button type="button" variant="outline" onClick={() => { setShowMore((value) => !value); setActiveTab('general'); }} disabled={isPending || checking}>{showMore ? 'Dados básicos' : 'Mais dados'}</Button>}
               {isGuidedCreate && activeTab !== 'general' && <Button type="button" variant="outline" onClick={goToPreviousGuidedStep} disabled={isPending}><CaretLeft className="size-4" aria-hidden="true" /> Voltar</Button>}
               {isGuidedCreate && activeTab !== 'notes' ? <Button type="button" onClick={(event) => { event.preventDefault(); void goToNextGuidedStep(); }} disabled={isPending} className="sm:min-w-32">Próximo <CaretRight className="size-4" aria-hidden="true" /></Button> : <Button type="submit" disabled={isPending || checking} className="sm:min-w-40">
                 {isPending || checking ? 'Salvando...' : isEditing ? 'Salvar alterações' : 'Cadastrar cliente'}

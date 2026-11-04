@@ -312,7 +312,7 @@ export class CustomerManager {
     const ids = await this.filterIds(request.filter, now);
     // A filter that matches nobody is an empty page, not an unfiltered one.
     if (ids && ids.in && ids.in.length === 0) return { items: [], total: 0, offset: request.offset, limit: request.limit, hasMore: false };
-    const { items, total } = await this.customerRepository.listByTenant(request.offset, request.limit, request.search, request.archived === true, ids);
+    const { items, total } = await this.customerRepository.listByTenant(request.offset, request.limit, request.search, request.archived === true, ids, request.sort);
     const stats = await this.statsFor(items.map((customer) => customer.id), viewer);
 
     return {
@@ -352,7 +352,13 @@ export class CustomerManager {
 
   private async filterIds(filter: CustomerListRequest['filter'], now: Date): Promise<{ in?: string[]; notIn?: string[] } | undefined> {
     if (filter === 'DEBT') return { in: await this.customerRepository.idsWithDebt() };
-    if (filter === 'INACTIVE') return { notIn: await this.customerRepository.idsDeliveredSince(new Date(now.getTime() - INACTIVE_AFTER_DAYS * 86_400_000)) };
+    if (filter === 'INACTIVE') {
+      const since = new Date(now.getTime() - INACTIVE_AFTER_DAYS * 86_400_000);
+      const [older, recent] = await Promise.all([this.customerRepository.idsDeliveredBefore(since), this.customerRepository.idsDeliveredSince(since)]);
+      const recentIds = new Set(recent);
+      return { in: older.filter((id) => !recentIds.has(id)) };
+    }
+    if (filter === 'NEVER_VISITED') return { notIn: await this.customerRepository.idsEverDelivered() };
     return undefined;
   }
 

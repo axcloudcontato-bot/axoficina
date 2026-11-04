@@ -54,8 +54,10 @@ export interface CustomerListRequest extends PageableRequest {
   search?: string;
   // The archived customers instead of the active ones.
   archived?: boolean;
-  // DEBT: has installments still to receive. INACTIVE: no delivered order in the last 6 months (or ever).
-  filter?: 'DEBT' | 'INACTIVE';
+  // DEBT: pending installments. INACTIVE: last delivered order over 6 months ago.
+  // NEVER_VISITED: no delivered order yet.
+  filter?: 'DEBT' | 'INACTIVE' | 'NEVER_VISITED';
+  sort?: 'NAME';
 }
 
 export interface CustomerOverviewRequest {

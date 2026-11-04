@@ -20,6 +20,8 @@ function buildManager() {
     upcomingAppointmentsOf: jest.fn().mockResolvedValue([]),
     idsWithDebt: jest.fn().mockResolvedValue([]),
     idsDeliveredSince: jest.fn().mockResolvedValue([]),
+    idsDeliveredBefore: jest.fn().mockResolvedValue([]),
+    idsEverDelivered: jest.fn().mockResolvedValue([]),
     allForMatching: jest.fn().mockResolvedValue([]),
     mergeInto: jest.fn().mockResolvedValue({ movedVehicles: 2, movedServiceOrders: 5 }),
     archivedById: jest.fn(),
@@ -246,7 +248,7 @@ describe('CustomerManager', () => {
 
       const result = await deps.manager.list({ offset: 0, limit: 20, search: 'João' });
 
-      expect(deps.customerRepository.listByTenant).toHaveBeenCalledWith(0, 20, 'João', false, undefined);
+      expect(deps.customerRepository.listByTenant).toHaveBeenCalledWith(0, 20, 'João', false, undefined, undefined);
       expect(result.total).toBe(1);
       expect(result.hasMore).toBe(false);
     });
@@ -283,7 +285,7 @@ describe('CustomerManager', () => {
       const deps = buildManager();
       deps.customerRepository.listByTenant.mockResolvedValue({ items: [{ ...baseCustomer, deletedAt: new Date('2026-10-01T00:00:00Z') }], total: 1 });
       const result = await deps.manager.list({ offset: 0, limit: 20, archived: true });
-      expect(deps.customerRepository.listByTenant).toHaveBeenCalledWith(0, 20, undefined, true, undefined);
+      expect(deps.customerRepository.listByTenant).toHaveBeenCalledWith(0, 20, undefined, true, undefined, undefined);
       expect(result.items[0].archivedAt).toBe('2026-10-01T00:00:00.000Z');
     });
 
@@ -348,7 +350,7 @@ describe('CustomerManager', () => {
       deps.customerRepository.idsWithDebt.mockResolvedValue(['customer-1']);
       deps.customerRepository.listByTenant.mockResolvedValue({ items: [baseCustomer], total: 1 });
       await deps.manager.list({ offset: 0, limit: 20, filter: 'DEBT' });
-      expect(deps.customerRepository.listByTenant).toHaveBeenCalledWith(0, 20, undefined, false, { in: ['customer-1'] });
+      expect(deps.customerRepository.listByTenant).toHaveBeenCalledWith(0, 20, undefined, false, { in: ['customer-1'] }, undefined);
       deps.customerRepository.listByTenant.mockClear();
       deps.customerRepository.idsWithDebt.mockResolvedValue([]);
       const empty = await deps.manager.list({ offset: 0, limit: 20, filter: 'DEBT' });
@@ -356,14 +358,31 @@ describe('CustomerManager', () => {
       expect(deps.customerRepository.listByTenant).not.toHaveBeenCalled();
     });
 
-    it('filters customers with no delivery in the last 6 months, counting from the given day', async () => {
+    it('filters customers whose last delivery was over 6 months ago', async () => {
       const deps = buildManager();
       deps.customerRepository.idsDeliveredSince.mockResolvedValue(['customer-9']);
+      deps.customerRepository.idsDeliveredBefore.mockResolvedValue(['customer-1', 'customer-9']);
       deps.customerRepository.listByTenant.mockResolvedValue({ items: [], total: 0 });
       const now = new Date('2026-10-29T12:00:00Z');
       await deps.manager.list({ offset: 0, limit: 20, filter: 'INACTIVE' }, undefined, now);
       expect(deps.customerRepository.idsDeliveredSince).toHaveBeenCalledWith(new Date('2026-05-02T12:00:00Z'));
-      expect(deps.customerRepository.listByTenant).toHaveBeenCalledWith(0, 20, undefined, false, { notIn: ['customer-9'] });
+      expect(deps.customerRepository.idsDeliveredBefore).toHaveBeenCalledWith(new Date('2026-05-02T12:00:00Z'));
+      expect(deps.customerRepository.listByTenant).toHaveBeenCalledWith(0, 20, undefined, false, { in: ['customer-1'] }, undefined);
+    });
+
+    it('separates customers who have never had a delivered order', async () => {
+      const deps = buildManager();
+      deps.customerRepository.idsEverDelivered.mockResolvedValue(['customer-1']);
+      deps.customerRepository.listByTenant.mockResolvedValue({ items: [], total: 0 });
+      await deps.manager.list({ offset: 0, limit: 20, filter: 'NEVER_VISITED' });
+      expect(deps.customerRepository.listByTenant).toHaveBeenCalledWith(0, 20, undefined, false, { notIn: ['customer-1'] }, undefined);
+    });
+
+    it('passes name sorting to the repository before pagination', async () => {
+      const deps = buildManager();
+      deps.customerRepository.listByTenant.mockResolvedValue({ items: [], total: 0 });
+      await deps.manager.list({ offset: 20, limit: 20, sort: 'NAME' });
+      expect(deps.customerRepository.listByTenant).toHaveBeenCalledWith(20, 20, undefined, false, undefined, 'NAME');
     });
 
     it('builds the customer page: vehicles, open orders, appointments and, for price viewers, spend and what is owed', async () => {

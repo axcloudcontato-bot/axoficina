@@ -28,7 +28,7 @@ export function DeleteCustomerDialog({ open, onOpenChange, customer }: DeleteCus
       { id: customer.id },
       {
         onSuccess: () => {
-          toast.success(`Cliente ${customer.name} removido.`);
+          toast.success(`Cliente ${customer.name} arquivado.`);
           onOpenChange(false);
         },
         onError: (error) => toast.error(extractErrorMessage(error)),
@@ -48,7 +48,7 @@ export function DeleteCustomerDialog({ open, onOpenChange, customer }: DeleteCus
           </DialogTitle>
           <DialogDescription>
             Tem certeza que quer arquivar <strong>{customer?.name}</strong>? O histórico de veículos e ordens de serviço
-            não é afetado, mas o cliente deixa de aparecer na lista. Dá para reativar depois em "Arquivados".
+            não é afetado, mas o cliente deixa de aparecer na lista. Dá para reativar depois em Arquivados.
             Isso não elimina os dados pessoais. Para solicitar exclusão pela LGPD, utilize a Central de privacidade nas configurações.
           </DialogDescription>
         </DialogHeader>

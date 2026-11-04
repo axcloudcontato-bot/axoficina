@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { DownloadSimple, MagnifyingGlass, UploadSimple } from '@phosphor-icons/react';
 import { toast } from 'sonner';
 import type { CustomerListItemResponse } from '@oficina/contracts';
@@ -25,6 +26,7 @@ const EXPORT_PAGE_SIZE = 100;
 const EXPORT_MAX = 5000;
 
 export default function CustomersPage() {
+  const router = useRouter();
   const user = useAuthStore((state) => state.user);
   // The mechanic can look customers up (to see who owns a vehicle) but not manage them. The backend
   // is the source of truth (`customers.manage`); this mirrors the same permission to hide the buttons.
@@ -33,7 +35,8 @@ export default function CustomersPage() {
   const [offset, setOffset] = useState(0);
   const [searchInput, setSearchInput] = useState('');
   const [archived, setArchived] = useState(false);
-  const [filter, setFilter] = useState<'' | 'DEBT' | 'INACTIVE'>('');
+  const [filter, setFilter] = useState<'' | 'DEBT' | 'INACTIVE' | 'NEVER_VISITED'>('');
+  const [sort, setSort] = useState<'' | 'NAME'>('');
   const [formModalOpen, setFormModalOpen] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState<CustomerListItemResponse | undefined>(undefined);
   const [deletingCustomer, setDeletingCustomer] = useState<CustomerListItemResponse | null>(null);
@@ -43,7 +46,7 @@ export default function CustomersPage() {
 
   // The list follows the box once typing pauses, not on every keystroke.
   const search = useDebouncedValue(searchInput.trim(), 300);
-  const { data, isLoading, isError, refetch } = useCustomersList({ offset, limit: PAGE_SIZE, search: search || undefined, archived: archived || undefined, filter: archived || !filter ? undefined : filter });
+  const { data, isLoading, isError, refetch } = useCustomersList({ offset, limit: PAGE_SIZE, search: search || undefined, archived: archived || undefined, filter: archived || !filter ? undefined : filter, sort: archived || !sort ? undefined : sort });
 
   function openCreateModal() {
     setEditingCustomer(undefined);
@@ -60,14 +63,17 @@ export default function CustomersPage() {
     setExporting(true);
     try {
       const items: CustomerListItemResponse[] = [];
+      let truncated = false;
       for (let from = 0; from < EXPORT_MAX; from += EXPORT_PAGE_SIZE) {
-        const page = await customersApi.list({ offset: from, limit: EXPORT_PAGE_SIZE, search: search || undefined, archived: archived || undefined, filter: archived || !filter ? undefined : filter });
+        const page = await customersApi.list({ offset: from, limit: EXPORT_PAGE_SIZE, search: search || undefined, archived: archived || undefined, filter: archived || !filter ? undefined : filter, sort: archived || !sort ? undefined : sort });
         items.push(...page.items);
         if (!page.hasMore) break;
+        if (from + EXPORT_PAGE_SIZE >= EXPORT_MAX) truncated = true;
       }
       if (items.length === 0) return void toast.info('Não há clientes para exportar com essa busca.');
       downloadCsv(`clientes-${new Date().toISOString().slice(0, 10)}.csv`, customersToRows(items));
-      toast.success(`${items.length} ${items.length === 1 ? 'cliente exportado' : 'clientes exportados'}.`);
+      if (truncated) toast.warning(`O arquivo contém os primeiros ${items.length} clientes. Refine a busca para exportar os demais.`);
+      else toast.success(`${items.length} ${items.length === 1 ? 'cliente exportado' : 'clientes exportados'}.`);
     } catch (error) {
       toast.error(extractErrorMessage(error));
     } finally {
@@ -94,7 +100,7 @@ export default function CustomersPage() {
           <MagnifyingGlass className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-text-muted" />
           <Input
             aria-label="Buscar clientes"
-            placeholder="Buscar por nome, telefone ou documento..."
+            placeholder="Nome, telefone, documento ou placa..."
             value={searchInput}
             onChange={(event) => {
               setSearchInput(event.target.value);
@@ -104,7 +110,8 @@ export default function CustomersPage() {
           />
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          {!archived && <select aria-label="Filtrar clientes" className="h-10 rounded-button border border-input bg-card px-3 text-sm" value={filter} onChange={(event) => { setFilter(event.target.value as typeof filter); setOffset(0); }}><option value="">Todos os clientes</option><option value="DEBT">Com valor a receber</option><option value="INACTIVE">Sem visita há mais de 6 meses</option></select>}
+          {!archived && <select aria-label="Filtrar clientes" className="h-10 rounded-button border border-input bg-card px-3 text-sm" value={filter} onChange={(event) => { setFilter(event.target.value as typeof filter); setOffset(0); }}><option value="">Todos os clientes</option><option value="DEBT">Com valor a receber</option><option value="INACTIVE">Sem visita há mais de 6 meses</option><option value="NEVER_VISITED">Sem primeira visita</option></select>}
+          {!archived && <select aria-label="Ordenar clientes" className="h-10 rounded-button border border-input bg-card px-3 text-sm" value={sort} onChange={(event) => { setSort(event.target.value as typeof sort); setOffset(0); }}><option value="">Mais recentes</option><option value="NAME">Nome A–Z</option></select>}
           {canManage && (
             <div role="tablist" aria-label="Situação do cadastro" className={segmentedList}>
               {[{ value: false, label: 'Ativos' }, { value: true, label: 'Arquivados' }].map((option) => (
@@ -115,8 +122,8 @@ export default function CustomersPage() {
             </div>
           )}
           {canManage && <Button variant="outline" onClick={exportList} disabled={exporting}><DownloadSimple className="size-4" aria-hidden="true" />{exporting ? 'Exportando...' : 'Exportar CSV'}</Button>}
-          {canManage && !archived && <Button variant="outline" onClick={() => setImporting(true)}><UploadSimple className="size-4" aria-hidden="true" />Importar planilha</Button>}
-          {canManage && <Button onClick={openCreateModal}>Novo cliente</Button>}
+          {canManage && !archived && <Button variant="outline" onClick={() => setImporting(true)}><UploadSimple className="size-4" aria-hidden="true" />Importar CSV</Button>}
+          {canManage && !archived && <Button onClick={openCreateModal}>Novo cliente</Button>}
         </div>
       </div>
 
@@ -130,7 +137,7 @@ export default function CustomersPage() {
         onDelete={setDeletingCustomer}
         archived={archived}
         onRestore={restoreCustomer}
-        searching={Boolean(search) || Boolean(filter)}
+        searching={Boolean(search) || (!archived && Boolean(filter))}
       />
 
       {data && data.total > PAGE_SIZE && (
@@ -148,7 +155,7 @@ export default function CustomersPage() {
       )}
 
       <CustomerImportModal open={importing} onOpenChange={setImporting} />
-      <CustomerFormModal open={formModalOpen} onOpenChange={setFormModalOpen} customer={editingCustomer} />
+      <CustomerFormModal open={formModalOpen} onOpenChange={setFormModalOpen} customer={editingCustomer} onCreated={(customer) => router.push(`/clientes/${customer.id}`)} />
       <DeleteCustomerDialog open={Boolean(deletingCustomer)} onOpenChange={(open) => !open && setDeletingCustomer(null)} customer={deletingCustomer} />
     </div>
   );

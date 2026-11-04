@@ -41,6 +41,7 @@ export function useUpdateCustomer() {
     mutationFn: (request: UpdateCustomerRequest) => customersApi.update(request),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [CUSTOMERS_LIST_KEY] });
+      queryClient.invalidateQueries({ queryKey: ['customer'] });
     },
   });
 }

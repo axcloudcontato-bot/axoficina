@@ -75,6 +75,7 @@ describe('CustomerFormModal', () => {
     vi.stubGlobal('fetch', fetchMock);
     const user = userEvent.setup();
     renderWithClient(<CustomerFormModal open onOpenChange={() => {}} />);
+    await user.click(screen.getByRole('button', { name: 'Mais dados' }));
     await user.click(screen.getByRole('tab', { name: /endereço/i }));
     await user.type(screen.getByLabelText(/^cep$/i), '01001000');
     expect(fetchMock).not.toHaveBeenCalled();
@@ -178,6 +179,7 @@ describe('CustomerFormModal', () => {
     await user.type(screen.getByLabelText(/^nome$/i), 'Maria Souza');
     await user.type(screen.getByLabelText(/telefone/i), '11988887777');
 
+    await user.click(screen.getByRole('button', { name: 'Mais dados' }));
     await user.click(screen.getByRole('tab', { name: /endereço/i }));
     await user.type(screen.getByLabelText(/^rua$/i), 'Rua das Flores');
     await user.type(screen.getByLabelText(/^cidade$/i), 'São Paulo');
@@ -217,6 +219,7 @@ describe('CustomerFormModal', () => {
 
     await user.type(screen.getByLabelText(/^nome$/i), 'Maria Souza');
 
+    await user.click(screen.getByRole('button', { name: 'Mais dados' }));
     await user.click(screen.getByRole('tab', { name: /contato/i }));
     await user.type(screen.getByLabelText(/^nome \(opcional\)$/i), 'José Souza');
 
@@ -236,6 +239,7 @@ describe('CustomerFormModal', () => {
     await user.type(screen.getByLabelText(/^nome$/i), 'Maria Souza');
     await user.type(screen.getByLabelText(/telefone/i), '11988887777');
 
+    await user.click(screen.getByRole('button', { name: 'Mais dados' }));
     await user.click(screen.getByRole('tab', { name: /contato/i }));
     await user.type(screen.getByLabelText(/^nome \(opcional\)$/i), 'José Souza');
     await user.type(screen.getByLabelText(/relação/i), 'Cônjuge');
@@ -249,94 +253,11 @@ describe('CustomerFormModal', () => {
     );
   });
 
-  it('disables the Histórico tab content in create mode without calling the API', async () => {
+  it('keeps history on the customer profile, outside the edit form', async () => {
     const user = userEvent.setup();
-    renderWithClient(<CustomerFormModal open onOpenChange={() => {}} />);
-
-    await user.click(screen.getByRole('tab', { name: /histórico/i }));
-
-    expect(await screen.findByText(/disponível depois de salvar o cliente/i)).toBeInTheDocument();
+    renderWithClient(<CustomerFormModal open onOpenChange={() => {}} customer={editingCustomer} />);
+    expect(screen.queryByRole('tab', { name: /histórico/i })).not.toBeInTheDocument();
     expect(serviceOrdersApi.list).not.toHaveBeenCalled();
-  });
-
-  it('loads the service order history in edit mode', async () => {
-    vi.mocked(serviceOrdersApi.list).mockResolvedValue({
-      items: [
-        {
-          id: 'so-1',
-          tenantId: 't1',
-          orderNumber: 1,
-          customerId: 'c1',
-          customerName: 'João da Silva',
-          customerPhone: '11999999999',
-          vehicleId: 'v1',
-          vehicleBrand: 'Fiat',
-          vehicleModel: 'Uno',
-          vehiclePlate: 'ABC1D23',
-          status: 'DELIVERED',
-          openedAt: '2026-01-01T00:00:00Z',
-          createdAt: '2026-01-01T00:00:00Z',
-          totalAmountCents: 0, discountCents: 0,
-          receivedAmountCents: 0,
-          outstandingAmountCents: 0,
-          paymentStatus: 'AWAITING_PAYMENT',
-        },
-      ],
-      total: 1,
-      offset: 0,
-      limit: 20,
-      hasMore: false,
-    });
-    const user = userEvent.setup();
-    renderWithClient(<CustomerFormModal open onOpenChange={() => {}} customer={editingCustomer} />);
-
-    await user.click(screen.getByRole('tab', { name: /histórico/i }));
-
-    await waitFor(() => expect(serviceOrdersApi.list).toHaveBeenCalledWith(expect.objectContaining({ customerId: 'c1' })));
-    expect(await screen.findByText(/Fiat Uno/i)).toBeInTheDocument();
-  });
-
-  it('paginates the Histórico tab for a customer with more than one page of service orders (Edge Case 4)', async () => {
-    const soItem = (id: string) => ({
-      id,
-      tenantId: 't1',
-      orderNumber: 2,
-      customerId: 'c1',
-      customerName: 'João da Silva',
-      customerPhone: '11999999999',
-      vehicleId: 'v1',
-      vehicleBrand: 'Fiat',
-      vehicleModel: 'Uno',
-      vehiclePlate: 'ABC1D23',
-      status: 'DELIVERED' as const,
-      openedAt: '2026-01-01T00:00:00Z',
-      createdAt: '2026-01-01T00:00:00Z',
-      totalAmountCents: 0, discountCents: 0,
-      receivedAmountCents: 0,
-      outstandingAmountCents: 0,
-      paymentStatus: 'AWAITING_PAYMENT' as const,
-    });
-    vi.mocked(serviceOrdersApi.list).mockImplementation(async (request) => ({
-      items: [soItem(request.offset === 0 ? 'so-page1' : 'so-page2')],
-      total: 25,
-      offset: request.offset,
-      limit: 20,
-      hasMore: request.offset === 0,
-    }));
-    const user = userEvent.setup();
-    renderWithClient(<CustomerFormModal open onOpenChange={() => {}} customer={editingCustomer} />);
-
-    await user.click(screen.getByRole('tab', { name: /histórico/i }));
-    await waitFor(() => expect(serviceOrdersApi.list).toHaveBeenCalledWith(expect.objectContaining({ offset: 0 })));
-
-    const nextButton = screen.getByRole('button', { name: /próxima/i });
-    expect(screen.getByRole('button', { name: /anterior/i })).toBeDisabled();
-    await user.click(nextButton);
-
-    await waitFor(() => expect(serviceOrdersApi.list).toHaveBeenCalledWith(expect.objectContaining({ offset: 20 })));
-    expect(screen.getByRole('button', { name: /próxima/i })).toBeDisabled();
-    // Clicking pagination inside the tab must never submit the outer customer form.
-    expect(customersApi.update).not.toHaveBeenCalled();
   });
 
   describe('possible duplicate', () => {
@@ -388,6 +309,7 @@ describe('CustomerFormModal', () => {
     renderWithClient(<CustomerFormModal open onOpenChange={() => {}} />);
     await user.type(screen.getByLabelText(/^nome$/i), 'Maria Souza');
     await user.type(screen.getByLabelText(/telefone/i), '11999998888');
+    await user.click(screen.getByRole('button', { name: 'Mais dados' }));
     await user.click(screen.getByRole('tab', { name: /preferências/i }));
     await user.click(screen.getByLabelText(/autorizou os lembretes/i));
     expect(screen.getByText('Como o cliente autorizou?')).toBeInTheDocument();

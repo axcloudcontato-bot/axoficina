@@ -72,10 +72,8 @@ export function CustomersTable({ items, isLoading, isError, onRetry, canManage, 
       <Table>
         <TableHeader>
           <TableRow className="hover:bg-transparent">
-            <TableHead>Nome</TableHead>
-            <TableHead>Documento</TableHead>
+            <TableHead>Cliente</TableHead>
             <TableHead>Telefone</TableHead>
-            <TableHead>Tipo</TableHead>
             {!archived && <TableHead>Veículos</TableHead>}
             {!archived && <TableHead>Última visita</TableHead>}
             {!archived && showSpend && <TableHead className="text-right">Total gasto</TableHead>}
@@ -86,12 +84,8 @@ export function CustomersTable({ items, isLoading, isError, onRetry, canManage, 
         <TableBody>
           {items.map((customer) => (
             <TableRow key={customer.id}>
-              <TableCell className="font-medium text-text">{archived ? customer.name : <Link href={`/clientes/${customer.id}`} className="hover:text-primary hover:underline">{customer.name}</Link>}</TableCell>
-              <TableCell className="text-text-muted">{displayDocument(customer.document)}</TableCell>
+              <TableCell><div className="space-y-1"><div className="font-medium text-text">{archived ? customer.name : <Link href={`/clientes/${customer.id}`} className="hover:text-primary hover:underline">{customer.name}</Link>}</div><div className="flex flex-wrap items-center gap-2 text-xs text-text-muted"><Badge variant="outline">{TYPE_LABELS[customer.type] ?? customer.type}</Badge><span>{displayDocument(customer.document)}</span></div></div></TableCell>
               <TableCell className="text-text-muted">{displayPhone(customer.phone)}</TableCell>
-              <TableCell>
-                <Badge variant="outline">{TYPE_LABELS[customer.type] ?? customer.type}</Badge>
-              </TableCell>
               {!archived && <TableCell className="text-text-muted">{customer.stats?.plates.length ? customer.stats.plates.slice(0, 2).join(', ') + (customer.stats.plates.length > 2 ? ` +${customer.stats.plates.length - 2}` : '') : '—'}</TableCell>}
               {!archived && <TableCell className="text-text-muted">{customer.stats?.lastVisitAt ? dateOnly(customer.stats.lastVisitAt) : 'Nunca'}</TableCell>}
               {!archived && showSpend && <TableCell className="text-right tabular-nums text-text-muted">{customer.stats?.totalSpentCents !== undefined ? formatCurrencyBRL(customer.stats.totalSpentCents) : '—'}</TableCell>}
