@@ -150,6 +150,25 @@ export class WaAkgService {
     let result: unknown;
     try { result = await response.json(); } catch { throw new BadRequestException('A URL pública não retornou JSON válido do Ofix.'); }
     if (!isRecord(result) || result.received !== true || result.recorded !== false) throw new BadRequestException('A URL respondeu, mas não confirmou o teste do webhook do Ofix. Confira o domínio e o caminho completos.');
+    // A direct call proves only that our public endpoint works. A real reply also
+    // needs a webhook registered for this exact session in the gateway.
+    const connection = (await this.getConnection(tenantId, false))!;
+    const hooksResponse = await this.request(connection, `/webhooks/${encodeURIComponent(connection.sessionId)}`);
+    const hooks = isRecord(hooksResponse) && hooksResponse.status === true && Array.isArray(hooksResponse.data) ? hooksResponse.data : null;
+    if (!hooks) throw new BadGatewayException('O WA-AKG não retornou os webhooks da sessão. Confira o acesso da chave de API.');
+    const matchingHooks = hooks.filter((item: unknown): item is Record<string, unknown> => isRecord(item) && item.url === webhookUrl && item.isActive === true);
+    if (!matchingHooks.length) throw new BadRequestException('Nenhum webhook ativo desta sessão aponta para a URL exibida. Cadastre ou ative o webhook no WA-AKG.');
+    const eventHooks = matchingHooks.filter((item) => Array.isArray(item.events) && item.events.some((event: unknown) => event === 'message.received' || event === '*'));
+    if (!eventHooks.length) throw new BadRequestException('O webhook da sessão não recebe o evento message.received. Adicione esse evento no WA-AKG.');
+    const expectedSecret = this.secrets.decrypt(tenant.waAkgWebhookSecret);
+    const hook = eventHooks.find((item) => typeof item.secret === 'string' && item.secret === expectedSecret);
+    if (!hook) throw new BadRequestException('O segredo do webhook no WA-AKG difere do segredo salvo nesta oficina. Configure o mesmo valor nos dois lados.');
+    if (typeof hook.id !== 'string') throw new BadGatewayException('O WA-AKG retornou um webhook sem identificador válido.');
+    const gatewayTest = await this.request(connection, `/webhooks/${encodeURIComponent(connection.sessionId)}/${encodeURIComponent(hook.id)}/test`, { method: 'POST' });
+    const delivery = isRecord(gatewayTest) && isRecord(gatewayTest.data) ? gatewayTest.data : null;
+    let gatewayResponse: unknown;
+    try { gatewayResponse = typeof delivery?.responseBody === 'string' ? JSON.parse(delivery.responseBody) : null; } catch { gatewayResponse = null; }
+    if (!delivery || delivery.success !== true || delivery.statusCode !== 200 || !isRecord(gatewayResponse) || gatewayResponse.received !== true || gatewayResponse.recorded !== false) throw new BadRequestException('O teste enviado pelo WA-AKG não foi confirmado pelo Ofix. Confira a URL, o segredo e os logs do webhook no WA-AKG.');
     await this.tenants.updateSettings(tenantId, { waWebhookTestedAt: testedAt, waWebhookTestSuccessAt: testedAt, waWebhookTestError: null });
     return { reachable: true, webhookUrl };
   }

@@ -114,7 +114,10 @@ describe('WA-AKG connection', () => {
   });
 
   it('validates the public callback using a signed test without sending a client message', async () => {
-    const fetchMock = jest.spyOn(global, 'fetch').mockResolvedValue(new Response(JSON.stringify({ received: true, recorded: false }), { status: 200, headers: { 'content-type': 'application/json' } }));
+    const fetchMock = jest.spyOn(global, 'fetch')
+      .mockResolvedValueOnce(new Response(JSON.stringify({ received: true, recorded: false }), { status: 200, headers: { 'content-type': 'application/json' } }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ status: true, data: [{ id: 'hook-1', url: 'https://api.oficina.example/api/v1/webhooks/wa-akg/tenant-a', isActive: true, events: ['message.received'], secret }] }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ status: true, data: { success: true, statusCode: 200, responseBody: JSON.stringify({ received: true, recorded: false }) } }), { status: 200 }));
     const { service } = setup();
     await expect(service.testWebhook('tenant-a')).resolves.toMatchObject({ reachable: true });
     const [url, init] = fetchMock.mock.calls[0];
@@ -122,7 +125,32 @@ describe('WA-AKG connection', () => {
     const body = init!.body as string;
     expect(JSON.parse(body).event).toBe('test');
     expect(init!.headers).toMatchObject({ 'X-Webhook-Signature': `sha256=${createHmac('sha256', secret).update(body).digest('hex')}` });
-    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock.mock.calls[1][0]).toBe('https://chat.axcloud.com.br/api/webhooks/oficina');
+    expect(fetchMock.mock.calls[2][0]).toBe('https://chat.axcloud.com.br/api/webhooks/oficina/hook-1/test');
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+  });
+
+  it('does not report success when the gateway has no webhook for this workshop', async () => {
+    jest.spyOn(global, 'fetch')
+      .mockResolvedValueOnce(new Response(JSON.stringify({ received: true, recorded: false }), { status: 200, headers: { 'content-type': 'application/json' } }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ status: true, data: [] }), { status: 200 }));
+    const { service, tenants } = setup();
+    await expect(service.testWebhook('tenant-a')).rejects.toThrow('Nenhum webhook ativo');
+    expect(tenants.updateSettings).toHaveBeenCalledWith('tenant-a', expect.objectContaining({ waWebhookTestError: expect.stringContaining('Nenhum webhook ativo') }));
+  });
+
+  it('rejects a webhook whose event or secret cannot receive valid responses', async () => {
+    const { service } = setup();
+    const callback = new Response(JSON.stringify({ received: true, recorded: false }), { status: 200, headers: { 'content-type': 'application/json' } });
+    const hook = { id: 'hook-1', url: 'https://api.oficina.example/api/v1/webhooks/wa-akg/tenant-a', isActive: true, events: ['message.sent'], secret };
+    const fetchMock = jest.spyOn(global, 'fetch')
+      .mockResolvedValueOnce(callback)
+      .mockResolvedValueOnce(new Response(JSON.stringify({ status: true, data: [hook] }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ received: true, recorded: false }), { status: 200, headers: { 'content-type': 'application/json' } }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ status: true, data: [{ ...hook, events: ['message.received'], secret: 'outro-segredo' }] }), { status: 200 }));
+    await expect(service.testWebhook('tenant-a')).rejects.toThrow('message.received');
+    await expect(service.testWebhook('tenant-a')).rejects.toThrow('segredo');
+    expect(fetchMock).toHaveBeenCalledTimes(4);
   });
 
   it('rejects HTTP 200 HTML instead of reporting a successful webhook', async () => {

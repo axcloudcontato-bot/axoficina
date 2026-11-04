@@ -78,7 +78,7 @@ export function WhatsAppSettingsForm() {
     try {
       await testWebhook.mutateAsync();
       await queryClient.invalidateQueries({ queryKey: SETTINGS_KEY });
-      setWebhookStatus('Recebimento validado: a URL pública alcançou o webhook desta oficina e confirmou a assinatura. Confira se essa mesma URL, segredo e evento message.received estão cadastrados no WA-AKG.');
+      setWebhookStatus('Recebimento validado: o webhook está ativo no WA-AKG para esta sessão, com a URL, o evento e o segredo corretos. O teste enviado pelo WA-AKG foi confirmado pelo Ofix.');
     } catch (error) { setWebhookStatus(extractErrorMessage(error, 'Não foi possível validar o recebimento.')); }
   }
 
@@ -115,14 +115,14 @@ export function WhatsAppSettingsForm() {
       <Button type="button" variant="outline" size="sm" className="mt-2" onClick={() => copy(settings.data.webhookUrl)}>Copiar URL do webhook</Button>
       <Button type="button" variant="outline" size="sm" className="ml-2 mt-2" onClick={checkWebhook} disabled={!canManage || busy || dirty || !settings.data.enabled}>{testWebhook.isPending ? 'Validando...' : 'Testar recebimento'}</Button>
       {webhookStatus && <p role="status" className="mt-3 text-sm">{webhookStatus}</p>}
-      <p className="mt-3 text-xs text-text-muted">Se aparecer localhost, configure o endereço público da API antes de cadastrar o webhook. O teste de recebimento exige a integração ativa e verifica a resposta JSON do Ofix; uma página HTML com status 200 não confirma o webhook. Use WA-AKG 1.7.0 ou superior com sessão conectada. Cada resposta fica vinculada à pergunta e à OS; mensagens digitadas livremente não são consideradas escolhas de botão.</p>
+      <p className="mt-3 text-xs text-text-muted">Se aparecer localhost, configure o endereço público da API antes de cadastrar o webhook. O teste confere o cadastro do webhook nesta sessão e envia um evento pelo WA-AKG até o Ofix; uma página HTML com status 200 não confirma o recebimento. Use WA-AKG 1.7.0 ou superior com sessão conectada. Cada resposta fica vinculada à pergunta e à OS; mensagens digitadas livremente não são consideradas escolhas de botão.</p>
     </section>
     <section className="rounded-card border border-primary/20 bg-primary-subtle p-5">
-      <h2 className="font-bold">Verificar conexão</h2><p className="mt-2 text-sm text-text-muted">Confere a chave e a sessão, sem enviar mensagens. A confirmação do webhook pode ser feita pelo teste do próprio WA-AKG.</p>
+      <h2 className="font-bold">Verificar conexão</h2><p className="mt-2 text-sm text-text-muted">Confere a chave e a sessão, sem enviar mensagens aos clientes. O teste de recebimento acima também verifica o webhook cadastrado no WA-AKG.</p>
       <Button variant="outline" className="mt-4" onClick={test} disabled={!canManage || busy || dirty}>{testConnection.isPending ? 'Verificando...' : 'Testar conexão'}</Button>
       {connectionStatus && <p role="status" className="mt-3 text-sm">{connectionStatus}</p>}
       {settings.data.connectionTestAt && <p className="mt-2 text-xs text-text-muted">Último teste da conexão: {new Date(settings.data.connectionTestAt).toLocaleString('pt-BR')} · {settings.data.connectionTestError ? `falhou — ${settings.data.connectionTestError}` : 'sessão conectada'}. Último sucesso: {settings.data.connectionSuccessAt ? new Date(settings.data.connectionSuccessAt).toLocaleString('pt-BR') : 'nenhum'}.</p>}
-      {settings.data.webhookTestAt && <p className="mt-2 text-xs text-text-muted">Último teste do recebimento: {new Date(settings.data.webhookTestAt).toLocaleString('pt-BR')} · {settings.data.webhookTestError ? `falhou — ${settings.data.webhookTestError}` : 'URL validada'}. Último sucesso: {settings.data.webhookSuccessAt ? new Date(settings.data.webhookSuccessAt).toLocaleString('pt-BR') : 'nenhum'}.</p>}
+      {settings.data.webhookTestAt && <p className="mt-2 text-xs text-text-muted">Último teste do recebimento: {new Date(settings.data.webhookTestAt).toLocaleString('pt-BR')} · {settings.data.webhookTestError ? `falhou — ${settings.data.webhookTestError}` : 'webhook do WA-AKG validado'}. Último sucesso: {settings.data.webhookSuccessAt ? new Date(settings.data.webhookSuccessAt).toLocaleString('pt-BR') : 'nenhum'}.</p>}
     </section>
   </div>;
 }
