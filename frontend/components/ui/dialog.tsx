@@ -40,8 +40,8 @@ const DialogContent = React.forwardRef<
       ref={ref}
       className={cn(
         pagePresentation
-          ? "relative mx-auto grid w-full max-w-6xl gap-4 rounded-card border border-border bg-card p-4 shadow-sm sm:p-5"
-          : "fixed inset-x-0 bottom-0 z-50 grid max-h-[calc(100dvh-1rem)] w-full gap-4 overflow-y-auto rounded-t-dialog border bg-background p-5 shadow-lg duration-normal data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom motion-reduce:transition-none sm:left-[50%] sm:top-[50%] sm:bottom-auto sm:max-w-lg sm:translate-x-[-50%] sm:translate-y-[-50%] sm:rounded-dialog sm:p-6 sm:data-[state=closed]:fade-out-0 sm:data-[state=open]:fade-in-0 sm:data-[state=closed]:zoom-out-95 sm:data-[state=open]:zoom-in-95",
+          ? "dialog-form-fields relative mx-auto grid w-full max-w-6xl gap-4 rounded-card border border-border bg-card p-4 shadow-sm sm:p-5"
+          : "dialog-form-fields fixed inset-x-0 bottom-0 z-50 grid max-h-[calc(100dvh-1rem)] w-full gap-4 overflow-y-auto rounded-t-dialog border bg-surface p-5 shadow-lg duration-normal data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom motion-reduce:transition-none sm:left-[50%] sm:top-[50%] sm:bottom-auto sm:max-w-lg sm:translate-x-[-50%] sm:translate-y-[-50%] sm:rounded-dialog sm:p-6 sm:data-[state=closed]:fade-out-0 sm:data-[state=open]:fade-in-0 sm:data-[state=closed]:zoom-out-95 sm:data-[state=open]:zoom-in-95",
         className
       )}
       data-page={pagePresentation || undefined}

@@ -67,6 +67,7 @@
     --popover: var(--slate-0);
     --popover-foreground: var(--foreground);
     --muted: #e8ecf0;
+    --field-fill: #eef2f6;
     --muted-foreground: #526070;
     --subtle-foreground: #7b8794;
     --border: #dde3e9;
@@ -137,6 +138,7 @@
     --popover: #1a2631;
     --popover-foreground: var(--foreground);
     --muted: var(--brand-gray);
+    --field-fill: #25313d;
     --muted-foreground: #a3afbb;
     --subtle-foreground: #7b8794;
     --border: var(--brand-gray);
@@ -358,4 +360,13 @@ select:not([multiple]):not([size]):disabled {
 select option {
   background-color: var(--popover);
   color: var(--popover-foreground);
+}
+
+/* Modais usam uma superfície limpa; o preenchimento suave identifica campos editáveis. */
+.dialog-form-fields :is(input:not([type='checkbox']):not([type='radio']), textarea, select, [role='combobox']):not(:disabled):not([readonly]):not([aria-disabled='true']):not([aria-readonly='true']) {
+  background-color: var(--field-fill);
+}
+
+.dialog-form-fields :is(input:not([type='checkbox']):not([type='radio']), textarea, select, [role='combobox']):focus {
+  background-color: var(--surface);
 }
