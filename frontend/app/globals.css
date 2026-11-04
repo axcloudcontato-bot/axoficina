@@ -67,7 +67,7 @@
     --popover: var(--slate-0);
     --popover-foreground: var(--foreground);
     --muted: #e8ecf0;
-    --field-fill: #eef2f6;
+    --dialog-field-border: #aebbc7;
     --muted-foreground: #526070;
     --subtle-foreground: #7b8794;
     --border: #dde3e9;
@@ -138,7 +138,7 @@
     --popover: #1a2631;
     --popover-foreground: var(--foreground);
     --muted: var(--brand-gray);
-    --field-fill: #25313d;
+    --dialog-field-border: #536575;
     --muted-foreground: #a3afbb;
     --subtle-foreground: #7b8794;
     --border: var(--brand-gray);
@@ -362,11 +362,12 @@ select option {
   color: var(--popover-foreground);
 }
 
-/* Modais usam uma superfície limpa; o preenchimento suave identifica campos editáveis. */
-.dialog-form-fields :is(input:not([type='checkbox']):not([type='radio']), textarea, select, [role='combobox']):not(:disabled):not([readonly]):not([aria-disabled='true']):not([aria-readonly='true']) {
-  background-color: var(--field-fill);
+/* Campos brancos e contorno nítido, mantendo desativados visualmente distintos. */
+.dialog-form-fields :is(input:not([type='checkbox']):not([type='radio']), textarea, select, [role='combobox']):not(:disabled):not([aria-disabled='true']) {
+  background-color: var(--card);
+  border-color: var(--dialog-field-border);
 }
 
-.dialog-form-fields :is(input:not([type='checkbox']):not([type='radio']), textarea, select, [role='combobox']):focus {
-  background-color: var(--surface);
+.dialog-form-fields :is(input:not([type='checkbox']):not([type='radio']), textarea, select, [role='combobox'])[aria-invalid='true'] {
+  border-color: var(--danger);
 }

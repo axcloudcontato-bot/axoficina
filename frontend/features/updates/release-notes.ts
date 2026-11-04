@@ -1,9 +1,9 @@
 // This feed is visible to every workshop account. Keep SaaS administration changes out of it.
 export const RELEASE_NOTES = [
   {
-    id: '2026-11-04-modais-campos-destacados', date: '2026-11-04', title: 'Campos mais visíveis nos formulários',
+    id: '2026-11-04-modais-campos-destacados', date: '2026-11-04', title: 'Campos brancos com contorno nos formulários',
     items: [
-      'Os modais usam fundo branco e campos editáveis em cinza suave. Ao selecionar um campo, ele clareia para mostrar onde você está digitando.',
+      'Os modais usam fundo branco e campos também brancos, com bordas mais visíveis e foco destacado. Campos desativados continuam diferentes dos editáveis.',
     ],
   },
   {
