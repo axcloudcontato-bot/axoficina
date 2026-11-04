@@ -40,7 +40,7 @@ export function CustomerAddressTab({ form }: CustomerAddressTabProps) {
   return (
     <div className="flex flex-col gap-4">
       <p className="text-xs leading-5 text-text-muted">Endereço é opcional. Ao clicar em Consultar CEP, o CEP e dados técnicos da conexão serão enviados ao ViaCEP. Você pode preencher tudo manualmente.</p>
-      <div className="grid grid-cols-1 items-end gap-4 sm:grid-cols-4">
+      <div className="grid grid-cols-1 items-start gap-4 sm:grid-cols-4">
         <FormField
           control={form.control}
           name="address.zipCode"
@@ -75,7 +75,7 @@ export function CustomerAddressTab({ form }: CustomerAddressTabProps) {
             </FormItem>
           )}
         />
-        <Button type="button" variant="outline" className="self-end sm:mb-1" disabled={digits.length !== 8 || lookup.isFetching} onClick={() => { setRequestedCep(digits); if (requestedCep === digits) void lookup.refetch(); }}>Consultar CEP</Button>
+        <Button type="button" variant="outline" className="sm:mt-7" disabled={digits.length !== 8 || lookup.isFetching} onClick={() => { setRequestedCep(digits); if (requestedCep === digits) void lookup.refetch(); }}>Consultar CEP</Button>
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
