@@ -152,10 +152,18 @@ describe('Customer message buttons (HTTP + PostgreSQL)', () => {
     const config = app.get(ConfigService);
     const oldApiUrl = config.get<string>('PUBLIC_API_URL');
     config.set('PUBLIC_API_URL', await app.getUrl());
+    const webhookUrl = `${await app.getUrl()}/api/v1/webhooks/wa-akg/${owner.tenantId}`;
+    const originalFetch = global.fetch;
+    const gatewayFetch = jest.spyOn(global, 'fetch').mockImplementation(async (input, init) => {
+      const url = String(input);
+      if (url === 'https://chat.axcloud.com.br/api/webhooks/oficina') return new Response(JSON.stringify({ status: true, data: [{ id: 'hook-1', url: webhookUrl, isActive: true, events: ['message.received'], secret: webhookSecret }] }), { status: 200 });
+      if (url === 'https://chat.axcloud.com.br/api/webhooks/oficina/hook-1/test') return new Response(JSON.stringify({ status: true, data: { success: true, statusCode: 200, responseBody: JSON.stringify({ received: true, recorded: false }) } }), { status: 200 });
+      return originalFetch(input, init);
+    });
     try {
       const callbackTest = await request(app.getHttpServer()).post('/api/v1/settings/whatsapp/webhook/test').set('Authorization', `Bearer ${owner.token}`).expect(200);
       expect(callbackTest.body.reachable).toBe(true);
-    } finally { config.set('PUBLIC_API_URL', oldApiUrl); }
+    } finally { gatewayFetch.mockRestore(); config.set('PUBLIC_API_URL', oldApiUrl); }
     const fetchMock = jest.spyOn(global, 'fetch').mockResolvedValue(new Response(JSON.stringify({ status: true, data: { key: { id: 'native-message-1' } } }), { status: 200 }));
     let sent: request.Response;
     try {
