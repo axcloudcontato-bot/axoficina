@@ -3,10 +3,36 @@
 import * as React from 'react';
 import { CaretDown, CaretLeft, CaretRight, CaretUp } from '@phosphor-icons/react';
 import { ptBR } from 'date-fns/locale';
-import { DayPicker } from 'react-day-picker';
+import { DayPicker, type DropdownProps } from 'react-day-picker';
 import { cn } from '@/lib/utils';
 
 export type CalendarProps = React.ComponentProps<typeof DayPicker>;
+
+function CalendarDropdown({ options = [], value, onChange, disabled, 'aria-label': ariaLabel }: DropdownProps) {
+  const [open, setOpen] = React.useState(false);
+  const rootRef = React.useRef<HTMLDivElement>(null);
+  const selectedRef = React.useRef<HTMLButtonElement>(null);
+  const selected = options.find((option) => option.value === Number(value));
+
+  React.useEffect(() => {
+    if (!open) return;
+    const closeOutside = (event: PointerEvent) => {
+      if (!rootRef.current?.contains(event.target as Node)) setOpen(false);
+    };
+    document.addEventListener('pointerdown', closeOutside);
+    selectedRef.current?.scrollIntoView?.({ block: 'nearest' });
+    return () => document.removeEventListener('pointerdown', closeOutside);
+  }, [open]);
+
+  return <div ref={rootRef} className="relative inline-flex shrink-0">
+    <button type="button" aria-label={ariaLabel} aria-expanded={open} aria-haspopup="listbox" disabled={disabled} className="inline-flex items-center gap-1 rounded-button border border-input bg-card px-2 py-1 text-xs text-foreground hover:border-border-strong disabled:opacity-50" onClick={() => setOpen((current) => !current)} onKeyDown={(event) => { if (event.key === 'Escape' && open) { event.stopPropagation(); setOpen(false); } }}>
+      {selected?.label}<CaretDown className="size-4" aria-hidden="true" />
+    </button>
+    {open && <div role="listbox" aria-label={ariaLabel} className="absolute left-0 top-full z-50 mt-1 max-h-56 min-w-full overflow-y-auto rounded-button border border-border bg-card p-1 shadow-lg">
+      {options.map((option) => <button key={option.value} ref={option.value === Number(value) ? selectedRef : undefined} type="button" role="option" aria-selected={option.value === Number(value)} disabled={option.disabled} className="block w-full whitespace-nowrap rounded-button px-3 py-1.5 text-left text-sm text-foreground hover:bg-muted focus-visible:bg-muted focus-visible:outline-none disabled:opacity-40" onClick={() => { onChange?.({ target: { value: String(option.value) } } as React.ChangeEvent<HTMLSelectElement>); setOpen(false); }}>{option.label}</button>)}
+    </div>}
+  </div>;
+}
 
 /** The shared calendar for individual dates and the blue range selection supplied by the user. */
 export function Calendar({ className, classNames, showOutsideDays = true, ...props }: CalendarProps) {
@@ -42,6 +68,7 @@ export function Calendar({ className, classNames, showOutsideDays = true, ...pro
       ...classNames,
     }}
     components={{
+      Dropdown: CalendarDropdown,
       Chevron: ({ orientation, className: chevronClass }) => {
         const Icon = orientation === 'left' ? CaretLeft : orientation === 'right' ? CaretRight : orientation === 'up' ? CaretUp : CaretDown;
         return <Icon className={cn('size-4', chevronClass)} aria-hidden="true" />;

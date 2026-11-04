@@ -31,6 +31,23 @@ describe('shared calendar', () => {
     expect(screen.getByLabelText('Início')).toHaveValue('2026-06-17T14:30');
   });
 
+  it('changes month and year without closing the date picker', async () => {
+    const user = userEvent.setup();
+    function Form() {
+      const [value, setValue] = useState('2026-06-04T14:30');
+      return <Input type="datetime-local" aria-label="Início" value={value} onChange={(event) => setValue(event.target.value)} />;
+    }
+    render(<Form />);
+    await user.click(screen.getByRole('button', { name: 'Abrir calendário' }));
+    await user.click(await screen.findByText('junho', { selector: 'button' }));
+    await user.click(screen.getByRole('option', { name: 'novembro' }));
+    expect(screen.getByText('2026', { selector: 'button' })).toBeVisible();
+    await user.click(screen.getByText('2026', { selector: 'button' }));
+    await user.click(screen.getByRole('option', { name: '2027' }));
+    await user.click(screen.getByRole('button', { name: /17 de novembro de 2027/i }));
+    expect(screen.getByLabelText('Início')).toHaveValue('2027-11-17T14:30');
+  });
+
   it('selects a real date interval through the range calendar', async () => {
     const user = userEvent.setup();
     function Filter() {
