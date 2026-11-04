@@ -37,12 +37,16 @@ describe('CustomersTable', () => {
     expect(screen.getByText(/nenhum cliente ainda/i)).toBeInTheDocument();
   });
 
-  it('renders customer rows with action buttons when canManage is true', () => {
+  it('keeps the frequent action visible and puts administration in a menu', async () => {
+    const user = userEvent.setup();
     render(<CustomersTable items={[customer]} isLoading={false} isError={false} onRetry={noop} canManage onEdit={noop} onDelete={noop} />);
 
     expect(screen.getByText('João da Silva')).toBeInTheDocument();
     expect(screen.getByText('111.444.777-35')).toBeInTheDocument();
     expect(screen.getByText('(11) 99999-8888')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /nova os para joão/i })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /editar/i })).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: /mais ações para joão/i }));
     expect(screen.getByRole('button', { name: /editar/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /arquivar/i })).toBeInTheDocument();
   });
@@ -63,9 +67,11 @@ describe('CustomersTable', () => {
     const user = userEvent.setup();
     render(<CustomersTable items={[customer]} isLoading={false} isError={false} onRetry={noop} canManage onEdit={onEdit} onDelete={onDelete} />);
 
+    await user.click(screen.getByRole('button', { name: /mais ações para joão/i }));
     await user.click(screen.getByRole('button', { name: /editar/i }));
     expect(onEdit).toHaveBeenCalledWith(customer);
 
+    await user.click(screen.getByRole('button', { name: /mais ações para joão/i }));
     await user.click(screen.getByRole('button', { name: /arquivar/i }));
     expect(onDelete).toHaveBeenCalledWith(customer);
   });
@@ -97,13 +103,15 @@ describe('CustomersTable', () => {
     expect(onRestore).toHaveBeenCalledWith(expect.objectContaining({ id: 'c1' }));
   });
 
-  it('shows plates, last visit and spend, links the name to the customer page, and offers WhatsApp and a new order', () => {
+  it('shows plates, last visit and spend, links the name to the customer page, and offers WhatsApp and a new order', async () => {
+    const user = userEvent.setup();
     const withStats: CustomerListItemResponse = { ...customer, stats: { plates: ['ABC1D23', 'XYZ9K88', 'QWE4R56'], orderCount: 4, lastVisitAt: '2026-09-10T12:00:00Z', totalSpentCents: 123450 } };
     render(<CustomersTable items={[withStats, { ...customer, id: 'c9', name: 'Novo Cliente', stats: { plates: [], orderCount: 0, totalSpentCents: 0 } }]} isLoading={false} isError={false} onRetry={noop} canManage onEdit={noop} onDelete={noop} />);
     expect(screen.getByRole('link', { name: 'João da Silva' })).toHaveAttribute('href', '/clientes/c1');
     expect(screen.getByText('ABC1D23, XYZ9K88 +1')).toBeInTheDocument();
     expect(screen.getByText(/R\$\s1\.234,50/)).toBeInTheDocument();
     expect(screen.getByText('Nunca')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: /mais ações para joão/i }));
     expect(screen.getByRole('link', { name: 'WhatsApp de João da Silva' })).toHaveAttribute('href', 'https://wa.me/5511999998888');
     expect(screen.getByRole('link', { name: 'Nova OS para João da Silva' }).getAttribute('href')).toContain('customerId=c1');
   });

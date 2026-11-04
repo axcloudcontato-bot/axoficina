@@ -10,20 +10,17 @@ import { Input } from '@/components/ui/input';
 import { segmentedItem, segmentedList } from '@/components/ui/segmented';
 import { hasPermission } from '@/features/auth/permissions';
 import { CustomerImportModal } from '@/features/customers/components/CustomerImportModal';
-import { customersToRows } from '@/features/customers/customer-csv';
 import { customersApi } from '@/features/customers/api/customers-api';
 import { CustomerFormModal } from '@/features/customers/components/CustomerFormModal';
 import { CustomersTable } from '@/features/customers/components/CustomersTable';
 import { DeleteCustomerDialog } from '@/features/customers/components/DeleteCustomerDialog';
 import { useCustomersList, useRestoreCustomer } from '@/features/customers/hooks/use-customers';
 import { extractErrorMessage } from '@/lib/api/client';
-import { downloadCsv } from '@/lib/csv';
+import { downloadBlob } from '@/lib/csv';
 import { useDebouncedValue } from '@/lib/use-debounced-value';
 import { useAuthStore } from '@/stores/auth-store';
 
 const PAGE_SIZE = 20;
-const EXPORT_PAGE_SIZE = 100;
-const EXPORT_MAX = 5000;
 
 export default function CustomersPage() {
   const router = useRouter();
@@ -31,12 +28,14 @@ export default function CustomersPage() {
   // The mechanic can look customers up (to see who owns a vehicle) but not manage them. The backend
   // is the source of truth (`customers.manage`); this mirrors the same permission to hide the buttons.
   const canManage = hasPermission(user, 'customers.manage');
+  const canViewPrices = hasPermission(user, 'service_orders.prices');
 
   const [offset, setOffset] = useState(0);
   const [searchInput, setSearchInput] = useState('');
   const [archived, setArchived] = useState(false);
   const [filter, setFilter] = useState<'' | 'DEBT' | 'INACTIVE' | 'NEVER_VISITED'>('');
-  const [sort, setSort] = useState<'' | 'NAME'>('');
+  const [sort, setSort] = useState<'' | 'NAME' | 'LAST_VISIT' | 'RECEIVABLE'>('');
+  const effectiveSort = sort === 'RECEIVABLE' && !canViewPrices ? '' : sort;
   const [formModalOpen, setFormModalOpen] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState<CustomerListItemResponse | undefined>(undefined);
   const [deletingCustomer, setDeletingCustomer] = useState<CustomerListItemResponse | null>(null);
@@ -46,7 +45,7 @@ export default function CustomersPage() {
 
   // The list follows the box once typing pauses, not on every keystroke.
   const search = useDebouncedValue(searchInput.trim(), 300);
-  const { data, isLoading, isError, refetch } = useCustomersList({ offset, limit: PAGE_SIZE, search: search || undefined, archived: archived || undefined, filter: archived || !filter ? undefined : filter, sort: archived || !sort ? undefined : sort });
+  const { data, isLoading, isError, refetch } = useCustomersList({ offset, limit: PAGE_SIZE, search: search || undefined, archived: archived || undefined, filter: archived || !filter ? undefined : filter, sort: archived || !effectiveSort ? undefined : effectiveSort });
 
   function openCreateModal() {
     setEditingCustomer(undefined);
@@ -62,18 +61,10 @@ export default function CustomersPage() {
   async function exportList() {
     setExporting(true);
     try {
-      const items: CustomerListItemResponse[] = [];
-      let truncated = false;
-      for (let from = 0; from < EXPORT_MAX; from += EXPORT_PAGE_SIZE) {
-        const page = await customersApi.list({ offset: from, limit: EXPORT_PAGE_SIZE, search: search || undefined, archived: archived || undefined, filter: archived || !filter ? undefined : filter, sort: archived || !sort ? undefined : sort });
-        items.push(...page.items);
-        if (!page.hasMore) break;
-        if (from + EXPORT_PAGE_SIZE >= EXPORT_MAX) truncated = true;
-      }
-      if (items.length === 0) return void toast.info('Não há clientes para exportar com essa busca.');
-      downloadCsv(`clientes-${new Date().toISOString().slice(0, 10)}.csv`, customersToRows(items));
-      if (truncated) toast.warning(`O arquivo contém os primeiros ${items.length} clientes. Refine a busca para exportar os demais.`);
-      else toast.success(`${items.length} ${items.length === 1 ? 'cliente exportado' : 'clientes exportados'}.`);
+      if (data?.total === 0) return void toast.info('Não há clientes para exportar com essa busca.');
+      const blob = await customersApi.exportCsv({ search: search || undefined, archived: archived || undefined, filter: archived || !filter ? undefined : filter, sort: archived || !effectiveSort ? undefined : effectiveSort });
+      downloadBlob(`clientes-${new Date().toISOString().slice(0, 10)}.csv`, blob);
+      toast.success('Exportação completa de clientes iniciada.');
     } catch (error) {
       toast.error(extractErrorMessage(error));
     } finally {
@@ -111,7 +102,7 @@ export default function CustomersPage() {
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {!archived && <select aria-label="Filtrar clientes" className="h-10 rounded-button border border-input bg-card px-3 text-sm" value={filter} onChange={(event) => { setFilter(event.target.value as typeof filter); setOffset(0); }}><option value="">Todos os clientes</option><option value="DEBT">Com valor a receber</option><option value="INACTIVE">Sem visita há mais de 6 meses</option><option value="NEVER_VISITED">Sem primeira visita</option></select>}
-          {!archived && <select aria-label="Ordenar clientes" className="h-10 rounded-button border border-input bg-card px-3 text-sm" value={sort} onChange={(event) => { setSort(event.target.value as typeof sort); setOffset(0); }}><option value="">Mais recentes</option><option value="NAME">Nome A–Z</option></select>}
+          {!archived && <select aria-label="Ordenar clientes" className="h-10 rounded-button border border-input bg-card px-3 text-sm" value={effectiveSort} onChange={(event) => { setSort(event.target.value as typeof sort); setOffset(0); }}><option value="">Cadastro recente</option><option value="NAME">Nome A–Z</option><option value="LAST_VISIT">Última visita recente</option>{canViewPrices && <option value="RECEIVABLE">Maior valor a receber</option>}</select>}
           {canManage && (
             <div role="tablist" aria-label="Situação do cadastro" className={segmentedList}>
               {[{ value: false, label: 'Ativos' }, { value: true, label: 'Arquivados' }].map((option) => (

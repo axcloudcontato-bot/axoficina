@@ -3,7 +3,7 @@
 > Gerado a partir dos controllers do backend. Não edite à mão: rode `UPDATE_API_DOCS=1 pnpm --filter @oficina/backend exec jest src/shared/api-docs`
 > depois de mudar uma rota ou seus decorators. O teste `api-docs.spec.ts` falha se este arquivo ficar desatualizado.
 
-São 162 endpoints em 25 controllers.
+São 163 endpoints em 25 controllers.
 
 ## Convenções
 
@@ -91,6 +91,7 @@ São 162 endpoints em 25 controllers.
 | POST | `/api/v1/customers/archive-impact` | `archiveImpact` | ADMIN, MANAGER, FRONT_DESK | customers.manage |  |
 | GET | `/api/v1/customer` | `get` | ADMIN, MANAGER, FRONT_DESK, MECHANIC | customers.view |  |
 | POST | `/api/v1/customers/list` | `list` | ADMIN, MANAGER, FRONT_DESK, MECHANIC | customers.view |  |
+| POST | `/api/v1/customers/export` | `export` | ADMIN, MANAGER, FRONT_DESK | customers.manage |  |
 | POST | `/api/v1/customers/overview` | `overview` | ADMIN, MANAGER, FRONT_DESK, MECHANIC | customers.view |  |
 
 ## modules/fipe/controllers/fipe.controller.ts

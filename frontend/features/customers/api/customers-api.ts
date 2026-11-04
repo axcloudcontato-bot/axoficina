@@ -65,4 +65,9 @@ export const customersApi = {
     const response = await apiClient.post<PaginationData<CustomerListItemResponse>>('/api/v1/customers/list', request);
     return response.data;
   },
+
+  async exportCsv(request: Omit<CustomerListRequest, 'offset' | 'limit'>): Promise<Blob> {
+    const response = await apiClient.post<Blob>('/api/v1/customers/export', request, { responseType: 'blob' });
+    return response.data;
+  },
 };

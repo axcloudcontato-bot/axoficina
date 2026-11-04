@@ -74,7 +74,7 @@ export interface CustomerOverviewResponse {
   openServiceOrders: Array<{ id: string; orderNumber: number; status: string; vehicleLabel: string }>;
   upcomingAppointments: Array<{ id: string; startsAt: string; status: string; serviceDescription: string }>;
   // Only for people who may see prices.
-  money?: { totalSpentCents: number; averageTicketCents: number; pendingCents: number };
+  money?: { totalSpentCents: number; averageTicketCents: number; pendingCents: number; pendingOrders: Array<{ id: string; orderNumber: number; pendingCents: number }> };
 }
 
 // What archiving a customer would leave hanging, so the person decides knowing it.

@@ -31,6 +31,7 @@ describe('Reception search (HTTP + PostgreSQL)', () => {
   afterAll(async () => {
     if (prisma && tenants.length) {
       const where = { tenantId: { in: tenants } };
+      await prisma.unscoped.serviceOrderInstallment.deleteMany({ where });
       await prisma.unscoped.serviceOrderStatusHistory.deleteMany({ where: { serviceOrderId: { in: workshops.map((workshop) => workshop.orderId) } } });
       await prisma.unscoped.serviceOrder.deleteMany({ where }); await prisma.unscoped.vehicle.deleteMany({ where });
       await prisma.unscoped.customer.deleteMany({ where }); await prisma.unscoped.user.deleteMany({ where });
@@ -61,5 +62,22 @@ describe('Reception search (HTTP + PostgreSQL)', () => {
     }
     const oversized = await request(app.getHttpServer()).post('/api/v1/service-orders/list').set('Authorization', `Bearer ${workshop.token}`).send({ offset: 0, limit: 20, search: '9'.repeat(30) }).expect(200);
     expect(oversized.body.items).toEqual([]);
+  });
+  it('sorts the whole customer list by visit and receivable, and exports only this workshop', async () => {
+    const workshop = workshops[0];
+    const tenantId = tenants[0];
+    const second = await request(app.getHttpServer()).post('/api/v1/customers').set('Authorization', `Bearer ${workshop.token}`).send({ type: 'PF', document: generateValidCpf(), name: 'Cliente sem visita', phone: '11977776666' }).expect(201);
+    await prisma.unscoped.serviceOrder.update({ where: { id: workshop.orderId }, data: { status: 'DELIVERED', closedAt: new Date('2026-10-01T12:00:00Z') } });
+    await prisma.unscoped.serviceOrderInstallment.create({ data: { tenantId, serviceOrderId: workshop.orderId, installmentNumber: 1, installmentCount: 1, amountCents: 7500, dueAt: new Date('2026-11-10T12:00:00Z') } });
+    for (const sort of ['LAST_VISIT', 'RECEIVABLE']) {
+      const found = await request(app.getHttpServer()).post('/api/v1/customers/list').set('Authorization', `Bearer ${workshop.token}`).send({ offset: 0, limit: 1, sort }).expect(200);
+      expect(found.body.total).toBe(2);
+      expect(found.body.items.map((item: { id: string }) => item.id)).toEqual([workshop.customerId]);
+    }
+    const exportResponse = await request(app.getHttpServer()).post('/api/v1/customers/export').set('Authorization', `Bearer ${workshop.token}`).send({ search: 'abc1234', sort: 'RECEIVABLE' }).expect(200);
+    expect(exportResponse.headers['content-type']).toContain('text/csv');
+    expect(exportResponse.text).toContain('Cliente 0');
+    expect(exportResponse.text).not.toContain('Cliente sem visita');
+    expect(second.body.customer.id).toBeDefined();
   });
 });

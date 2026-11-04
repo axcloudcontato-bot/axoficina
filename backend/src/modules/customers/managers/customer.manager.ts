@@ -1,4 +1,6 @@
-import { HttpStatus, Injectable } from '@nestjs/common';
+import { ForbiddenException, HttpStatus, Injectable } from '@nestjs/common';
+import { AsyncResource } from 'node:async_hooks';
+import { Readable } from 'node:stream';
 import type {
   CreateCustomerRequest,
   CustomerArchiveImpactResponse,
@@ -26,6 +28,7 @@ import { CustomerRepository } from '../repositories/customer.repository';
 import { whatsappRecipient } from '../../settings/services/whatsapp-recipient';
 import { summarizeHistory } from '../services/customer-stats';
 import type { UpdateCustomerInput } from '../repositories/customer.repository';
+import { csvCell } from '../../settings/services/workshop-account.service';
 
 const normalizeName = (value: string) => value.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase().replace(/\s+/g, ' ').trim();
 // Same number whatever the mask or the country code.
@@ -309,10 +312,14 @@ export class CustomerManager {
   }
 
   async list(request: CustomerListRequest, viewer: CustomerViewer = NO_PRICES, now = new Date()): Promise<PaginationData<CustomerListItemResponse>> {
-    const ids = await this.filterIds(request.filter, now);
+    if (request.sort === 'RECEIVABLE' && !viewer.canViewPrices) throw new ForbiddenException('Sem permissão para ordenar por valores a receber.');
+    const ranked = !request.archived && (request.sort === 'LAST_VISIT' || request.sort === 'RECEIVABLE');
+    const ids = ranked ? undefined : await this.filterIds(request.filter, now);
     // A filter that matches nobody is an empty page, not an unfiltered one.
     if (ids && ids.in && ids.in.length === 0) return { items: [], total: 0, offset: request.offset, limit: request.limit, hasMore: false };
-    const { items, total } = await this.customerRepository.listByTenant(request.offset, request.limit, request.search, request.archived === true, ids, request.sort);
+    const { items, total } = ranked
+      ? await this.customerRepository.listRanked(request.offset, request.limit, request.search, request.filter, request.sort as 'LAST_VISIT' | 'RECEIVABLE', now)
+      : await this.customerRepository.listByTenant(request.offset, request.limit, request.search, request.archived === true, ids, request.sort === 'NAME' ? 'NAME' : undefined);
     const stats = await this.statsFor(items.map((customer) => customer.id), viewer);
 
     return {
@@ -322,6 +329,31 @@ export class CustomerManager {
       limit: request.limit,
       hasMore: request.offset + items.length < total,
     };
+  }
+
+  async exportCsv(actingUser: AuthenticatedUser, request: Omit<CustomerListRequest, 'offset' | 'limit'>, viewer: CustomerViewer): Promise<{ filename: string; stream: Readable }> {
+    const header = ['Tipo', 'Nome', 'Documento', 'Telefone', 'E-mail', 'Veículos', 'Ordens de serviço', 'Última visita', ...(viewer.canViewPrices ? ['Total gasto (R$)'] : []), 'Cadastrado em'];
+    const limit = 100;
+    const firstPage = await this.list({ ...request, offset: 0, limit }, viewer);
+    // Node consumes the stream after the request handler returns. Bind each read to the authenticated tenant context.
+    const listPage = AsyncResource.bind((offset: number) => this.list({ ...request, offset, limit }, viewer));
+    await this.auditLog.record({ tenantId: actingUser.tenantId, userId: actingUser.userId, action: 'customer.exported', entity: 'customer', entityId: actingUser.tenantId, metadata: { category: 'customers' } });
+    const chunks = async function* () {
+      yield `\uFEFF${header.map(csvCell).join(';')}\r\n`;
+      let offset = 0;
+      let page = firstPage;
+      while (true) {
+        for (const customer of page.items) {
+          const stats = customer.stats;
+          const row = [customer.type, customer.name, customer.document, customer.phone, customer.email ?? '', (stats?.plates ?? []).join(' '), stats?.orderCount ?? 0, stats?.lastVisitAt ? new Date(stats.lastVisitAt).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }) : '', ...(viewer.canViewPrices ? [stats?.totalSpentCents === undefined ? '' : (stats.totalSpentCents / 100).toFixed(2).replace('.', ',')] : []), new Date(customer.createdAt).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })];
+          yield `${row.map(csvCell).join(';')}\r\n`;
+        }
+        if (!page.hasMore || page.items.length === 0) break;
+        offset += page.items.length;
+        page = await listPage(offset);
+      }
+    };
+    return { filename: `clientes-${new Date().toISOString().slice(0, 10)}.csv`, stream: Readable.from(chunks()) };
   }
 
   // Everything the customer's page needs in one call. Money is left out unless the viewer may see prices.
@@ -335,6 +367,7 @@ export class CustomerManager {
     ]);
     const summary = summarizeHistory(history.orders, history.items);
     const labelOf = new Map(vehicles.map((vehicle) => [vehicle.id, `${vehicle.brand} ${vehicle.model} · ${vehicle.plate}`]));
+    const pendingOrders = viewer.canViewPrices ? await this.customerRepository.pendingOrdersOf(id) : [];
     return {
       vehicles: vehicles.map((vehicle) => ({ id: vehicle.id, brand: vehicle.brand, model: vehicle.model, plate: vehicle.plate, year: vehicle.year ?? undefined, mileage: vehicle.mileage ?? undefined })),
       orderCount: summary.orderCount,
@@ -345,7 +378,8 @@ export class CustomerManager {
       ...(viewer.canViewPrices ? { money: {
         totalSpentCents: summary.totalSpentCents,
         averageTicketCents: summary.deliveredCount ? Math.round(summary.totalSpentCents / summary.deliveredCount) : 0,
-        pendingCents: await this.customerRepository.pendingCentsOf(id),
+        pendingCents: pendingOrders.reduce((sum, order) => sum + order.pendingCents, 0),
+        pendingOrders,
       } } : {}),
     };
   }

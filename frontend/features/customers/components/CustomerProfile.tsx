@@ -40,6 +40,7 @@ export function CustomerProfile({ customer }: { customer: CustomerResponse }) {
   const money = data?.money;
   const phone = phoneDigits(customer.phone);
   const hasPending = Boolean(data && (data.openServiceOrders.length > 0 || (money?.pendingCents ?? 0) > 0));
+  const followupDue = Boolean(data?.lastVisitAt && data.openServiceOrders.length === 0 && data.upcomingAppointments.length === 0 && Date.now() - Date.parse(data.lastVisitAt) > 180 * 86_400_000);
 
   return <div className="flex flex-col gap-5">
     <Link href="/clientes" className="inline-flex w-fit items-center gap-2 text-sm font-semibold text-text-muted transition-colors hover:text-text"><ArrowLeft className="size-4" aria-hidden="true" /> Voltar para clientes</Link>
@@ -70,11 +71,12 @@ export function CustomerProfile({ customer }: { customer: CustomerResponse }) {
         {money && <Stat label="Ticket médio" value={formatCurrencyBRL(money.averageTicketCents)} />}
       </section>
 
-      {hasPending && <section aria-label="Pendências" className="rounded-card border border-warning/30 bg-warning-subtle p-4">
-        <h2 className="text-sm font-bold text-text">Pendências</h2>
-        <ul className="mt-2 space-y-1 text-sm">
-          {data.openServiceOrders.map((order) => <li key={order.id}><Link href={`/ordens-de-servico/${order.id}`} className="font-semibold text-primary hover:underline">OS #{order.orderNumber}</Link> · {SERVICE_ORDER_STATUS_LABELS[order.status as keyof typeof SERVICE_ORDER_STATUS_LABELS] ?? order.status} · {order.vehicleLabel}</li>)}
-          {money && money.pendingCents > 0 && <li><strong>{formatCurrencyBRL(money.pendingCents)}</strong> a receber</li>}
+      {(hasPending || followupDue) && <section aria-label="Próximas ações" className="rounded-card border border-warning/30 bg-warning-subtle p-4">
+        <h2 className="text-sm font-bold text-text">Próximas ações</h2>
+        <ul className="mt-2 divide-y divide-warning/20 text-sm">
+          {data.openServiceOrders.map((order) => <li key={order.id} className="flex flex-wrap items-center justify-between gap-2 py-2"><span><strong>OS #{order.orderNumber}</strong> · {SERVICE_ORDER_STATUS_LABELS[order.status as keyof typeof SERVICE_ORDER_STATUS_LABELS] ?? order.status} · {order.vehicleLabel}</span><Link href={`/ordens-de-servico/${order.id}`} className="font-semibold text-primary hover:underline">Abrir OS</Link></li>)}
+          {money?.pendingOrders.map((order) => <li key={`pending-${order.id}`} className="flex flex-wrap items-center justify-between gap-2 py-2"><span><strong>{formatCurrencyBRL(order.pendingCents)}</strong> a receber na OS #{order.orderNumber}</span><Link href={`/ordens-de-servico/${order.id}`} className="font-semibold text-primary hover:underline">Ver cobrança</Link></li>)}
+          {followupDue && <li className="flex flex-wrap items-center justify-between gap-2 py-2"><span>Sem retorno desde {new Date(data.lastVisitAt as string).toLocaleDateString('pt-BR')}</span><Link href={`/agenda?cliente=${encodeURIComponent(customer.id)}&nome=${encodeURIComponent(customer.name)}`} className="font-semibold text-primary hover:underline">Agendar retorno</Link></li>}
         </ul>
       </section>}
 

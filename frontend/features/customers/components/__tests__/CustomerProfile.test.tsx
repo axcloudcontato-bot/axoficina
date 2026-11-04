@@ -16,7 +16,7 @@ const overview: CustomerOverviewResponse = {
   orderCount: 5, deliveredCount: 4, lastVisitAt: '2026-09-10T12:00:00Z',
   openServiceOrders: [{ id: 'so-9', orderNumber: 41, status: 'IN_PROGRESS', vehicleLabel: 'Fiat Uno · ABC1D23' }],
   upcomingAppointments: [{ id: 'ap-1', startsAt: '2026-11-03T13:00:00Z', status: 'CONFIRMED', serviceDescription: 'Revisão dos 100 mil' }],
-  money: { totalSpentCents: 180000, averageTicketCents: 45000, pendingCents: 7500 },
+  money: { totalSpentCents: 180000, averageTicketCents: 45000, pendingCents: 7500, pendingOrders: [{ id: 'so-9', orderNumber: 41, pendingCents: 7500 }] },
 };
 
 function renderProfile() {
@@ -44,8 +44,10 @@ describe('CustomerProfile', () => {
     expect(screen.getByText('4 entregues')).toBeInTheDocument();
     expect(screen.getByText(/R\$\s1\.800,00/)).toBeInTheDocument();
     expect(screen.getByText(/R\$\s450,00/)).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'OS #41' })).toHaveAttribute('href', '/ordens-de-servico/so-9');
+    expect(screen.getByText('OS #41')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Abrir OS' })).toHaveAttribute('href', '/ordens-de-servico/so-9');
     expect(screen.getByText(/R\$\s75,00/)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Ver cobrança' })).toHaveAttribute('href', '/ordens-de-servico/so-9');
     expect(screen.getByText('Fiat Uno · 2012')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Fiat Uno · 2012' })).toHaveAttribute('href', '/veiculos/v1');
     expect(screen.getByText('Revisão dos 100 mil')).toBeInTheDocument();
@@ -63,5 +65,11 @@ describe('CustomerProfile', () => {
     expect(screen.queryByText('Ticket médio')).not.toBeInTheDocument();
     expect(screen.queryByRole('link', { name: /nova os/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /editar/i })).not.toBeInTheDocument();
+  });
+
+  it('offers a prefilled return appointment after a long absence', async () => {
+    vi.mocked(customersApi.overview).mockResolvedValue({ ...overview, lastVisitAt: '2020-01-01T12:00:00Z', openServiceOrders: [], upcomingAppointments: [], money: { ...overview.money!, pendingCents: 0, pendingOrders: [] } });
+    renderProfile();
+    expect(await screen.findByRole('link', { name: 'Agendar retorno' })).toHaveAttribute('href', expect.stringContaining('cliente=c1'));
   });
 });

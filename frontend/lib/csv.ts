@@ -47,6 +47,15 @@ export function downloadCsv(fileName: string, rows: string[][]): void {
   URL.revokeObjectURL(url);
 }
 
+export function downloadBlob(fileName: string, blob: Blob): void {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = fileName;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
 // Blob.text() is missing in some environments (older browsers, jsdom); FileReader is everywhere.
 export function readFileText(file: Blob): Promise<string> {
   if (typeof file.text === 'function') return file.text();

@@ -1,4 +1,5 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, Post, Query } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, HttpStatus, Post, Query, Res, StreamableFile } from '@nestjs/common';
+import type { Response } from 'express';
 import type { ImportCustomersResponse, MergeCustomersResponse, CustomerArchiveImpactResponse, CustomerOverviewResponse, CustomerListItemResponse, CustomerResponse, PaginationData } from '@oficina/contracts';
 import { Roles } from '../../../shared/decorators/roles.decorator';
 import { CurrentUser } from '../../../shared/decorators/current-user.decorator';
@@ -7,7 +8,7 @@ import type { AuthenticatedUser } from '../../../shared/guards/jwt-auth.guard';
 import { CustomerManager, type CustomerViewer } from '../managers/customer.manager';
 import { RoleRepository } from '../../iam/repositories/role.repository';
 import { UserRepository } from '../../iam/repositories/user.repository';
-import { CreateCustomerDto, CustomerArchiveImpactDto, CustomerListDto, CustomerOverviewDto, ImportCustomersDto, MergeCustomersDto, DeleteCustomerDto, GetCustomerDto, RestoreCustomerDto, UpdateCustomerDto } from '../dto/customer.dto';
+import { CreateCustomerDto, CustomerArchiveImpactDto, CustomerExportDto, CustomerListDto, CustomerOverviewDto, ImportCustomersDto, MergeCustomersDto, DeleteCustomerDto, GetCustomerDto, RestoreCustomerDto, UpdateCustomerDto } from '../dto/customer.dto';
 import { PlanLimit } from '../../../shared/decorators/plan-limit.decorator';
 
 // Um único controller sob /api/v1 (não /api/v1/customers) porque a rota de
@@ -97,6 +98,18 @@ export class CustomersController {
   @Post('customers/list')
   async list(@CurrentUser() actingUser: AuthenticatedUser, @Body() body: CustomerListDto): Promise<PaginationData<CustomerListItemResponse>> {
     return this.customerManager.list(body, await this.viewer(actingUser));
+  }
+
+  @Roles('ADMIN', 'MANAGER', 'FRONT_DESK')
+  @Permissions('customers.manage')
+  @HttpCode(HttpStatus.OK)
+  @Post('customers/export')
+  async export(@CurrentUser() actingUser: AuthenticatedUser, @Body() body: CustomerExportDto, @Res({ passthrough: true }) response: Response) {
+    const file = await this.customerManager.exportCsv(actingUser, body, await this.viewer(actingUser));
+    response.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    response.setHeader('Content-Disposition', `attachment; filename="${file.filename}"`);
+    response.setHeader('Cache-Control', 'no-store');
+    return new StreamableFile(file.stream);
   }
 
   @Roles('ADMIN', 'MANAGER', 'FRONT_DESK', 'MECHANIC')

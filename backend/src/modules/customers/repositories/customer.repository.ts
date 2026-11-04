@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import type { StatItem, StatOrder } from '../services/customer-stats';
-import type { CustomerAddress } from '@oficina/contracts';
+import type { CustomerAddress, CustomerListRequest } from '@oficina/contracts';
 import { Prisma } from '@oficina/database';
 import { PrismaService } from '../../../shared/prisma/prisma.service';
 import { TenantContextService } from '../../../shared/tenant-context/tenant-context.service';
@@ -268,6 +268,15 @@ export class CustomerRepository {
     return pending._sum.amountCents ?? 0;
   }
 
+  async pendingOrdersOf(customerId: string): Promise<Array<{ id: string; orderNumber: number; pendingCents: number }>> {
+    const orders = await this.prisma.client.serviceOrder.findMany({ where: { customerId, deletedAt: null }, select: { id: true, orderNumber: true } });
+    if (orders.length === 0) return [];
+    const installments = await this.prisma.client.serviceOrderInstallment.findMany({ where: { serviceOrderId: { in: orders.map((order) => order.id) }, status: 'PENDING', deletedAt: null }, select: { serviceOrderId: true, amountCents: true } });
+    const pendingByOrder = new Map<string, number>();
+    for (const item of installments) pendingByOrder.set(item.serviceOrderId, (pendingByOrder.get(item.serviceOrderId) ?? 0) + item.amountCents);
+    return orders.filter((order) => pendingByOrder.has(order.id)).map((order) => ({ id: order.id, orderNumber: order.orderNumber, pendingCents: pendingByOrder.get(order.id) ?? 0 }));
+  }
+
   async upcomingAppointmentsOf(customerId: string, from: Date) {
     return this.prisma.client.appointment.findMany({
       where: { customerId, deletedAt: null, startsAt: { gte: from }, status: { in: ['SCHEDULED', 'CONFIRMED', 'IN_SERVICE'] } },
@@ -354,5 +363,51 @@ export class CustomerRepository {
     ]);
 
     return { items, total };
+  }
+
+  // Sorting derived values in SQL keeps pagination correct across the entire workshop.
+  async listRanked(offset: number, limit: number, search: string | undefined, filter: CustomerListRequest['filter'], sort: 'LAST_VISIT' | 'RECEIVABLE', now = new Date()) {
+    const tenantId = this.tenantContext.getStore()?.tenantId;
+    if (!tenantId) throw new Error('Ordenação de clientes exige contexto de oficina.');
+    const conditions: Prisma.Sql[] = [Prisma.sql`c.tenant_id = ${tenantId}::uuid`, Prisma.sql`c.deleted_at IS NULL`];
+    const term = search?.trim();
+    if (term) {
+      const digits = term.replace(/\D/g, '');
+      const numeric = /^[\d\s()+./-]+$/.test(term) && Boolean(digits);
+      const matches: Prisma.Sql[] = [
+        Prisma.sql`c.name ILIKE ${`%${term}%`}`,
+        Prisma.sql`c.document LIKE ${`%${numeric ? digits : term}%`}`,
+        Prisma.sql`c.email ILIKE ${`%${term}%`}`,
+        Prisma.sql`c.phone LIKE ${`%${term}%`}`,
+      ];
+      if (numeric && digits.length >= 8) {
+        const national = digits.startsWith('55') && [12, 13].includes(digits.length) ? digits.slice(2) : digits;
+        matches.push(Prisma.sql`regexp_replace(c.phone, '[^0-9]', '', 'g') LIKE ${`%${national}%`}`);
+      }
+      const plate = term.replace(/[^a-zA-Z0-9]/g, '');
+      if (plate.length >= 3 && plate.length <= 7) matches.push(Prisma.sql`EXISTS (SELECT 1 FROM vehicles v WHERE v.tenant_id = c.tenant_id AND v.customer_id = c.id AND v.deleted_at IS NULL AND regexp_replace(v.plate, '[^a-zA-Z0-9]', '', 'g') ILIKE ${`%${plate}%`})`);
+      conditions.push(Prisma.sql`(${Prisma.join(matches, ' OR ')})`);
+    }
+    const delivered = Prisma.sql`so.tenant_id = c.tenant_id AND so.customer_id = c.id AND so.deleted_at IS NULL AND so.status = 'DELIVERED'`;
+    if (filter === 'INACTIVE') {
+      const since = new Date(now.getTime() - 180 * 86_400_000);
+      conditions.push(Prisma.sql`EXISTS (SELECT 1 FROM service_orders so WHERE ${delivered} AND so.closed_at < ${since})`);
+      conditions.push(Prisma.sql`NOT EXISTS (SELECT 1 FROM service_orders so WHERE ${delivered} AND so.closed_at >= ${since})`);
+    }
+    if (filter === 'NEVER_VISITED') conditions.push(Prisma.sql`NOT EXISTS (SELECT 1 FROM service_orders so WHERE ${delivered})`);
+    const pending = Prisma.sql`SELECT 1 FROM service_orders so JOIN service_order_installments i ON i.service_order_id = so.id AND i.tenant_id = c.tenant_id AND i.deleted_at IS NULL AND i.status = 'PENDING' WHERE so.tenant_id = c.tenant_id AND so.customer_id = c.id AND so.deleted_at IS NULL`;
+    if (filter === 'DEBT') conditions.push(Prisma.sql`EXISTS (${pending})`);
+    const where = Prisma.sql`${Prisma.join(conditions, ' AND ')}`;
+    const ranking = sort === 'LAST_VISIT'
+      ? Prisma.sql`(SELECT MAX(so.closed_at) FROM service_orders so WHERE ${delivered}) DESC NULLS LAST`
+      : Prisma.sql`(SELECT COALESCE(SUM(i.amount_cents), 0) FROM service_orders so JOIN service_order_installments i ON i.service_order_id = so.id AND i.tenant_id = c.tenant_id AND i.deleted_at IS NULL AND i.status = 'PENDING' WHERE so.tenant_id = c.tenant_id AND so.customer_id = c.id AND so.deleted_at IS NULL) DESC`;
+    const [ranked, totals] = await Promise.all([
+      this.prisma.client.$queryRaw<Array<{ id: string }>>(Prisma.sql`SELECT c.id FROM customers c WHERE ${where} ORDER BY ${ranking}, c.id ASC LIMIT ${limit} OFFSET ${offset}`),
+      this.prisma.client.$queryRaw<Array<{ total: bigint }>>(Prisma.sql`SELECT COUNT(*) AS total FROM customers c WHERE ${where}`),
+    ]);
+    const ids = ranked.map((row) => row.id);
+    const found = ids.length ? await this.prisma.client.customer.findMany({ where: { id: { in: ids }, deletedAt: null } }) : [];
+    const byId = new Map(found.map((item) => [item.id, item]));
+    return { items: ids.map((id) => byId.get(id)).filter((item): item is NonNullable<typeof item> => Boolean(item)), total: Number(totals[0]?.total ?? 0) };
   }
 }

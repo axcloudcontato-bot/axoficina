@@ -13,10 +13,12 @@ function buildManager() {
     update: jest.fn(),
     softDelete: jest.fn(),
     listByTenant: jest.fn(),
+    listRanked: jest.fn(),
     vehiclesOf: jest.fn().mockResolvedValue([]),
     ordersOf: jest.fn().mockResolvedValue({ orders: [], items: [] }),
     openOrdersOf: jest.fn().mockResolvedValue([]),
     pendingCentsOf: jest.fn().mockResolvedValue(0),
+    pendingOrdersOf: jest.fn().mockResolvedValue([]),
     upcomingAppointmentsOf: jest.fn().mockResolvedValue([]),
     idsWithDebt: jest.fn().mockResolvedValue([]),
     idsDeliveredSince: jest.fn().mockResolvedValue([]),
@@ -385,6 +387,30 @@ describe('CustomerManager', () => {
       expect(deps.customerRepository.listByTenant).toHaveBeenCalledWith(20, 20, undefined, false, undefined, 'NAME');
     });
 
+    it('sorts derived values before pagination and protects receivable amounts', async () => {
+      const deps = buildManager();
+      deps.customerRepository.listRanked.mockResolvedValue({ items: [], total: 0 });
+      await deps.manager.list({ offset: 20, limit: 20, sort: 'LAST_VISIT', filter: 'INACTIVE' });
+      expect(deps.customerRepository.listRanked).toHaveBeenCalledWith(20, 20, undefined, 'INACTIVE', 'LAST_VISIT', expect.any(Date));
+      await expect(deps.manager.list({ offset: 0, limit: 20, sort: 'RECEIVABLE' })).rejects.toMatchObject({ status: HttpStatus.FORBIDDEN });
+      await deps.manager.list({ offset: 0, limit: 20, sort: 'RECEIVABLE' }, { canViewPrices: true });
+      expect(deps.customerRepository.listRanked).toHaveBeenCalledWith(0, 20, undefined, undefined, 'RECEIVABLE', expect.any(Date));
+    });
+
+    it('exports every filtered page on the server and escapes spreadsheet formulas', async () => {
+      const deps = buildManager();
+      const first = { ...baseCustomer, name: '=HYPERLINK("bad")' };
+      deps.customerRepository.listByTenant.mockResolvedValueOnce({ items: [first], total: 2 }).mockResolvedValueOnce({ items: [baseCustomer], total: 2 });
+      const file = await deps.manager.exportCsv(actingUser as never, { search: 'João', sort: 'NAME' }, { canViewPrices: false });
+      let content = '';
+      for await (const chunk of file.stream) content += String(chunk);
+      expect(content).toContain("'=HYPERLINK");
+      expect(content).toContain('João');
+      expect(content.match(/\r\n/g)?.length).toBe(3);
+      expect(deps.customerRepository.listByTenant).toHaveBeenCalledTimes(2);
+      expect(deps.auditLog.record).toHaveBeenCalledWith(expect.objectContaining({ action: 'customer.exported', metadata: expect.objectContaining({ category: 'customers' }) }));
+    });
+
     it('builds the customer page: vehicles, open orders, appointments and, for price viewers, spend and what is owed', async () => {
       const deps = buildManager();
       deps.customerRepository.byId.mockResolvedValue(baseCustomer);
@@ -393,12 +419,13 @@ describe('CustomerManager', () => {
       deps.customerRepository.openOrdersOf.mockResolvedValue([{ id: 'so-3', orderNumber: 41, status: 'IN_PROGRESS', vehicleId: 'v1' }]);
       deps.customerRepository.upcomingAppointmentsOf.mockResolvedValue([{ id: 'ap-1', startsAt: new Date('2026-11-03T13:00:00Z'), status: 'CONFIRMED', serviceDescription: 'Revisão' }]);
       deps.customerRepository.pendingCentsOf.mockResolvedValue(7500);
+      deps.customerRepository.pendingOrdersOf.mockResolvedValue([{ id: 'so-3', orderNumber: 41, pendingCents: 7500 }]);
       const result = await deps.manager.overview('customer-1', { canViewPrices: true });
       expect(result).toMatchObject({
         vehicles: [{ plate: 'ABC1D23', year: 2012, mileage: 98000 }], orderCount: 3, deliveredCount: 2,
         openServiceOrders: [{ orderNumber: 41, vehicleLabel: 'Fiat Uno · ABC1D23' }],
         upcomingAppointments: [{ id: 'ap-1', startsAt: '2026-11-03T13:00:00.000Z' }],
-        money: { totalSpentCents: 18000, averageTicketCents: 9000, pendingCents: 7500 },
+        money: { totalSpentCents: 18000, averageTicketCents: 9000, pendingCents: 7500, pendingOrders: [{ id: 'so-3', orderNumber: 41, pendingCents: 7500 }] },
       });
       const hidden = await deps.manager.overview('customer-1');
       expect(hidden).not.toHaveProperty('money');

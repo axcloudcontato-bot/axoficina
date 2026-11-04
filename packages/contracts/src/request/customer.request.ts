@@ -57,7 +57,7 @@ export interface CustomerListRequest extends PageableRequest {
   // DEBT: pending installments. INACTIVE: last delivered order over 6 months ago.
   // NEVER_VISITED: no delivered order yet.
   filter?: 'DEBT' | 'INACTIVE' | 'NEVER_VISITED';
-  sort?: 'NAME';
+  sort?: 'NAME' | 'LAST_VISIT' | 'RECEIVABLE';
 }
 
 export interface CustomerOverviewRequest {

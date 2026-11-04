@@ -1,8 +1,9 @@
 'use client';
 
 import Link from 'next/link';
+import * as Popover from '@radix-ui/react-popover';
 import type { CustomerListItemResponse } from '@oficina/contracts';
-import { ChatCircleDots, ClipboardText } from '@phosphor-icons/react';
+import { ChatCircleDots, ClipboardText, DotsThree } from '@phosphor-icons/react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -99,14 +100,12 @@ export function CustomersTable({ items, isLoading, isError, onRetry, canManage, 
                       </Button>
                     ) : (
                       <>
-                        {phoneDigits(customer.phone).length >= 10 && <Button variant="ghost" size="icon" asChild aria-label={`WhatsApp de ${customer.name}`}><a href={whatsappHref(customer.phone)} target="_blank" rel="noopener noreferrer"><ChatCircleDots className="size-4" aria-hidden="true" /></a></Button>}
-                        <Button variant="ghost" size="icon" asChild aria-label={`Nova OS para ${customer.name}`}><Link href={newServiceOrderHref(customer)}><ClipboardText className="size-4" aria-hidden="true" /></Link></Button>
-                        <Button variant="outline" size="sm" onClick={() => onEdit(customer)}>
-                          Editar
-                        </Button>
-                        <Button variant="destructive" size="sm" onClick={() => onDelete(customer)}>
-                          Arquivar
-                        </Button>
+                        <Button variant="outline" size="sm" asChild aria-label={`Nova OS para ${customer.name}`}><Link href={newServiceOrderHref(customer)}><ClipboardText className="size-4" aria-hidden="true" />Nova OS</Link></Button>
+                        <Popover.Root><Popover.Trigger asChild><Button variant="ghost" size="icon" aria-label={`Mais ações para ${customer.name}`}><DotsThree className="size-5" aria-hidden="true" /></Button></Popover.Trigger><Popover.Portal><Popover.Content align="end" sideOffset={4} className="z-50 min-w-40 rounded-button border border-border bg-card p-1 shadow-lg"><div className="flex flex-col text-left text-sm">
+                          {phoneDigits(customer.phone).length >= 10 && <Popover.Close asChild><a href={whatsappHref(customer.phone)} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 rounded-sm px-3 py-2 hover:bg-muted"><ChatCircleDots className="size-4" aria-hidden="true" />WhatsApp de {customer.name}</a></Popover.Close>}
+                          <Popover.Close asChild><button type="button" onClick={() => onEdit(customer)} className="rounded-sm px-3 py-2 text-left hover:bg-muted">Editar</button></Popover.Close>
+                          <Popover.Close asChild><button type="button" onClick={() => onDelete(customer)} className="rounded-sm px-3 py-2 text-left text-danger hover:bg-danger-subtle">Arquivar</button></Popover.Close>
+                        </div></Popover.Content></Popover.Portal></Popover.Root>
                       </>
                     )}
                   </div>

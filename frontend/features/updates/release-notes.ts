@@ -1,6 +1,14 @@
 // This feed is visible to every workshop account. Keep SaaS administration changes out of it.
 export const RELEASE_NOTES = [
   {
+    id: '2026-11-03-clientes-acoes-exportacao', date: '2026-11-03', title: 'Clientes com próximas ações e exportação completa',
+    items: [
+      'A lista destaca a criação de OS e reúne as ações menos frequentes em um menu por cliente.',
+      'A ficha mostra as OS em andamento, as cobranças por OS e o retorno de clientes sem visita recente, com acesso direto à próxima ação.',
+      'A ordenação por última visita e valor a receber considera toda a lista. A exportação CSV é gerada no servidor sem o antigo corte de 5.000 clientes.',
+    ],
+  },
+  {
     id: '2026-11-03-clientes-atendimento', date: '2026-11-03', title: 'Clientes mais rápidos de atender',
     items: [
       'O cadastro rápido pede só os dados essenciais e abre a ficha do novo cliente. Os dados complementares continuam disponíveis em Mais dados.',

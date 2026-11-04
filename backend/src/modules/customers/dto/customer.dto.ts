@@ -211,7 +211,7 @@ export class CustomerListDto implements CustomerListRequest {
   @IsOptional() @IsIn(['DEBT', 'INACTIVE', 'NEVER_VISITED'])
   filter?: CustomerListRequest['filter'];
 
-  @IsOptional() @IsIn(['NAME'])
+  @IsOptional() @IsIn(['NAME', 'LAST_VISIT', 'RECEIVABLE'])
   sort?: CustomerListRequest['sort'];
 
   @IsInt()
@@ -222,6 +222,20 @@ export class CustomerListDto implements CustomerListRequest {
   @Min(1)
   @Max(MAX_LIST_LIMIT)
   limit: number = DEFAULT_LIST_LIMIT;
+}
+
+export class CustomerExportDto implements Omit<CustomerListRequest, 'offset' | 'limit'> {
+  @IsOptional() @IsString() @MaxLength(2000)
+  search?: string;
+
+  @IsOptional() @IsBoolean()
+  archived?: boolean;
+
+  @IsOptional() @IsIn(['DEBT', 'INACTIVE', 'NEVER_VISITED'])
+  filter?: CustomerListRequest['filter'];
+
+  @IsOptional() @IsIn(['NAME', 'LAST_VISIT', 'RECEIVABLE'])
+  sort?: CustomerListRequest['sort'];
 }
 
 export class MergeCustomersDto implements MergeCustomersRequest {
