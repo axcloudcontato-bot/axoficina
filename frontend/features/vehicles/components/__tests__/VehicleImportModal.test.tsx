@@ -16,13 +16,13 @@ describe('VehicleImportModal', () => {
     vi.mocked(vehiclesApi.importRows).mockResolvedValue({ created: 1, problems: [{ line: 3, plate: 'XYZ9K88', reason: 'Nenhum cliente com este telefone. Cadastre o cliente antes.' }] });
     const user = userEvent.setup();
     wrap(<VehicleImportModal open onOpenChange={() => {}} />);
-    const file = new File(['placa;marca;modelo;telefone\nABC1D23;Fiat;Uno;11999998888\nXYZ9K88;VW;Gol;11911112222\n'], 'veiculos.csv', { type: 'text/csv' });
+    const file = new File(['tipo;placa;marca;modelo;telefone\nCarro;ABC1D23;Fiat;Uno;11999998888\nCarro;XYZ9K88;VW;Gol;11911112222\n'], 'veiculos.csv', { type: 'text/csv' });
     await user.upload(screen.getByLabelText('Arquivo CSV'), file);
     expect(await screen.findByText(/veículos prontos para importar/)).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Importar 2 veículos' }));
     await waitFor(() => expect(vi.mocked(vehiclesApi.importRows).mock.calls[0]?.[0]).toEqual({ rows: [
-      { line: 2, plate: 'ABC1D23', brand: 'Fiat', model: 'Uno', ownerPhone: '11999998888' },
-      { line: 3, plate: 'XYZ9K88', brand: 'VW', model: 'Gol', ownerPhone: '11911112222' },
+      { category: 'CAR', line: 2, plate: 'ABC1D23', brand: 'Fiat', model: 'Uno', ownerPhone: '11999998888' },
+      { category: 'CAR', line: 3, plate: 'XYZ9K88', brand: 'VW', model: 'Gol', ownerPhone: '11911112222' },
     ] }));
     expect(await screen.findByText(/Linha 3 \(XYZ9K88\): Nenhum cliente com este telefone/)).toBeInTheDocument();
   });
@@ -30,7 +30,7 @@ describe('VehicleImportModal', () => {
   it('does not offer to import a file without a way to find the owner', async () => {
     const user = userEvent.setup();
     wrap(<VehicleImportModal open onOpenChange={() => {}} />);
-    await user.upload(screen.getByLabelText('Arquivo CSV'), new File(['placa;marca;modelo\nABC1D23;Fiat;Uno\n'], 'sem-dono.csv', { type: 'text/csv' }));
+    await user.upload(screen.getByLabelText('Arquivo CSV'), new File(['tipo;placa;marca;modelo\nCarro;ABC1D23;Fiat;Uno\n'], 'sem-dono.csv', { type: 'text/csv' }));
     expect(await screen.findByText(/Preciso de uma coluna/)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Importar 0 veículos' })).toBeDisabled();
   });

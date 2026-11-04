@@ -19,6 +19,7 @@ vi.mock('../use-customer-care', () => ({
 }));
 vi.mock('@/features/settings/hooks/use-settings', () => ({ useBranding: () => ({ data: { company: { name: 'Oficina do Cuidado' } } }) }));
 vi.mock('@/features/vehicles/components/VehicleSearchCombobox', () => ({ VehicleSearchCombobox: ({ value, onChange }: { value: string; onChange: (value: string) => void }) => <input value={value} onChange={event => onChange(event.target.value)} /> }));
+vi.mock('@/features/vehicles/hooks/use-vehicles', () => ({ useVehicle: () => ({ data: undefined, isLoading: false }) }));
 
 describe('customer care workspace', () => {
   beforeEach(() => {
