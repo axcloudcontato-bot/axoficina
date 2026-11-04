@@ -1,384 +1,93 @@
 import Link from 'next/link';
-import type { ComponentType, ReactNode } from 'react';
-import {
-  ArrowRight, Buildings, CalendarCheck, Camera, Car, ChartLineUp, Check, ClipboardText, ClockCounterClockwise,
-  CurrencyCircleDollar, FileText, Gauge, Lock, Package, Printer, ShieldCheck, Star, UsersThree, WhatsappLogo, X,
-} from '@phosphor-icons/react/dist/ssr';
-import { MODULE_KEYS, MODULES, PLANS, PLAN_CODES, TRIAL_DAYS, type ModuleKey } from '@oficina/contracts';
-import { formatCurrencyBRL } from '@/lib/format-currency';
+import { ArrowRight, Check, ShieldCheck } from '@phosphor-icons/react/dist/ssr';
+import { MODULE_KEYS, MODULES, PLAN_CODES, PLANS, TRIAL_DAYS } from '@oficina/contracts';
 import { OfixLogo } from '@/components/brand/ofix-logo';
-import { DashboardMock, QuoteChatMock, StatusFlowMock } from './product-mock';
-import { FAQ } from './faq';
-import { STEPS } from './steps';
-import { SPEC, STATS } from './facts';
+import { formatCurrencyBRL } from '@/lib/format-currency';
 import { SiteFooter } from './site-footer';
-import { COMPANY, PARENT_SITE } from '@/lib/site';
+import { FAQ } from './faq';
 
-type IconType = ComponentType<{ weight?: 'duotone' | 'bold'; className?: string }>;
+const signup = '/cadastro';
 
-const SIGNUP = '/cadastro';
-const Y = 'text-[#ffbe00]';
-
-function Section({ id, dark = false, className = '', children }: { id?: string; dark?: boolean; className?: string; children: ReactNode }) {
-  return (
-    <section id={id} className={`${dark ? 'dark bg-background text-foreground' : 'bg-bg text-text'} scroll-mt-16 ${className}`}>
-      <div className="mx-auto w-full max-w-6xl px-5 py-20 sm:px-8 sm:py-28">{children}</div>
-    </section>
-  );
+function TrialLink({ dark = false, children = `Testar ${TRIAL_DAYS} dias grátis` }: { dark?: boolean; children?: string }) {
+  return <Link href={signup} className={`inline-flex min-h-12 items-center justify-center gap-2 rounded-button px-5 text-sm font-extrabold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 ${dark ? 'bg-[#0f171f] text-white hover:bg-[#27323d] focus-visible:outline-[#0f171f]' : 'bg-[#ffbe00] text-[#0f171f] hover:bg-[#ffd033] focus-visible:outline-[#ffbe00]'}`}>{children}<ArrowRight weight="bold" className="size-4" /></Link>;
 }
 
-function Eyebrow({ children }: { children: ReactNode }) {
-  return <p className="mb-4 flex items-center gap-3 text-xs font-bold uppercase tracking-[0.18em] text-primary"><span className="h-0.5 w-8 bg-[#ffbe00]" aria-hidden />{children}</p>;
+function SectionTitle({ eyebrow, title, description }: { eyebrow: string; title: string; description?: string }) {
+  return <div className="max-w-3xl"><p className="mb-4 text-xs font-extrabold uppercase tracking-[0.18em] text-[#7a5800]">{eyebrow}</p><h2 className="text-3xl font-extrabold leading-tight tracking-tight text-[#0f171f] sm:text-5xl">{title}</h2>{description && <p className="mt-5 text-base leading-relaxed text-[#526070] sm:text-lg">{description}</p>}</div>;
 }
 
-function Heading({ children, sub, center = false }: { children: ReactNode; sub?: ReactNode; center?: boolean }) {
-  return (
-    <div className={center ? 'mx-auto max-w-3xl text-center' : 'max-w-3xl'}>
-      <h2 className="text-3xl font-extrabold leading-[1.1] tracking-tight sm:text-5xl">{children}</h2>
-      {sub && <p className="mt-5 text-base leading-relaxed text-muted-foreground sm:text-lg">{sub}</p>}
-    </div>
-  );
-}
-
-function CtaButton({ children = 'Cadastrar minha oficina', variant = 'solid' }: { children?: ReactNode; variant?: 'solid' | 'dark' | 'outline' }) {
-  const base = 'group inline-flex h-12 items-center justify-center gap-2 rounded-button px-6 text-base font-bold transition-[background-color,transform] duration-fast focus-visible:outline-2 focus-visible:outline-offset-4 active:translate-y-px';
-  const tone = variant === 'solid' ? 'bg-[#ffbe00] text-[#0f171f] hover:bg-[#ffd033] focus-visible:outline-[#ffbe00]' : variant === 'outline' ? 'border-2 border-[#ffbe00] text-foreground hover:bg-[#ffbe00]/10 focus-visible:outline-[#ffbe00]' : 'bg-[#0f171f] text-white hover:bg-[#27323d] focus-visible:outline-[#0f171f]';
-  return <Link href={SIGNUP} className={`${base} ${tone}`}>{children}<ArrowRight weight="bold" className="size-4 transition-transform group-hover:translate-x-0.5" /></Link>;
-}
-
-const PAINS = [
-  ['Ordem de serviço no caderno, orçamento no WhatsApp', 'O histórico do veículo se perde, o cliente pergunta o status e ninguém acha a informação certa na hora.'],
-  ['Financeiro numa planilha que só o dono entende', 'Contas a pagar, a receber e parcelas de OS em arquivos separados escondem para onde o dinheiro está indo.'],
-  ['Cliente que some depois do serviço', 'Sem lembrete de revisão, a próxima troca de óleo e as manutenções preventivas vão para o concorrente.'],
+const flow = [
+  ['01', 'Cliente chega', 'Encontre ou cadastre cliente e veículo, com o histórico à mão.'],
+  ['02', 'Abra a OS', 'Registre o problema, adicione itens e fotos e acompanhe o responsável.'],
+  ['03', 'Peça aprovação', 'Envie o orçamento e registre a resposta na ordem de serviço.'],
+  ['04', 'Entregue e cobre', 'Finalize o serviço e acompanhe parcelas e recebimentos.'],
 ] as const;
 
-// `module` marks what is sold from a given plan on; the badge reads the catalog, so it never drifts from the prices.
-// The plan shown as the suggested one, and the words on its badge. "Recomendado" is our opinion; switch it to "Mais escolhido" only once the numbers say so.
-const HIGHLIGHTED_PLAN = 'profissional';
-const HIGHLIGHT_LABEL = 'Recomendado';
+const benefits = [
+  { label: 'Histórico', title: 'Cada carro com histórico', text: 'Serviços, fotos e andamento reunidos por veículo. A equipe encontra a informação sem depender da memória de quem atendeu.' },
+  { label: 'Comunicação', title: 'Cliente informado', text: 'No plano Completo, envie o orçamento pelo WhatsApp e acompanhe a resposta direto na OS.' },
+  { label: 'Financeiro', title: 'Caixa à vista', text: 'A partir do Profissional, organize contas, parcelas de OS e relatórios no mesmo sistema.' },
+] as const;
 
-const FEATURES: Array<{ icon: IconType; title: string; text: string; span?: string; chat?: boolean; flow?: boolean; module?: ModuleKey }> = [
-  { icon: ClipboardText, title: 'Ordens de serviço completas', text: 'Itens, peças, serviços, fotos e histórico de status em um só lugar, do check-in à entrega, com desconto, garantia e impressão em A4.', span: 'lg:col-span-2', flow: true },
-  { icon: WhatsappLogo, title: 'Orçamento aprovado pelo WhatsApp', text: 'O cliente recebe o orçamento e responde com um toque. Você acompanha a resposta direto na ordem de serviço.', chat: true, module: 'whatsapp' },
-  { icon: CalendarCheck, title: 'Agenda com capacidade', text: 'Grade por horário, arraste para remarcar, capacidade de atendimentos ao mesmo tempo e horário por dia da semana, com feriados e férias.' },
-  { icon: Car, title: 'Clientes e veículos com ficha', text: 'Histórico, total gasto e próximos cuidados de cada um. Veículo com dados da FIPE, importação por planilha e junção de cadastros duplicados.' },
-  { icon: UsersThree, title: 'Fidelização de clientes', text: 'Alertas de manutenção, lembretes automáticos de revisão e aniversário, e uma lista para a equipe ligar para quem não autorizou mensagens.', module: 'cuidado' },
-  { icon: Package, title: 'Catálogo e estoque', text: 'Peças e serviços com custo, margem e estoque mínimo, baixa automática na entrega, pacotes de serviço e relatório dos mais vendidos.' },
-  { icon: CurrencyCircleDollar, title: 'Financeiro sem planilha', text: 'Contas a pagar e a receber, parcelas das OS, fornecedores, fluxo de caixa e relatórios analíticos.', module: 'financeiro' },
-  { icon: Gauge, title: 'Produtividade e comissões', text: 'Tempo por técnico, eficiência, valor por hora, ocupação, metas, comissão e retornos em garantia, para decidir com dados.', module: 'produtividade' },
-  { icon: FileText, title: 'Documentos com a sua marca', text: 'Orçamento em PDF e OS impressa com logo, CPF/CNPJ, validade, garantia e os termos da sua oficina.' },
-  { icon: Star, title: 'Avaliação depois da entrega', text: 'Peça a nota de cinco estrelas ao cliente quando o carro sai e construa reputação com fatos.' },
-  { icon: ClockCounterClockwise, title: 'Histórico e seus dados', text: 'Veja quem alterou o quê e quando, e exporte clientes, veículos, ordens de serviço e financeiro em planilha.', module: 'governanca' },
-];
-
-const ROLES: Array<[IconType, string, string]> = [
-  [ClipboardText, 'Recepção', 'Abre ordens, agenda horários e responde ao cliente com o status em mãos.'],
-  [Camera, 'Mecânico', 'Trabalha pela ordem de serviço: itens, status e fotos, inclusive no tablet.'],
-  [CurrencyCircleDollar, 'Financeiro', 'Fecha contas, lança categorias e fornecedores e concilia as parcelas.'],
-  [ChartLineUp, 'Dono e gestor', 'Enxerga a oficina inteira, configura equipe e acessos e decide com números.'],
-];
-
-const TRUST: Array<[IconType, string]> = [
-  [Buildings, 'Dados isolados por oficina'],
-  [UsersThree, 'Permissões por função'],
-  [Printer, 'Impressão em A4 pronta'],
-  [WhatsappLogo, 'Integração com WhatsApp'],
-];
-
-const SAFETY: Array<[IconType, string, string]> = [
-  [Buildings, 'Ambiente isolado por oficina', 'Cada oficina tem seus usuários, clientes e registros separados dos demais.'],
-  [Lock, 'Acesso por permissão', 'Perfis personalizados definem quem vê preços, financeiro e configurações.'],
-  [ShieldCheck, 'Documentos publicados', 'Política de privacidade, termos de uso, cookies e reembolso acessíveis no rodapé.'],
-];
-
-const COMPARE: Array<[string, string]> = [
-  ['Orçamento e aprovação perdidos em conversas', 'Aprovação por botão no WhatsApp, registrada na OS'],
-  ['Histórico do carro na memória de quem atendeu', 'Histórico por veículo, com fotos e status'],
-  ['Financeiro em planilhas soltas', 'Pagar, receber, parcelas e relatórios no mesmo sistema'],
-  ['Cliente só volta se lembrar', 'Lembretes de revisão e alertas de manutenção na hora certa'],
-  ['Ninguém sabe quanto cada mecânico rende', 'Tempo, eficiência, valor por hora e comissão por técnico'],
-  ['Estoque conferido só no olho', 'Estoque com baixa automática e aviso de estoque baixo'],
-  ['Todo mundo vê tudo, ou ninguém vê nada', 'Perfis de acesso por função e por permissão'],
-];
+function ServiceOrderPreview() {
+  return (
+    <figure className="overflow-hidden rounded-xl border border-white/10 bg-[#f4f6f8] text-[#0f171f] shadow-[0_30px_70px_-25px_rgba(0,0,0,0.65)]" aria-label="Exemplo ilustrativo de ordem de serviço no Ofix">
+      <div className="flex items-center justify-between border-b border-[#dde3e9] bg-white px-4 py-3 text-[11px] font-extrabold sm:px-6"><span>OFIX / ORDEM DE SERVIÇO</span><span>OS #1042</span></div>
+      <div className="p-5 sm:p-7">
+        <p className="text-xs text-[#526070]">Honda HR-V · João Martins</p>
+        <div className="mt-2 flex flex-wrap items-center gap-3"><h3 className="text-xl font-extrabold sm:text-2xl">Revisão e freios</h3><span className="rounded-full bg-[#fff4c8] px-3 py-1 text-xs font-bold text-[#765600]">Aguardando aprovação</span></div>
+        <div className="mt-6 space-y-2 text-xs sm:text-sm">
+          {([['Troca de óleo e filtro', 'R$ 180,00'], ['Pastilhas dianteiras', 'R$ 240,00'], ['Alinhamento', 'R$ 160,00']] as const).map(([name, price]) => <div key={name} className="flex justify-between gap-3 rounded-lg border border-[#dde3e9] bg-white px-4 py-3"><span className="font-semibold">{name}</span><span className="shrink-0 tabular-nums">{price}</span></div>)}
+          <div className="flex justify-between gap-3 rounded-lg border border-[#dde3e9] bg-white px-4 py-3"><span className="font-semibold">Orçamento enviado ao cliente</span><span className="shrink-0 font-bold text-[#166534]">WhatsApp*</span></div>
+        </div>
+      </div>
+      <div className="flex justify-between bg-[#27323d] px-5 py-4 text-xs font-bold text-white sm:px-7 sm:text-sm"><span>Total do orçamento</span><span className="tabular-nums text-[#ffbe00]">R$ 580,00</span></div>
+      <figcaption className="bg-[#0f171f] px-5 py-2 text-right text-[11px] text-white/60 sm:px-7">Ilustração com dados de exemplo. *WhatsApp no plano Completo.</figcaption>
+    </figure>
+  );
+}
 
 export function LandingPage() {
   return (
-    <div className="bg-bg">
+    <div className="bg-[#f4f6f8] text-[#0f171f]">
       <a href="#conteudo" className="skip-link">Pular para o conteúdo</a>
-      <header className="dark sticky top-0 z-50 border-b border-white/10 bg-[#0f171f]/90 text-foreground backdrop-blur">
-        <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between px-5 sm:px-8">
+      <header className="dark sticky top-0 z-50 border-b border-white/10 bg-[#0f171f]/95 text-white backdrop-blur">
+        <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-5 sm:px-8">
           <Link href="/" aria-label="Ofix, página inicial"><OfixLogo className="w-24 text-white" /></Link>
-          <nav aria-label="Seções" className="hidden items-center gap-5 whitespace-nowrap text-sm font-semibold text-white/70 md:flex lg:gap-8">
-            <a href="#funcionalidades" className="hover:text-white">Funcionalidades</a>
-            <a href="#como-funciona" className="hover:text-white">Passo a passo</a>
-            <a href="#equipe" className="hidden hover:text-white lg:inline">Para sua equipe</a>
-            <a href="#planos" className="hover:text-white">Planos</a>
-            <a href="#duvidas" className="hover:text-white">Dúvidas</a>
-            <a href="#sobre" className="hidden hover:text-white lg:inline">Sobre</a>
+          <nav aria-label="Seções" className="hidden items-center gap-6 text-sm font-semibold text-white/70 md:flex">
+            <a href="#como-funciona" className="hover:text-white">Como funciona</a><a href="#beneficios" className="hover:text-white">Benefícios</a><a href="#planos" className="hover:text-white">Planos</a>
           </nav>
-          <div className="flex items-center gap-2">
-            <Link href="/entrar" className="rounded-button px-3 py-2 text-sm font-semibold text-white/80 hover:text-white">Entrar</Link>
-            <Link href={SIGNUP} className="hidden h-10 items-center rounded-button bg-[#ffbe00] px-4 text-sm font-bold text-[#0f171f] hover:bg-[#ffd033] sm:inline-flex">Cadastrar oficina</Link>
-          </div>
+          <div className="flex items-center gap-2"><Link href="/entrar" className="hidden px-3 py-2 text-sm font-semibold text-white/70 hover:text-white sm:inline">Entrar</Link><Link href={signup} className="rounded-button bg-[#ffbe00] px-3 py-2.5 text-xs font-extrabold text-[#0f171f] hover:bg-[#ffd033] sm:px-4 sm:text-sm">Testar grátis</Link></div>
         </div>
       </header>
 
       <main id="conteudo">
-        <section className="dark relative overflow-hidden bg-[#0f171f] text-foreground">
-          <svg aria-hidden viewBox="0 0 600 700" className="pointer-events-none absolute -right-32 top-0 h-full w-[46rem] opacity-60" preserveAspectRatio="xMaxYMid slice">
-            <path d="M300 0H420L600 350 420 700H300L480 350Z" fill="#27323d" opacity="0.6" />
-            <path d="M470 0H520L700 350 520 700H470L650 350Z" fill="#ffbe00" opacity="0.9" />
-          </svg>
-          <div className="relative mx-auto grid w-full max-w-6xl items-center gap-14 px-5 pb-20 pt-16 sm:px-8 sm:pb-28 sm:pt-24 lg:grid-cols-[1.02fr_1fr]">
-            <div data-reveal>
-              <Eyebrow>Sistema para oficina mecânica</Eyebrow>
-              <h1 className="text-4xl font-extrabold leading-[1.05] tracking-tight sm:text-6xl">
-                Mais controle<br />para <span className={Y}>sua oficina.</span>
-              </h1>
-              <p className="mt-6 max-w-xl text-lg leading-relaxed text-white/70">
-                <strong className="font-semibold text-white">O Ofix é um sistema de gestão para oficinas mecânicas que reúne</strong> ordens de serviço, orçamento aprovado pelo WhatsApp, agenda, clientes, veículos, estoque, financeiro e produtividade da equipe em um só lugar, simples e rápido, feito para quem vive o dia a dia do pátio.
-              </p>
-              <div className="mt-9 flex flex-col gap-3 sm:flex-row sm:items-center">
-                <CtaButton />
-                <a href="#funcionalidades" className="inline-flex h-12 items-center justify-center rounded-button border border-white/20 px-6 text-base font-semibold text-white hover:bg-white/5">Ver o que o Ofix faz</a>
-              </div>
-              <ul className="mt-9 flex flex-wrap gap-x-6 gap-y-2 text-sm text-white/60">
-                {['Funciona no navegador', 'Sem instalar nada', `${TRIAL_DAYS} dias grátis, sem cartão`].map((t) => <li key={t} className="flex items-center gap-2"><Check weight="bold" className={`size-4 ${Y}`} />{t}</li>)}
-              </ul>
-            </div>
-            <DashboardMock className="relative" />
-          </div>
-        </section>
-
-        <section className="dark border-y border-white/10 bg-[#0b1218] text-foreground" aria-label="Fundamentos do sistema">
-          <ul className="mx-auto grid w-full max-w-6xl grid-cols-2 gap-6 px-5 py-8 sm:px-8 lg:grid-cols-4">
-            {TRUST.map(([Icon, label]) => (
-              <li key={label} className="flex items-center gap-3 text-sm font-semibold text-white/80"><Icon weight="duotone" className={`size-6 shrink-0 ${Y}`} />{label}</li>
-            ))}
-          </ul>
-        </section>
-
-        <Section>
-          <Eyebrow>O problema</Eyebrow>
-          <Heading sub="Quando a informação está espalhada, a oficina perde tempo, dinheiro e cliente. O Ofix reúne tudo em um fluxo só.">
-            Oficina que cresce não pode rodar em caderno, planilha e conversa solta.
-          </Heading>
-          <div className="mt-14 grid gap-5 md:grid-cols-3">
-            {PAINS.map(([title, text], i) => (
-              <article key={title} className="rounded-card border border-border bg-card p-7 shadow-card">
-                <span className="text-sm font-extrabold text-primary">0{i + 1}</span>
-                <h3 className="mt-3 text-lg font-bold leading-snug">{title}</h3>
-                <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{text}</p>
-              </article>
-            ))}
-          </div>
-        </Section>
-
-        <Section id="funcionalidades" className="border-t border-border">
-          <Eyebrow>Funcionalidades</Eyebrow>
-          <Heading sub="Cada recurso nasceu do fluxo real de uma oficina, do balcão ao pátio. Nada de módulo que ninguém usa.">
-            Tudo o que sua oficina precisa, <span className="rounded-md bg-[#ffbe00] px-2 text-[#0f171f] [box-decoration-break:clone]">em um só lugar.</span>
-          </Heading>
-          <div className="mt-14 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            {FEATURES.map(({ icon: Icon, title, text, span = '', chat, flow, module }) => (
-              <article key={title} className={`rounded-card border border-border bg-card p-7 shadow-card transition-[box-shadow,transform] duration-normal hover:-translate-y-0.5 hover:shadow-card-hover ${span}`}>
-                <span className="flex size-11 items-center justify-center rounded-button bg-[#0f171f] text-[#ffbe00]"><Icon weight="duotone" className="size-6" /></span>
-                <h3 className="mt-5 text-lg font-bold">{title}</h3>
-                {module && <p className="mt-2 inline-block rounded-full bg-muted px-2.5 py-0.5 text-xs font-semibold text-muted-foreground">A partir do plano {PLANS[MODULES[module].minPlan].name}</p>}
-                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{text}</p>
-                {flow && <StatusFlowMock />}
-                {chat && <div className="mt-6"><QuoteChatMock /></div>}
-              </article>
-            ))}
-          </div>
-        </Section>
-
-        <Section id="como-funciona" dark>
-          <Eyebrow>Passo a passo</Eyebrow>
-          <Heading sub="Um caminho único e sem retrabalho: o que você registra no balcão já chega pronto para o mecânico e para o financeiro.">
-            Do cliente na porta ao <span className={Y}>carro entregue.</span>
-          </Heading>
-          <ol className="mt-14 grid gap-px overflow-hidden rounded-card border border-white/10 bg-white/10 md:grid-cols-4">
-            {STEPS.map(([n, title, text]) => (
-              <li key={n} className="bg-[#0f171f] p-7">
-                <span className={`text-4xl font-extrabold ${Y}`}>{n}</span>
-                <h3 className="mt-4 text-lg font-bold">{title}</h3>
-                <p className="mt-2 text-sm leading-relaxed text-white/60">{text}</p>
-              </li>
-            ))}
-          </ol>
-        </Section>
-
-        <Section id="equipe">
-          <Eyebrow>Para toda a equipe</Eyebrow>
-          <Heading sub="Cada pessoa vê o que precisa para trabalhar, sem treinamento longo e sem expor o que não é da sua função.">
-            Uma só ferramenta, <span className="rounded-md bg-[#ffbe00] px-2 text-[#0f171f] [box-decoration-break:clone]">cada um no seu papel.</span>
-          </Heading>
-          <div className="mt-14 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-            {ROLES.map(([Icon, title, text]) => (
-              <article key={title} className="rounded-card border border-border bg-card p-6 shadow-card">
-                <Icon weight="duotone" className="size-8 text-primary" />
-                <h3 className="mt-4 text-base font-bold">{title}</h3>
-                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{text}</p>
-              </article>
-            ))}
-          </div>
-        </Section>
-
-        <Section id="numeros" dark>
-          <Eyebrow>O Ofix em números</Eyebrow>
-          <Heading sub="Os limites e as opções do sistema, sem arredondar: o que está no produto hoje.">
-            Fatos sobre o que o sistema <span className={Y}>faz.</span>
-          </Heading>
-          <ul className="mt-14 grid gap-px overflow-hidden rounded-card border border-white/10 bg-white/10 sm:grid-cols-2 lg:grid-cols-3">
-            {STATS.map(([value, label, detail]) => (
-              <li key={label} className="bg-[#0f171f] p-7">
-                <p className={`text-5xl font-extrabold ${Y}`}>{value}</p>
-                <h3 className="mt-3 text-lg font-bold">{label}</h3>
-                <p className="mt-2 text-sm leading-relaxed text-white/60">{detail}</p>
-              </li>
-            ))}
-          </ul>
-          <div className="mt-14 overflow-hidden rounded-card border border-white/10">
-            <table className="w-full table-fixed border-collapse text-left text-sm">
-              <caption className="bg-white/5 p-4 text-left text-xs font-bold uppercase tracking-widest text-white/60">Ficha técnica do Ofix</caption>
-              <tbody>
-                {SPEC.map(([name, value]) => (
-                  <tr key={name} className="border-t border-white/10 align-top">
-                    <th scope="row" className="w-2/5 bg-white/[0.03] p-4 font-semibold sm:w-1/3 sm:px-6">{name}</th>
-                    <td className="p-4 text-white/70 sm:px-6">{value}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </Section>
-
-        <Section className="border-t border-border">
-          <Heading center sub="A diferença aparece no primeiro dia de uso.">
-            Antes do Ofix e <span className="rounded-md bg-[#ffbe00] px-2 text-[#0f171f] [box-decoration-break:clone]">depois.</span>
-          </Heading>
-          <div className="mx-auto mt-14 max-w-4xl overflow-hidden rounded-card border border-border bg-card shadow-card">
-            <table className="w-full table-fixed border-collapse text-left">
-              <caption className="sr-only">Comparação entre a rotina da oficina sem sistema e com o Ofix</caption>
-              <thead>
-                <tr className="border-b border-border bg-muted text-xs font-bold uppercase tracking-wider">
-                  <th scope="col" className="p-4 text-muted-foreground sm:px-6">Sem sistema</th>
-                  <th scope="col" className="bg-[#ffbe00] p-4 text-[#0f171f] sm:px-6"><span className="flex items-center gap-2"><Check weight="bold" className="size-4" />Com Ofix</span></th>
-                </tr>
-              </thead>
-              <tbody>
-                {COMPARE.map(([before, after]) => (
-                  <tr key={before} className="border-b border-border align-top last:border-0">
-                    <td className="p-4 text-sm text-muted-foreground sm:px-6"><span className="flex gap-3"><X weight="bold" aria-hidden className="mt-0.5 size-4 shrink-0 text-danger" />{before}</span></td>
-                    <td className="p-4 text-sm font-semibold sm:px-6"><span className="flex gap-3"><Check weight="bold" aria-hidden className="mt-0.5 size-4 shrink-0 text-success" />{after}</span></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </Section>
-
-        <Section dark>
-          <div className="grid items-center gap-14 lg:grid-cols-2">
+        <section className="dark bg-[#0f171f] text-white">
+          <div className="mx-auto grid max-w-6xl items-center gap-14 px-5 pb-20 pt-16 sm:px-8 sm:pt-24 lg:grid-cols-2 lg:py-28">
             <div>
-              <Eyebrow>Confiança</Eyebrow>
-              <Heading sub="Os dados da sua oficina e dos seus clientes merecem cuidado. O Ofix foi construído com isolamento e controle de acesso desde a base.">
-                Seus dados, <span className={Y}>só seus.</span>
-              </Heading>
+              <p className="mb-5 text-xs font-extrabold uppercase tracking-[0.18em] text-[#ffbe00]">Sistema para oficina mecânica</p>
+              <h1 className="text-4xl font-extrabold leading-[1.07] tracking-tight sm:text-6xl">Da entrada do carro à cobrança, <span className="text-[#ffbe00]">tudo sob controle.</span></h1>
+              <p className="mt-6 max-w-xl text-base leading-relaxed text-white/75 sm:text-lg">Ordens de serviço, equipe, clientes e financeiro no mesmo fluxo. Saiba o que está acontecendo em cada veículo e dê respostas rápidas, sem procurar em cadernos ou conversas.</p>
+              <div className="mt-8 flex flex-col gap-3 sm:flex-row"><TrialLink /><a href="#como-funciona" className="inline-flex min-h-12 items-center justify-center rounded-button border border-white/30 px-5 text-sm font-bold text-white hover:bg-white/10">Ver como funciona</a></div>
+              <p className="mt-5 text-sm text-white/60">Sem cartão · Acesso pelo navegador · Planos a partir de {formatCurrencyBRL(PLANS.essencial.monthlyPriceCents)}/mês</p>
             </div>
-            <ul className="grid gap-4">
-              {SAFETY.map(([Icon, title, text]) => (
-                <li key={title} className="flex gap-4 rounded-card border border-white/10 bg-white/[0.03] p-5">
-                  <Icon weight="duotone" className={`size-7 shrink-0 ${Y}`} />
-                  <div><h3 className="font-bold">{title}</h3><p className="mt-1 text-sm leading-relaxed text-white/60">{text}</p></div>
-                </li>
-              ))}
-            </ul>
-          </div>
-        </Section>
-
-        <Section id="planos" className="border-t border-border">
-          <Eyebrow>Planos</Eyebrow>
-          <Heading sub="Três planos, o mesmo sistema. Você começa pelo que precisa e sobe quando a oficina crescer, sem trocar de ferramenta e sem perder nada.">
-            Escolha o plano da <span className="rounded-md bg-[#ffbe00] px-2 text-[#0f171f] [box-decoration-break:clone]">sua oficina.</span>
-          </Heading>
-          <div className="mt-14 grid gap-5 lg:grid-cols-3">
-            {PLAN_CODES.map((code) => {
-              const plan = PLANS[code];
-              const highlighted = code === HIGHLIGHTED_PLAN;
-              return (
-                <article key={code} className={`relative flex flex-col rounded-card border bg-card p-7 shadow-card ${highlighted ? 'border-2 border-[#ffbe00] lg:-my-3 lg:py-10' : 'border-border'}`}>
-                  {highlighted && <p className="absolute -top-3.5 left-7 rounded-full bg-[#ffbe00] px-3 py-1 text-xs font-extrabold uppercase tracking-wider text-[#0f171f]">{HIGHLIGHT_LABEL}</p>}
-                  <h3 className="text-xl font-extrabold">{plan.name}</h3>
-                  <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{plan.tagline}</p>
-                  <p className="mt-6 text-4xl font-extrabold">{formatCurrencyBRL(plan.monthlyPriceCents)}<span className="text-base font-semibold text-muted-foreground"> por mês</span></p>
-                  <ul className="mt-6 flex-1 space-y-2.5 text-sm">
-                    <li className="flex gap-3"><Check weight="bold" aria-hidden className="mt-0.5 size-4 shrink-0 text-success" /><span><strong>Ordens de serviço, clientes, veículos, agenda e catálogo</strong></span></li>
-                    <li className="flex gap-3"><Check weight="bold" aria-hidden className="mt-0.5 size-4 shrink-0 text-success" />{plan.limits.users === null ? 'Usuários sem limite' : `Até ${plan.limits.users} usuários`}</li>
-                    <li className="flex gap-3"><Check weight="bold" aria-hidden className="mt-0.5 size-4 shrink-0 text-success" />{plan.limits.ordersPerMonth === null ? 'Ordens de serviço sem limite' : `Até ${plan.limits.ordersPerMonth} ordens de serviço por mês`}</li>
-                    <li className="flex gap-3"><Check weight="bold" aria-hidden className="mt-0.5 size-4 shrink-0 text-success" />{(plan.limits.photoStorageMb ?? 0) / 1024} GB de fotos</li>
-                    {MODULE_KEYS.map((key) => {
-                      const included = plan.modules.includes(key);
-                      return (
-                        <li key={key} className={`flex gap-3 ${included ? '' : 'text-muted-foreground'}`}>
-                          {included ? <Check weight="bold" aria-hidden className="mt-0.5 size-4 shrink-0 text-success" /> : <X weight="bold" aria-hidden className="mt-0.5 size-4 shrink-0" />}
-                          <span>{MODULES[key].label}<span className="sr-only">{included ? ' (incluído)' : ' (não incluído)'}</span></span>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                  <div className="mt-8"><CtaButton variant={highlighted ? 'solid' : 'outline'}>Contratar<span className="sr-only"> o plano {plan.name}</span></CtaButton></div>
-                </article>
-              );
-            })}
-          </div>
-          <p className="mx-auto mt-8 max-w-3xl text-center text-sm leading-relaxed text-muted-foreground">{TRIAL_DAYS} dias grátis, sem cartão e com todos os recursos do plano Completo. Depois do teste, você escolhe o plano dentro do sistema e paga com cartão, na página segura do Stripe. Valores por oficina. Cancele quando quiser: o sistema segue até o fim do período pago e seus dados continuam guardados.</p>
-        </Section>
-
-        <Section id="duvidas">
-          <Heading center>Perguntas <span className="rounded-md bg-[#ffbe00] px-2 text-[#0f171f] [box-decoration-break:clone]">frequentes</span></Heading>
-          <div className="mx-auto mt-12 max-w-3xl divide-y divide-border rounded-card border border-border bg-card shadow-card">
-            {FAQ.map(([q, a]) => (
-              <details key={q} className="group p-5 sm:px-7 [&_summary::-webkit-details-marker]:hidden">
-                <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-left text-base font-bold">
-                  {q}
-                  <span aria-hidden className="text-2xl font-light leading-none text-primary transition-transform group-open:rotate-45">+</span>
-                </summary>
-                <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{a}</p>
-              </details>
-            ))}
-          </div>
-        </Section>
-
-        <Section id="sobre">
-          <Heading sub="Quem está por trás do sistema e como falar com a gente.">Sobre o Ofix</Heading>
-          <div className="mt-12 grid gap-8 lg:grid-cols-[1.3fr_1fr]">
-            <div className="space-y-4 text-base leading-relaxed text-muted-foreground">
-              <p>O Ofix é um sistema de gestão para oficinas mecânicas, desenvolvido e mantido pela <a href={PARENT_SITE} className="font-semibold text-primary underline">{COMPANY.name}</a>. Ele organiza o atendimento da recepção ao financeiro: ordens de serviço, orçamentos aprovados pelo WhatsApp, agenda, histórico de cada veículo e alertas de manutenção.</p>
-              <p>Cada oficina tem um ambiente isolado, com usuários e permissões próprios, e os documentos de privacidade, termos de uso, cookies e reembolso são públicos e estão no rodapé.</p>
-            </div>
-            <dl className="divide-y divide-border rounded-card border border-border bg-card p-6 text-sm shadow-card">
-              <div className="pb-3"><dt className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Razão social</dt><dd className="mt-1 font-semibold">{COMPANY.name}</dd></div>
-              <div className="py-3"><dt className="text-xs font-bold uppercase tracking-widest text-muted-foreground">CNPJ</dt><dd className="mt-1 font-semibold">{COMPANY.document}</dd></div>
-              {COMPANY.address && <div className="py-3"><dt className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Endereço</dt><dd className="mt-1 font-semibold">{COMPANY.address}</dd></div>}
-              <div className="pt-3"><dt className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Contato</dt><dd className="mt-1 font-semibold"><a className="text-primary underline" href={`mailto:${COMPANY.email}`}>{COMPANY.email}</a></dd></div>
-            </dl>
-          </div>
-        </Section>
-
-        <section className="relative overflow-hidden bg-[#ffbe00] text-[#0f171f]">
-          <svg aria-hidden viewBox="0 0 400 300" className="pointer-events-none absolute -right-10 inset-y-0 h-full opacity-15" preserveAspectRatio="xMaxYMid slice"><path d="M120 0H220L400 150 220 300H120L300 150Z" fill="#0f171f" /></svg>
-          <div className="relative mx-auto flex w-full max-w-6xl flex-col items-start gap-8 px-5 py-20 sm:px-8 md:flex-row md:items-center md:justify-between">
-            <div className="max-w-2xl">
-              <h2 className="text-3xl font-extrabold leading-tight tracking-tight sm:text-5xl">Pronto para ter mais controle sobre a sua oficina?</h2>
-              <p className="mt-4 text-lg font-medium text-[#0f171f]/75">Cadastre sua oficina e comece a organizar clientes, veículos e ordens de serviço hoje mesmo.</p>
-            </div>
-            <CtaButton variant="dark" />
+            <ServiceOrderPreview />
           </div>
         </section>
-      </main>
+        <div className="border-b border-[#dde3e9] bg-white text-[#0f171f]"><ul className="mx-auto flex max-w-6xl flex-wrap gap-x-10 gap-y-3 px-5 py-7 text-sm font-semibold text-[#0f171f] sm:px-8">{[`${TRIAL_DAYS} dias grátis`, 'Sem cartão', 'Dados separados por oficina', 'WhatsApp no plano Completo'].map((item) => <li key={item} className="flex items-center gap-2"><Check weight="bold" className="size-4 text-[#7a5800]" />{item}</li>)}</ul></div>
 
+        <section id="como-funciona" className="scroll-mt-16 bg-[#f4f6f8] text-[#0f171f]"><div className="mx-auto max-w-6xl px-5 py-20 sm:px-8 sm:py-28"><SectionTitle eyebrow="Uma rotina, um fluxo" title="O atendimento avança. A informação acompanha." description="Veja o caminho de uma ordem de serviço, do balcão até o pagamento." /><ol className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">{flow.map(([number, title, text]) => <li key={number} className="border-t-4 border-[#ffbe00] pt-5"><span className="text-sm font-extrabold text-[#7a5800]">{number}</span><h3 className="mt-3 text-lg font-bold">{title}</h3><p className="mt-2 text-sm leading-relaxed text-[#526070]">{text}</p></li>)}</ol></div></section>
+
+        <section id="beneficios" className="scroll-mt-16 bg-white text-[#0f171f]"><div className="mx-auto max-w-6xl px-5 py-20 sm:px-8 sm:py-28"><SectionTitle eyebrow="O que muda na prática" title="Menos procura. Mais decisão." /><div className="mt-12 grid gap-8 md:grid-cols-3">{benefits.map(({ label, title, text }) => <article key={title} className="border-t border-[#dde3e9] pt-6"><p className="text-xs font-extrabold uppercase tracking-[0.16em] text-[#7a5800]">{label}</p><h3 className="mt-4 text-xl font-bold">{title}</h3><p className="mt-3 text-sm leading-relaxed text-[#526070]">{text}</p></article>)}</div></div></section>
+
+        <section className="dark bg-[#0f171f] text-white"><div className="mx-auto grid max-w-6xl gap-10 px-5 py-20 sm:px-8 lg:grid-cols-[1fr_1.2fr] lg:items-center"><div><p className="mb-4 text-xs font-extrabold uppercase tracking-[0.18em] text-[#ffbe00]">Feito para a equipe</p><h2 className="text-3xl font-extrabold leading-tight sm:text-4xl">Todos sabem qual é o próximo passo.</h2><p className="mt-5 leading-relaxed text-white/70">A recepção abre o atendimento, o mecânico atualiza a execução e o gestor acompanha o que precisa de atenção. Perfis e permissões organizam o acesso de cada pessoa.</p></div><ul className="grid gap-4 sm:grid-cols-2">{[['Recepção', 'Cliente, veículo, agenda e OS no mesmo lugar.'], ['Mecânico', 'Itens, fotos e andamento à mão no pátio.'], ['Financeiro', 'Parcelas, contas e recebimentos conectados.'], ['Gestor', 'Visão da operação e produtividade da equipe.']].map(([title, text]) => <li key={title} className="border-l-2 border-[#ffbe00] pl-4"><strong>{title}</strong><p className="mt-1 text-sm text-white/60">{text}</p></li>)}</ul></div></section>
+
+        <section id="planos" className="scroll-mt-16 bg-[#f4f6f8] text-[#0f171f]"><div className="mx-auto max-w-6xl px-5 py-20 sm:px-8 sm:py-28"><SectionTitle eyebrow="Planos" title="Comece pelo que sua oficina precisa." description={`Teste todos os recursos do Completo por ${TRIAL_DAYS} dias. Depois escolha um plano, sem perder os dados que cadastrou.`} /><div className="mt-12 grid gap-5 lg:grid-cols-3">{PLAN_CODES.map((code) => { const plan = PLANS[code]; const featured = code === 'profissional'; return <article key={code} className={`flex flex-col rounded-card border bg-white p-7 shadow-card ${featured ? 'border-2 border-[#ffbe00]' : 'border-[#dde3e9]'}`}>{featured && <p className="mb-3 text-xs font-extrabold uppercase tracking-widest text-[#7a5800]">Recomendado</p>}<h3 className="text-xl font-extrabold">{plan.name}</h3><p className="mt-2 min-h-12 text-sm text-[#526070]">{plan.tagline}</p><p className="mt-5 text-3xl font-extrabold tabular-nums">{formatCurrencyBRL(plan.monthlyPriceCents)}<span className="text-sm font-medium text-[#526070]">/mês</span></p><ul className="mt-6 flex-1 space-y-3 text-sm"><li>OS, clientes, veículos, agenda e catálogo</li><li>{plan.limits.users === null ? 'Usuários sem limite' : `Até ${plan.limits.users} usuários`}</li><li>{plan.limits.ordersPerMonth === null ? 'OS sem limite' : `Até ${plan.limits.ordersPerMonth} OS/mês`}</li>{MODULE_KEYS.map((key) => <li key={key} className={plan.modules.includes(key) ? 'font-semibold' : 'text-[#526070]'}><span aria-hidden>{plan.modules.includes(key) ? '✓ ' : '— '}</span>{MODULES[key].label}</li>)}</ul><div className="mt-8"><TrialLink>{`Testar grátis`}</TrialLink></div></article>; })}</div><p className="mt-8 text-center text-sm leading-relaxed text-[#526070]">Valores por oficina. Sem cartão durante o teste. Após os {TRIAL_DAYS} dias, escolha e pague um plano para continuar usando. Cancele quando quiser.</p></div></section>
+
+        <section className="bg-white text-[#0f171f]"><div className="mx-auto grid max-w-6xl gap-9 px-5 py-20 sm:px-8 lg:grid-cols-2 lg:items-start"><div><SectionTitle eyebrow="Confiança" title="Sua oficina, seus dados." description="Cada oficina tem seu próprio ambiente. Defina o acesso da equipe por função e consulte as condições de uso e privacidade antes de começar." /><div className="mt-8 flex items-center gap-3 text-sm font-semibold"><ShieldCheck weight="duotone" className="size-7 text-[#7a5800]" /> Ambiente separado por oficina</div></div><div className="divide-y divide-[#dde3e9] border-y border-[#dde3e9]">{FAQ.filter(([question]) => ['Posso migrar os dados da minha planilha?', 'Como funciona o suporte?', 'Posso cancelar quando quiser?', 'Posso levar meus dados embora?', 'Como funciona a aprovação pelo WhatsApp?'].includes(question)).map(([question, answer]) => <details key={question} className="group py-5"><summary className="flex cursor-pointer list-none justify-between gap-4 font-bold">{question}<span aria-hidden className="text-xl text-[#7a5800] group-open:rotate-45">+</span></summary><p className="mt-3 text-sm leading-relaxed text-[#526070]">{answer}</p></details>)}</div></div></section>
+
+        <section className="bg-[#ffbe00] text-[#0f171f]"><div className="mx-auto flex max-w-6xl flex-col items-start justify-between gap-8 px-5 py-16 sm:px-8 md:flex-row md:items-center"><div><h2 className="max-w-xl text-3xl font-extrabold leading-tight sm:text-4xl">Comece pela sua próxima ordem de serviço.</h2><p className="mt-3 max-w-xl text-sm font-medium">Teste todos os recursos por {TRIAL_DAYS} dias. Escolha o plano depois, sem cartão no cadastro.</p></div><TrialLink dark /></div></section>
+      </main>
       <SiteFooter />
     </div>
   );
