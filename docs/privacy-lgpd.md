@@ -16,7 +16,7 @@ Revisão do código: 24/10/2026. Versão dos documentos: `2026-10-24`.
 | Protocolos | `privacy_requests` |
 | Migração | `database/prisma/migrations/26_privacy_and_legal/migration.sql` |
 
-Os documentos distinguem o fornecedor do SaaS (responsável pela contratação e conta) da oficina (controladora dos dados de clientes, colaboradores e serviços). O fornecedor atua como operador do acervo operacional da oficina. Não há checkout, cobrança recorrente nem estorno integrados nesta versão; os protocolos comerciais exigem execução e resposta pelo responsável, fora do processador de pagamento do sistema.
+Os documentos distinguem o fornecedor do SaaS (responsável pela contratação e conta) da oficina (controladora dos dados de clientes, colaboradores e serviços). O fornecedor atua como operador do acervo operacional da oficina. A contratação e a cobrança recorrente usam o Stripe; os pedidos de privacidade e os protocolos comerciais continuam exigindo análise e resposta pelo responsável. Consulte [assinaturas e cobrança](saas-subscriptions.md) para os fluxos de pagamento e cancelamento.
 
 ## Configuração da identificação do fornecedor
 

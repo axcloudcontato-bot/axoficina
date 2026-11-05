@@ -97,6 +97,7 @@ export class StripeClient {
     await this.request('POST', `/subscriptions/${encodeURIComponent(subscriptionId)}`, {
       items: [{ id: item.id, price_data: { currency: 'brl', product, unit_amount: input.unitAmountCents, recurring: { interval: input.interval } } }],
       proration_behavior: input.chargeNow ? 'always_invoice' : 'none',
+      ...(input.chargeNow ? { payment_behavior: 'error_if_incomplete' } : {}),
       metadata: { plan_name: input.planName },
     });
   }

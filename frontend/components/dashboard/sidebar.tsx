@@ -2,14 +2,15 @@
 
 import type { ModuleKey, PermissionKey } from '@oficina/contracts';
 import type { Icon as PhosphorIcon } from '@phosphor-icons/react';
-import { Bell, Buildings, CalendarBlank, Car, ChartBar, ChartLine, ChatCircleText, ClipboardText, Envelope, Package, Gear, Lock, SidebarSimple, SignOut, SquaresFour, Users, UsersThree, WhatsappLogo, Clock } from '@phosphor-icons/react';
+import { Bell, Buildings, CalendarBlank, Car, ChartBar, ChartLine, ChatCircleText, ClipboardText, DotsThree, Envelope, Package, Gear, Lock, ShieldCheck, SidebarSimple, SignOut, SquaresFour, UserCircle, Users, UsersThree, WhatsappLogo, Clock } from '@phosphor-icons/react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useId, useRef, useState } from 'react';
-import { hasPermission } from '@/features/auth/permissions';
+import { canViewTeam, hasPermission } from '@/features/auth/permissions';
 import { useLogout } from '@/features/auth/hooks/use-auth';
 import { AnimatedIcon } from '@/components/ui/animated-icon';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { OfixLogo } from '@/components/brand/ofix-logo';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/stores/auth-store';
@@ -57,6 +58,7 @@ export function Sidebar() {
   const branding = useBranding();
   const saasAccess = useSaasAdminAccess();
   const [collapsed, setCollapsed] = useState(false);
+  const [mobileMoreOpen, setMobileMoreOpen] = useState(false);
   const navigationId = useId();
   const toggleRef = useRef<HTMLButtonElement>(null);
   const restoreToggleFocus = useRef(false);
@@ -64,7 +66,14 @@ export function Sidebar() {
     if (restoreToggleFocus.current) { toggleRef.current?.focus(); restoreToggleFocus.current = false; }
   }, [collapsed]);
   const { hasModule } = useEntitlements();
-  const visibleItems = NAV_ITEMS.filter((item) => hasPermission(user, item.permission) || item.children?.some((child) => hasPermission(user, child.permission)));
+  const visibleItems = NAV_ITEMS.filter((item) => item.href === '/configuracoes'
+    ? hasPermission(user, 'settings.view') || canViewTeam(user)
+    : hasPermission(user, item.permission) || item.children?.some((child) => hasPermission(user, child.permission)));
+  const mobilePrimaryItems = visibleItems.slice(0, 4);
+  const mobileMoreItems = visibleItems.slice(4);
+  const mobileMoreActive = mobileMoreItems.some((item) => isActive(pathname, item.href)) || isActive(pathname, '/suporte') || isActive(pathname, '/admin') || isActive(pathname, '/configuracoes/conta') || isActive(pathname, '/configuracoes/privacidade');
+
+  useEffect(() => setMobileMoreOpen(false), [pathname]);
 
   useEffect(() => {
     const value = window.localStorage.getItem('oficina.sidebar.collapsed') === 'true';
@@ -104,7 +113,29 @@ export function Sidebar() {
       {user && <div className={cn('flex items-center border-t border-border py-4', collapsed ? 'justify-center px-3' : 'gap-2.5 px-4')}><div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">{initials(user.name)}</div>{!collapsed && <div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold">{user.name}</p><p className="text-xs text-muted-foreground">{ROLE_LABELS[user.profileName ?? ''] ?? user.profileName ?? ROLE_LABELS[user.role] ?? user.role}</p></div>}<button type="button" aria-label="Sair" onClick={() => logout.mutate()} className="group flex size-9 items-center justify-center rounded-button text-muted-foreground hover:text-danger"><AnimatedIcon icon={SignOut} className="size-[18px]" /></button></div>}
       {collapsed && <button type="button" ref={toggleRef} aria-expanded={!collapsed} aria-controls={navigationId} onClick={toggleSidebar} aria-label="Expandir menu lateral" className="group absolute right-[-14px] top-5 flex size-7 items-center justify-center rounded-full border border-border bg-background text-muted-foreground hover:text-foreground"><AnimatedIcon icon={SidebarSimple} className="size-3.5" /></button>}
     </aside>
-    <nav aria-label="Navegação móvel" className="fixed inset-x-0 bottom-0 z-40 grid h-16 grid-cols-5 border-t border-border bg-background px-2 md:hidden">{visibleItems.slice(0, saasAccess.data?.allowed ? 4 : 5).map((item) => { const active = isActive(pathname, item.href); return <Link key={item.href} href={item.href} aria-current={active ? 'page' : undefined} className={cn('group flex min-w-0 flex-col items-center justify-center gap-1 text-[10px] font-semibold', active ? 'text-primary' : 'text-muted-foreground')}><AnimatedIcon icon={item.icon} active={active} className="size-[18px]" /><span className="truncate">{item.shortLabel}</span></Link>; })}{saasAccess.data?.allowed && <Link href="/admin" aria-current={isActive(pathname, '/admin') ? 'page' : undefined} className={cn('flex min-w-0 flex-col items-center justify-center gap-1 text-[10px] font-semibold', isActive(pathname, '/admin') ? 'text-primary' : 'text-muted-foreground')}><Buildings className="size-[18px]" aria-hidden="true" /><span>Admin</span></Link>}</nav>
+    <nav aria-label="Navegação móvel" className="fixed inset-x-0 bottom-0 z-40 grid h-16 border-t border-border bg-background px-2 md:hidden" style={{ gridTemplateColumns: `repeat(${mobilePrimaryItems.length + 1}, minmax(0, 1fr))` }}>
+      {mobilePrimaryItems.map((item) => { const active = isActive(pathname, item.href); return <Link key={item.href} href={item.href} aria-current={active ? 'page' : undefined} className={cn('group flex min-w-0 flex-col items-center justify-center gap-1 text-[10px] font-semibold', active ? 'text-primary' : 'text-muted-foreground')}><AnimatedIcon icon={item.icon} active={active} className="size-[18px]" /><span className="truncate">{item.shortLabel}</span></Link>; })}
+      <Dialog open={mobileMoreOpen} onOpenChange={setMobileMoreOpen}>
+        <DialogTrigger asChild><button type="button" aria-label="Mais áreas" aria-expanded={mobileMoreOpen} className={cn('flex min-w-0 flex-col items-center justify-center gap-1 text-[10px] font-semibold', mobileMoreActive || mobileMoreOpen ? 'text-primary' : 'text-muted-foreground')}><DotsThree className="size-[18px]" aria-hidden="true" /><span>Mais</span></button></DialogTrigger>
+        <DialogContent className="max-h-[85dvh] overflow-y-auto p-0 sm:max-w-md">
+          <DialogHeader className="border-b border-border p-5"><DialogTitle>Áreas do Ofix</DialogTitle></DialogHeader>
+          <div className="space-y-4 px-4 pb-5">
+            {groups.map((group) => {
+              const items = mobileMoreItems.filter((item) => item.group === group);
+              return items.length ? <section key={group}><h2 className="px-2 pb-1 text-xs font-bold uppercase tracking-wide text-text-muted">{group}</h2>{items.map((item) => { const Icon = item.icon; return <Link key={item.href} href={item.href} onClick={() => setMobileMoreOpen(false)} aria-current={isActive(pathname, item.href) ? 'page' : undefined} className={cn('flex min-h-11 items-center gap-3 rounded-button px-3 text-sm font-semibold', isActive(pathname, item.href) ? 'bg-primary text-primary-foreground' : 'text-text hover:bg-muted')}><Icon className="size-[18px] shrink-0" aria-hidden="true" />{item.label}{!hasModule(item.module) && <Lock className="ml-auto size-4" aria-label="Fora do plano" />}</Link>; })}</section> : null;
+            })}
+            <section><h2 className="px-2 pb-1 text-xs font-bold uppercase tracking-wide text-text-muted">Ajuda e conta</h2>
+              {[
+                { href: '/suporte', label: 'Suporte', icon: ChatCircleText },
+                { href: '/configuracoes/conta', label: 'Minha conta', icon: UserCircle },
+                { href: '/configuracoes/privacidade', label: 'Privacidade e solicitações', icon: ShieldCheck },
+                ...(saasAccess.data?.allowed ? [{ href: '/admin', label: 'Administração do SaaS', icon: Buildings }] : []),
+              ].map((item) => { const Icon = item.icon; return <Link key={item.href} href={item.href} onClick={() => setMobileMoreOpen(false)} aria-current={isActive(pathname, item.href) ? 'page' : undefined} className={cn('flex min-h-11 items-center gap-3 rounded-button px-3 text-sm font-semibold', isActive(pathname, item.href) ? 'bg-primary text-primary-foreground' : 'text-text hover:bg-muted')}><Icon className="size-[18px] shrink-0" aria-hidden="true" />{item.label}</Link>; })}
+            </section>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </nav>
   </>;
 }
 

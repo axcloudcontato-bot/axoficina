@@ -28,6 +28,6 @@ export interface CheckoutRequest { plan: PlanCode; cycle: BillingCycle }
 export interface CheckoutResponse {
   /** The payment page to continue on; null when the change only adjusts the next charges. */
   checkoutUrl: string | null;
-  /** The plan is already in force (an upgrade of a paid subscription). */
+  /** The change is already in force (a paid upgrade or a change of billing interval). */
   appliedNow: boolean;
 }

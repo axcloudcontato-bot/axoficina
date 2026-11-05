@@ -1,7 +1,8 @@
 'use client';
 
+import { useState } from 'react';
 import { toast } from 'sonner';
-import { MODULES, PLAN_CODES, PLANS, planPriceCents, resolvePlan, type PlanCode } from '@oficina/contracts';
+import { MODULES, PLAN_CODES, PLANS, planPriceCents, resolvePlan, type BillingCycle, type PlanCode } from '@oficina/contracts';
 import { Button } from '@/components/ui/button';
 import { extractErrorMessage } from '@/lib/api/client';
 import { formatCurrencyBRL } from '@/lib/format-currency';
@@ -17,13 +18,23 @@ export function PlanSwitcher() {
   const checkout = useCheckout();
   const cancel = useCancelSubscription();
   const portal = usePaymentPortal();
-  const cycle = 'monthly' as const;
+  const [selectedCycle, setSelectedCycle] = useState<BillingCycle | null>(null);
+  const cycle = selectedCycle ?? subscription.data?.cycle ?? 'monthly';
   const current = resolvePlan(subscription.data?.plan).code;
   const busy = checkout.isPending || cancel.isPending || portal.isPending;
 
   async function choose(plan: PlanCode) {
     const name = PLANS[plan].name;
-    if (billing.data?.hasSubscription && !window.confirm(`Mudar para o plano ${name}? ${PLANS[plan].monthlyPriceCents > PLANS[current].monthlyPriceCents ? 'O novo plano vale agora e as próximas cobranças usam o novo valor.' : 'O plano atual segue até o próximo pagamento e depois muda para o novo.'}`)) return;
+    if (billing.data?.hasSubscription) {
+      const cycleChanged = cycle !== (subscription.data?.cycle ?? 'monthly');
+      const upgrade = PLANS[plan].monthlyPriceCents > PLANS[current].monthlyPriceCents;
+      const effect = cycleChanged
+        ? 'A periodicidade muda agora e o Stripe pode cobrar imediatamente, com eventuais créditos ou ajustes pelo período já pago.'
+        : upgrade
+          ? 'O novo plano vale agora e a diferença pode ser cobrada imediatamente.'
+          : 'O plano atual segue até o próximo pagamento e depois muda para o novo.';
+      if (!window.confirm(`Mudar para ${name} com pagamento ${cycle === 'yearly' ? 'anual' : 'mensal'}? ${effect} Continuar?`)) return;
+    }
     try {
       const result = await checkout.mutateAsync({ plan, cycle });
       if (result.checkoutUrl && isStripePage(result.checkoutUrl)) { window.location.assign(result.checkoutUrl); return; }
@@ -49,16 +60,22 @@ export function PlanSwitcher() {
   return <section aria-label="Planos" className="rounded-card border border-border bg-card p-5 shadow-sm">
     <h2 className="text-base font-bold">Planos</h2>
     {billing.data?.pendingPlan && <p role="status" className="mt-3 rounded-button bg-selection p-3 text-sm">Troca para o plano {PLANS[billing.data.pendingPlan].name} agendada para o próximo pagamento.</p>}
+    <div className="mt-4 flex flex-wrap items-center gap-3">
+      <div role="group" aria-label="Periodicidade da assinatura" className="inline-flex rounded-button border border-border bg-card p-1">
+        {([['monthly', 'Mensal'], ['yearly', 'Anual']] as const).map(([value, label]) => <button key={value} type="button" aria-pressed={cycle === value} onClick={() => setSelectedCycle(value)} className={`rounded-button px-4 py-2 text-sm font-semibold transition-colors ${cycle === value ? 'bg-primary text-primary-foreground' : 'text-text-muted hover:bg-muted hover:text-text'}`}>{label}</button>)}
+      </div>
+      <p className="text-xs text-text-muted">O plano anual custa 12 mensalidades, sem desconto, cobradas de uma vez por ano.</p>
+    </div>
     <ul className="mt-4 grid gap-3 md:grid-cols-3">{PLAN_CODES.map((code) => {
       const plan = PLANS[code];
       const paying = Boolean(billing.data?.hasSubscription);
       const isCurrent = paying && code === current && (subscription.data?.cycle ?? 'monthly') === cycle;
       return <li key={code} className={`flex flex-col rounded-card border p-4 ${code === current ? 'border-primary' : 'border-border'}`}>
         <h3 className="font-bold">{plan.name}{code === current && <span className="ml-2 text-xs font-semibold text-primary">{paying ? 'seu plano' : subscription.data?.status === 'trial' ? 'em teste' : 'em uso'}</span>}</h3>
-        <p className="mt-1 text-2xl font-bold">{formatCurrencyBRL(planPriceCents(code, cycle))}<span className="text-xs font-normal text-text-muted"> por mês</span></p>
+        <p className="mt-1 text-2xl font-bold">{formatCurrencyBRL(planPriceCents(code, cycle))}<span className="text-xs font-normal text-text-muted"> por {cycle === 'yearly' ? 'ano' : 'mês'}</span></p>
         <p className="mt-2 text-xs text-text-muted">{plan.tagline}</p>
         <ul className="mt-3 flex-1 space-y-1 text-xs"><li>{plan.limits.users ?? 'Usuários sem limite'}{plan.limits.users ? ' usuários' : ''}</li><li>{plan.limits.ordersPerMonth ? `${plan.limits.ordersPerMonth} OS por mês` : 'OS sem limite'}</li>{plan.modules.map((key) => <li key={key}>✓ {MODULES[key].label}</li>)}</ul>
-        {billing.data?.enabled && <Button className="mt-4" size="sm" variant={isCurrent ? 'outline' : 'default'} disabled={busy || isCurrent} onClick={() => choose(code)}>{isCurrent ? 'Plano atual' : billing.data.hasSubscription ? `Mudar para ${plan.name}` : `Contratar ${plan.name}`}</Button>}
+        {billing.data?.enabled && <Button className="mt-4" size="sm" variant={isCurrent ? 'outline' : 'default'} disabled={busy || isCurrent} onClick={() => choose(code)}>{isCurrent ? 'Plano atual' : billing.data.hasSubscription ? code === current ? `Mudar para ${cycle === 'yearly' ? 'anual' : 'mensal'}` : `Mudar para ${plan.name}` : `Contratar ${plan.name}`}</Button>}
       </li>;
     })}</ul>
     {!billing.data?.enabled && <p className="mt-4 text-sm text-text-muted">Para contratar ou trocar de plano, fale com o suporte do Ofix.</p>}

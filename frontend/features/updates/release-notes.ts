@@ -1,6 +1,15 @@
 // This feed is visible to every workshop account. Keep SaaS administration changes out of it.
 export const RELEASE_NOTES = [
   {
+    id: '2026-11-05-assinatura-anual-menu-movel', date: '2026-11-05', title: 'Assinatura anual e acesso aos módulos no celular',
+    items: [
+      'Em Assinatura e dados, escolha pagamento mensal ou anual. O anual cobra 12 mensalidades de uma vez, sem desconto; uma mudança de periodicidade em uma assinatura ativa pode gerar cobrança imediata.',
+      'No celular, a opção Mais reúne os módulos fora da barra inferior, suporte e as páginas da sua conta.',
+      'Equipe e acesso aparece apenas para administradores e gestores autorizados, conforme a permissão da API.',
+      'As abas de Ordens de serviço usam texto escuro sobre o amarelo para facilitar a leitura.',
+    ],
+  },
+  {
     id: '2026-11-04-seletor-mes-financeiro', date: '2026-11-04', title: 'Período financeiro mais legível',
     items: [
       'O seletor de mês das telas financeiras ficou mais largo para exibir o ano sem sobreposição com o ícone do calendário.',

@@ -15,3 +15,7 @@ export function hasPermission(user: UserResponse | null, permission: PermissionK
   if (user.role === 'ADMIN' && permission.startsWith('settings.') && user.permissions === undefined) return true;
   return (user.permissions ?? LEGACY_PERMISSIONS[user.role] ?? []).includes(permission);
 }
+
+export function canViewTeam(user: UserResponse | null): boolean {
+  return Boolean(user && ['ADMIN', 'MANAGER'].includes(user.role) && hasPermission(user, 'team.view'));
+}

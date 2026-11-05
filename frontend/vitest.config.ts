@@ -8,6 +8,10 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: ['./vitest.setup.ts'],
     globals: true,
+    // Limita a disputa por CPU e memória entre os testes de componentes com calendário dinâmico.
+    maxWorkers: 4,
+    minWorkers: 1,
+    testTimeout: 10_000,
     // e2e/ roda via Playwright (pnpm run test:e2e), não pelo Vitest.
     exclude: ['node_modules/**', 'e2e/**'],
     coverage: {

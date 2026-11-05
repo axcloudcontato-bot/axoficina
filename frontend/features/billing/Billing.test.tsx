@@ -30,12 +30,38 @@ describe('PlanSwitcher', () => {
     vi.spyOn(window, 'confirm').mockReturnValue(true);
   });
 
-  it('shows the three plans with their monthly prices and no annual option', () => {
+  it('shows monthly prices and an explicit annual option', () => {
     render(<PlanSwitcher />);
     expect(screen.getByText(/129,90/)).toBeInTheDocument();
     expect(screen.getByText(/159,90/)).toBeInTheDocument();
     expect(screen.getByText(/199,90/)).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /Anual/ })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Mensal' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('button', { name: 'Anual' })).toHaveAttribute('aria-pressed', 'false');
+  });
+
+  it('sends the annual amount and interval chosen by a workshop on trial', async () => {
+    mocks.checkout.mockResolvedValue({ checkoutUrl: null, appliedNow: false });
+    const user = userEvent.setup();
+    render(<PlanSwitcher />);
+    await user.click(screen.getByRole('button', { name: 'Anual' }));
+    expect(screen.getByText(/1\.558,80/)).toBeInTheDocument();
+    expect(screen.getAllByText('por ano')).toHaveLength(3);
+    await user.click(screen.getByRole('button', { name: 'Contratar Essencial' }));
+    await waitFor(() => expect(mocks.checkout).toHaveBeenCalledWith({ plan: 'essencial', cycle: 'yearly' }));
+  });
+
+  it('recognizes an existing annual subscription and warns before changing its interval', async () => {
+    mocks.billing = { enabled: true, hasSubscription: true, hasCustomer: true, pendingPlan: null };
+    mocks.subscription = { plan: 'profissional', status: 'active', cycle: 'yearly' };
+    mocks.checkout.mockResolvedValue({ checkoutUrl: null, appliedNow: true });
+    const user = userEvent.setup();
+    render(<PlanSwitcher />);
+    expect(screen.getByRole('button', { name: 'Anual' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('button', { name: 'Plano atual' })).toBeDisabled();
+    await user.click(screen.getByRole('button', { name: 'Mensal' }));
+    await user.click(screen.getByRole('button', { name: 'Mudar para mensal' }));
+    expect(window.confirm).toHaveBeenCalledWith(expect.stringContaining('pode cobrar imediatamente'));
+    await waitFor(() => expect(mocks.checkout).toHaveBeenCalledWith({ plan: 'profissional', cycle: 'monthly' }));
   });
 
   it('lets a workshop on the free trial hire the Completo it is already trying', async () => {

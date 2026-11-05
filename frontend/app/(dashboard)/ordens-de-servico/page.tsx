@@ -129,7 +129,7 @@ export default function ServiceOrdersPage() {
       <PageHero eyebrow="Controle operacional" title="Ordens de serviço" description="Acompanhe a fila de trabalho, consulte todas as ordens ou veja o histórico." actions={canManage && <NewServiceOrderQuickStart className="shrink-0" label="Nova ordem de serviço" />} />
 
       <nav aria-label="Seções de ordens de serviço" className="flex flex-wrap gap-2 border-b border-border pb-3">
-        {([['queue', 'Fila de trabalho'], ['all', 'Todas as ordens'], ['history', 'Histórico']] as const).map(([key, label]) => <button key={key} type="button" aria-current={section === key ? 'page' : undefined} onClick={() => changeSection(key)} className={`rounded-button px-4 py-2 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${section === key ? 'bg-primary text-white' : 'bg-surface text-text-muted hover:text-text'}`}>{label}</button>)}
+        {([['queue', 'Fila de trabalho'], ['all', 'Todas as ordens'], ['history', 'Histórico']] as const).map(([key, label]) => <button key={key} type="button" aria-current={section === key ? 'page' : undefined} onClick={() => changeSection(key)} className={`rounded-button px-4 py-2 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${section === key ? 'bg-primary text-primary-foreground' : 'bg-surface text-text-muted hover:text-text'}`}>{label}</button>)}
       </nav>
 
       {section === 'queue' && <section aria-label="Resumo das ordens de serviço" aria-busy={isFetching} className="grid grid-cols-2 gap-3 xl:grid-cols-4">

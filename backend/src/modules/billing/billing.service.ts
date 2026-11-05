@@ -87,14 +87,17 @@ export class BillingService {
     const current = resolvePlan(tenant.plan).code;
     if (request.plan === current && cycle === tenant.subscriptionCycle && !tenant.pendingPlan) throw new ConflictException('Esta já é a sua assinatura atual.');
     const upgrade = RANK[request.plan] > RANK[current];
-    await this.stripe.changeSubscription(tenant.billingSubscriptionId!, { plan: plan.code, unitAmountCents, interval: interval(cycle), planName: plan.name, chargeNow: upgrade });
-    const now = upgrade || request.plan === current;
+    // Stripe resets the billing date and bills immediately when the interval changes,
+    // even with proration disabled. Keep the local state aligned with that charge.
+    const cycleChanged = cycle !== tenant.subscriptionCycle;
+    await this.stripe.changeSubscription(tenant.billingSubscriptionId!, { plan: plan.code, unitAmountCents, interval: interval(cycle), planName: plan.name, chargeNow: upgrade || cycleChanged });
+    const now = upgrade || cycleChanged || request.plan === current;
     const data = now
       ? { plan: request.plan, pendingPlan: null, subscriptionCycle: cycle, subscriptionAmountCents: unitAmountCents }
       : { pendingPlan: request.plan, subscriptionCycle: cycle };
     await this.prisma.unscoped.tenant.update({ where: { id: tenant.id }, data });
     this.entitlements.forget(tenant.id);
-    await this.record(user, upgrade ? 'billing.plan_upgraded' : 'billing.plan_change_scheduled', tenant.id, request.plan, cycle);
+    await this.record(user, cycleChanged ? 'billing.cycle_changed' : upgrade ? 'billing.plan_upgraded' : 'billing.plan_change_scheduled', tenant.id, request.plan, cycle);
     return { checkoutUrl: null, appliedNow: now };
   }
 

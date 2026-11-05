@@ -9,7 +9,7 @@ import { Bell, ChatCircleText, Desktop, Gear, Keyboard, MagnifyingGlass, Moon, S
 import { cn } from '@/lib/utils';
 import { focusableElements, isTextInput, restoreFocus } from '@/lib/keyboard';
 import { NAVIGATION_DESTINATIONS, normalizeNavigationSearch } from '@/lib/navigation';
-import { hasPermission } from '@/features/auth/permissions';
+import { canViewTeam, hasPermission } from '@/features/auth/permissions';
 import { useLogout } from '@/features/auth/hooks/use-auth';
 import { useEntitlements } from '@/features/plan/use-entitlements';
 import { useMaintenanceAlertsList } from '@/features/maintenance-alerts/hooks/use-maintenance-alerts';
@@ -104,7 +104,7 @@ export function HeaderDock() {
   const searchResults = useServiceOrdersList({ offset: 0, limit: 8, search: debouncedSearch }, { enabled: view === 'search' && debouncedSearch.length >= 2 && canSearchOrders });
   const searched = debouncedSearch.length >= 2 && searchQuery.trim() === debouncedSearch && canSearchOrders;
   const orders = searched ? searchResults.data?.items ?? [] : [];
-  const pages = NAVIGATION_DESTINATIONS.filter((item) => (!item.permission || hasPermission(user, item.permission)) && normalizeNavigationSearch(item.label).includes(normalizeNavigationSearch(searchQuery)));
+  const pages = NAVIGATION_DESTINATIONS.filter((item) => (!item.permission || hasPermission(user, item.permission)) && (item.href !== '/configuracoes/equipe' || canViewTeam(user)) && normalizeNavigationSearch(item.label).includes(normalizeNavigationSearch(searchQuery)));
   const ThemeIcon = mounted ? (THEME_OPTIONS.find((option) => option.key === theme)?.icon ?? (resolvedTheme === 'dark' ? Moon : Sun)) : Sun;
 
   function searchKeys(event: KeyboardEvent<HTMLInputElement>) {

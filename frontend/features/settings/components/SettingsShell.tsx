@@ -6,7 +6,7 @@ import { Buildings, ClockCounterClockwise, CreditCard, Envelope, UsersThree, Shi
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { segmentedItem, segmentedList } from '@/components/ui/segmented';
-import { hasPermission } from '@/features/auth/permissions';
+import { canViewTeam, hasPermission } from '@/features/auth/permissions';
 import { useAuthStore } from '@/stores/auth-store';
 import { useEntitlements } from '@/features/plan/use-entitlements';
 
@@ -28,10 +28,10 @@ export function SettingsShell({ children }: { children: React.ReactNode }) {
   const { hasModule } = useEntitlements();
   // The personal area (my account, my privacy) is for everyone and has its own tabs.
   const privacy = pathname === '/configuracoes/privacidade' || pathname === '/configuracoes/conta';
-  const tabs = privacy ? [{ href: '/configuracoes/conta', label: 'Minha conta', icon: UserCircle }, { href: '/configuracoes/privacidade', label: 'Privacidade e solicitações', icon: ShieldCheck }] : items.filter((item) => (item.permission === null || hasPermission(user, item.permission)) && (!['/configuracoes/privacidade-da-oficina', '/configuracoes/assinatura', '/configuracoes/historico'].includes(item.href) || user?.role === 'ADMIN'));
+  const tabs = privacy ? [{ href: '/configuracoes/conta', label: 'Minha conta', icon: UserCircle }, { href: '/configuracoes/privacidade', label: 'Privacidade e solicitações', icon: ShieldCheck }] : items.filter((item) => (item.permission === null || hasPermission(user, item.permission)) && (item.href !== '/configuracoes/equipe' || canViewTeam(user)) && (!['/configuracoes/privacidade-da-oficina', '/configuracoes/assinatura', '/configuracoes/historico'].includes(item.href) || user?.role === 'ADMIN'));
   const currentSection = items.find((item) => item.href === pathname && item.href !== '/configuracoes');
   return <div className="space-y-6">
-    <PageHero eyebrow={privacy ? 'Minha conta' : currentSection ? 'Configurações' : 'Administração'} title={privacy ? 'Minha conta' : currentSection?.label ?? 'Configurações'} description={privacy ? 'Sua senha, seus dados e seus pedidos de privacidade.' : currentSection?.description ?? 'Personalize a oficina, as comunicações e o acesso da equipe.'} actions={privacy && (hasPermission(user, 'settings.view') || hasPermission(user, 'team.view')) && <Link href="/configuracoes" className="text-sm font-semibold text-primary hover:underline">Voltar às configurações</Link>} />
+    <PageHero eyebrow={privacy ? 'Minha conta' : currentSection ? 'Configurações' : 'Administração'} title={privacy ? 'Minha conta' : currentSection?.label ?? 'Configurações'} description={privacy ? 'Sua senha, seus dados e seus pedidos de privacidade.' : currentSection?.description ?? 'Personalize a oficina, as comunicações e o acesso da equipe.'} actions={privacy && (hasPermission(user, 'settings.view') || canViewTeam(user)) && <Link href="/configuracoes" className="text-sm font-semibold text-primary hover:underline">Voltar às configurações</Link>} />
     <nav aria-label="Seções das configurações" className={segmentedList}>
       {tabs.map((tab) => {
         const { href, label, icon: Icon } = tab;

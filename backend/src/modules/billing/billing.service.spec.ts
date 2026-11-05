@@ -61,6 +61,21 @@ describe('BillingService checkout', () => {
     expect(stripe.checkoutSession).toHaveBeenCalledWith(expect.objectContaining({ unitAmountCents: 155880, interval: 'year' }));
   });
 
+  it('applies a change from monthly to yearly immediately after Stripe accepts the charge', async () => {
+    const { service, db, stripe } = build(tenantRow({ plan: 'profissional', billingCustomerId: 'cus_1', billingSubscriptionId: 'sub_1', subscriptionStatus: 'active' }));
+    const result = await service.checkout(user, { plan: 'profissional', cycle: 'yearly' });
+    expect(stripe.changeSubscription).toHaveBeenCalledWith('sub_1', { plan: 'profissional', unitAmountCents: 191880, interval: 'year', planName: 'Profissional', chargeNow: true });
+    expect(db.tenant.update).toHaveBeenCalledWith({ where: { id: TENANT_ID }, data: { plan: 'profissional', pendingPlan: null, subscriptionCycle: 'yearly', subscriptionAmountCents: 191880 } });
+    expect(result).toEqual({ checkoutUrl: null, appliedNow: true });
+  });
+
+  it('does not change the local cycle when Stripe refuses an immediate payment', async () => {
+    const { service, db, stripe } = build(tenantRow({ plan: 'profissional', billingCustomerId: 'cus_1', billingSubscriptionId: 'sub_1', subscriptionStatus: 'active' }));
+    stripe.changeSubscription.mockRejectedValue(new Error('payment failed'));
+    await expect(service.checkout(user, { plan: 'profissional', cycle: 'yearly' })).rejects.toThrow('payment failed');
+    expect(db.tenant.update).not.toHaveBeenCalled();
+  });
+
   it('reuses the customer it already created', async () => {
     const { service, stripe } = build(tenantRow({ billingCustomerId: 'cus_9' }));
     await service.checkout(user, { plan: 'essencial', cycle: 'monthly' });
@@ -94,6 +109,14 @@ describe('BillingService checkout', () => {
     expect(stripe.changeSubscription).toHaveBeenCalledWith('sub_1', expect.objectContaining({ chargeNow: false }));
     expect(db.tenant.update).toHaveBeenCalledWith({ where: { id: TENANT_ID }, data: { pendingPlan: 'essencial', subscriptionCycle: 'monthly' } });
     expect(result.appliedNow).toBe(false);
+  });
+
+  it('applies a lower plan immediately when its billing interval also changes', async () => {
+    const { service, db, stripe } = build(tenantRow({ plan: 'completo', billingCustomerId: 'cus_1', billingSubscriptionId: 'sub_1', subscriptionStatus: 'active' }));
+    const result = await service.checkout(user, { plan: 'essencial', cycle: 'yearly' });
+    expect(stripe.changeSubscription).toHaveBeenCalledWith('sub_1', expect.objectContaining({ interval: 'year', chargeNow: true }));
+    expect(db.tenant.update).toHaveBeenCalledWith({ where: { id: TENANT_ID }, data: { plan: 'essencial', pendingPlan: null, subscriptionCycle: 'yearly', subscriptionAmountCents: 155880 } });
+    expect(result.appliedNow).toBe(true);
   });
 
   it('refuses to "change" to the plan already paid for', async () => {

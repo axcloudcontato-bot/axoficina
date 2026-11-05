@@ -151,6 +151,19 @@ describe('StripeClient plan products', () => {
     expect(update.get('items[0][price_data][product]')).toBe('ofix_plan_essencial');
     expect(update.get('items[0][id]')).toBe('si_1');
     expect(update.get('proration_behavior')).toBe('none');
+    expect(update.has('payment_behavior')).toBe(false);
+  });
+
+  it('requires a completed payment before applying a change that bills immediately', async () => {
+    const fetchMock = jest.spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(answer(200, { id: 'sub_1', items: { data: [{ id: 'si_1' }] } }))
+      .mockResolvedValueOnce(answer(200, { id: 'ofix_plan_profissional', active: true }))
+      .mockResolvedValueOnce(answer(200, { id: 'sub_1' }));
+    await client().changeSubscription('sub_1', { plan: 'profissional', unitAmountCents: 191880, interval: 'year', planName: 'Profissional', chargeNow: true });
+    const update = bodyOf(fetchMock, 2);
+    expect(update.get('proration_behavior')).toBe('always_invoice');
+    expect(update.get('payment_behavior')).toBe('error_if_incomplete');
+    expect(update.get('items[0][price_data][recurring][interval]')).toBe('year');
   });
 
   function checkoutFetch(options: { uploads: boolean }) {
