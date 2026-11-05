@@ -1,6 +1,18 @@
 // This feed is visible to every workshop account. Keep SaaS administration changes out of it.
 export const RELEASE_NOTES = [
   {
+    id: '2026-11-04-seletor-mes-financeiro', date: '2026-11-04', title: 'Período financeiro mais legível',
+    items: [
+      'O seletor de mês das telas financeiras ficou mais largo para exibir o ano sem sobreposição com o ícone do calendário.',
+    ],
+  },
+  {
+    id: '2026-11-04-botoes-secundarios-brancos', date: '2026-11-04', title: 'Botões secundários mais claros',
+    items: [
+      'Ações como Editar, Nova OS, Exportar e Importar usam fundo branco e contorno mais visível. As abas não selecionadas também ficam legíveis sem parecer desativadas, inclusive em Configurações e no cadastro de clientes. O controle de período da previsão destaca em amarelo a opção escolhida.',
+    ],
+  },
+  {
     id: '2026-11-04-modais-campos-destacados', date: '2026-11-04', title: 'Campos brancos com contorno nos formulários',
     items: [
       'Os modais usam fundo branco e campos também brancos, com bordas mais visíveis e foco destacado. Campos desativados continuam diferentes dos editáveis.',

@@ -64,7 +64,7 @@ export function CustomerCareWorkspace() {
       <ul className="mt-3 space-y-1 text-sm">{data.unreachable.customers.slice(0, 5).map(customer => <li key={customer.id}><Link href={`/clientes/${customer.id}`} className="font-semibold underline">{customer.name}</Link> · {CARE_UNREACHABLE_LABELS[customer.reason]}</li>)}</ul>
       {data.unreachable.customers.length > 5 && <details className="mt-2 text-sm"><summary className="cursor-pointer font-semibold">Ver os outros {data.unreachable.total - 5}</summary><ul className="mt-2 space-y-1">{data.unreachable.customers.slice(5).map(customer => <li key={customer.id}><Link href={`/clientes/${customer.id}`} className="font-semibold underline">{customer.name}</Link> · {CARE_UNREACHABLE_LABELS[customer.reason]}</li>)}</ul>{data.unreachable.total > data.unreachable.customers.length && <p className="mt-2 text-xs">E mais {data.unreachable.total - data.unreachable.customers.length}.</p>}</details>}
     </section>}
-    <Tabs value={tab} onValueChange={setTab}><TabsList aria-label="Seções de fidelização de clientes" className={cn(segmentedList, 'h-auto justify-start bg-transparent p-0 text-text-muted')}>{[
+    <Tabs value={tab} onValueChange={setTab}><TabsList aria-label="Seções de fidelização de clientes" className={cn(segmentedList, 'h-auto justify-start border-0 bg-transparent p-0 text-text-muted')}>{[
       { value: 'overview', label: 'Visão geral', icon: SquaresFour },
       { value: 'manual', label: 'Para a equipe ligar', icon: PhoneCall },
       { value: 'forecast', label: 'Previsão de contatos', icon: CalendarBlank },
