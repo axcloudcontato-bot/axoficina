@@ -1,5 +1,5 @@
 // Alterar a versão exige revisão dos textos e novo aceite nos fluxos de adesão.
-export const LEGAL_VERSION = '2026-11-05';
+export const LEGAL_VERSION = '2026-11-06';
 export const PRIVACY_REQUEST_TYPES = ['ACCESS', 'CORRECTION', 'PORTABILITY', 'RESTRICTION', 'DELETION', 'REFUND', 'CANCELLATION'] as const;
 export type PrivacyRequestType = (typeof PRIVACY_REQUEST_TYPES)[number];
 export const PRIVACY_REQUEST_STATUSES = ['OPEN', 'IN_REVIEW', 'COMPLETED', 'RETAINED'] as const;

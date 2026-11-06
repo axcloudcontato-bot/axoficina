@@ -38,6 +38,7 @@ export const customerSchema = z.object({
   careMessagesEnabled: z.boolean().default(false),
   careConsentSource: z.enum(['COUNTER', 'PHONE', 'WHATSAPP', 'SITE', 'OTHER']).optional(),
   notifyServiceOrderUpdates: z.boolean().default(false),
+  appointmentRemindersEnabled: z.boolean().default(true),
   type: z.enum(['PF', 'PJ']),
   document: z.string().max(24, 'Documento muito longo'),
   name: z.string().trim().min(1, 'Informe o nome').max(200),
@@ -75,6 +76,7 @@ const EMPTY_VALUES: CustomerFormValues = {
   careMessagesEnabled: false,
   careConsentSource: undefined,
   notifyServiceOrderUpdates: false,
+  appointmentRemindersEnabled: true,
   type: 'PF',
   document: '',
   name: '',
@@ -95,7 +97,7 @@ const GUIDED_STEPS = [
   { id: 'general', label: 'Dados gerais', fields: ['type', 'document', 'name', 'phone', 'email', 'rg', 'stateRegistration', 'birthDate'] },
   { id: 'address', label: 'Endereço', fields: ['address'] },
   { id: 'contact', label: 'Contato', fields: ['secondaryContactName', 'secondaryContactPhone', 'secondaryContactRelation'] },
-  { id: 'preferences', label: 'Preferências', fields: ['preferredContactChannel', 'preferredContactTime', 'notifyServiceOrderUpdates', 'careMessagesEnabled', 'careConsentSource'] },
+  { id: 'preferences', label: 'Preferências', fields: ['preferredContactChannel', 'preferredContactTime', 'notifyServiceOrderUpdates', 'appointmentRemindersEnabled', 'careMessagesEnabled', 'careConsentSource'] },
   { id: 'notes', label: 'Observações', fields: ['notes'] },
 ] as const;
 
@@ -166,6 +168,7 @@ export function CustomerFormModal({ open, onOpenChange, customer, onCreated, pre
             preferredContactChannel: customer.preferredContactChannel,
             preferredContactTime: customer.preferredContactTime,
             notifyServiceOrderUpdates: customer.notifyServiceOrderUpdates ?? false,
+            appointmentRemindersEnabled: customer.appointmentRemindersEnabled ?? true,
             birthDate: customer.birthDate ?? '',
             careMessagesEnabled: customer.careMessagesEnabled ?? false,
             careConsentSource: customer.careConsentSource,
@@ -226,6 +229,7 @@ export function CustomerFormModal({ open, onOpenChange, customer, onCreated, pre
       careMessagesEnabled: values.careMessagesEnabled,
       careConsentSource: values.careMessagesEnabled ? values.careConsentSource : undefined,
       notifyServiceOrderUpdates: values.notifyServiceOrderUpdates,
+      appointmentRemindersEnabled: values.appointmentRemindersEnabled,
       name: values.name,
       phone: values.phone,
       email: values.email || undefined,
@@ -264,7 +268,7 @@ export function CustomerFormModal({ open, onOpenChange, customer, onCreated, pre
       setActiveTab('address');
     } else if (firstPath.startsWith('secondaryContact')) {
       setActiveTab('contact');
-    } else if (firstPath.startsWith('preferredContact') || firstPath === 'notifyServiceOrderUpdates' || firstPath === 'careMessagesEnabled' || firstPath === 'careConsentSource') {
+    } else if (firstPath.startsWith('preferredContact') || firstPath === 'notifyServiceOrderUpdates' || firstPath === 'appointmentRemindersEnabled' || firstPath === 'careMessagesEnabled' || firstPath === 'careConsentSource') {
       setActiveTab('preferences');
     } else if (firstPath === 'notes') {
       setActiveTab('notes');

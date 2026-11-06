@@ -8,7 +8,7 @@ import { join, relative, sep } from 'node:path';
 const EXPECTED_USES: Record<string, number> = {
   'health/health.controller.ts': 1,
   'modules/account-closure/account-closure.service.ts': 8,
-  'modules/appointments/services/appointment-notification.service.ts': 9,
+  'modules/appointments/services/appointment-notification.service.ts': 10,
   'modules/billing/billing.service.ts': 13,
   'modules/customer-care/customer-care-automation.service.ts': 29,
   'modules/customer-care/customer-care-forecast.service.ts': 5,

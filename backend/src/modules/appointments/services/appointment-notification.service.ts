@@ -9,6 +9,7 @@ const DEFAULT_TIME_ZONE = 'America/Sao_Paulo';
 const HOUR_MS = 3_600_000;
 const RETRY_DELAY_MS = 15 * 60_000;
 const MAX_REMINDER_ATTEMPTS = 4;
+const NO_REMINDER_MESSAGE = 'O cliente não tem celular válido ou pediu para não receber lembretes.';
 
 export type AppointmentMessageKind = 'CONFIRMATION' | 'REMINDER';
 
@@ -20,7 +21,7 @@ export function appointmentMessage(kind: AppointmentMessageKind, input: { custom
   const body = kind === 'REMINDER'
     ? `Olá, ${firstName}! 👋 Passando para lembrar do seu horário na ${input.workshopName}: *${when}, às ${time}*.`
     : `Olá, ${firstName}! 👋 Seu horário na ${input.workshopName} está marcado para *${when}, às ${time}*.`;
-  const closing = kind === 'REMINDER' ? 'Se precisar remarcar, é só responder esta mensagem. Até lá! 🚗' : 'Podemos confirmar? Responda esta mensagem para confirmar ou remarcar. 🚗';
+  const closing = kind === 'REMINDER' ? 'Se precisar remarcar, é só responder esta mensagem. Até lá! 🚗\n\nNão quer receber lembretes? Avise a oficina.' : 'Podemos confirmar? Responda esta mensagem para confirmar ou remarcar. 🚗';
   return `${body}\n\n🔧 ${input.service}\n🚘 ${input.vehicle}\n\n${closing}`;
 }
 
@@ -42,6 +43,8 @@ export class AppointmentNotificationService {
     ]);
     const recipient = customer ? whatsappRecipient(customer.phone) : null;
     if (!tenant || !customer || !recipient) return null;
+    // Checked here too: the refusal can arrive while a batch is going out. The confirmation is someone at the desk choosing to send it.
+    if (kind === 'REMINDER' && customer.appointmentRemindersEnabled === false) return null;
     return { recipient, text: appointmentMessage(kind, { customerName: customer.name, workshopName: tenant.name, startsAt: appointment.startsAt, timeZone, service: appointment.serviceDescription, vehicle: vehicle ? `${vehicle.brand} ${vehicle.model} · ${vehicle.plate ?? `chassi ${vehicle.chassis}`}` : 'seu veículo' }) };
   }
 
@@ -66,7 +69,9 @@ export class AppointmentNotificationService {
       const hour = Number(new Intl.DateTimeFormat('en-GB', { timeZone: await this.timeZone(tenant.id), hour: '2-digit', hourCycle: 'h23' }).format(now));
       if (hour < 8 || hour >= 20) continue;
       const retryBefore = new Date(now.getTime() - RETRY_DELAY_MS);
-      const due = await this.prisma.unscoped.appointment.findMany({ where: { tenantId: tenant.id, deletedAt: null, reminderSentAt: null, reminderAttempts: { lt: MAX_REMINDER_ATTEMPTS }, AND: [{ OR: [{ reminderClaimedAt: null }, { reminderClaimedAt: { lt: retryBefore } }] }, { OR: [{ reminderAttemptedAt: null }, { reminderAttemptedAt: { lt: retryBefore } }] }], status: { in: ['SCHEDULED', 'CONFIRMED'] }, startsAt: { gt: new Date(now.getTime() + 2 * HOUR_MS), lte: new Date(now.getTime() + 24 * HOUR_MS) } }, orderBy: { startsAt: 'asc' }, take: 200 });
+      // Left out before claiming: a refusal is not a failed attempt and must not appear as one.
+      const refused = await this.prisma.unscoped.customer.findMany({ where: { tenantId: tenant.id, appointmentRemindersEnabled: false }, select: { id: true } });
+      const due = await this.prisma.unscoped.appointment.findMany({ where: { tenantId: tenant.id, customerId: { notIn: refused.map((customer) => customer.id) }, deletedAt: null, reminderSentAt: null, reminderAttempts: { lt: MAX_REMINDER_ATTEMPTS }, AND: [{ OR: [{ reminderClaimedAt: null }, { reminderClaimedAt: { lt: retryBefore } }] }, { OR: [{ reminderAttemptedAt: null }, { reminderAttemptedAt: { lt: retryBefore } }] }], status: { in: ['SCHEDULED', 'CONFIRMED'] }, startsAt: { gt: new Date(now.getTime() + 2 * HOUR_MS), lte: new Date(now.getTime() + 24 * HOUR_MS) } }, orderBy: { startsAt: 'asc' }, take: 200 });
       if (!due.length) continue;
       let connection: Awaited<ReturnType<WaAkgService['getConnection']>> = null;
       let connectionError: string | null = null;
@@ -79,7 +84,7 @@ export class AppointmentNotificationService {
         try {
           if (!connection) throw new Error(connectionError ?? 'WhatsApp indisponível.');
           const content = await this.content(appointment, 'REMINDER');
-          if (!content) throw new Error('Cliente sem celular válido para o lembrete.');
+          if (!content) throw new Error(NO_REMINDER_MESSAGE);
           await this.whatsapp.sendNotice(connection, content.recipient, content.text);
           await this.prisma.unscoped.appointment.updateMany({ where: { id: appointment.id, tenantId: tenant.id, reminderClaimedAt: now }, data: { reminderSentAt: new Date(), reminderClaimedAt: null, reminderLastError: null } });
           sent++;
@@ -96,11 +101,12 @@ export class AppointmentNotificationService {
 
   async reminderHealth(tenantId: string) {
     const now = new Date();
+    const refused = (await this.prisma.client.customer.findMany({ where: { tenantId, appointmentRemindersEnabled: false }, select: { id: true } })).map((customer) => customer.id);
     const [failed, lastSent, lastFailure, items] = await Promise.all([
-      this.prisma.client.appointment.count({ where: { tenantId, deletedAt: null, reminderSentAt: null, reminderAttempts: { gt: 0 }, startsAt: { gt: now } } }),
+      this.prisma.client.appointment.count({ where: { tenantId, customerId: { notIn: refused }, deletedAt: null, reminderSentAt: null, reminderAttempts: { gt: 0 }, startsAt: { gt: now } } }),
       this.prisma.client.appointment.findFirst({ where: { tenantId, reminderSentAt: { not: null } }, orderBy: { reminderSentAt: 'desc' }, select: { reminderSentAt: true } }),
       this.prisma.client.appointment.findFirst({ where: { tenantId, reminderLastError: { not: null } }, orderBy: { reminderAttemptedAt: 'desc' }, select: { reminderAttemptedAt: true, reminderLastError: true } }),
-      this.prisma.client.appointment.findMany({ where: { tenantId, deletedAt: null, reminderSentAt: null, reminderAttempts: { gt: 0 }, startsAt: { gt: now } }, orderBy: { startsAt: 'asc' }, take: 10, select: { id: true, startsAt: true, reminderAttempts: true, reminderLastError: true } }),
+      this.prisma.client.appointment.findMany({ where: { tenantId, customerId: { notIn: refused }, deletedAt: null, reminderSentAt: null, reminderAttempts: { gt: 0 }, startsAt: { gt: now } }, orderBy: { startsAt: 'asc' }, take: 10, select: { id: true, startsAt: true, reminderAttempts: true, reminderLastError: true } }),
     ]);
     return { failed, lastSentAt: lastSent?.reminderSentAt?.toISOString() ?? null, lastFailureAt: lastFailure?.reminderAttemptedAt?.toISOString() ?? null, lastError: lastFailure?.reminderLastError ?? null, items: items.map((item) => ({ id: item.id, startsAt: item.startsAt.toISOString(), attempts: item.reminderAttempts, error: item.reminderLastError })) };
   }
@@ -117,7 +123,7 @@ export class AppointmentNotificationService {
       const connection = await this.whatsapp.getConnection(tenantId);
       if (!connection) throw new BadRequestException('Ative o WhatsApp da oficina antes de tentar novamente.');
       const content = await this.content(appointment, 'REMINDER');
-      if (!content) throw new BadRequestException('Cliente sem celular válido para o lembrete.');
+      if (!content) throw new BadRequestException(NO_REMINDER_MESSAGE);
       await this.whatsapp.sendNotice(connection, content.recipient, content.text);
       await this.prisma.client.appointment.updateMany({ where: { id, tenantId, reminderClaimedAt: now }, data: { reminderSentAt: new Date(), reminderClaimedAt: null, reminderLastError: null } });
       return { sent: true };

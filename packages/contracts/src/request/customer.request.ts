@@ -7,6 +7,7 @@ export interface CreateCustomerRequest {
   // How the customer authorized the care messages; kept with the date when consent is recorded.
   careConsentSource?: CustomerConsentSource;
   notifyServiceOrderUpdates?: boolean;
+  appointmentRemindersEnabled?: boolean;
   type: CustomerType;
   document?: string;
   name: string;
@@ -28,6 +29,7 @@ export interface UpdateCustomerRequest {
   careMessagesEnabled?: boolean;
   careConsentSource?: CustomerConsentSource;
   notifyServiceOrderUpdates?: boolean;
+  appointmentRemindersEnabled?: boolean;
   id: string;
   // Changing the type revalidates the document; a company loses birth date and RG, a person loses state registration.
   type?: CustomerType;

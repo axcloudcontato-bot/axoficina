@@ -95,6 +95,7 @@ export class CustomerManager {
         preferredContactChannel: request.preferredContactChannel,
         preferredContactTime: request.preferredContactTime,
         notifyServiceOrderUpdates: request.notifyServiceOrderUpdates,
+        appointmentRemindersEnabled: request.appointmentRemindersEnabled,
       });
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
@@ -113,7 +114,7 @@ export class CustomerManager {
       action: 'customer.created',
       entity: 'customer',
       entityId: customer.id,
-      metadata: { ...(request.notifyServiceOrderUpdates === undefined ? {} : { notifyServiceOrderUpdates: request.notifyServiceOrderUpdates }), ...(request.careMessagesEnabled === undefined ? {} : { careMessagesEnabled: request.careMessagesEnabled }) },
+      metadata: { ...(request.notifyServiceOrderUpdates === undefined ? {} : { notifyServiceOrderUpdates: request.notifyServiceOrderUpdates }), ...(request.careMessagesEnabled === undefined ? {} : { careMessagesEnabled: request.careMessagesEnabled }), ...(request.appointmentRemindersEnabled === undefined ? {} : { appointmentRemindersEnabled: request.appointmentRemindersEnabled }) },
     });
 
     return { customer: this.toResponse(customer) };
@@ -165,6 +166,7 @@ export class CustomerManager {
         preferredContactChannel: request.preferredContactChannel,
         preferredContactTime: request.preferredContactTime,
         notifyServiceOrderUpdates: request.notifyServiceOrderUpdates,
+        appointmentRemindersEnabled: request.appointmentRemindersEnabled,
       });
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') throw new AppException(AppErrorCode.CUSTOMER_DOCUMENT_ALREADY_EXISTS, 'Já existe um cliente cadastrado com este documento.', HttpStatus.CONFLICT);
@@ -182,7 +184,7 @@ export class CustomerManager {
       action: 'customer.updated',
       entity: 'customer',
       entityId: updated.id,
-      metadata: { ...(request.notifyServiceOrderUpdates === undefined ? {} : { notifyServiceOrderUpdates: request.notifyServiceOrderUpdates }), ...(request.careMessagesEnabled === undefined ? {} : { careMessagesEnabled: request.careMessagesEnabled }) },
+      metadata: { ...(request.notifyServiceOrderUpdates === undefined ? {} : { notifyServiceOrderUpdates: request.notifyServiceOrderUpdates }), ...(request.careMessagesEnabled === undefined ? {} : { careMessagesEnabled: request.careMessagesEnabled }), ...(request.appointmentRemindersEnabled === undefined ? {} : { appointmentRemindersEnabled: request.appointmentRemindersEnabled }) },
     });
 
     return { customer: this.toResponse(updated) };
@@ -236,6 +238,8 @@ export class CustomerManager {
     fill('secondaryContactRelation', keep.secondaryContactRelation, duplicate.secondaryContactRelation);
     fill('preferredContactChannel', keep.preferredContactChannel, duplicate.preferredContactChannel);
     fill('preferredContactTime', keep.preferredContactTime, duplicate.preferredContactTime);
+    // A refusal is a right the person exercised, so it survives the merge whichever registration recorded it.
+    if (duplicate.appointmentRemindersEnabled === false) patch.appointmentRemindersEnabled = false;
     if (duplicate.notes?.trim()) patch.notes = [keep.notes?.trim(), `Do cadastro unido (${duplicate.name}): ${duplicate.notes.trim()}`].filter(Boolean).join('\n\n').slice(0, 2000);
 
     const moved = await this.customerRepository.mergeInto(keep.id, duplicate.id, patch);
@@ -423,6 +427,7 @@ export class CustomerManager {
       careConsentAt: customer.careConsentAt?.toISOString(),
       careConsentSource: (customer.careConsentSource ?? undefined) as CustomerResponse['careConsentSource'],
       notifyServiceOrderUpdates: customer.notifyServiceOrderUpdates ?? false,
+      appointmentRemindersEnabled: customer.appointmentRemindersEnabled ?? true,
       address: (customer.address as CustomerResponse['address']) ?? undefined,
       notes: customer.notes ?? undefined,
       rg: customer.rg ?? undefined,

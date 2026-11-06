@@ -1,6 +1,14 @@
 // This feed is visible to every workshop account. Keep SaaS administration changes out of it.
 export const RELEASE_NOTES = [
   {
+    id: '2026-11-06-textos-legais', date: '2026-11-06', title: 'Termos e Política de privacidade atualizados',
+    items: [
+      'Os Termos de uso agora descrevem o teste grátis, a assinatura pelo Stripe, a renovação e o prazo de 30 dias após o encerramento da conta.',
+      'A Política de privacidade passa a citar Cloudflare, Google, WhatsApp e o armazenamento de backups, e explica os envios automáticos e o motivo dos lembretes de agendamento.',
+      'No cadastro do cliente, em Preferências, agora dá para desligar o lembrete de agendamento de uma pessoa sem afetar as demais. O lembrete passa a informar que o cliente pode pedir para não recebê-lo.',
+    ],
+  },
+  {
     id: '2026-11-05-revisao-pre-lancamento', date: '2026-11-05', title: 'Valores, parcelas e perfis mais confiáveis',
     items: [
       'As parcelas em aberto acompanham a OS: ao mudar itens ou desconto, registrar ou estornar um recebimento, o saldo é redistribuído entre elas. Estornar o pagamento de uma parcela a reabre, e cancelar uma OS tira as parcelas do contas a receber.',

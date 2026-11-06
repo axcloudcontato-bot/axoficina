@@ -46,6 +46,8 @@ export class CreateCustomerDto implements CreateCustomerRequest {
   careConsentSource?: CreateCustomerRequest['careConsentSource'];
   @ValidateIf((_object, value) => value !== undefined) @IsBoolean()
   notifyServiceOrderUpdates?: boolean;
+  @ValidateIf((_object, value) => value !== undefined) @IsBoolean()
+  appointmentRemindersEnabled?: boolean;
   @IsIn(CUSTOMER_TYPES, { message: 'type must be one of PF, PJ' })
   type!: CreateCustomerRequest['type'];
 
@@ -112,6 +114,8 @@ export class UpdateCustomerDto implements UpdateCustomerRequest {
   careConsentSource?: CreateCustomerRequest['careConsentSource'];
   @ValidateIf((_object, value) => value !== undefined) @IsBoolean()
   notifyServiceOrderUpdates?: boolean;
+  @ValidateIf((_object, value) => value !== undefined) @IsBoolean()
+  appointmentRemindersEnabled?: boolean;
   @IsNotEmpty({ message: 'id is required' })
   @IsUUID('4', { message: 'id must be a valid id' })
   id!: string;

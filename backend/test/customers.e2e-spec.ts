@@ -164,6 +164,23 @@ describe('Customers (e2e)', () => {
     expect(response.body.customer.preferred_contact_time).toBe('MORNING');
   });
 
+  it('keeps sending reminders by default and records a customer refusal, also through a merge', async () => {
+    const admin = await signupAdmin(`reminders-${Date.now()}`);
+    const post = (path: string, body: object) => request(app.getHttpServer()).post(`/api/v1/${path}`).set('Authorization', `Bearer ${admin.access_token}`).send(body);
+    const refused = await post('customers', customerPayload('reminders-refused'));
+    expect(refused.body.customer.appointment_reminders_enabled).toBe(true);
+    const kept = await post('customers', { ...customerPayload('reminders-kept'), document: undefined });
+    expect(kept.status).toBe(201);
+
+    await post('customers/update', { id: refused.body.customer.id, appointment_reminders_enabled: 'false' }).expect(400);
+    const updated = await post('customers/update', { id: refused.body.customer.id, appointment_reminders_enabled: false }).expect(200);
+    expect(updated.body.customer.appointment_reminders_enabled).toBe(false);
+
+    const merged = await post('customers/merge', { keep_id: kept.body.customer.id, merge_id: refused.body.customer.id });
+    expect(merged.status).toBeLessThan(300);
+    expect(merged.body.customer.appointment_reminders_enabled).toBe(false);
+  });
+
   it('rejects an invalid document with 400', async () => {
     const admin = await signupAdmin(`invalid-${Date.now()}`);
 

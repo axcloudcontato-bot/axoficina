@@ -11,12 +11,12 @@ function setup(due = [appointment()]) {
   const prisma = {
     unscoped: {
       tenant: { findMany: jest.fn().mockResolvedValue([{ id: 't1' }]), findFirst: jest.fn().mockResolvedValue({ id: 't1', name: 'Oficina Boa' }) },
-      customer: { findFirst: jest.fn().mockResolvedValue({ id: 'c1', name: 'Maria Souza', phone: '(11) 98888-7777' }) },
+      customer: { findMany: jest.fn().mockResolvedValue([]), findFirst: jest.fn().mockResolvedValue({ id: 'c1', name: 'Maria Souza', phone: '(11) 98888-7777', appointmentRemindersEnabled: true }) },
       vehicle: { findFirst: jest.fn().mockResolvedValue({ brand: 'Fiat', model: 'Uno', plate: 'ABC1D23' }) },
       customerCareSettings: { findFirst: jest.fn().mockResolvedValue(null) },
       appointment: { findMany: jest.fn().mockResolvedValue(due), updateMany: jest.fn().mockResolvedValue({ count: 1 }) },
     },
-    client: { appointment: { findFirst: jest.fn().mockResolvedValue(appointment()), updateMany: jest.fn().mockResolvedValue({ count: 1 }) } },
+    client: { customer: { findMany: jest.fn().mockResolvedValue([]) }, appointment: { findFirst: jest.fn().mockResolvedValue(appointment()), updateMany: jest.fn().mockResolvedValue({ count: 1 }) } },
   };
   const whatsapp = { getConnection: jest.fn().mockResolvedValue({ sessionId: 's' }), sendNotice: jest.fn().mockResolvedValue(undefined) };
   return { prisma, whatsapp, service: new AppointmentNotificationService(prisma as never, whatsapp as never, { forTenant: jest.fn().mockResolvedValue({ modules: ['whatsapp'], access: { state: 'active' } }) } as never) };
@@ -43,6 +43,37 @@ describe('appointment WhatsApp messages', () => {
     whatsapp.sendNotice.mockClear();
     await service.sendDueReminders(now);
     expect(whatsapp.sendNotice).not.toHaveBeenCalled();
+  });
+
+  it('tells the customer how to refuse in the reminder, not in the confirmation', () => {
+    const input = { customerName: 'Maria Souza', workshopName: 'Oficina Boa', startsAt: new Date('2026-10-28T12:00:00Z'), timeZone: 'America/Sao_Paulo', service: 'Revisão', vehicle: 'Fiat Uno' };
+    expect(appointmentMessage('REMINDER', input)).toContain('Não quer receber lembretes? Avise a oficina.');
+    expect(appointmentMessage('CONFIRMATION', input)).not.toContain('Não quer receber');
+  });
+
+  it('leaves out customers who refused, without spending an attempt', async () => {
+    const { service, prisma, whatsapp } = setup([]);
+    prisma.unscoped.customer.findMany.mockResolvedValue([{ id: 'c1' }]);
+    await service.sendDueReminders(now);
+    expect(prisma.unscoped.customer.findMany).toHaveBeenCalledWith({ where: { tenantId: 't1', appointmentRemindersEnabled: false }, select: { id: true } });
+    expect(prisma.unscoped.appointment.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ customerId: { notIn: ['c1'] } }) }));
+    expect(prisma.unscoped.appointment.updateMany).not.toHaveBeenCalled();
+    expect(whatsapp.sendNotice).not.toHaveBeenCalled();
+  });
+
+  it('does not send when the refusal arrives while the batch is going out', async () => {
+    const { service, prisma, whatsapp } = setup();
+    prisma.unscoped.customer.findFirst.mockResolvedValue({ id: 'c1', name: 'Maria Souza', phone: '(11) 98888-7777', appointmentRemindersEnabled: false });
+    const result = await service.sendDueReminders(now);
+    expect(result.sent).toBe(0);
+    expect(whatsapp.sendNotice).not.toHaveBeenCalled();
+  });
+
+  it('still lets the desk send a confirmation to a customer who refused reminders', async () => {
+    const { service, prisma, whatsapp } = setup();
+    prisma.unscoped.customer.findFirst.mockResolvedValue({ id: 'c1', name: 'Maria Souza', phone: '(11) 98888-7777', appointmentRemindersEnabled: false });
+    await service.sendConfirmation(appointment() as never);
+    expect(whatsapp.sendNotice).toHaveBeenCalledTimes(1);
   });
 
   it('records a failed attempt without marking the reminder sent', async () => {

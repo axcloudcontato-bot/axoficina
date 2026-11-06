@@ -49,6 +49,14 @@ export function CustomerPreferencesTab({ form }: CustomerPreferencesTabProps) {
           </div><FormMessage />
         </FormItem>
       )} />
+      <FormField control={form.control} name="appointmentRemindersEnabled" render={({ field }) => (
+        <FormItem className="rounded-card border border-border p-4 sm:col-span-2">
+          <div className="flex items-start gap-3">
+            <FormControl><input type="checkbox" checked={field.value} onChange={event => field.onChange(event.target.checked)} onBlur={field.onBlur} ref={field.ref} name={field.name} className="mt-0.5 size-4 shrink-0 accent-primary" /></FormControl>
+            <div><FormLabel className="cursor-pointer text-sm font-semibold">Enviar lembrete de agendamento pelo WhatsApp.</FormLabel><p className="mt-1 text-xs leading-5 text-text-muted">Desmarque se o cliente pedir para não receber. A resposta dele no WhatsApp não desmarca sozinha. A confirmação enviada pela equipe continua disponível.</p></div>
+          </div><FormMessage />
+        </FormItem>
+      )} />
       <FormField
         control={form.control}
         name="preferredContactChannel"

@@ -12,6 +12,7 @@ export interface CreateCustomerInput {
   careMessagesEnabled?: boolean;
   careConsentAt?: Date;
   notifyServiceOrderUpdates?: boolean;
+  appointmentRemindersEnabled?: boolean;
   // O Prisma Middleware sobrescreve isto com o tenant do contexto ativo em
   // runtime (ver CREATE_OPERATIONS em tenant-isolation.middleware.ts) — só
   // existe aqui para satisfazer o tipo `CustomerCreateInput` do Prisma.
@@ -40,6 +41,7 @@ export interface UpdateCustomerInput {
   careMessagesEnabled?: boolean;
   careConsentAt?: Date;
   notifyServiceOrderUpdates?: boolean;
+  appointmentRemindersEnabled?: boolean;
   document?: string;
   name?: string;
   phone?: string;
@@ -129,6 +131,7 @@ export class CustomerRepository {
         preferredContactChannel: input.preferredContactChannel,
         preferredContactTime: input.preferredContactTime,
         notifyServiceOrderUpdates: input.notifyServiceOrderUpdates,
+        appointmentRemindersEnabled: input.appointmentRemindersEnabled,
       },
     });
   }

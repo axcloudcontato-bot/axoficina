@@ -339,6 +339,7 @@ model Customer {
   preferredContactChannel   String?   @map("preferred_contact_channel")
   preferredContactTime      String?   @map("preferred_contact_time")
   notifyServiceOrderUpdates Boolean   @default(false) @map("notify_service_order_updates")
+  appointmentRemindersEnabled Boolean @default(true) @map("appointment_reminders_enabled")
   birthDate                 DateTime? @map("birth_date") @db.Date
   careMessagesEnabled       Boolean   @default(false) @map("care_messages_enabled")
   careConsentAt             DateTime? @map("care_consent_at") @db.Timestamptz

@@ -34,6 +34,7 @@ export interface CustomerResponse {
   careConsentAt?: string;
   careConsentSource?: CustomerConsentSource;
   notifyServiceOrderUpdates?: boolean;
+  appointmentRemindersEnabled?: boolean;
   id: string;
   tenantId: string;
   type: CustomerType;
