@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { fulfillAppDefaults } from './support';
 
 test.describe('Public privacy information', () => {
   test('policies are accessible without a session and disclose missing operator identity', async ({ page }) => {
@@ -46,6 +47,7 @@ test.describe('Public privacy information', () => {
     const protocols: Array<Record<string, unknown>> = [];
     let eraseBody: Record<string, unknown> | undefined;
     await page.route('**/api/v1/**', async (route) => {
+    if (await fulfillAppDefaults(route)) return;
       const url = route.request().url();
       let json: unknown = {};
       if (url.endsWith('/privacy/requests') && route.request().method() === 'POST') {
@@ -68,7 +70,7 @@ test.describe('Public privacy information', () => {
     await page.getByLabel('Sua senha atual').fill('test-password');
     await page.getByLabel('Digite EXCLUIR').fill('EXCLUIR');
     await page.getByRole('button', { name: 'Apagar dados pessoais', exact: true }).click();
-    await expect(page).toHaveURL(/\/login$/);
+    await expect(page).toHaveURL(/\/entrar$/);
     expect(eraseBody).toEqual({ request_id: 'test-protocol', password: 'test-password', confirmation: 'EXCLUIR' });
   });
 });

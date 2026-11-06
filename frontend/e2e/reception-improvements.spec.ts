@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { LEGAL_VERSION } from '@oficina/contracts';
+import { fulfillAppDefaults } from './support';
 
 const customer = { id: 'c1', tenant_id: 't1', type: 'PF', name: 'Sergio Oliveira', document: '11144477735', phone: '11999998888', created_at: '2026-10-24T12:00:00Z' };
 const vehicle = { id: 'v1', tenant_id: 't1', customer_id: 'c1', customer_name: customer.name, brand: 'Honda', model: 'HR-V', plate: 'ABC1D23', photos: [], created_at: customer.created_at };
@@ -15,6 +16,7 @@ async function mockReception(page: Page) {
   let savedCustomer = customer;
   let postedVehicle: Record<string, unknown> | undefined;
   await page.route('**/api/v1/**', async (route) => {
+    if (await fulfillAppDefaults(route)) return;
     if (route.request().method() === 'OPTIONS') return route.fulfill({ status: 204, headers: { 'access-control-allow-origin': '*', 'access-control-allow-headers': '*', 'access-control-allow-methods': 'GET,POST,OPTIONS' } });
     const request = route.request(); const path = new URL(request.url()).pathname;
     const body = request.method() === 'POST' ? request.postDataJSON() : {};
@@ -37,14 +39,16 @@ test('search text prefills CPF, name, email and the chosen destination without c
   await mockReception(page);
   await page.goto('/ordens-de-servico');
   for (const [text, field, expected] of [['11144477735', 'CPF ou CNPJ (opcional)', '111.444.777-35'], ['Maria Nova', 'Nome', 'Maria Nova'], ['nova@example.invalid', 'E-mail (opcional)', 'nova@example.invalid']]) {
-    await page.getByRole('button', { name: 'Novo atendimento', exact: true }).click();
+    await page.getByRole('button', { name: 'Nova ordem de serviço', exact: true }).click();
     await page.getByRole('textbox', { name: 'Pesquisar cliente ou veículo' }).fill(text);
     await page.getByRole('button', { name: 'Adicionar novo', exact: true }).click();
     const form = page.getByRole('dialog', { name: 'Novo cliente', exact: true });
+    // The short form shows only document, name and phone: a typed e-mail waits under "Mais dados".
+    if (field.startsWith('E-mail')) await form.getByRole('button', { name: 'Mais dados', exact: true }).click();
     await expect(form.getByLabel(field, { exact: true })).toHaveValue(expected);
     await form.getByRole('button', { name: 'Cancelar', exact: true }).click();
   }
-  await page.getByRole('button', { name: 'Novo atendimento', exact: true }).click();
+  await page.getByRole('button', { name: 'Nova ordem de serviço', exact: true }).click();
   await page.getByRole('textbox', { name: 'Pesquisar cliente ou veículo' }).fill('11999998888');
   await page.getByLabel('Usar o texto em').selectOption('phone');
   await page.getByRole('button', { name: 'Adicionar novo', exact: true }).click();
@@ -54,7 +58,7 @@ test('search text prefills CPF, name, email and the chosen destination without c
 test('a searched plate survives customer creation and prefills the vehicle registration', async ({ page }) => {
   const api = await mockReception(page);
   await page.goto('/ordens-de-servico');
-  await page.getByRole('button', { name: 'Novo atendimento', exact: true }).click();
+  await page.getByRole('button', { name: 'Nova ordem de serviço', exact: true }).click();
   await page.getByRole('textbox', { name: 'Pesquisar cliente ou veículo' }).fill('xyz-9876');
   await page.getByRole('button', { name: 'Adicionar novo', exact: true }).click();
   const owner = page.getByRole('dialog', { name: 'Novo cliente', exact: true });
@@ -64,7 +68,7 @@ test('a searched plate survives customer creation and prefills the vehicle regis
   await owner.getByLabel('Telefone', { exact: true }).fill('11999998888');
   await owner.getByRole('button', { name: 'Cadastrar cliente', exact: true }).click();
   const car = page.getByRole('dialog', { name: 'Novo veículo', exact: true });
-  await expect(car.getByLabel('Placa', { exact: true })).toHaveValue('XYZ9876');
+  await expect(car.getByLabel('Placa (opcional)', { exact: true })).toHaveValue('XYZ9876');
   await expect(car.getByText('Maria Nova', { exact: true })).toBeVisible();
   await car.getByLabel('Marca', { exact: true }).click();
   await page.getByRole('option', { name: 'Honda', exact: true }).click();
@@ -83,7 +87,7 @@ test('customers lead search results and the fixed header search shows the owner 
   const order = page.getByRole('dialog', { name: 'Buscar e navegar' }).getByRole('link', { name: /Sergio Oliveira.*Honda HR-V/ });
   await expect(order).toBeVisible();
   await page.keyboard.press('Escape');
-  await page.getByRole('button', { name: 'Novo atendimento', exact: true }).click();
+  await page.getByRole('button', { name: 'Nova ordem de serviço', exact: true }).click();
   await page.getByRole('textbox', { name: 'Pesquisar cliente ou veículo' }).fill('Sergio');
   const dialog = page.getByRole('dialog', { name: 'Novo atendimento', exact: true });
   await expect(dialog.getByRole('region').first()).toHaveAccessibleName('Clientes');

@@ -1,20 +1,23 @@
 import { expect, test } from '@playwright/test';
 import { mkdirSync } from 'node:fs';
-import { DEFAULT_CARE_SETTINGS, keysToCamel, keysToSnake, type CareDashboardResponse } from '@oficina/contracts';
+import { LEGAL_VERSION, DEFAULT_CARE_SETTINGS, keysToCamel, keysToSnake, type CareDashboardResponse } from '@oficina/contracts';
+import { fulfillAppDefaults } from './support';
 
 const customerId = '11111111-1111-4111-8111-111111111111';
 const vehicleId = '22222222-2222-4222-8222-222222222222';
 test('edits campaigns, previews safely, records care and fits mobile without real sends', async ({ page }) => {
   const data: CareDashboardResponse = { settings: structuredClone(DEFAULT_CARE_SETTINGS), channels: { whatsapp: true, email: false }, stats: { optedIn: 28, birthdaysThisMonth: 3, dueThisMonth: 9, sentThisMonth: 12, pending: 2, failed: 1 }, plans: [{ id: 'p1', customerId, customerName: 'Mariana Silva', vehicleId, vehicleName: 'Honda Fit', plate: 'ABC1D23', serviceKey: 'OIL_CHANGE', serviceName: 'Óleo e filtro do motor', completedAt: '2026-04-26T12:00:00Z', mileage: 40000, dueAt: '2026-10-26T12:00:00Z', dueMileage: 50000, intervalMonths: 6, intervalKm: 10000 }], totalPlans: 1, deliveries: [{ id: 'd1', customerName: 'Mariana Silva', campaignNames: ['Aniversário'], channel: 'WHATSAPP', status: 'SENT', message: '🎂 Feliz aniversário, Mariana! Sua oficina deseja caminhos felizes. 💛', scheduledAt: '2026-10-26T12:00:00Z', sentAt: '2026-10-26T12:00:00Z' }, { id: 'd2', customerName: 'Carlos Almeida', campaignNames: ['Pastilhas, discos e freios'], channel: 'WHATSAPP', status: 'UNKNOWN', message: '🛑 Vamos conferir os freios do seu carro?', reason: 'O provedor não confirmou o resultado. Confira a conversa; não haverá repetição automática.', scheduledAt: '2026-10-26T12:00:00Z' }], totalDeliveries: 2 };
   let recorded: Record<string, unknown> | undefined; let saved = false;
-  await page.addInitScript(() => {
+  await page.addInitScript((version) => {
     localStorage.setItem('theme', 'light');
     localStorage.setItem('oficina-auth', JSON.stringify({ state: { accessToken: 'care-ui-test', refreshToken: 'test', user: { id: 'u1', tenantId: 't1', name: 'Equipe', role: 'ADMIN', permissions: ['dashboard.view', 'customers.view', 'vehicles.view', 'appointments.view', 'service_orders.view', 'service_orders.prices', 'alerts.view', 'alerts.manage', 'settings.view', 'settings.manage', 'team.view'] } }, version: 0 }));
-    localStorage.setItem('ax-privacy-choice', JSON.stringify({ version: '2026-10-24', necessary: true, analytics: false, marketing: false, savedAt: new Date().toISOString() }));
-  });
+    localStorage.setItem('ax-privacy-choice', JSON.stringify({ version, necessary: true, analytics: false, marketing: false, savedAt: new Date().toISOString() }));
+  }, LEGAL_VERSION);
   await page.route('**/api/v1/**', async route => {
+    if (await fulfillAppDefaults(route)) return;
     const url = new URL(route.request().url()); let json: unknown = { items: [], total: 0, offset: 0, limit: 100, hasMore: false };
     if (url.pathname === '/api/v1/settings/branding') json = { company: { name: 'Oficina do Cuidado' } };
+    else if (url.pathname === '/api/v1/vehicle') json = { vehicle: { id: vehicleId, category: 'CAR' } };
     else if (url.pathname === '/api/v1/customer-care') json = data;
     else if (url.pathname === '/api/v1/customer-care/plans') json = { plans: data.plans, total: data.totalPlans };
     else if (url.pathname === '/api/v1/customer-care/deliveries') json = { deliveries: data.deliveries, total: data.totalDeliveries };
@@ -58,5 +61,5 @@ test('edits campaigns, previews safely, records care and fits mobile without rea
   await page.goto(`/preferencias-de-contato/${'a'.repeat(64)}`);
   await expect(page.getByRole('button', { name: 'Pausar meus lembretes' })).toBeVisible();
   await page.getByRole('button', { name: 'Pausar meus lembretes' }).click();
-  await expect(page.getByRole('heading', { name: 'Lembretes pausados. Tudo certo! 💛' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Lembretes pausados. Tudo certo!' })).toBeVisible();
 });

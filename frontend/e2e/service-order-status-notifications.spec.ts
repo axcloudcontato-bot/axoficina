@@ -1,17 +1,18 @@
 import { expect, test, type Page } from '@playwright/test';
 import { LEGAL_VERSION } from '@oficina/contracts';
+import { fulfillAppDefaults } from './support';
 
 async function preferencesInCreate(page: Page) {
   const form = page.getByRole('dialog', { name: 'Novo cliente', exact: true });
-  for (const name of ['Endereço', 'Contato', 'Preferências']) {
-    await form.getByRole('button', { name: 'Próximo', exact: true }).click();
-    await expect(form.locator('[aria-current="step"]')).toContainText(name);
-  }
+  await form.getByRole('button', { name: 'Mais dados', exact: true }).click();
+  await form.getByRole('tab', { name: 'Preferências', exact: true }).click();
+}
+async function openEdit(page: Page) {
+  await page.getByRole('button', { name: /^Mais ações para / }).first().click();
+  await page.getByRole('button', { name: 'Editar', exact: true }).click();
 }
 async function finishCreate(page: Page) {
   const form = page.getByRole('dialog', { name: 'Novo cliente', exact: true });
-  await form.getByRole('button', { name: 'Próximo', exact: true }).click();
-  await expect(form.locator('[aria-current="step"]')).toContainText('Observações');
   await form.getByRole('button', { name: 'Cadastrar cliente', exact: true }).click();
 }
 
@@ -27,6 +28,7 @@ async function setup(page: Page) {
   const notice = { id: 'notice-1', to_status: 'OPEN', status: 'FAILED', message: '*ORDEM DE SERVIÇO ABERTA*\n\n*OS:* #00004\n*Placa:* ABC1D23', recipient: '5511999998888', attempts: 1, occurred_at: '2026-10-25T12:00:00Z', failure_reason: 'O WhatsApp não confirmou o envio. Confira a conversa antes de reenviar.' };
   const order = { id: 'order-1', tenant_id: 't1', order_number: 4, customer_id: 'c1', customer_name: 'Sergio Oliveira', customer_phone: '11999998888', vehicle_id: 'v1', vehicle_brand: 'Honda', vehicle_model: 'HR-V', vehicle_plate: 'ABC1D23', status: 'OPEN', opened_at: '2026-10-25T12:00:00Z', created_at: '2026-10-25T12:00:00Z', items: [], total_amount_cents: 0, received_amount_cents: 0, outstanding_amount_cents: 0, payment_status: 'AWAITING_PAYMENT' };
   await page.route('**/api/v1/**', async route => {
+    if (await fulfillAppDefaults(route)) return;
     if (route.request().method() === 'OPTIONS') return route.fulfill({ status: 204, headers: { 'access-control-allow-origin': '*', 'access-control-allow-headers': '*', 'access-control-allow-methods': 'GET,POST,OPTIONS' } });
     const path = new URL(route.request().url()).pathname;
     const body = route.request().method() === 'POST' ? route.request().postDataJSON() : {};
@@ -60,14 +62,14 @@ test('the customer opt-in defaults off, saves true and false and survives reopen
   await finishCreate(page);
   await expect(form).toHaveCount(0); expect(state.writes[0].notify_service_order_updates).toBe(true);
   await page.goto('/clientes');
-  await page.getByRole('button', { name: 'Editar', exact: true }).click();
+  await openEdit(page);
   const edit = page.getByRole('dialog', { name: 'Editar cliente', exact: true });
   await edit.getByRole('tab', { name: 'Preferências', exact: true }).click();
   const saved = edit.getByRole('checkbox', { name: 'Me avise sobre toda movimentação da Ordem de Serviço.', exact: true });
   await expect(saved).toBeChecked(); await saved.uncheck();
   await edit.getByRole('button', { name: 'Salvar alterações', exact: true }).click();
   await expect(edit).toHaveCount(0); expect(state.writes[1].notify_service_order_updates).toBe(false);
-  await page.getByRole('button', { name: 'Editar', exact: true }).click();
+  await openEdit(page);
   await page.getByRole('dialog').getByRole('tab', { name: 'Preferências', exact: true }).click();
   await expect(page.getByRole('checkbox', { name: 'Me avise sobre toda movimentação da Ordem de Serviço.', exact: true })).not.toBeChecked();
 });

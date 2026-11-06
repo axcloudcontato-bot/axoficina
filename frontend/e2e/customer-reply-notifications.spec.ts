@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { LEGAL_VERSION } from '@oficina/contracts';
+import { fulfillAppDefaults } from './support';
 
 test.beforeEach(async ({ page }, testInfo) => {
   await page.addInitScript(({ version, canReadReplies }) => {
@@ -15,6 +16,7 @@ test('new customer reply shows a toast, stays in the bell and persists the read 
   let readAt: string | undefined;
   let readCount = 0;
   await page.route('**/api/v1/**', async (route) => {
+    if (await fulfillAppDefaults(route)) return;
     if (route.request().method() === 'OPTIONS') return route.fulfill({ status: 204, headers: { 'access-control-allow-origin': '*', 'access-control-allow-headers': '*', 'access-control-allow-methods': 'GET,POST,OPTIONS' } });
     const path = new URL(route.request().url()).pathname;
     let json: unknown = { items: [], total: 0, offset: 0, limit: 100, has_more: false };
@@ -37,7 +39,7 @@ test('new customer reply shows a toast, stays in the bell and persists the read 
   await page.getByRole('button', { name: 'Ver notificações', exact: true }).click();
   const panel = page.getByRole('dialog', { name: 'Alertas', exact: true });
   await expect(panel.getByText('Resposta: Aprovar orçamento', { exact: true })).toBeVisible();
-  await expect(panel.getByRole('link', { name: /Sergio Oliveira respondeu/ })).toHaveAttribute('href', '/service-orders/order-1#customer-message-history');
+  await expect(panel.getByRole('link', { name: /Sergio Oliveira respondeu/ })).toHaveAttribute('href', '/ordens-de-servico/order-1#customer-message-history');
   await expect(panel.locator('..')).toHaveCSS('opacity', '1');
   await page.screenshot({ path: 'artifacts/customer-reply-notifications-desktop.png', fullPage: true });
   await page.setViewportSize({ width: 390, height: 844 });
@@ -53,12 +55,13 @@ test('new customer reply shows a toast, stays in the bell and persists the read 
   await expect(page.getByText('Lida', { exact: true })).toBeVisible();
   await expect(page.getByTestId('open-alert-indicator')).toHaveCount(0);
   await page.getByRole('link', { name: /Sergio Oliveira respondeu/ }).click();
-  await expect(page).toHaveURL(/service-orders\/order-1#customer-message-history$/);
+  await expect(page).toHaveURL(/ordens-de-servico\/order-1#customer-message-history$/);
   expect(readCount).toBe(1);
 });
 
 test('unread replies are announced on login and a failed read stays pending', async ({ page }) => {
   await page.route('**/api/v1/**', async (route) => {
+    if (await fulfillAppDefaults(route)) return;
     const path = new URL(route.request().url()).pathname;
     let json: unknown = { items: [], total: 0 };
     let status = 200;
@@ -81,6 +84,7 @@ test('unread replies are announced on login and a failed read stays pending', as
 test('users without access to quote responses never request the notification feed', async ({ page }) => {
   let feedRequests = 0;
   await page.route('**/api/v1/**', async (route) => {
+    if (await fulfillAppDefaults(route)) return;
     const path = new URL(route.request().url()).pathname;
     if (path.includes('customer-reply-notifications')) feedRequests++;
     const json = path.endsWith('/settings/branding') ? { company: { name: 'AX Oficina' } } : { items: [], total: 0 };

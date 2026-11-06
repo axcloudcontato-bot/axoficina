@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import { LEGAL_VERSION } from '@oficina/contracts';
 import { createServer, type Server } from 'node:http';
+import { fulfillAppDefaults } from './support';
 
 const uploadServers: Server[] = [];
 test.afterEach(async () => {
@@ -53,6 +54,7 @@ async function mockOrder(page: Page, failures = 0, refreshGate?: Promise<void>) 
   await new Promise<void>((resolve) => receiver.listen(0, '127.0.0.1', resolve));
   const uploadUrl = `http://127.0.0.1:${(receiver.address() as { port: number }).port}/upload`;
   await page.route('**/api/v1/**', async (route) => {
+    if (await fulfillAppDefaults(route)) return;
     if (route.request().method() === 'OPTIONS') return route.fulfill({ status: 204, headers: { 'access-control-allow-origin': '*', 'access-control-allow-headers': '*', 'access-control-allow-methods': 'GET,POST,OPTIONS' } });
     const request = route.request();
     const path = new URL(request.url()).pathname;

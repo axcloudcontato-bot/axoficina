@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { LEGAL_VERSION } from '@oficina/contracts';
+import { fulfillAppDefaults } from './support';
 
 const created = '2026-10-24T12:00:00Z';
 const item = { id: 'item-1', service_order_id: 'order-1', type: 'LABOR', description: 'Revisão de freios', quantity: 1, unit_price_cents: 15000, line_total_cents: 15000, created_at: created };
@@ -19,6 +20,7 @@ async function workshop(page: Page, { emptyPhotos = false, status = 'OPEN', inte
   function addAngles(category: string) { photos.push(...angles.map(angle => ({ id: `${category}-${angle}`, service_order_id: order.id, category, angle, created_at: created, mime_type: 'image/png', original_name: 'car.png', size_bytes: 68 }))); }
   if (!emptyPhotos) addAngles('ENTRY');
   await page.route('**/api/v1/**', async route => {
+    if (await fulfillAppDefaults(route)) return;
     const req = route.request(); const path = new URL(req.url()).pathname;
     if (req.method() === 'OPTIONS') return route.fulfill({ status: 204, headers: { 'access-control-allow-origin': '*', 'access-control-allow-headers': '*', 'access-control-allow-methods': 'GET,POST,OPTIONS' } });
     if (path.endsWith('/service-orders/photos/content')) return route.fulfill({ contentType: 'image/png', body: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=', 'base64'), headers: { 'access-control-allow-origin': '*' } });

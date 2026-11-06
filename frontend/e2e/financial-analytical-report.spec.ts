@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import { LEGAL_VERSION, type FinancialEntryResponse } from '@oficina/contracts';
 import { summarizeReport } from '../features/financial/financial-report';
+import { fulfillAppDefaults } from './support';
 
 function fixtures(): FinancialEntryResponse[] {
   return Array.from({ length: 108 }, (_, index) => ({
@@ -23,6 +24,7 @@ async function setup(page: Page, canView = true) {
     localStorage.setItem('oficina-auth', JSON.stringify({ state: { accessToken: 'analytical-test', refreshToken: 'test', user: { id: 'u1', tenantId: 't1', name: 'Financeiro', role: 'ADMIN', status: 'active', permissions: canView ? ['finance.view'] : ['customers.view'] } }, version: 0 }));
   }, { version: LEGAL_VERSION, canView });
   await page.context().route('**/api/v1/**', async route => {
+    if (await fulfillAppDefaults(route)) return;
     if (route.request().method() === 'OPTIONS') return route.fulfill({ status: 204, headers: { 'access-control-allow-origin': '*', 'access-control-allow-headers': '*', 'access-control-allow-methods': 'GET,POST,OPTIONS' } });
     const path = new URL(route.request().url()).pathname;
     let json: unknown = { items: [], total: 0, has_more: false };

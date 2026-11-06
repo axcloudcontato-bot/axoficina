@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { LEGAL_VERSION } from '@oficina/contracts';
+import { fulfillAppDefaults } from './support';
 
 async function setup(page: Page, options: { fullCustomerPage?: boolean; failSupplierOnce?: boolean; canCreateCustomer?: boolean } = {}) {
   await page.addInitScript(({ version, canCreateCustomer }) => {
@@ -13,6 +14,7 @@ async function setup(page: Page, options: { fullCustomerPage?: boolean; failSupp
   let customerCount = 0;
   const updates: Record<string, unknown>[] = [];
   await page.route('**/api/v1/**', async route => {
+    if (await fulfillAppDefaults(route)) return;
     const method = route.request().method();
     if (method === 'OPTIONS') return route.fulfill({ status: 204, headers: { 'access-control-allow-origin': '*', 'access-control-allow-headers': '*', 'access-control-allow-methods': 'GET,POST,OPTIONS' } });
     const path = new URL(route.request().url()).pathname;
@@ -75,7 +77,7 @@ test('expense creates its supplier in a nested modal, preserves the entry on can
   await expect(entry).toHaveCount(0); expect(state.entries).toHaveLength(1);
   expect(state.entries[0]).toMatchObject({ type: 'EXPENSE', supplier_id: 'supplier-1', category_id: 'expense-category', amount_cents: 12345, description: 'Lançamento em preenchimento', notes: 'Manter esta observação' });
   expect(state.entries[0]).not.toHaveProperty('customer_id');
-  await expect(page).toHaveURL(/\/financial\/payables$/);
+  await expect(page).toHaveURL(/\/financeiro\/contas-a-pagar$/);
 });
 
 test('income selects a newly registered customer even when the first hundred customer results do not contain it', async ({ page }) => {
@@ -88,7 +90,8 @@ test('income selects a newly registered customer even when the first hundred cus
   await expect(customer).toHaveCount(0); await expect(plus).toBeFocused(); expect(state.customerCount).toBe(0);
   await plus.click(); customer = page.getByRole('dialog', { name: 'Novo cliente', exact: true });
   await customer.getByLabel('Nome', { exact: true }).fill('Cliente Nova Receita');
-  await customer.getByLabel('Telefone', { exact: true }).fill('11999998888');
+  // Another number: a phone already registered opens the duplicate check before saving.
+  await customer.getByLabel('Telefone', { exact: true }).fill('11988887777');
   await customer.getByRole('button', { name: 'Cadastrar cliente', exact: true }).click();
   await expect(customer).toHaveCount(0); expect(state.customerCount).toBe(1);
   await expect(entry.getByRole('combobox', { name: 'Cliente', exact: true })).toContainText('Cliente Nova Receita');
@@ -99,7 +102,7 @@ test('income selects a newly registered customer even when the first hundred cus
   await expect(entry).toHaveCount(0);
   expect(state.entries[0]).toMatchObject({ type: 'INCOME', customer_id: 'created-customer', category_id: 'income-category', amount_cents: 12345, notes: 'Manter esta observação' });
   expect(state.entries[0]).not.toHaveProperty('supplier_id');
-  await expect(page).toHaveURL(/\/financial\/receivables$/);
+  await expect(page).toHaveURL(/\/financeiro\/contas-a-receber$/);
 });
 
 test('a supplier save failure preserves both forms and a retry does not submit the financial entry', async ({ page }) => {
@@ -138,7 +141,7 @@ test('the shared supplier form still creates and edits suppliers from their mana
   await supplier.getByLabel('Pessoa de contato', { exact: true }).fill('Maria');
   await supplier.getByRole('button', { name: 'Salvar fornecedor', exact: true }).click();
   await expect(supplier).toHaveCount(0);
-  await page.getByRole('button', { name: 'Editar fornecedor', exact: true }).click();
+  await page.getByRole('button', { name: 'Editar Fornecedor do painel', exact: true }).click();
   supplier = page.getByRole('dialog', { name: 'Editar fornecedor', exact: true });
   await expect(supplier.getByLabel('Pessoa de contato', { exact: true })).toHaveValue('Maria');
   await supplier.getByLabel('Nome ou razão social', { exact: true }).fill('Fornecedor atualizado');

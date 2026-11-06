@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { LEGAL_VERSION } from '@oficina/contracts';
+import { fulfillAppDefaults } from './support';
 
 test.beforeEach(async ({ page }) => {
   await page.addInitScript((version) => {
@@ -36,9 +37,10 @@ test('customer sees reply buttons on mobile and confirms once without logging in
 
 for (const integrated of [false, true]) test(`workshop customizes a question and sends buttons via ${integrated ? 'WA-AKG' : 'email'}`, async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem('oficina-auth', JSON.stringify({ state: { accessToken: 'buttons-test', refreshToken: 'test-refresh', user: { id: 'u1', tenantId: 't1', name: 'Teste', email: 'test@example.invalid', role: 'ADMIN', permissions: ['service_orders.view', 'service_orders.manage', 'service_orders.prices', 'customers.view', 'settings.view'], status: 'active', createdAt: '2026-10-24T00:00:00Z' } }, version: 0 })));
-  const order = { id: 'order-1', tenant_id: 't1', order_number: 12, customer_id: 'c1', customer_name: 'Maria', customer_phone: '11999998888', vehicle_id: 'v1', vehicle_brand: 'Honda', vehicle_model: 'Fit', vehicle_plate: 'ABC1D23', status: 'OPEN', opened_at: '2026-10-24T12:00:00Z', created_at: '2026-10-24T12:00:00Z', total_amount_cents: 35000, received_amount_cents: 0, outstanding_amount_cents: 35000, payment_status: 'AWAITING_PAYMENT', status_history: [], items: [{ id: 'item-1', service_order_id: 'order-1', type: 'PART', description: 'Pastilha de freio', quantity: 1, unit_price_cents: 35000, line_total_cents: 35000, created_at: '2026-10-24T12:00:00Z' }] };
+  const order = { id: 'order-1', tenant_id: 't1', order_number: 12, customer_id: 'c1', customer_name: 'Maria', customer_phone: '11999998888', vehicle_id: 'v1', vehicle_brand: 'Honda', vehicle_model: 'Fit', vehicle_plate: 'ABC1D23', status: 'COMPLETED', opened_at: '2026-10-24T12:00:00Z', created_at: '2026-10-24T12:00:00Z', total_amount_cents: 35000, received_amount_cents: 0, outstanding_amount_cents: 35000, payment_status: 'AWAITING_PAYMENT', status_history: [], items: [{ id: 'item-1', service_order_id: 'order-1', type: 'PART', description: 'Pastilha de freio', quantity: 1, unit_price_cents: 35000, line_total_cents: 35000, created_at: '2026-10-24T12:00:00Z' }] };
   let sent: Record<string, unknown> | undefined;
   await page.route('**/api/v1/**', async (route) => {
+    if (await fulfillAppDefaults(route)) return;
     const url = new URL(route.request().url());
     let json: unknown = { items: [], total: 0, offset: 0, limit: 100, has_more: false };
     if (url.pathname.endsWith('/service-order')) json = { service_order: order };
@@ -52,8 +54,10 @@ for (const integrated of [false, true]) test(`workshop customizes a question and
     await route.fulfill({ json, headers: { 'access-control-allow-origin': '*', 'access-control-allow-headers': '*', 'access-control-allow-methods': 'GET,POST,OPTIONS' } });
   });
   await page.goto('/ordens-de-servico/order-1');
-  const section = page.getByRole('region', { name: 'Orçamento', exact: true });
-  await expect(section.getByLabel('Solicitar resposta por botões')).toBeChecked();
+  await page.getByRole('navigation', { name: 'Etapas do atendimento' }).getByRole('button', { name: 'Aprovação', exact: true }).click();
+  // Besides the quote, the approval step offers other questions to the customer.
+  const section = page.locator('details').filter({ hasText: 'Outras mensagens para o cliente' });
+  await section.getByText('Outras mensagens para o cliente', { exact: true }).click();
   await section.getByLabel('Tipo de pergunta').selectOption('PICKUP');
   await expect(section.getByLabel('Botão 1')).toHaveValue('Confirmar retirada');
   await section.getByLabel('Pergunta para o cliente').fill('Pode retirar seu veículo amanhã às 10h?');
@@ -62,9 +66,10 @@ for (const integrated of [false, true]) test(`workshop customizes a question and
   if (integrated) await expect(section.getByText(/WA-AKG envia a mensagem/)).toBeVisible();
   let popupOpened = false;
   page.on('popup', () => { popupOpened = true; });
-  await section.getByRole('button', { name: integrated ? 'WhatsApp' : 'Enviar por e-mail', exact: true }).click();
-  await expect(page.getByText(integrated ? 'Mensagem com botões enviada pelo WA-AKG.' : 'E-mail com botões enviado ao cliente.', { exact: true })).toBeVisible();
-  expect(sent).toEqual({ service_order_id: 'order-1', channel: integrated ? 'WHATSAPP' : 'EMAIL', question: 'Pode retirar seu veículo amanhã às 10h?', options: ['Confirmar retirada', 'Combinar outro horário'], include_quote: false });
+  await section.getByLabel('Canal da mensagem adicional').selectOption(integrated ? 'WHATSAPP' : 'EMAIL');
+  await section.getByRole('button', { name: 'Enviar pergunta', exact: true }).click();
+  await expect(page.getByText('Mensagem enviada. Acompanhe a resposta nesta etapa.', { exact: true })).toBeVisible();
+  expect(sent).toEqual({ service_order_id: 'order-1', channel: integrated ? 'WHATSAPP' : 'EMAIL', purpose: 'PICKUP', question: 'Pode retirar seu veículo amanhã às 10h?', options: ['Confirmar retirada', 'Combinar outro horário'], include_quote: false });
   expect(popupOpened).toBe(false);
 });
 
@@ -75,6 +80,7 @@ test('workshop configures WA-AKG without exposing saved secrets and verifies the
   let checked = false;
   let callbackAvailable = false;
   await page.route('**/api/v1/**', async (route) => {
+    if (await fulfillAppDefaults(route)) return;
     const url = new URL(route.request().url());
     let json: unknown = {};
     let status = 200;
