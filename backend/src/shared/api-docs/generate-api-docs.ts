@@ -45,17 +45,43 @@ function decoratorGroups(source: string): { decorators: string[]; signature: str
     const text = line.trim();
     if (open !== null) {
       open += ` ${text}`;
-      if (balanced(open)) { pending.push(open); open = null; }
+      if (!balanced(open)) continue;
+    } else if (text.startsWith('@')) {
+      open = text;
+      if (!balanced(text)) continue;
+    } else {
+      closeSignature(text);
       continue;
     }
-    if (text.startsWith('@')) {
-      if (balanced(text)) pending.push(text); else open = text;
-      continue;
-    }
+    // Several decorators may share a line, and the method itself may follow them on that line.
+    const { decorators, rest } = splitDecorators(open);
+    open = null;
+    pending.push(...decorators);
+    if (rest) closeSignature(rest);
+  }
+  return groups;
+
+  function closeSignature(text: string) {
     if (pending.length && /^(async\s+)?[A-Za-z_]\w*\(|^(export\s+)?(default\s+)?class\s/.test(text)) groups.push({ decorators: pending, signature: text });
     if (text !== '' && !text.startsWith('//') && !text.startsWith('*')) pending = [];
   }
-  return groups;
+}
+
+function splitDecorators(text: string): { decorators: string[]; rest: string } {
+  const decorators: string[] = [];
+  let rest = text.trim();
+  while (rest.startsWith('@')) {
+    let depth = 0;
+    let end = 1;
+    while (end < rest.length && (depth > 0 || /[\w(]/.test(rest[end]))) {
+      if (rest[end] === '(') depth++;
+      else if (rest[end] === ')') { depth--; if (depth === 0) { end++; break; } }
+      end++;
+    }
+    decorators.push(rest.slice(0, end));
+    rest = rest.slice(end).trim();
+  }
+  return { decorators, rest };
 }
 
 function balanced(text: string): boolean {

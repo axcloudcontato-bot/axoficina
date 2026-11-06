@@ -10,9 +10,9 @@ export function monthStart(now: Date = new Date()): Date {
 }
 
 const LIMIT_TEXT: Record<LimitKind, (plan: string, limit: number) => string> = {
-  users: (plan, limit) => `O plano ${plan} permite até ${limit} usuários, contando os convites pendentes. Desative alguém ou fale com o suporte para ampliar o plano.`,
-  orders: (plan, limit) => `O plano ${plan} permite até ${limit} ordens de serviço por mês e esse limite já foi atingido. Fale com o suporte para ampliar o plano.`,
-  photos: (plan, limit) => `O plano ${plan} permite até ${Math.round(limit / 1024)} GB de fotos e o espaço acabou. Fale com o suporte para ampliar o plano.`,
+  users: (plan, limit) => `O plano ${plan} permite até ${limit} usuários, contando os convites pendentes. Desative alguém ou troque de plano em Configurações > Assinatura.`,
+  orders: (plan, limit) => `O plano ${plan} permite até ${limit} ordens de serviço por mês e esse limite já foi atingido. Troque de plano em Configurações > Assinatura.`,
+  photos: (plan, limit) => `O plano ${plan} permite até ${Math.round(limit / 1024)} GB de fotos e o espaço acabou. Troque de plano em Configurações > Assinatura.`,
 };
 
 @Injectable()
@@ -34,7 +34,7 @@ export class PlanUsageService {
   async assertCanAdd(tenantId: string, kind: LimitKind | 'write'): Promise<void> {
     const { access, limits, planName } = await this.entitlements.forTenant(tenantId);
     if (access.state === 'suspended') {
-      throw new ForbiddenException('A assinatura da oficina está suspensa e o sistema está só para consulta. Fale com o suporte do Ofix para regularizar.');
+      throw new ForbiddenException('A assinatura da oficina não está ativa e o sistema está só para consulta. Um administrador pode regularizar em Configurações > Assinatura.');
     }
     if (kind === 'write') return;
     const limit = { users: limits.users, orders: limits.ordersPerMonth, photos: limits.photoStorageMb }[kind];

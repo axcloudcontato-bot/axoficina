@@ -7,6 +7,7 @@ import type { AuthenticatedUser } from '../../../shared/guards/jwt-auth.guard';
 import { MaintenanceAlertManager } from '../managers/maintenance-alert.manager';
 import { DismissMaintenanceAlertDto, MaintenanceAlertContactsDto, MaintenanceAlertListDto, RecordMaintenanceAlertContactDto, ReopenMaintenanceAlertDto, ResolveMaintenanceAlertDto, SnoozeMaintenanceAlertDto } from '../dto/maintenance-alert.dto';
 import { RequiresModule } from '../../../shared/decorators/requires-module.decorator';
+import { PlanLimit } from '../../../shared/decorators/plan-limit.decorator';
 
 // Todos os 4 papéis têm acesso total — mesmo padrão de Ordem de Serviço
 // (spec: recepção, gerente e mecânico todos precisam ver quem está devendo
@@ -29,7 +30,7 @@ export class MaintenanceAlertsController {
   @Roles(...ALL_ROLES)
   @Permissions('alerts.manage')
   @HttpCode(HttpStatus.OK)
-  @Post('maintenance-alerts/resolve')
+  @PlanLimit('write') @Post('maintenance-alerts/resolve')
   async resolve(
     @CurrentUser() actingUser: AuthenticatedUser,
     @Body() body: ResolveMaintenanceAlertDto,
@@ -40,7 +41,7 @@ export class MaintenanceAlertsController {
   @Roles(...ALL_ROLES)
   @Permissions('alerts.manage')
   @HttpCode(HttpStatus.OK)
-  @Post('maintenance-alerts/snooze')
+  @PlanLimit('write') @Post('maintenance-alerts/snooze')
   async snooze(@CurrentUser() actingUser: AuthenticatedUser, @Body() body: SnoozeMaintenanceAlertDto): Promise<{ alert: MaintenanceAlertResponse }> {
     return this.maintenanceAlertManager.snooze(actingUser, body);
   }
@@ -48,7 +49,7 @@ export class MaintenanceAlertsController {
   @Roles(...ALL_ROLES)
   @Permissions('alerts.manage')
   @HttpCode(HttpStatus.OK)
-  @Post('maintenance-alerts/dismiss')
+  @PlanLimit('write') @Post('maintenance-alerts/dismiss')
   async dismiss(@CurrentUser() actingUser: AuthenticatedUser, @Body() body: DismissMaintenanceAlertDto): Promise<{ alert: MaintenanceAlertResponse }> {
     return this.maintenanceAlertManager.dismiss(actingUser, body);
   }
@@ -56,7 +57,7 @@ export class MaintenanceAlertsController {
   @Roles(...ALL_ROLES)
   @Permissions('alerts.manage')
   @HttpCode(HttpStatus.OK)
-  @Post('maintenance-alerts/reopen')
+  @PlanLimit('write') @Post('maintenance-alerts/reopen')
   async reopen(@CurrentUser() actingUser: AuthenticatedUser, @Body() body: ReopenMaintenanceAlertDto): Promise<{ alert: MaintenanceAlertResponse }> {
     return this.maintenanceAlertManager.reopen(actingUser, body.id);
   }
@@ -64,7 +65,7 @@ export class MaintenanceAlertsController {
   @Roles(...ALL_ROLES)
   @Permissions('alerts.manage')
   @HttpCode(HttpStatus.OK)
-  @Post('maintenance-alerts/contact')
+  @PlanLimit('write') @Post('maintenance-alerts/contact')
   async recordContact(@CurrentUser() actingUser: AuthenticatedUser, @Body() body: RecordMaintenanceAlertContactDto): Promise<{ alert: MaintenanceAlertResponse }> {
     return this.maintenanceAlertManager.recordContact(actingUser, body);
   }

@@ -64,7 +64,7 @@ export function PlanSwitcher() {
       <div role="group" aria-label="Periodicidade da assinatura" className="inline-flex rounded-button border border-border bg-card p-1">
         {([['monthly', 'Mensal'], ['yearly', 'Anual']] as const).map(([value, label]) => <button key={value} type="button" aria-pressed={cycle === value} onClick={() => setSelectedCycle(value)} className={`rounded-button px-4 py-2 text-sm font-semibold transition-colors ${cycle === value ? 'bg-primary text-primary-foreground' : 'text-text-muted hover:bg-muted hover:text-text'}`}>{label}</button>)}
       </div>
-      <p className="text-xs text-text-muted">O plano anual custa 12 mensalidades, sem desconto, cobradas de uma vez por ano.</p>
+      <p className="text-xs text-text-muted">O plano anual custa 12 mensalidades, sem desconto, cobradas de uma vez por ano.{subscription.data?.status === 'trial' && !billing.data?.hasSubscription ? ' A cobrança começa no dia da contratação, mesmo que ainda restem dias de teste.' : ''}</p>
     </div>
     <ul className="mt-4 grid gap-3 md:grid-cols-3">{PLAN_CODES.map((code) => {
       const plan = PLANS[code];

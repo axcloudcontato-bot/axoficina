@@ -38,7 +38,7 @@ export class CustomersController {
   @Roles('ADMIN', 'MANAGER', 'FRONT_DESK')
   @Permissions('customers.manage')
   @HttpCode(HttpStatus.OK)
-  @Post('customers/update')
+  @PlanLimit('write') @Post('customers/update')
   async update(@CurrentUser() actingUser: AuthenticatedUser, @Body() body: UpdateCustomerDto): Promise<{ customer: CustomerResponse }> {
     return this.customerManager.update(actingUser, body);
   }
@@ -46,7 +46,7 @@ export class CustomersController {
   @Roles('ADMIN', 'MANAGER', 'FRONT_DESK')
   @Permissions('customers.manage')
   @HttpCode(HttpStatus.OK)
-  @Post('customers/delete')
+  @PlanLimit('write') @Post('customers/delete')
   async delete(@CurrentUser() actingUser: AuthenticatedUser, @Body() body: DeleteCustomerDto): Promise<{ customer: CustomerResponse }> {
     return this.customerManager.delete(actingUser, body.id);
   }
@@ -55,7 +55,7 @@ export class CustomersController {
   @Roles('ADMIN', 'MANAGER')
   @Permissions('customers.manage')
   @HttpCode(HttpStatus.OK)
-  @Post('customers/merge')
+  @PlanLimit('write') @Post('customers/merge')
   async merge(@CurrentUser() actingUser: AuthenticatedUser, @Body() body: MergeCustomersDto): Promise<MergeCustomersResponse> {
     return this.customerManager.merge(actingUser, body);
   }
@@ -72,7 +72,7 @@ export class CustomersController {
   @Roles('ADMIN', 'MANAGER', 'FRONT_DESK')
   @Permissions('customers.manage')
   @HttpCode(HttpStatus.OK)
-  @Post('customers/restore')
+  @PlanLimit('write') @Post('customers/restore')
   async restore(@CurrentUser() actingUser: AuthenticatedUser, @Body() body: RestoreCustomerDto): Promise<{ customer: CustomerResponse }> {
     return this.customerManager.restore(actingUser, body.id);
   }
@@ -85,14 +85,14 @@ export class CustomersController {
     return this.customerManager.archiveImpact(body.id);
   }
 
-  @Roles('ADMIN', 'MANAGER', 'FRONT_DESK', 'MECHANIC')
+  @Roles('ADMIN', 'MANAGER', 'FRONT_DESK', 'MECHANIC', 'FINANCE')
   @Permissions('customers.view')
   @Get('customer')
   async get(@Query() query: GetCustomerDto): Promise<{ customer: CustomerResponse }> {
     return this.customerManager.getById(query.id);
   }
 
-  @Roles('ADMIN', 'MANAGER', 'FRONT_DESK', 'MECHANIC')
+  @Roles('ADMIN', 'MANAGER', 'FRONT_DESK', 'MECHANIC', 'FINANCE')
   @Permissions('customers.view')
   @HttpCode(HttpStatus.OK)
   @Post('customers/list')
@@ -112,7 +112,7 @@ export class CustomersController {
     return new StreamableFile(file.stream);
   }
 
-  @Roles('ADMIN', 'MANAGER', 'FRONT_DESK', 'MECHANIC')
+  @Roles('ADMIN', 'MANAGER', 'FRONT_DESK', 'MECHANIC', 'FINANCE')
   @Permissions('customers.view')
   @HttpCode(HttpStatus.OK)
   @Post('customers/overview')

@@ -19,7 +19,7 @@ function setup(due = [appointment()]) {
     client: { appointment: { findFirst: jest.fn().mockResolvedValue(appointment()), updateMany: jest.fn().mockResolvedValue({ count: 1 }) } },
   };
   const whatsapp = { getConnection: jest.fn().mockResolvedValue({ sessionId: 's' }), sendNotice: jest.fn().mockResolvedValue(undefined) };
-  return { prisma, whatsapp, service: new AppointmentNotificationService(prisma as never, whatsapp as never) };
+  return { prisma, whatsapp, service: new AppointmentNotificationService(prisma as never, whatsapp as never, { forTenant: jest.fn().mockResolvedValue({ modules: ['whatsapp'], access: { state: 'active' } }) } as never) };
 }
 
 describe('appointment WhatsApp messages', () => {

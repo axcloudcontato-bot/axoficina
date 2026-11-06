@@ -13,14 +13,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { VehicleSearchCombobox } from '@/features/vehicles/components/VehicleSearchCombobox';
 import { CustomerSearchCombobox } from '@/features/customers/components/CustomerSearchCombobox';
-import { useUsersList } from '@/features/users/hooks/use-users';
+import { useTeamMembers } from '@/features/users/hooks/use-users';
 import { extractErrorMessage, extractFieldErrors } from '@/lib/api/client';
 import { useCreateServiceOrder } from '../hooks/use-service-orders';
 import type { ServiceOrderListItemResponse } from '@oficina/contracts';
 
 // Mesma limitação pragmática já aceita na Feature 4 pro seletor de técnico
 // (lista fixa, sem busca). O de veículo agora usa VehicleSearchCombobox.
-const PICKER_LIMIT = 100;
 
 const serviceOrderSchema = z.object({
   customerId: z.string().min(1, 'Selecione um cliente'),
@@ -56,11 +55,7 @@ export function ServiceOrderFormModal({ open, onOpenChange, initialVehicleId, in
   const [vehicleQuery, setVehicleQuery] = useState('');
   const selectedCustomer = useRef(initialCustomer);
 
-  const { data: usersData, isLoading: isLoadingTechnicians } = useUsersList({
-    offset: 0,
-    limit: PICKER_LIMIT,
-    filters: { status: 'active' },
-  });
+  const { data: usersData, isLoading: isLoadingTechnicians } = useTeamMembers();
 
   const form = useForm<ServiceOrderFormValues>({
     resolver: zodResolver(serviceOrderSchema),

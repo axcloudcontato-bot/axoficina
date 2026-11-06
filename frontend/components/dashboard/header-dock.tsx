@@ -22,7 +22,7 @@ import { useSystemUpdates } from '@/features/updates/use-system-updates';
 
 type View = 'default' | 'search' | 'alerts' | 'theme' | 'profile' | 'help' | 'updates';
 const VIEW_LABELS = { search: 'Buscar e navegar', alerts: 'Alertas', theme: 'Escolher tema', profile: 'Perfil', help: 'Atalhos de teclado', updates: 'Novidades do sistema' };
-const ROLE_LABELS: Record<string, string> = { ADMIN: 'Administrador', MANAGER: 'Gestor', MECHANIC: 'Mecânico', FRONT_DESK: 'Recepção' };
+const ROLE_LABELS: Record<string, string> = { ADMIN: 'Administrador', MANAGER: 'Gestor', MECHANIC: 'Mecânico', FRONT_DESK: 'Recepção', FINANCE: 'Financeiro' };
 const THEME_OPTIONS: Array<{ key: 'light' | 'dark' | 'system'; icon: PhosphorIcon; label: string }> = [
   { key: 'light', icon: Sun, label: 'Claro' }, { key: 'dark', icon: Moon, label: 'Escuro' }, { key: 'system', icon: Desktop, label: 'Sistema' },
 ];
@@ -91,7 +91,7 @@ export function HeaderDock() {
   }, [view, closePanel, openPanel]);
 
   const { hasModule } = useEntitlements();
-  const alerts = useMaintenanceAlertsList({ offset: 0, limit: 1, status: 'OPEN' }, hasModule('cuidado'));
+  const alerts = useMaintenanceAlertsList({ offset: 0, limit: 1, status: 'OPEN' }, hasModule('cuidado') && hasPermission(user, 'alerts.view'));
   const openNotifications = useCallback(() => openPanel('alerts'), [openPanel]);
   const replies = useCustomerReplyNotifications(openNotifications);
   const canManageReceipts = hasPermission(user, 'receipts.manage');

@@ -1,4 +1,4 @@
-import { Body, Controller, HttpCode, HttpStatus, Post } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, HttpStatus, Post } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import type { AuthResponse, InviteUserResponse, PaginationData, UserListItemResponse } from '@oficina/contracts';
 import { Public } from '../../../shared/decorators/public.decorator';
@@ -31,6 +31,11 @@ export class UsersController {
     return this.userManager.acceptInvite(body);
   }
 
+  @Get('team-members')
+  teamMembers() {
+    return this.userManager.teamMembers();
+  }
+
   @Roles('ADMIN', 'MANAGER')
   @Permissions('team.view')
   @HttpCode(HttpStatus.OK)
@@ -42,7 +47,7 @@ export class UsersController {
   @Roles('ADMIN', 'MANAGER')
   @Permissions('team.manage')
   @HttpCode(HttpStatus.OK)
-  @Post('rename')
+  @PlanLimit('write') @Post('rename')
   async rename(@CurrentUser() actingUser: AuthenticatedUser, @Body() body: RenameUserDto) {
     return this.userManager.rename(actingUser, body);
   }
@@ -58,7 +63,7 @@ export class UsersController {
   @Roles('ADMIN', 'MANAGER') @Permissions('team.manage') @PlanLimit('users') @HttpCode(HttpStatus.OK) @Post('enable')
   enable(@CurrentUser() actingUser: AuthenticatedUser, @Body() body: ManageUserAccessDto) { return this.userManager.enable(actingUser, body); }
 
-  @Roles('ADMIN', 'MANAGER') @Permissions('team.manage') @HttpCode(HttpStatus.OK) @Post('resend-invite')
+  @Roles('ADMIN', 'MANAGER') @Permissions('team.manage') @HttpCode(HttpStatus.OK) @PlanLimit('write') @Post('resend-invite')
   resendInvite(@CurrentUser() actingUser: AuthenticatedUser, @Body() body: ManageUserAccessDto) { return this.userManager.resendInvite(actingUser, body); }
 
   @Roles('ADMIN', 'MANAGER') @Permissions('team.manage') @HttpCode(HttpStatus.OK) @Post('password-reset-link')

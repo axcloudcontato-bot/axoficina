@@ -12,6 +12,7 @@ import { hasPermission } from '@/features/auth/permissions';
 import { CustomerSearchCombobox } from '@/features/customers/components/CustomerSearchCombobox';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { GoogleButton } from '@/features/auth/components/GoogleButton';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { legalIdentity } from '../legal-content';
@@ -43,6 +44,7 @@ export function PrivacyCenter({ mode = 'self' }: { mode?: 'self' | 'admin' }) {
   const [retentionUntil, setRetentionUntil] = useState('');
   const [erase, setErase] = useState<PrivacyRequestResponse | null>(null);
   const [password, setPassword] = useState('');
+  const [googleCredential, setGoogleCredential] = useState<string | undefined>();
   const [confirmation, setConfirmation] = useState('');
   const [exporting, setExporting] = useState(false);
   const queryClient = useQueryClient();
@@ -63,7 +65,7 @@ export function PrivacyCenter({ mode = 'self' }: { mode?: 'self' | 'admin' }) {
     onError: (error) => toast.error(extractErrorMessage(error)),
   });
   const erasure = useMutation({
-    mutationFn: async () => apiClient.post(erase!.customerId ? '/api/v1/privacy/customers/erase' : '/api/v1/privacy/account/erase', { requestId: erase!.id, password, confirmation }),
+    mutationFn: async () => apiClient.post(erase!.customerId ? '/api/v1/privacy/customers/erase' : '/api/v1/privacy/account/erase', { requestId: erase!.id, ...(password ? { password } : {}), ...(googleCredential ? { googleCredential } : {}), confirmation }),
     onSuccess: () => {
       if (!erase?.customerId) {
         setPassword(''); setConfirmation(''); setErase(null);
@@ -106,7 +108,7 @@ export function PrivacyCenter({ mode = 'self' }: { mode?: 'self' | 'admin' }) {
       </li>)}</ul><p className="mt-4 text-xs text-text-muted">Exibição dos 100 protocolos mais recentes. Exclusão de conta e de histórico vinculado requer análise do responsável, incluindo obrigações legais, cópias e backups.</p>
     </section>
     <Dialog open={Boolean(selected)} onOpenChange={(open) => { if (!open) setSelected(null); }}><DialogContent><DialogHeader><DialogTitle>Analisar solicitação</DialogTitle><DialogDescription>Informe a providência real, eventual base legal de conservação, quais dados permanecem e a data de revisão. O registro de resposta não executa estorno.</DialogDescription></DialogHeader><form className="space-y-4" onSubmit={(event) => { event.preventDefault(); review.mutate(); }}><label className="block text-sm font-semibold" htmlFor="review-status">Situação</label><select id="review-status" className={selectClass} value={status} onChange={(event) => setStatus(event.target.value as typeof status)}><option value="IN_REVIEW">Em análise</option>{selected?.type !== 'DELETION' && <option value="COMPLETED">Concluída (providência já executada)</option>}<option value="RETAINED">Conservação justificada</option></select><label className="block text-sm font-semibold" htmlFor="review-response">Resposta e fundamentação</label><Textarea id="review-response" required minLength={10} maxLength={2000} value={response} onChange={(event) => setResponse(event.target.value)} />{status === 'RETAINED' && <div><label htmlFor="retention-until" className="mb-2 block text-sm">Data de revisão da conservação</label><Input id="retention-until" type="date" required value={retentionUntil} onChange={(event) => setRetentionUntil(event.target.value)} /></div>}<DialogFooter><Button type="submit" disabled={review.isPending}>Registrar resposta</Button></DialogFooter></form></DialogContent></Dialog>
-    <Dialog open={Boolean(erase)} onOpenChange={(open) => { if (!open) { setErase(null); setPassword(''); setConfirmation(''); } }}>
+    <Dialog open={Boolean(erase)} onOpenChange={(open) => { if (!open) { setErase(null); setPassword(''); setGoogleCredential(undefined); setConfirmation(''); } }}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>{erase?.customerId ? 'Apagar dados pessoais do cadastro' : 'Apagar minha conta'}</DialogTitle>
@@ -119,7 +121,8 @@ export function PrivacyCenter({ mode = 'self' }: { mode?: 'self' | 'admin' }) {
         </DialogHeader>
         <form className="space-y-4" onSubmit={(event) => { event.preventDefault(); erasure.mutate(); }}>
           <label htmlFor="erase-password" className="block text-sm font-semibold">Sua senha atual</label>
-          <Input id="erase-password" type="password" autoComplete="current-password" required value={password} onChange={(event) => setPassword(event.target.value)} />
+          <Input id="erase-password" type="password" autoComplete="current-password" required={!googleCredential} value={password} onChange={(event) => setPassword(event.target.value)} />
+          {process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID && <div className="space-y-2"><p className="text-center text-xs text-text-muted">ou confirme com sua conta Google</p><GoogleButton onCredential={setGoogleCredential} />{googleCredential && <p className="text-center text-xs text-text-muted">Conta Google confirmada.</p>}</div>}
           <label htmlFor="erase-confirmation" className="block text-sm font-semibold">Digite EXCLUIR para confirmar a revisão e o apagamento</label>
           <Input id="erase-confirmation" required pattern="EXCLUIR" value={confirmation} onChange={(event) => setConfirmation(event.target.value)} />
           <DialogFooter><Button type="submit" variant="destructive" disabled={erasure.isPending || confirmation !== 'EXCLUIR'}>{erasure.isPending ? 'Apagando...' : 'Apagar dados pessoais'}</Button></DialogFooter>

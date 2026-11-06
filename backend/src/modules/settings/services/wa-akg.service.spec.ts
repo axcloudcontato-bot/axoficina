@@ -50,6 +50,13 @@ describe('WA-AKG with the platform key', () => {
   });
 });
 
+describe('WA-AKG when the account is view-only', () => {
+  it('hands out no connection, so nothing is sent', async () => {
+    const service = new WaAkgService({ byId: jest.fn(async () => ({ id: 't1', waAkgEnabled: true, waAkgSessionId: 's1', waAkgBaseUrl: 'https://wa.example.com', waAkgApiKey: 'x' })) } as never, {} as never, { get: () => undefined } as never, {} as never, { forTenant: jest.fn(async () => ({ modules: ['whatsapp'], access: { state: 'suspended' } })) } as never);
+    await expect(service.getConnection('t1')).resolves.toBeNull();
+  });
+});
+
 describe('WA-AKG connection', () => {
   afterEach(() => jest.restoreAllMocks());
 

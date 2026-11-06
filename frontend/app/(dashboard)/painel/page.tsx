@@ -39,8 +39,8 @@ export default function DashboardPage() {
   const queryClient = useQueryClient();
   const canManageReceipts = hasPermission(user, 'receipts.manage');
   const canManageServiceOrders = hasPermission(user, 'service_orders.manage');
-  const canViewFinance = hasPermission(user, 'finance.view');
   const { hasModule } = useEntitlements();
+  const canViewFinance = hasPermission(user, 'finance.view') && hasModule('financeiro');
   const canViewAlerts = hasPermission(user, 'alerts.view') && hasModule('cuidado');
   const [range, setRange] = useState(() => todayRange());
   // One request carries the exact counts, the prioritized rows and the workload.

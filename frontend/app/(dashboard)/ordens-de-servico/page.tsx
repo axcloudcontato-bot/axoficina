@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { CalendarRangeSelect } from '@/components/ui/calendar-range-select';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { hasPermission } from '@/features/auth/permissions';
+import { canSeeAmounts, hasPermission } from '@/features/auth/permissions';
 import { ServiceOrderBoard } from '@/features/service-orders/components/ServiceOrderBoard';
 import { NewServiceOrderQuickStart } from '@/features/service-orders/components/NewServiceOrderQuickStart';
 import { ServiceOrdersTable } from '@/features/service-orders/components/ServiceOrdersTable';
@@ -28,7 +28,7 @@ type Section = 'queue' | 'all' | 'history';
 export default function ServiceOrdersPage() {
   const user = useAuthStore((state) => state.user);
   const canManage = hasPermission(user, 'service_orders.manage');
-  const canViewPrices = hasPermission(user, 'service_orders.prices');
+  const canViewPrices = canSeeAmounts(user);
   const [status, setStatus] = useState<ServiceOrderStatus | 'ALL'>('ALL');
   const [attention, setAttention] = useState<ServiceOrderAttentionFilter>('ACTIVE');
   const [search, setSearch] = useState('');

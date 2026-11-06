@@ -1,6 +1,18 @@
 // This feed is visible to every workshop account. Keep SaaS administration changes out of it.
 export const RELEASE_NOTES = [
   {
+    id: '2026-11-05-revisao-pre-lancamento', date: '2026-11-05', title: 'Valores, parcelas e perfis mais confiáveis',
+    items: [
+      'As parcelas em aberto acompanham a OS: ao mudar itens ou desconto, registrar ou estornar um recebimento, o saldo é redistribuído entre elas. Estornar o pagamento de uma parcela a reabre, e cancelar uma OS tira as parcelas do contas a receber.',
+      'Para cancelar uma OS com dinheiro recebido, estorne antes o recebimento: assim o caixa continua correto.',
+      'O perfil Financeiro passa a funcionar em todo o sistema e pode ser escolhido ao convidar alguém. Trocas de perfil ficam no histórico, e a oficina não pode ficar sem quem administre os perfis.',
+      'Quem não tem acesso a preços não recebe mais os valores da OS, inclusive na impressão.',
+      'Recepção e mecânicos passam a ver a lista de técnicos ao abrir uma OS ou um agendamento.',
+      'Agendamentos fora do horário de funcionamento ou em dias fechados pedem confirmação antes de salvar.',
+      'Com a assinatura inativa, o sistema fica de fato só para consulta e os envios automáticos param. A contratação, o suporte e os pedidos de privacidade continuam disponíveis.',
+    ],
+  },
+  {
     id: '2026-11-05-assinatura-anual-menu-movel', date: '2026-11-05', title: 'Assinatura anual e acesso aos módulos no celular',
     items: [
       'Em Assinatura e dados, escolha pagamento mensal ou anual. O anual cobra 12 mensalidades de uma vez, sem desconto; uma mudança de periodicidade em uma assinatura ativa pode gerar cobrança imediata.',

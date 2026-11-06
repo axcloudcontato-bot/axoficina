@@ -1,6 +1,7 @@
 import { BadGatewayException, BadRequestException, ConflictException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import type { Appointment } from '@oficina/database';
 import { PrismaService } from '../../../shared/prisma/prisma.service';
+import { EntitlementsService } from '../../../shared/plan/entitlements.service';
 import { WaAkgService } from '../../settings/services/wa-akg.service';
 import { whatsappRecipient } from '../../settings/services/whatsapp-recipient';
 
@@ -26,7 +27,7 @@ export function appointmentMessage(kind: AppointmentMessageKind, input: { custom
 @Injectable()
 export class AppointmentNotificationService {
   private readonly logger = new Logger(AppointmentNotificationService.name);
-  constructor(private readonly prisma: PrismaService, private readonly whatsapp: WaAkgService) {}
+  constructor(private readonly prisma: PrismaService, private readonly whatsapp: WaAkgService, private readonly entitlements: EntitlementsService) {}
 
   private async timeZone(tenantId: string) {
     return (await this.prisma.unscoped.customerCareSettings.findFirst({ where: { tenantId }, select: { timeZone: true } }))?.timeZone ?? DEFAULT_TIME_ZONE;
@@ -59,6 +60,9 @@ export class AppointmentNotificationService {
     let sent = 0;
     const tenants = await this.prisma.unscoped.tenant.findMany({ where: { appointmentRemindersEnabled: true, waAkgEnabled: true, status: 'active', deletedAt: null }, select: { id: true } });
     for (const tenant of tenants) {
+      // Not a failed attempt: nothing is spent, so the reminders still go out if the subscription comes back in time.
+      const { modules, access } = await this.entitlements.forTenant(tenant.id);
+      if (!modules.includes('whatsapp') || access.state === 'suspended') continue;
       const hour = Number(new Intl.DateTimeFormat('en-GB', { timeZone: await this.timeZone(tenant.id), hour: '2-digit', hourCycle: 'h23' }).format(now));
       if (hour < 8 || hour >= 20) continue;
       const retryBefore = new Date(now.getTime() - RETRY_DELAY_MS);

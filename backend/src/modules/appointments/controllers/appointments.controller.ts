@@ -29,7 +29,7 @@ export class AppointmentsController {
 
   @Roles('ADMIN', 'MANAGER')
   @Permissions('appointments.manage')
-  @Post('reminder-retry') @HttpCode(HttpStatus.OK)
+  @PlanLimit('write') @Post('reminder-retry') @HttpCode(HttpStatus.OK)
   retryReminder(@CurrentUser() user: AuthenticatedUser, @Body() body: RetryReminderDto) { return this.notifications.retryReminder(user.tenantId, body.id); }
 
   @Roles(...ALL_ROLES)
@@ -43,7 +43,7 @@ export class AppointmentsController {
   @Roles(...ALL_ROLES)
   @Permissions('appointments.manage')
   @HttpCode(HttpStatus.OK)
-  @Post('update')
+  @PlanLimit('write') @Post('update')
   update(@CurrentUser() user: AuthenticatedUser, @Body() body: UpdateAppointmentDto) {
     return this.manager.update(user, body);
   }
@@ -59,7 +59,7 @@ export class AppointmentsController {
   @Roles(...ALL_ROLES)
   @Permissions('appointments.manage')
   @HttpCode(HttpStatus.OK)
-  @Post('transition')
+  @PlanLimit('write') @Post('transition')
   transition(@CurrentUser() user: AuthenticatedUser, @Body() body: TransitionAppointmentDto) {
     return this.manager.transition(user, body);
   }
@@ -67,7 +67,7 @@ export class AppointmentsController {
   @Roles(...ALL_ROLES)
   @Permissions('appointments.manage')
   @HttpCode(HttpStatus.OK)
-  @Post('notify')
+  @PlanLimit('write') @Post('notify')
   notify(@CurrentUser() user: AuthenticatedUser, @Body() body: NotifyAppointmentDto) {
     return this.manager.notify(user, body);
   }
@@ -75,7 +75,7 @@ export class AppointmentsController {
   @Roles(...ALL_ROLES)
   @Permissions('appointments.manage')
   @HttpCode(HttpStatus.OK)
-  @Post('start')
+  @PlanLimit('orders') @Post('start')
   start(@CurrentUser() user: AuthenticatedUser, @Body() body: StartAppointmentDto) {
     return this.manager.start(user, body);
   }

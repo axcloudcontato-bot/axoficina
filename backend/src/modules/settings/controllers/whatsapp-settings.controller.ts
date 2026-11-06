@@ -6,6 +6,7 @@ import { RequiresModule } from '../../../shared/decorators/requires-module.decor
 import type { AuthenticatedUser } from '../../../shared/guards/jwt-auth.guard';
 import { UpdateWhatsAppSettingsDto } from '../dto/whatsapp-settings.dto';
 import { WaAkgService } from '../services/wa-akg.service';
+import { PlanLimit } from '../../../shared/decorators/plan-limit.decorator';
 
 @Controller('api/v1/settings/whatsapp')
 @Roles('ADMIN', 'MANAGER')
@@ -16,15 +17,15 @@ export class WhatsAppSettingsController {
   @Get() @Permissions('settings.view')
   get(@CurrentUser() user: AuthenticatedUser) { return this.wa.getSettings(user.tenantId); }
 
-  @Post() @HttpCode(HttpStatus.OK) @Permissions('settings.manage')
+  @PlanLimit('write') @Post() @HttpCode(HttpStatus.OK) @Permissions('settings.manage')
   update(@CurrentUser() user: AuthenticatedUser, @Body() body: UpdateWhatsAppSettingsDto) { return this.wa.update(user, body); }
 
-  @Post('test') @HttpCode(HttpStatus.OK) @Permissions('settings.manage')
+  @PlanLimit('write') @Post('test') @HttpCode(HttpStatus.OK) @Permissions('settings.manage')
   test(@CurrentUser() user: AuthenticatedUser) { return this.wa.testConnection(user.tenantId); }
 
-  @Post('webhook/test') @HttpCode(HttpStatus.OK) @Permissions('settings.manage')
+  @PlanLimit('write') @Post('webhook/test') @HttpCode(HttpStatus.OK) @Permissions('settings.manage')
   testWebhook(@CurrentUser() user: AuthenticatedUser) { return this.wa.testWebhook(user.tenantId); }
 
-  @Post('webhook/configure') @HttpCode(HttpStatus.OK) @Permissions('settings.manage')
+  @PlanLimit('write') @Post('webhook/configure') @HttpCode(HttpStatus.OK) @Permissions('settings.manage')
   configureWebhook(@CurrentUser() user: AuthenticatedUser) { return this.wa.configureWebhook(user); }
 }

@@ -9,6 +9,7 @@ import type {
   TransitionAppointmentRequest,
   UpdateAppointmentRequest,
 } from '@oficina/contracts';
+import { hoursOn, type AgendaHours } from '@oficina/contracts';
 import type { Appointment, Customer, User, Vehicle } from '@oficina/database';
 import { AppErrorCode } from '../../../shared/errors/app-error-code';
 import { AppException } from '../../../shared/errors/app-exception';
@@ -169,8 +170,10 @@ export class AppointmentManager {
     excludeId?: string,
   ) {
     if (request.confirmConflict) return;
+    const tenant = await this.tenants?.byId(actingUser.tenantId);
+    this.ensureWithinOpeningHours(tenant, startsAt, endsAt);
     // Workshop capacity: how many vehicles it serves at once.
-    const bays = (await this.tenants?.byId(actingUser.tenantId))?.agendaBays;
+    const bays = tenant?.agendaBays;
     if (bays) {
       const overlapping = await this.appointments.overlapping(startsAt, endsAt, excludeId);
       if (overlapping >= bays) {
@@ -186,6 +189,22 @@ export class AppointmentManager {
         HttpStatus.CONFLICT,
       );
     }
+  }
+
+  // Same rule the agenda screen shows, also for whoever calls the API. Asked as a conflict because a workshop may open
+  // an exception for a customer: confirming saves it anyway.
+  private ensureWithinOpeningHours(tenant: { agendaOpenHour?: number; agendaCloseHour?: number; agendaWorkDays?: number[]; agendaDayHours?: unknown; agendaDateHours?: unknown; agendaClosedDates?: string[] } | null | undefined, startsAt: Date, endsAt: Date) {
+    if (!tenant?.agendaWorkDays || tenant.agendaOpenHour === undefined || tenant.agendaCloseHour === undefined) return;
+    const hours = { openHour: tenant.agendaOpenHour, closeHour: tenant.agendaCloseHour, workDays: tenant.agendaWorkDays, bays: null, dayHours: tenant.agendaDayHours ?? undefined, dateHours: tenant.agendaDateHours ?? undefined, closedDates: tenant.agendaClosedDates } as AgendaHours;
+    const local = (moment: Date) => new Date(moment.getTime() - 3 * 3_600_000); // the workshop's calendar, UTC-3
+    const start = local(startsAt);
+    const end = local(endsAt);
+    const day = hoursOn(hours, start.getUTCDay(), start.toISOString().slice(0, 10));
+    if (!day) throw new AppException(AppErrorCode.APPOINTMENT_CONFLICT, 'A oficina está fechada nesse dia. Confirme para agendar mesmo assim.', HttpStatus.CONFLICT);
+    const startHour = start.getUTCHours() + start.getUTCMinutes() / 60;
+    const sameDay = start.toISOString().slice(0, 10) === end.toISOString().slice(0, 10);
+    const endHour = sameDay ? end.getUTCHours() + end.getUTCMinutes() / 60 : 24;
+    if (startHour < day.openHour || endHour > day.closeHour) throw new AppException(AppErrorCode.APPOINTMENT_CONFLICT, `Esse horário fica fora do funcionamento da oficina nesse dia (das ${day.openHour}h às ${day.closeHour}h). Confirme para agendar mesmo assim.`, HttpStatus.CONFLICT);
   }
 
   private getEntity(id: string) {

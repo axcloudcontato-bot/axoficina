@@ -12,11 +12,11 @@ function build(tenant: Record<string, unknown> | null = tenantRow(), enabled = t
   const db = {
     tenant: { findFirst: jest.fn().mockResolvedValue(tenant), update: jest.fn().mockResolvedValue({}) },
     user: { findFirst: jest.fn().mockResolvedValue({ email: 'admin@oficina.com' }) },
-    billingInvoice: { upsert: jest.fn(), findMany: jest.fn().mockResolvedValue([]) },
+    billingInvoice: { upsert: jest.fn(), findMany: jest.fn().mockResolvedValue([]), findFirst: jest.fn().mockResolvedValue(null) },
   };
   const stripe = {
     enabled, createCustomer: jest.fn().mockResolvedValue('cus_1'), checkoutSession: jest.fn().mockResolvedValue('https://checkout.stripe.com/c/pay/abc'),
-    changeSubscription: jest.fn(), cancelAtPeriodEnd: jest.fn().mockResolvedValue(new Date('2026-11-30T12:00:00Z')), portalSession: jest.fn().mockResolvedValue('https://billing.stripe.com/p/session/abc'),
+    changeSubscription: jest.fn(), cancelNow: jest.fn(), cancelAtPeriodEnd: jest.fn().mockResolvedValue(new Date('2026-11-30T12:00:00Z')), portalSession: jest.fn().mockResolvedValue('https://billing.stripe.com/p/session/abc'),
   };
   const entitlements = { forget: jest.fn() };
   const audit = { record: jest.fn() };
@@ -51,7 +51,7 @@ describe('BillingService checkout', () => {
     const result = await service.checkout(user, { plan: 'profissional', cycle: 'monthly' });
     expect(stripe.createCustomer).toHaveBeenCalledWith({ name: 'Oficina Boa', email: 'contato@oficina.com', tenantId: TENANT_ID });
     expect(stripe.checkoutSession).toHaveBeenCalledWith(expect.objectContaining({ customerId: 'cus_1', unitAmountCents: 15990, interval: 'month', planName: 'Profissional', successUrl: 'https://ofix.test/configuracoes/assinatura?contratado=1', cancelUrl: 'https://ofix.test/configuracoes/assinatura' }));
-    expect(db.tenant.update).toHaveBeenCalledWith({ where: { id: TENANT_ID }, data: { billingCustomerId: 'cus_1', pendingPlan: 'profissional', subscriptionCycle: 'monthly' } });
+    expect(db.tenant.update).toHaveBeenCalledWith({ where: { id: TENANT_ID }, data: { billingCustomerId: 'cus_1', pendingPlan: 'profissional' } });
     expect(result).toEqual({ checkoutUrl: 'https://checkout.stripe.com/c/pay/abc', appliedNow: false });
   });
 
@@ -164,6 +164,26 @@ describe('BillingService webhook', () => {
     const { service, db } = build(tenantRow({ billingCustomerId: 'cus_1' }));
     await expect(service.handleEvent({ type: 'checkout.session.completed', data: { object: { mode: 'subscription', customer: 'cus_1', subscription: 'sub_1', client_reference_id: TENANT_ID } } })).resolves.toEqual({ handled: true });
     expect(db.tenant.update).toHaveBeenCalledWith({ where: { id: TENANT_ID }, data: { billingSubscriptionId: 'sub_1' } });
+  });
+
+  it('takes what was bought from the page that was paid, not from the last page opened', async () => {
+    const { service, db } = build(tenantRow({ billingCustomerId: 'cus_1', pendingPlan: 'essencial' }));
+    await service.handleEvent({ type: 'checkout.session.completed', data: { object: { mode: 'subscription', customer: 'cus_1', subscription: 'sub_1', metadata: { plan: 'completo', cycle: 'yearly' } } } });
+    expect(db.tenant.update).toHaveBeenCalledWith({ where: { id: TENANT_ID }, data: { billingSubscriptionId: 'sub_1', pendingPlan: 'completo', subscriptionCycle: 'yearly' } });
+  });
+
+  it('stops the previous subscription when a second page is paid, so the workshop is not charged twice', async () => {
+    const { service, stripe, db } = build(tenantRow({ billingCustomerId: 'cus_1', billingSubscriptionId: 'sub_old', subscriptionStatus: 'active' }));
+    await service.handleEvent({ type: 'checkout.session.completed', data: { object: { mode: 'subscription', customer: 'cus_1', subscription: 'sub_new' } } });
+    expect(stripe.cancelNow).toHaveBeenCalledWith('sub_old');
+    expect(db.tenant.update).toHaveBeenCalledWith({ where: { id: TENANT_ID }, data: { billingSubscriptionId: 'sub_new' } });
+  });
+
+  it('does not reopen an invoice already paid when a late event arrives', async () => {
+    const { service, db } = build(tenantRow({ billingCustomerId: 'cus_1', billingSubscriptionId: 'sub_1' }));
+    db.billingInvoice.findFirst.mockResolvedValue({ status: 'paid' });
+    await service.handleEvent({ type: 'invoice.finalized', data: { object: { ...invoice, status: 'open' } } });
+    expect(db.billingInvoice.upsert).not.toHaveBeenCalled();
   });
 
   it('activates the plan chosen at checkout when the first invoice is paid, due again at the end of the period', async () => {

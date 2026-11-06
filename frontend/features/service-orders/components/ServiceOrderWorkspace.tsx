@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { hasPermission } from '@/features/auth/permissions';
 import { useAuthStore } from '@/stores/auth-store';
-import { useUsersList } from '@/features/users/hooks/use-users';
+import { useTeamMembers } from '@/features/users/hooks/use-users';
 import { usePhotoPolicy } from '@/features/settings/hooks/use-settings';
 import { formatCurrencyBRL } from '@/lib/format-currency';
 import { extractErrorMessage } from '@/lib/api/client';
@@ -71,7 +71,7 @@ export function ServiceOrderWorkspace({ serviceOrder: order }: { serviceOrder: S
   const draft = useServiceOrderDraft(order);
   const photos = useServiceOrderPhotos(order.id);
   const messages = useCustomerMessages(order.id, canViewPrices);
-  const users = useUsersList({ offset: 0, limit: 100, filters: { status: 'active' } });
+  const users = useTeamMembers();
   const transition = useTransitionServiceOrder();
   const photoPolicy = usePhotoPolicy();
   const coverage = workflowPhotoCoverage(order, photos.data?.photos ?? [], photoPolicy);

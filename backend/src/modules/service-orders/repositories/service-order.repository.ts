@@ -264,6 +264,19 @@ export class ServiceOrderRepository {
     return this.prisma.client.serviceOrder.findMany({ where: { deletedAt: null, status: { in: ['OPEN', 'IN_PROGRESS', 'WAITING_PARTS'] } }, select: { technicianId: true, status: true } });
   }
 
+  // What is still owed for cars delivered before the period the panel lists one by one.
+  async outstandingDeliveredBefore(before: Date): Promise<number> {
+    const tenantId = this.tenantContext.getStore()?.tenantId;
+    if (!tenantId) throw new Error('Outstanding total requires a tenant context');
+    const rows = await this.prisma.client.$queryRaw<{ cents: bigint | null }[]>`
+      SELECT SUM(GREATEST(0, gross.cents - LEAST(so.discount_cents, gross.cents) - paid.cents))::bigint AS cents
+      FROM service_orders so
+      CROSS JOIN LATERAL (SELECT COALESCE(SUM(ROUND(i.quantity * i.unit_price_cents)), 0) AS cents FROM service_order_items i WHERE i.service_order_id = so.id AND i.deleted_at IS NULL) gross
+      CROSS JOIN LATERAL (SELECT COALESCE(SUM(r.amount_cents), 0) AS cents FROM service_order_receipts r WHERE r.service_order_id = so.id AND r.tenant_id = ${tenantId}::uuid AND r.deleted_at IS NULL) paid
+      WHERE so.tenant_id = ${tenantId}::uuid AND so.deleted_at IS NULL AND so.status = 'DELIVERED' AND so.closed_at < ${before}`;
+    return Number(rows[0]?.cents ?? 0);
+  }
+
   async listForBusinessSummary(since: Date) {
     return this.prisma.client.serviceOrder.findMany({
       where: {

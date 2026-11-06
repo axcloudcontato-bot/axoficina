@@ -1,11 +1,14 @@
-export const USER_ROLES = ['ADMIN', 'MANAGER', 'MECHANIC', 'FRONT_DESK'] as const;
+export const USER_ROLES = ['ADMIN', 'MANAGER', 'MECHANIC', 'FRONT_DESK', 'FINANCE'] as const;
 export type UserRole = (typeof USER_ROLES)[number];
 
 // ADMIN de propósito fora daqui: contas admin só nascem via signup
 // self-service. Deixar ADMIN convidável permitiria um MANAGER (que também
 // pode chamar /users/invite) promover alguém a ADMIN — escalação de
 // privilégio. Ver UserManager.invite.
-export const INVITABLE_ROLES = ['MANAGER', 'MECHANIC', 'FRONT_DESK'] as const;
+// What everyone in the workshop may know about a colleague, to assign an order or an appointment.
+export interface TeamMemberResponse { id: string; name: string }
+
+export const INVITABLE_ROLES = ['MANAGER', 'MECHANIC', 'FRONT_DESK', 'FINANCE'] as const;
 export type InvitableRole = (typeof INVITABLE_ROLES)[number];
 
 export const USER_STATUSES = ['active', 'invited', 'disabled'] as const;

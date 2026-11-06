@@ -10,6 +10,7 @@ import type {
   ManageUserAccessRequest,
   RenameUserRequest,
   PaginationData,
+  TeamMemberResponse,
   UserListItemResponse,
   UserListRequest,
   UserRole,
@@ -25,6 +26,7 @@ import { TokenService } from '../services/token.service';
 import { RoleRepository } from '../repositories/role.repository';
 import { TenantRepository } from '../repositories/tenant.repository';
 import { UserRepository } from '../repositories/user.repository';
+import { RefreshTokenRepository } from '../repositories/refresh-token.repository';
 
 const DEFAULT_INVITE_TOKEN_TTL_SECONDS = 604800; // 7 dias
 const DEFAULT_FRONTEND_URL = 'http://localhost:3000';
@@ -41,6 +43,7 @@ export class UserManager {
     private readonly auditLog: AuditLogService,
     private readonly config: ConfigService,
     private readonly passwordReset: PasswordResetService,
+    private readonly refreshTokens: RefreshTokenRepository,
   ) {}
 
   async invite(actingUser: AuthenticatedUser, request: InviteUserRequest): Promise<InviteUserResponse> {
@@ -50,7 +53,7 @@ export class UserManager {
       throw new AppException(AppErrorCode.EMAIL_ALREADY_EXISTS, 'Já existe uma conta com este e-mail.', HttpStatus.CONFLICT);
     }
 
-    const role = await this.roleRepository.byName(request.role);
+    const role = await this.roleRepository.byNameForTenant(request.role, actingUser.tenantId);
     if (!role) {
       throw new AppException(AppErrorCode.ROLE_NOT_FOUND, 'Papel inválido.', HttpStatus.BAD_REQUEST);
     }
@@ -160,6 +163,8 @@ export class UserManager {
       permissions,
     });
     const opaque = this.tokenService.generateRefreshToken();
+    // Without this row the session of someone who just joined would end as soon as the access token expires.
+    await this.refreshTokens.insert({ userId: user.id, tokenHash: opaque.tokenHash, expiresAt: opaque.expiresAt });
 
     await this.auditLog.record({
       tenantId: user.tenantId,
@@ -180,6 +185,7 @@ export class UserManager {
   async list(request: UserListRequest, actingUser?: AuthenticatedUser): Promise<PaginationData<UserListItemResponse>> {
     const roles = actingUser ? await this.roleRepository.listForTenant(actingUser.tenantId) : await this.roleRepository.all();
     const roleByName = new Map(roles.map((role) => [role.name, role]));
+    const knownRoles = new Map(roles.map((role) => [role.id, role]));
     const roleFilterId = request.filters?.role ? roleByName.get(request.filters.role)?.id : undefined;
 
     const { items, total } = await this.userRepository.listByTenant(request.offset, request.limit, {
@@ -188,7 +194,14 @@ export class UserManager {
       search: request.filters?.search?.trim(),
     });
 
-    const roleById = new Map(roles.map((role) => [role.id, role]));
+    // People invited to a fixed profile before the workshop personalized it still point at the original.
+    for (const roleId of new Set(items.map((user) => user.roleId))) {
+      if (!knownRoles.has(roleId)) {
+        const role = await this.roleRepository.byId(roleId);
+        if (role) knownRoles.set(roleId, role);
+      }
+    }
+    const roleById = knownRoles;
 
     return {
       items: items.map((user) => {
@@ -207,6 +220,12 @@ export class UserManager {
       limit: request.limit,
       hasMore: request.offset + items.length < total,
     };
+  }
+
+  // Reception and mechanics assign orders and appointments, but do not manage the team: they get names only.
+  async teamMembers(): Promise<{ items: TeamMemberResponse[] }> {
+    const { items } = await this.userRepository.listByTenant(0, 200, { status: 'active' });
+    return { items: items.map((user) => ({ id: user.id, name: user.name })) };
   }
 
   // Qualquer usuário da oficina pode ser renomeado, inclusive o próprio administrador

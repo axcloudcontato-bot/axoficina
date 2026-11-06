@@ -21,7 +21,7 @@ import type { InviteUserResponse } from '@oficina/contracts';
 const inviteSchema = z.object({
   email: z.string().email('Informe um e-mail válido'),
   name: z.string().min(1, 'Informe o nome'),
-  role: z.enum(['MANAGER', 'MECHANIC', 'FRONT_DESK']),
+  role: z.enum(['MANAGER', 'MECHANIC', 'FRONT_DESK', 'FINANCE']),
 });
 
 type InviteFormValues = z.infer<typeof inviteSchema>;
@@ -30,6 +30,7 @@ const ROLE_OPTIONS: Array<{ value: InviteFormValues['role']; label: string }> = 
   { value: 'MANAGER', label: 'Gestor' },
   { value: 'MECHANIC', label: 'Mecânico' },
   { value: 'FRONT_DESK', label: 'Recepção' },
+  { value: 'FINANCE', label: 'Financeiro' },
 ];
 
 interface InviteUserModalProps {

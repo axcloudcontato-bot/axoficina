@@ -9,6 +9,7 @@ const ADMIN_ROLE = { id: 'role-admin', name: 'ADMIN', createdAt: new Date() };
 const actingAdmin = { userId: 'admin-1', tenantId: 'tenant-1', role: 'ADMIN' as const };
 
 function buildManager() {
+  const refreshTokens = { insert: jest.fn().mockResolvedValue(undefined) };
   const userRepository = {
     insert: jest.fn(),
     byId: jest.fn(),
@@ -20,7 +21,7 @@ function buildManager() {
     listByTenant: jest.fn(),
   };
   const roleRepository = {
-    byName: jest.fn(),
+    byNameForTenant: jest.fn(),
     byId: jest.fn(),
     all: jest.fn(),
   };
@@ -63,9 +64,10 @@ function buildManager() {
     auditLog as never,
     config,
     passwordReset as never,
+    refreshTokens as never,
   );
 
-  return { manager, userRepository, roleRepository, tenantRepository, tokenService, passwordService, mailer, auditLog, passwordReset };
+  return { manager, refreshTokens, userRepository, roleRepository, tenantRepository, tokenService, passwordService, mailer, auditLog, passwordReset };
 }
 
 const invitedUser = {
@@ -144,7 +146,7 @@ describe('UserManager', () => {
     it('creates an invited user and returns an invite link', async () => {
       const deps = buildManager();
       deps.userRepository.byEmail.mockResolvedValue(null);
-      deps.roleRepository.byName.mockResolvedValue(MECHANIC_ROLE);
+      deps.roleRepository.byNameForTenant.mockResolvedValue(MECHANIC_ROLE);
       deps.userRepository.insert.mockResolvedValue(invitedUser);
 
       const result = await deps.manager.invite(actingAdmin, {
@@ -163,7 +165,7 @@ describe('UserManager', () => {
     it('sends the invite by e-mail when the tenant has SMTP configured and reports emailSent', async () => {
       const deps = buildManager();
       deps.userRepository.byEmail.mockResolvedValue(null);
-      deps.roleRepository.byName.mockResolvedValue(MECHANIC_ROLE);
+      deps.roleRepository.byNameForTenant.mockResolvedValue(MECHANIC_ROLE);
       deps.userRepository.insert.mockResolvedValue(invitedUser);
       deps.tenantRepository.byId.mockResolvedValue({ id: 'tenant-1', name: 'Oficina Teste', smtpEnabled: true });
 
@@ -183,7 +185,7 @@ describe('UserManager', () => {
     it('still creates the invite and reports emailSent: false if sending the e-mail fails', async () => {
       const deps = buildManager();
       deps.userRepository.byEmail.mockResolvedValue(null);
-      deps.roleRepository.byName.mockResolvedValue(MECHANIC_ROLE);
+      deps.roleRepository.byNameForTenant.mockResolvedValue(MECHANIC_ROLE);
       deps.userRepository.insert.mockResolvedValue(invitedUser);
       deps.tenantRepository.byId.mockResolvedValue({ id: 'tenant-1', name: 'Oficina Teste', smtpEnabled: true });
       deps.mailer.send.mockRejectedValue(new Error('SMTP down'));
@@ -210,7 +212,7 @@ describe('UserManager', () => {
     it('rejects an unknown role', async () => {
       const deps = buildManager();
       deps.userRepository.byEmail.mockResolvedValue(null);
-      deps.roleRepository.byName.mockResolvedValue(null);
+      deps.roleRepository.byNameForTenant.mockResolvedValue(null);
 
       await expect(
         deps.manager.invite(actingAdmin, { email: 'x@x.com', name: 'X', role: 'MECHANIC' }),

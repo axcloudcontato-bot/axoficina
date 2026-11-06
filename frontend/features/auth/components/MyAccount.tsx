@@ -10,7 +10,7 @@ import { useChangePassword, useRevokeOtherSessions, useRevokeSession, useSession
 import { describeDevice } from '../device';
 import { NewPasswordFields, newPasswordProblem } from './NewPasswordFields';
 
-const ROLE_LABELS: Record<string, string> = { ADMIN: 'Administrador', MANAGER: 'Gerente', FRONT_DESK: 'Atendimento', MECHANIC: 'Mecânico' };
+const ROLE_LABELS: Record<string, string> = { ADMIN: 'Administrador', MANAGER: 'Gerente', FRONT_DESK: 'Atendimento', MECHANIC: 'Mecânico', FINANCE: 'Financeiro' };
 
 export function MyAccount() {
   const user = useAuthStore(state => state.user);

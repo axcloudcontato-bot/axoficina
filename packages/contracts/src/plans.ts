@@ -5,7 +5,7 @@ export type ModuleKey = (typeof MODULE_KEYS)[number];
 export const PLAN_CODES = ['essencial', 'profissional', 'completo'] as const;
 export type PlanCode = (typeof PLAN_CODES)[number];
 
-// null means no limit. Limits are shown today and enforced in a later phase.
+// null means no limit. Enforced by PlanLimitGuard in the backend.
 export interface PlanLimits { users: number | null; ordersPerMonth: number | null; photoStorageMb: number | null }
 
 export interface PlanDefinition {

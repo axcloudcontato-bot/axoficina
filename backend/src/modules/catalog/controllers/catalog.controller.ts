@@ -7,6 +7,7 @@ import { RoleRepository } from '../../iam/repositories/role.repository';
 import { UserRepository } from '../../iam/repositories/user.repository';
 import { AdjustStockDto, CatalogReportQueryDto, CreateCatalogItemDto, DeleteCatalogItemDto, DeleteCatalogPackageDto, ImportCatalogDto, SaveCatalogPackageDto, UpdateCatalogItemDto } from '../dto/catalog.dto';
 import { CatalogManager, type CatalogViewer } from '../managers/catalog.manager';
+import { PlanLimit } from '../../../shared/decorators/plan-limit.decorator';
 
 // Mesmo acesso dos itens e preços da OS (sem mecânico).
 const ROLES = ['ADMIN', 'MANAGER', 'FRONT_DESK'] as const;
@@ -26,31 +27,31 @@ export class CatalogController {
   @Roles(...ROLES) @Permissions('service_orders.prices') @Get('items')
   async list(@CurrentUser() user: AuthenticatedUser) { return this.manager.list(await this.viewer(user)); }
 
-  @Roles(...ROLES) @Permissions('service_orders.prices') @Post('items')
+  @Roles(...ROLES) @Permissions('service_orders.prices') @PlanLimit('write') @Post('items')
   async create(@CurrentUser() user: AuthenticatedUser, @Body() body: CreateCatalogItemDto) { return this.manager.create(user, body, await this.viewer(user)); }
 
-  @Roles(...ROLES) @Permissions('service_orders.prices') @HttpCode(HttpStatus.OK) @Post('items/update')
+  @Roles(...ROLES) @Permissions('service_orders.prices') @HttpCode(HttpStatus.OK) @PlanLimit('write') @Post('items/update')
   async update(@CurrentUser() user: AuthenticatedUser, @Body() body: UpdateCatalogItemDto) { return this.manager.update(user, body, await this.viewer(user)); }
 
-  @Roles(...ROLES) @Permissions('service_orders.prices') @HttpCode(HttpStatus.OK) @Post('items/delete')
+  @Roles(...ROLES) @Permissions('service_orders.prices') @HttpCode(HttpStatus.OK) @PlanLimit('write') @Post('items/delete')
   remove(@CurrentUser() user: AuthenticatedUser, @Body() body: DeleteCatalogItemDto) { return this.manager.remove(user, body.id); }
 
-  @Roles(...ROLES) @Permissions('service_orders.prices') @HttpCode(HttpStatus.OK) @Post('items/seed-defaults')
+  @Roles(...ROLES) @Permissions('service_orders.prices') @HttpCode(HttpStatus.OK) @PlanLimit('write') @Post('items/seed-defaults')
   async seedDefaults(@CurrentUser() user: AuthenticatedUser) { return this.manager.seedDefaults(user, await this.viewer(user)); }
 
-  @Roles(...ROLES) @Permissions('service_orders.prices') @HttpCode(HttpStatus.OK) @Post('items/stock')
+  @Roles(...ROLES) @Permissions('service_orders.prices') @HttpCode(HttpStatus.OK) @PlanLimit('write') @Post('items/stock')
   async stock(@CurrentUser() user: AuthenticatedUser, @Body() body: AdjustStockDto) { return this.manager.adjustStock(user, body, await this.viewer(user)); }
 
-  @Roles(...ROLES) @Permissions('service_orders.prices') @HttpCode(HttpStatus.OK) @Post('items/import')
+  @Roles(...ROLES) @Permissions('service_orders.prices') @HttpCode(HttpStatus.OK) @PlanLimit('write') @Post('items/import')
   async importRows(@CurrentUser() user: AuthenticatedUser, @Body() body: ImportCatalogDto) { return this.manager.importRows(user, body, await this.viewer(user)); }
 
   @Roles(...ROLES) @Permissions('service_orders.prices') @Get('packages')
   packages() { return this.manager.listPackages(); }
 
-  @Roles(...ROLES) @Permissions('service_orders.prices') @HttpCode(HttpStatus.OK) @Post('packages/save')
+  @Roles(...ROLES) @Permissions('service_orders.prices') @HttpCode(HttpStatus.OK) @PlanLimit('write') @Post('packages/save')
   savePackage(@CurrentUser() user: AuthenticatedUser, @Body() body: SaveCatalogPackageDto) { return this.manager.savePackage(user, body); }
 
-  @Roles(...ROLES) @Permissions('service_orders.prices') @HttpCode(HttpStatus.OK) @Post('packages/delete')
+  @Roles(...ROLES) @Permissions('service_orders.prices') @HttpCode(HttpStatus.OK) @PlanLimit('write') @Post('packages/delete')
   removePackage(@CurrentUser() user: AuthenticatedUser, @Body() body: DeleteCatalogPackageDto) { return this.manager.removePackage(user, body.id); }
 
   @Roles(...ROLES) @Permissions('service_orders.prices') @Get('report')

@@ -91,8 +91,12 @@ export class FinancialRepository {
   receipts(startAt: Date, endAt: Date) {
     return this.prisma.client.serviceOrderReceipt.findMany({ where: { deletedAt: null, receivedAt: { gte: startAt, lt: endAt } }, orderBy: { receivedAt: 'asc' } });
   }
-  pendingInstallments(startAt: Date, endAt: Date) {
-    return this.prisma.client.serviceOrderInstallment.findMany({ where: { deletedAt: null, status: 'PENDING', dueAt: { gte: startAt, lt: endAt } }, orderBy: { dueAt: 'asc' } });
+  async pendingInstallments(startAt: Date, endAt: Date) {
+    const rows = await this.prisma.client.serviceOrderInstallment.findMany({ where: { deletedAt: null, status: 'PENDING', dueAt: { gte: startAt, lt: endAt } }, orderBy: { dueAt: 'asc' } });
+    if (!rows.length) return rows;
+    const live = await this.prisma.client.serviceOrder.findMany({ where: { id: { in: [...new Set(rows.map((row) => row.serviceOrderId))] }, deletedAt: null, status: { not: 'CANCELLED' } }, select: { id: true } });
+    const liveIds = new Set(live.map((order) => order.id));
+    return rows.filter((row) => liveIds.has(row.serviceOrderId));
   }
   suppliers() {
     return this.prisma.client.supplier.findMany({ where: { deletedAt: null }, orderBy: { name: 'asc' } });

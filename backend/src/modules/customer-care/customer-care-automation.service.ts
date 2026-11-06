@@ -3,6 +3,7 @@ import { randomBytes } from 'node:crypto';
 import { careAppliesToVehicle, type CareServiceKey, type CareSettings, type CareTestSendRequest, type FipeCategory } from '@oficina/contracts';
 import type { Customer, CustomerCareDelivery, Prisma, Tenant } from '@oficina/database';
 import { PrismaService } from '../../shared/prisma/prisma.service';
+import { EntitlementsService } from '../../shared/plan/entitlements.service';
 import { WaAkgService } from '../settings/services/wa-akg.service';
 import { TenantMailerService } from '../settings/services/tenant-mailer.service';
 import { SecretEncryptionService } from '../settings/services/secret-encryption.service';
@@ -15,7 +16,13 @@ const RESERVED_STATUSES = ['PENDING', 'SENDING', 'SENT', 'UNKNOWN'];
 @Injectable()
 export class CustomerCareAutomationService {
   private readonly logger = new Logger(CustomerCareAutomationService.name);
-  constructor(private readonly prisma: PrismaService, private readonly care: CustomerCareService, private readonly whatsapp: WaAkgService, private readonly mailer: TenantMailerService, private readonly secrets: SecretEncryptionService) {}
+  constructor(private readonly prisma: PrismaService, private readonly care: CustomerCareService, private readonly whatsapp: WaAkgService, private readonly mailer: TenantMailerService, private readonly secrets: SecretEncryptionService, private readonly entitlements: EntitlementsService) {}
+
+  // The automation belongs to the plan: it stops on a plan without it and while the account is view-only, also for e-mail.
+  private async automationAllowed(tenantId: string): Promise<boolean> {
+    const { modules, access } = await this.entitlements.forTenant(tenantId);
+    return modules.includes('cuidado') && access.state !== 'suspended';
+  }
 
   async scan(now = new Date(), onlyTenantId?: string) {
     let cursor: string | undefined; let queued = 0;
@@ -23,7 +30,7 @@ export class CustomerCareAutomationService {
       const records = await this.prisma.unscoped.customerCareSettings.findMany({ where: { enabled: true, ...(onlyTenantId ? { tenantId: onlyTenantId } : cursor ? { tenantId: { gt: cursor } } : {}) }, orderBy: { tenantId: 'asc' }, take: 50 });
       for (const record of records) {
         const tenant = await this.prisma.unscoped.tenant.findFirst({ where: { id: record.tenantId, status: 'active', deletedAt: null } });
-        if (!tenant) continue;
+        if (!tenant || !(await this.automationAllowed(tenant.id))) continue;
         const settings = careSettings(record); let customerCursor: string | undefined;
         for (;;) {
           const customers = await this.prisma.unscoped.customer.findMany({ where: { tenantId: tenant.id, deletedAt: null, careMessagesEnabled: true, ...(customerCursor ? { id: { gt: customerCursor } } : {}) }, orderBy: { id: 'asc' }, take: 100 });
@@ -137,6 +144,7 @@ export class CustomerCareAutomationService {
       this.prisma.unscoped.customer.findFirst({ where: { id: record.customerId, tenantId: record.tenantId, deletedAt: null, careMessagesEnabled: true } }),
     ]);
     if (!settings.enabled || !tenant || !customer) return this.finish(record, 'SKIPPED', 'Automação pausada ou cliente sem autorização ativa.');
+    if (!(await this.automationAllowed(tenant.id))) return this.finish(record, 'SKIPPED', 'A assinatura da oficina não inclui a automação ou não está ativa.');
     const events = record.events as unknown as CareEvent[]; const valid: CareEvent[] = [];
     for (const event of events) {
       const campaign = settings.campaigns.find(item => item.key === event.campaignKey); if (!campaign?.enabled) continue;

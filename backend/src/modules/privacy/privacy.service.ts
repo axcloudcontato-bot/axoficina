@@ -5,13 +5,15 @@ import type { CreatePrivacyRequest, PrivacyRequestResponse } from '@oficina/cont
 import type { AuthenticatedUser } from '../../shared/guards/jwt-auth.guard';
 import { PrismaService } from '../../shared/prisma/prisma.service';
 import { PasswordService } from '../iam/services/password.service';
+import { GoogleIdentityService } from '../iam/services/google-identity.service';
 import { RoleRepository } from '../iam/repositories/role.repository';
 import type { ResolvePrivacyRequestDto } from './privacy.dto';
 
 const FINAL_STATUSES = ['COMPLETED'];
+type IdentityConfirmation = { password?: string; googleCredential?: string };
 @Injectable()
 export class PrivacyService {
-  constructor(private readonly prisma: PrismaService, private readonly passwords: PasswordService, private readonly roles: RoleRepository) {}
+  constructor(private readonly prisma: PrismaService, private readonly passwords: PasswordService, private readonly roles: RoleRepository, private readonly googleIdentity: GoogleIdentityService) {}
 
   async create(user: AuthenticatedUser, input: CreatePrivacyRequest) {
     if (input.customerId) {
@@ -83,11 +85,10 @@ export class PrivacyService {
     return { exportedAt: new Date().toISOString(), scope: 'Dados cadastrais do cliente. Histórico, anexos, observações e dados de terceiros exigem revisão no atendimento do pedido completo.', customer };
   }
 
-  async eraseCustomer(user: AuthenticatedUser, requestId: string, password: string) {
+  async eraseCustomer(user: AuthenticatedUser, requestId: string, confirmation: IdentityConfirmation) {
     await this.requireAdmin(user, ['customers.manage', 'settings.manage']);
     // Reautenticação para a operação irreversível. Senha nunca entra no log.
-    const actor = await this.prisma.client.user.findFirst({ where: { id: user.userId, tenantId: user.tenantId, status: 'active', deletedAt: null }, select: { passwordHash: true } });
-    if (!actor?.passwordHash || !(await this.passwords.verify(password, actor.passwordHash))) throw new ForbiddenException('Confirme sua senha atual para apagar os dados.');
+    await this.confirmIdentity(user, confirmation, 'Confirme sua senha atual para apagar os dados.');
     // Todas as leituras e alterações têm tenant explícito. Isolamento serializável
     // mantém verificação de referências e apagamento na mesma transação.
     try {
@@ -126,9 +127,8 @@ export class PrivacyService {
     }
   }
 
-  async eraseAccount(user: AuthenticatedUser, requestId: string, password: string) {
-    const actor = await this.prisma.client.user.findFirst({ where: { id: user.userId, tenantId: user.tenantId, status: 'active', deletedAt: null }, select: { passwordHash: true } });
-    if (!actor?.passwordHash || !(await this.passwords.verify(password, actor.passwordHash))) throw new ForbiddenException('Confirme sua senha atual para apagar a conta.');
+  async eraseAccount(user: AuthenticatedUser, requestId: string, confirmation: IdentityConfirmation) {
+    await this.confirmIdentity(user, confirmation, 'Confirme sua senha atual para apagar a conta.');
     try {
       return await this.prisma.client.$transaction(async (tx) => {
         const request = await tx.privacyRequest.findFirst({ where: { id: requestId, tenantId: user.tenantId, userId: user.userId, customerId: null, type: 'DELETION', status: { in: ['OPEN', 'IN_REVIEW'] } } });
@@ -159,6 +159,13 @@ export class PrivacyService {
       if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2034') throw new ConflictException('Houve alteração concorrente. Recarregue e tente novamente.');
       throw error;
     }
+  }
+
+  private async confirmIdentity(user: AuthenticatedUser, { password, googleCredential }: IdentityConfirmation, refusal: string) {
+    const actor = await this.prisma.client.user.findFirst({ where: { id: user.userId, tenantId: user.tenantId, status: 'active', deletedAt: null }, select: { passwordHash: true, googleSubject: true } });
+    const byPassword = Boolean(actor?.passwordHash && password && await this.passwords.verify(password, actor.passwordHash));
+    const byGoogle = Boolean(actor?.googleSubject && googleCredential && (await this.googleIdentity.verifyCredential(googleCredential)).subject === actor.googleSubject);
+    if (!byPassword && !byGoogle) throw new ForbiddenException(refusal);
   }
 
   private toResponse(item: PrivacyRequest): PrivacyRequestResponse {

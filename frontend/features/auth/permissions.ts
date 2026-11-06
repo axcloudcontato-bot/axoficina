@@ -16,6 +16,11 @@ export function hasPermission(user: UserResponse | null, permission: PermissionK
   return (user.permissions ?? LEGACY_PERMISSIONS[user.role] ?? []).includes(permission);
 }
 
+// Values of an order also reach whoever deals with money, even without permission to change prices.
+export function canSeeAmounts(user: UserResponse | null): boolean {
+  return hasPermission(user, 'service_orders.prices') || hasPermission(user, 'finance.view') || hasPermission(user, 'receipts.manage');
+}
+
 export function canViewTeam(user: UserResponse | null): boolean {
   return Boolean(user && ['ADMIN', 'MANAGER'].includes(user.role) && hasPermission(user, 'team.view'));
 }

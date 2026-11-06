@@ -46,7 +46,7 @@ const NAV_ITEMS: NavItem[] = [
     { href: '/configuracoes/equipe', label: 'Equipe e acesso', icon: UsersThree, permission: 'team.view' },
   ] },
 ];
-const ROLE_LABELS: Record<string, string> = { ADMIN: 'Administrador', MANAGER: 'Gestor', MECHANIC: 'Mecânico', FRONT_DESK: 'Recepção' };
+const ROLE_LABELS: Record<string, string> = { ADMIN: 'Administrador', MANAGER: 'Gestor', MECHANIC: 'Mecânico', FRONT_DESK: 'Recepção', FINANCE: 'Financeiro' };
 const groups = ['Operação', 'Relacionamento', 'Gestão'] as const;
 const initials = (name: string) => { const parts = name.trim().split(/\s+/); return ((parts[0]?.[0] ?? '') + (parts.at(-1)?.[0] ?? '')).toUpperCase(); };
 const isActive = (pathname: string | null, href: string) => pathname === href || Boolean(pathname?.startsWith(`${href}/`));

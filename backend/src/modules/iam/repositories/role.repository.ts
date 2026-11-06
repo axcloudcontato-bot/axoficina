@@ -11,6 +11,12 @@ export class RoleRepository {
     });
   }
 
+  // A workshop that personalized a fixed profile keeps using its own version, also for the people invited afterwards.
+  async byNameForTenant(name: string, tenantId: string) {
+    const own = await this.prisma.unscoped.role.findFirst({ where: { name, tenantId, baseRole: name, deletedAt: null } });
+    return own ?? this.byName(name);
+  }
+
   async byId(id: string) {
     return this.prisma.unscoped.role.findFirst({
       where: { id, deletedAt: null },
@@ -78,6 +84,10 @@ export class RoleRepository {
         else await tx.rolePermission.create({ data: { roleId, permissionId: permission.id } });
       }
     });
+  }
+
+  async activeUserCount(tenantId: string, roleIds: string[], exceptUserId: string): Promise<number> {
+    return this.prisma.client.user.count({ where: { tenantId, roleId: { in: roleIds }, status: 'active', deletedAt: null, id: { not: exceptUserId } } });
   }
 
   async userCount(roleId: string): Promise<number> {

@@ -7,7 +7,7 @@ import { RequiresModule } from '../../../shared/decorators/requires-module.decor
 import { CurrentUser } from '../../../shared/decorators/current-user.decorator';
 import { Permissions } from '../../../shared/decorators/permissions.decorator';
 import type { AuthenticatedUser } from '../../../shared/guards/jwt-auth.guard';
-import { ServiceOrderManager } from '../managers/service-order.manager';
+import { hideAmounts, ServiceOrderManager } from '../managers/service-order.manager';
 import { RoleRepository } from '../../iam/repositories/role.repository';
 import { UserRepository } from '../../iam/repositories/user.repository';
 import {
@@ -47,6 +47,10 @@ const ALL_ROLES = ['ADMIN', 'MANAGER', 'FRONT_DESK', 'MECHANIC'] as const;
 // spec (Feature 8), diferente do ALL_ROLES usado no resto deste controller.
 const ITEM_ROLES = ['ADMIN', 'MANAGER', 'FRONT_DESK'] as const;
 
+// The financial team reads orders and takes payments, but does not run the shop floor.
+const READ_ROLES = ['ADMIN', 'MANAGER', 'FRONT_DESK', 'MECHANIC', 'FINANCE'] as const;
+const RECEIPT_ROLES = ['ADMIN', 'MANAGER', 'FRONT_DESK', 'FINANCE'] as const;
+
 @Controller('api/v1')
 export class ServiceOrdersController {
   constructor(private readonly serviceOrderManager: ServiceOrderManager, private readonly photoManager: ServiceOrderPhotoManager, private readonly roles: RoleRepository, private readonly users: UserRepository, private readonly productivity: ProductivityService) {}
@@ -56,65 +60,78 @@ export class ServiceOrdersController {
   @PlanLimit('orders')
   @Post('service-orders')
   async create(@CurrentUser() actingUser: AuthenticatedUser, @Body() body: CreateServiceOrderDto): Promise<{ serviceOrder: ServiceOrderResponse }> {
-    return this.serviceOrderManager.create(actingUser, body);
+    return this.forViewer(actingUser, this.serviceOrderManager.create(actingUser, body));
   }
 
   @Roles(...ALL_ROLES)
   @Permissions('service_orders.manage')
   @HttpCode(HttpStatus.OK)
-  @Post('service-orders/update')
+  @PlanLimit('write') @Post('service-orders/update')
   async update(@CurrentUser() actingUser: AuthenticatedUser, @Body() body: UpdateServiceOrderDto): Promise<{ serviceOrder: ServiceOrderResponse }> {
-    return this.serviceOrderManager.update(actingUser, body);
+    return this.forViewer(actingUser, this.serviceOrderManager.update(actingUser, body));
   }
 
   @Roles(...ALL_ROLES)
   @Permissions('service_orders.manage')
   @HttpCode(HttpStatus.OK)
-  @Post('service-orders/transition')
+  @PlanLimit('write') @Post('service-orders/transition')
   async transition(
     @CurrentUser() actingUser: AuthenticatedUser,
     @Body() body: TransitionServiceOrderDto,
   ): Promise<{ serviceOrder: ServiceOrderResponse }> {
-    return this.serviceOrderManager.transition(actingUser, body);
+    return this.forViewer(actingUser, this.serviceOrderManager.transition(actingUser, body));
   }
 
   @Roles(...ALL_ROLES)
   @Permissions('service_orders.manage')
   @HttpCode(HttpStatus.OK)
-  @Post('service-orders/delete')
+  @PlanLimit('write') @Post('service-orders/delete')
   async delete(@CurrentUser() actingUser: AuthenticatedUser, @Body() body: DeleteServiceOrderDto): Promise<{ serviceOrder: ServiceOrderResponse }> {
-    return this.serviceOrderManager.delete(actingUser, body.id);
+    return this.forViewer(actingUser, this.serviceOrderManager.delete(actingUser, body.id));
   }
 
-  @Roles(...ALL_ROLES)
+  @Roles(...READ_ROLES)
   @Permissions('service_orders.view')
   @Get('service-order')
-  async get(@Query() query: GetServiceOrderDto): Promise<{ serviceOrder: ServiceOrderResponse }> {
-    return this.serviceOrderManager.getById(query.id);
+  async get(@CurrentUser() actingUser: AuthenticatedUser, @Query() query: GetServiceOrderDto): Promise<{ serviceOrder: ServiceOrderResponse }> {
+    return this.forViewer(actingUser, this.serviceOrderManager.getById(query.id));
   }
 
-  @Roles(...ALL_ROLES)
+  @Roles(...READ_ROLES)
   @Permissions('service_orders.view')
   @HttpCode(HttpStatus.OK)
   @Post('service-orders/list')
-  async list(@Body() body: ServiceOrderListDto): Promise<ServiceOrderListResponse> {
-    return this.serviceOrderManager.list(body);
+  async list(@CurrentUser() actingUser: AuthenticatedUser, @Body() body: ServiceOrderListDto): Promise<ServiceOrderListResponse> {
+    const result = await this.serviceOrderManager.list(body);
+    return (await this.canSeeAmounts(actingUser)) ? result : { ...result, items: result.items.map(hideAmounts) };
   }
 
-  @Roles(...ALL_ROLES)
+  @Roles(...READ_ROLES)
   @Permissions('service_orders.view')
   @Get('dashboard/today')
   async dashboardToday(@CurrentUser() actingUser: AuthenticatedUser, @Query() query: DashboardTodayDto): Promise<DashboardTodayResponse> {
-    // Amounts only reach people who may see prices; the role is read fresh, like PermissionsGuard does.
-    const current = await this.users.byId(actingUser.userId);
-    const roleId = current && current.tenantId === actingUser.tenantId ? current.roleId : actingUser.roleId;
-    const canViewPrices = roleId ? (await this.roles.permissionKeys(roleId)).includes('service_orders.prices') : Boolean(actingUser.permissions?.includes('service_orders.prices'));
+    const canViewPrices = await this.canSeeAmounts(actingUser);
     const today = query.startsAt && query.endsAt ? { startsAt: new Date(query.startsAt), endsAt: new Date(query.endsAt) } : undefined;
-    return this.serviceOrderManager.dashboardToday({ userId: actingUser.userId, canViewPrices }, today);
+    const summary = await this.serviceOrderManager.dashboardToday({ userId: actingUser.userId, canViewPrices }, today);
+    return canViewPrices ? summary : { ...summary, attention: { ...summary.attention, items: summary.attention.items.map(hideAmounts) }, mine: { ...summary.mine, items: summary.mine.items.map(hideAmounts) } };
   }
 
-  @Roles(...ALL_ROLES)
+  // Amounts only reach people whose profile deals with money; the role is read fresh, like PermissionsGuard does.
+  private async canSeeAmounts(actingUser: AuthenticatedUser): Promise<boolean> {
+    const current = await this.users.byId(actingUser.userId);
+    const roleId = current && current.tenantId === actingUser.tenantId ? current.roleId : actingUser.roleId;
+    const permissions: readonly string[] = roleId ? await this.roles.permissionKeys(roleId) : actingUser.permissions ?? [];
+    return ['service_orders.prices', 'finance.view', 'receipts.manage'].some((key) => permissions.includes(key));
+  }
+
+  private async forViewer(actingUser: AuthenticatedUser, pending: Promise<{ serviceOrder: ServiceOrderResponse }>): Promise<{ serviceOrder: ServiceOrderResponse }> {
+    const { serviceOrder } = await pending;
+    return { serviceOrder: (await this.canSeeAmounts(actingUser)) ? serviceOrder : hideAmounts(serviceOrder) };
+  }
+
+  @Roles(...READ_ROLES)
   @Permissions('finance.view')
+  @RequiresModule('financeiro')
   @Get('dashboard/business-summary')
   async businessSummary(): Promise<DashboardBusinessSummaryResponse> {
     return this.serviceOrderManager.businessSummary();
@@ -138,7 +155,7 @@ export class ServiceOrdersController {
     return this.productivity.trend(body, user.tenantId);
   }
 
-  @Roles(...ALL_ROLES)
+  @Roles(...READ_ROLES)
   @Permissions('service_orders.view')
   @Get('service-orders/warranty-return')
   async warrantyReturn(@Query() query: WorkSessionDto) {
@@ -149,7 +166,7 @@ export class ServiceOrdersController {
   @Roles(...ITEM_ROLES)
   @Permissions('service_orders.manage')
   @HttpCode(HttpStatus.OK)
-  @Post('service-orders/warranty-return')
+  @PlanLimit('write') @Post('service-orders/warranty-return')
   async markWarrantyReturn(@CurrentUser() user: AuthenticatedUser, @Body() body: MarkWarrantyReturnDto) {
     return this.productivity.markWarrantyReturn(body, user);
   }
@@ -168,7 +185,7 @@ export class ServiceOrdersController {
   @Permissions('service_orders.prices')
   @HttpCode(HttpStatus.OK)
   @RequiresModule('produtividade')
-  @Post('service-orders/technician-productivity/commission-rule')
+  @PlanLimit('write') @Post('service-orders/technician-productivity/commission-rule')
   async setCommissionRule(@CurrentUser() user: AuthenticatedUser, @Body() body: SetCommissionRuleDto) {
     return this.productivity.setCommissionRule(body, user);
   }
@@ -183,7 +200,7 @@ export class ServiceOrdersController {
   @Roles('MECHANIC')
   @Permissions('service_orders.view')
   @HttpCode(HttpStatus.OK)
-  @Post('service-orders/idle-time/start')
+  @PlanLimit('write') @Post('service-orders/idle-time/start')
   async startIdle(@CurrentUser() user: AuthenticatedUser, @Body() body: StartIdleDto) {
     return this.productivity.startIdle(body, user);
   }
@@ -212,7 +229,7 @@ export class ServiceOrdersController {
   @Permissions('service_orders.prices')
   @HttpCode(HttpStatus.OK)
   @RequiresModule('produtividade')
-  @Post('service-orders/productivity-target/copy')
+  @PlanLimit('write') @Post('service-orders/productivity-target/copy')
   async copyProductivityTargets(@CurrentUser() user: AuthenticatedUser, @Body() body: CopyProductivityTargetsDto) {
     return this.productivity.copyTargets(body, user);
   }
@@ -221,7 +238,7 @@ export class ServiceOrdersController {
   @Roles('ADMIN', 'MANAGER')
   @Permissions('service_orders.prices')
   @HttpCode(HttpStatus.OK)
-  @Post('service-orders/work-sessions/correct')
+  @PlanLimit('write') @Post('service-orders/work-sessions/correct')
   async correctWorkSession(@CurrentUser() user: AuthenticatedUser, @Body() body: CorrectWorkSessionDto) {
     return this.productivity.correctSession(body, user);
   }
@@ -239,12 +256,12 @@ export class ServiceOrdersController {
   @Permissions('service_orders.prices')
   @HttpCode(HttpStatus.OK)
   @RequiresModule('produtividade')
-  @Post('service-orders/productivity-target')
+  @PlanLimit('write') @Post('service-orders/productivity-target')
   async setProductivityTarget(@CurrentUser() user: AuthenticatedUser, @Body() body: ProductivityTargetDto) {
     return this.productivity.setTarget(body, user);
   }
 
-  @Roles(...ALL_ROLES)
+  @Roles(...READ_ROLES)
   @Permissions('service_orders.view')
   @Get('service-orders/work-sessions')
   async workSessions(@Query() query: WorkSessionDto) {
@@ -254,7 +271,7 @@ export class ServiceOrdersController {
   @Roles(...ALL_ROLES)
   @Permissions('service_orders.manage')
   @HttpCode(HttpStatus.OK)
-  @Post('service-orders/work-sessions/start')
+  @PlanLimit('write') @Post('service-orders/work-sessions/start')
   async startWork(@CurrentUser() user: AuthenticatedUser, @Body() body: WorkSessionDto) {
     return this.productivity.start(body.serviceOrderId, user);
   }
@@ -269,7 +286,7 @@ export class ServiceOrdersController {
 
   @Roles(...ITEM_ROLES)
   @Permissions('service_orders.prices')
-  @Post('service-orders/items')
+  @PlanLimit('write') @Post('service-orders/items')
   async addItem(@CurrentUser() actingUser: AuthenticatedUser, @Body() body: CreateServiceOrderItemDto): Promise<{ item: ServiceOrderItemResponse }> {
     return this.serviceOrderManager.addItem(body, actingUser);
   }
@@ -277,7 +294,7 @@ export class ServiceOrdersController {
   @Roles(...ITEM_ROLES)
   @Permissions('service_orders.prices')
   @HttpCode(HttpStatus.OK)
-  @Post('service-orders/items/update')
+  @PlanLimit('write') @Post('service-orders/items/update')
   async updateItem(@CurrentUser() actingUser: AuthenticatedUser, @Body() body: UpdateServiceOrderItemDto): Promise<{ item: ServiceOrderItemResponse }> {
     return this.serviceOrderManager.updateItem(body, actingUser);
   }
@@ -285,43 +302,43 @@ export class ServiceOrdersController {
   @Roles(...ITEM_ROLES)
   @Permissions('service_orders.prices')
   @HttpCode(HttpStatus.OK)
-  @Post('service-orders/items/delete')
+  @PlanLimit('write') @Post('service-orders/items/delete')
   async deleteItem(@CurrentUser() actingUser: AuthenticatedUser, @Body() body: DeleteServiceOrderItemDto): Promise<{ item: ServiceOrderItemResponse }> {
     return this.serviceOrderManager.deleteItem(body.id, actingUser, body.editReason);
   }
 
-  @Roles(...ITEM_ROLES)
+  @Roles(...RECEIPT_ROLES)
   @Permissions('receipts.manage')
-  @Post('service-orders/receipts')
+  @PlanLimit('write') @Post('service-orders/receipts')
   async confirmReceipt(@CurrentUser() user: AuthenticatedUser, @Body() body: ConfirmServiceOrderReceiptDto): Promise<{ receipt: ServiceOrderReceiptResponse }> {
     return this.serviceOrderManager.confirmReceipt(user, body);
   }
 
-  @Roles(...ITEM_ROLES)
+  @Roles(...RECEIPT_ROLES)
   @Permissions('receipts.manage')
   @HttpCode(HttpStatus.OK)
-  @Post('service-orders/receipts/delete')
+  @PlanLimit('write') @Post('service-orders/receipts/delete')
   async deleteReceipt(@CurrentUser() user: AuthenticatedUser, @Body() body: DeleteServiceOrderReceiptDto): Promise<{ success: true }> {
     return this.serviceOrderManager.deleteReceipt(user, body);
   }
 
-  @Roles(...ITEM_ROLES)
+  @Roles(...RECEIPT_ROLES)
   @Permissions('receipts.manage')
   @HttpCode(HttpStatus.OK)
-  @Post('service-orders/payment/configure')
+  @PlanLimit('write') @Post('service-orders/payment/configure')
   async configurePayment(@CurrentUser() user: AuthenticatedUser, @Body() body: ConfigureServiceOrderPaymentDto): Promise<{ serviceOrder: ServiceOrderResponse }> {
     return this.serviceOrderManager.configurePayment(user, body);
   }
 
-  @Roles(...ITEM_ROLES)
+  @Roles(...RECEIPT_ROLES)
   @Permissions('receipts.manage')
   @HttpCode(HttpStatus.OK)
-  @Post('service-orders/installments/confirm')
+  @PlanLimit('write') @Post('service-orders/installments/confirm')
   async confirmInstallment(@CurrentUser() user: AuthenticatedUser, @Body() body: ConfirmServiceOrderInstallmentDto): Promise<{ installment: ServiceOrderInstallmentResponse }> {
     return this.serviceOrderManager.confirmInstallment(user, body);
   }
 
-  @Roles(...ITEM_ROLES)
+  @Roles(...RECEIPT_ROLES)
   @Permissions('receipts.manage')
   @HttpCode(HttpStatus.OK)
   @Post('service-orders/installments/due')
@@ -329,14 +346,14 @@ export class ServiceOrdersController {
     return this.serviceOrderManager.listDueInstallments(body.limit);
   }
 
-  @Roles(...ALL_ROLES)
+  @Roles(...READ_ROLES)
   @Permissions('service_orders.view')
   @Get('service-orders/photos')
   listPhotos(@Query() query: ListServiceOrderPhotosDto) {
     return this.photoManager.list(query.serviceOrderId);
   }
 
-  @Roles(...ALL_ROLES)
+  @Roles(...READ_ROLES)
   @Permissions('service_orders.view')
   @Get('service-orders/photos/content')
   async photoContent(@Query() query: GetServiceOrderPhotoDto, @Res({ passthrough: true }) response: Response) {
@@ -358,7 +375,7 @@ export class ServiceOrdersController {
   @Roles(...ALL_ROLES)
   @Permissions('service_orders.manage')
   @HttpCode(HttpStatus.OK)
-  @Post('service-orders/photos/delete')
+  @PlanLimit('write') @Post('service-orders/photos/delete')
   deletePhoto(@CurrentUser() user: AuthenticatedUser, @Body() body: DeleteServiceOrderPhotoDto) {
     return this.photoManager.delete(user, body.id);
   }

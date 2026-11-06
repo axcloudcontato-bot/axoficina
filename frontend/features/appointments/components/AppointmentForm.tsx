@@ -16,7 +16,7 @@ import { CustomerFormModal } from '@/features/customers/components/CustomerFormM
 import { VehicleFormModal } from '@/features/vehicles/components/VehicleFormModal';
 import { withinHours } from '../calendar/time-grid';
 import { useVehiclesList } from '@/features/vehicles/hooks/use-vehicles';
-import { useUsersList } from '@/features/users/hooks/use-users';
+import { useTeamMembers } from '@/features/users/hooks/use-users';
 import { extractErrorCode, extractErrorMessage } from '@/lib/api/client';
 import { useCreateAppointment, useUpdateAppointment } from '../hooks/use-appointments';
 import { toDateInput } from '../calendar/date-utils';
@@ -35,7 +35,7 @@ export function AppointmentForm({ open, onOpenChange, initialDate, appointment, 
 }) {
   const [customerId, setCustomerId] = useState('');
   const vehicles = useVehiclesList({ offset: 0, limit: 100, customerId }, { enabled: Boolean(customerId) });
-  const users = useUsersList({ offset: 0, limit: 100, filters: { status: 'active' } });
+  const users = useTeamMembers();
   const create = useCreateAppointment();
   const update = useUpdateAppointment();
   const pending = create.isPending || update.isPending;

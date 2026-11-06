@@ -172,20 +172,21 @@ export class AuthManager {
       // usuário ATIVO com esse e-mail (checado acima); como o e-mail pode
       // ser reciclado após soft delete, não dá pra assumir isso sempre que
       // a busca ativa falhar, então essa é uma checagem best-effort.
+      // Só quem acerta a senha descobre que a conta foi desativada: a tela de login não revela quais e-mails existem.
       const mostRecent = await this.userRepository.byEmailIncludingDeleted(input.email);
-      if (mostRecent?.deletedAt) {
+      if (mostRecent?.deletedAt && mostRecent.passwordHash && (await this.passwordService.verify(input.password, mostRecent.passwordHash))) {
         throw new AppException(AppErrorCode.USER_DELETED, 'Esta conta foi desativada.', HttpStatus.FORBIDDEN);
       }
       throw new AppException(AppErrorCode.INVALID_CREDENTIALS, 'E-mail ou senha inválidos.', HttpStatus.UNAUTHORIZED);
     }
 
-    if (user.status === 'disabled') {
-      throw new AppException(AppErrorCode.USER_DISABLED, 'Esta conta está desabilitada.', HttpStatus.FORBIDDEN);
-    }
-
     const passwordMatches = await this.passwordService.verify(input.password, user.passwordHash);
     if (!passwordMatches) {
       throw new AppException(AppErrorCode.INVALID_CREDENTIALS, 'E-mail ou senha inválidos.', HttpStatus.UNAUTHORIZED);
+    }
+
+    if (user.status === 'disabled') {
+      throw new AppException(AppErrorCode.USER_DISABLED, 'Esta conta está desabilitada.', HttpStatus.FORBIDDEN);
     }
 
     // The password was right, so saying why the access is closed does not help anyone guess it.

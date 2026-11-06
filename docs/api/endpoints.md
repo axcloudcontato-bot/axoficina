@@ -3,7 +3,7 @@
 > Gerado a partir dos controllers do backend. Não edite à mão: rode `UPDATE_API_DOCS=1 pnpm --filter @oficina/backend exec jest src/shared/api-docs`
 > depois de mudar uma rota ou seus decorators. O teste `api-docs.spec.ts` falha se este arquivo ficar desatualizado.
 
-São 164 endpoints em 25 controllers.
+São 205 endpoints em 28 controllers.
 
 ## Convenções
 
@@ -30,20 +30,20 @@ São 164 endpoints em 25 controllers.
 
 | Método | Rota | Ação | Quem acessa | Permissão | Módulo/limite |
 | --- | --- | --- | --- | --- | --- |
-| POST | `/api/v1/account/close` | `close` | qualquer usuário autenticado |  |  |
+| POST | `/api/v1/account/close` | `close` | ADMIN | settings.manage |  |
 
 ## modules/appointments/controllers/appointments.controller.ts
 
 | Método | Rota | Ação | Quem acessa | Permissão | Módulo/limite |
 | --- | --- | --- | --- | --- | --- |
 | GET | `/api/v1/appointments/reminder-health` | `reminderHealth` | ADMIN, MANAGER | settings.view |  |
-| POST | `/api/v1/appointments/reminder-retry` | `retryReminder` | ADMIN, MANAGER | appointments.manage |  |
+| POST | `/api/v1/appointments/reminder-retry` | `retryReminder` | ADMIN, MANAGER | appointments.manage | limite write |
 | POST | `/api/v1/appointments` | `create` | ADMIN, MANAGER, FRONT_DESK, MECHANIC | appointments.manage | limite write |
-| POST | `/api/v1/appointments/update` | `update` | ADMIN, MANAGER, FRONT_DESK, MECHANIC | appointments.manage |  |
+| POST | `/api/v1/appointments/update` | `update` | ADMIN, MANAGER, FRONT_DESK, MECHANIC | appointments.manage | limite write |
 | POST | `/api/v1/appointments/list` | `list` | ADMIN, MANAGER, FRONT_DESK, MECHANIC | appointments.view |  |
-| POST | `/api/v1/appointments/transition` | `transition` | ADMIN, MANAGER, FRONT_DESK, MECHANIC | appointments.manage |  |
-| POST | `/api/v1/appointments/notify` | `notify` | ADMIN, MANAGER, FRONT_DESK, MECHANIC | appointments.manage |  |
-| POST | `/api/v1/appointments/start` | `start` | ADMIN, MANAGER, FRONT_DESK, MECHANIC | appointments.manage |  |
+| POST | `/api/v1/appointments/transition` | `transition` | ADMIN, MANAGER, FRONT_DESK, MECHANIC | appointments.manage | limite write |
+| POST | `/api/v1/appointments/notify` | `notify` | ADMIN, MANAGER, FRONT_DESK, MECHANIC | appointments.manage | limite write |
+| POST | `/api/v1/appointments/start` | `start` | ADMIN, MANAGER, FRONT_DESK, MECHANIC | appointments.manage | limite orders |
 
 ## modules/billing/billing-webhook.controller.ts
 
@@ -55,44 +55,87 @@ São 164 endpoints em 25 controllers.
 
 | Método | Rota | Ação | Quem acessa | Permissão | Módulo/limite |
 | --- | --- | --- | --- | --- | --- |
-| GET | `/api/v1/billing/Cache-Control` | `status` | qualquer usuário autenticado |  |  |
+| GET | `/api/v1/billing` | `status` | qualquer usuário autenticado |  |  |
 | GET | `/api/v1/billing/invoices` | `invoices` | qualquer usuário autenticado |  |  |
 | POST | `/api/v1/billing/checkout` | `checkout` | qualquer usuário autenticado |  |  |
 | POST | `/api/v1/billing/portal` | `portal` | qualquer usuário autenticado |  |  |
 | POST | `/api/v1/billing/cancel` | `cancel` | qualquer usuário autenticado |  |  |
 
+## modules/catalog/controllers/catalog.controller.ts
+
+| Método | Rota | Ação | Quem acessa | Permissão | Módulo/limite |
+| --- | --- | --- | --- | --- | --- |
+| GET | `/api/v1/catalog/items` | `list` | ADMIN, MANAGER, FRONT_DESK | service_orders.prices |  |
+| POST | `/api/v1/catalog/items` | `create` | ADMIN, MANAGER, FRONT_DESK | service_orders.prices | limite write |
+| POST | `/api/v1/catalog/items/update` | `update` | ADMIN, MANAGER, FRONT_DESK | service_orders.prices | limite write |
+| POST | `/api/v1/catalog/items/delete` | `remove` | ADMIN, MANAGER, FRONT_DESK | service_orders.prices | limite write |
+| POST | `/api/v1/catalog/items/seed-defaults` | `seedDefaults` | ADMIN, MANAGER, FRONT_DESK | service_orders.prices | limite write |
+| POST | `/api/v1/catalog/items/stock` | `stock` | ADMIN, MANAGER, FRONT_DESK | service_orders.prices | limite write |
+| POST | `/api/v1/catalog/items/import` | `importRows` | ADMIN, MANAGER, FRONT_DESK | service_orders.prices | limite write |
+| GET | `/api/v1/catalog/packages` | `packages` | ADMIN, MANAGER, FRONT_DESK | service_orders.prices |  |
+| POST | `/api/v1/catalog/packages/save` | `savePackage` | ADMIN, MANAGER, FRONT_DESK | service_orders.prices | limite write |
+| POST | `/api/v1/catalog/packages/delete` | `removePackage` | ADMIN, MANAGER, FRONT_DESK | service_orders.prices | limite write |
+| GET | `/api/v1/catalog/report` | `report` | ADMIN, MANAGER, FRONT_DESK | service_orders.prices |  |
+
 ## modules/customer-care/customer-care.controller.ts
 
 | Método | Rota | Ação | Quem acessa | Permissão | Módulo/limite |
 | --- | --- | --- | --- | --- | --- |
-| GET | `/api/v1/customer-care/alerts.view` | `dashboard` | qualquer usuário autenticado |  |  |
-| GET | `/api/v1/customer-care/forecast` | `forecastContacts` | qualquer usuário autenticado |  |  |
-| POST | `/api/v1/customer-care/settings` | `settings` | qualquer usuário autenticado |  |  |
-| POST | `/api/v1/customer-care/services` | `record` | qualquer usuário autenticado |  |  |
-| POST | `/api/v1/customer-care/preview` | `preview` | qualquer usuário autenticado |  |  |
-| POST | `/api/v1/customer-care/retry` | `retry` | qualquer usuário autenticado |  |  |
-| POST | `/api/v1/customer-care/deliveries/resolve` | `resolveDelivery` | qualquer usuário autenticado |  |  |
-| GET | `/api/v1/customer-care/plans` | `plansPage` | qualquer usuário autenticado |  |  |
-| POST | `/api/v1/customer-care/plans/contact` | `recordContact` | qualquer usuário autenticado |  |  |
-| POST | `/api/v1/customer-care/plans/contacts` | `planContacts` | qualquer usuário autenticado |  |  |
-| GET | `/api/v1/customer-care/deliveries` | `deliveries` | qualquer usuário autenticado |  |  |
-| POST | `/api/v1/customer-care/test-send` | `testSend` | qualquer usuário autenticado |  |  |
+| GET | `/api/v1/customer-care` | `dashboard` | qualquer usuário autenticado | alerts.view |  |
+| GET | `/api/v1/customer-care/forecast` | `forecastContacts` | qualquer usuário autenticado | alerts.view |  |
+| POST | `/api/v1/customer-care/settings` | `settings` | qualquer usuário autenticado | settings.manage | limite write |
+| POST | `/api/v1/customer-care/services` | `record` | qualquer usuário autenticado | alerts.manage | limite write |
+| POST | `/api/v1/customer-care/preview` | `preview` | qualquer usuário autenticado | alerts.view |  |
+| POST | `/api/v1/customer-care/retry` | `retry` | qualquer usuário autenticado | settings.manage | limite write |
+| POST | `/api/v1/customer-care/deliveries/resolve` | `resolveDelivery` | qualquer usuário autenticado | settings.manage | limite write |
+| GET | `/api/v1/customer-care/plans` | `plansPage` | qualquer usuário autenticado | alerts.view |  |
+| POST | `/api/v1/customer-care/plans/contact` | `recordContact` | qualquer usuário autenticado | alerts.manage | limite write |
+| POST | `/api/v1/customer-care/plans/contacts` | `planContacts` | qualquer usuário autenticado | alerts.view |  |
+| GET | `/api/v1/customer-care/deliveries` | `deliveries` | qualquer usuário autenticado | alerts.view |  |
+| POST | `/api/v1/customer-care/test-send` | `testSend` | qualquer usuário autenticado | settings.manage | limite write |
+| POST | `/api/v1/customer-care/preferences/lookup` | `info` | público |  |  |
+| POST | `/api/v1/customer-care/preferences/pause` | `pause` | público |  |  |
 
 ## modules/customers/controllers/customers.controller.ts
 
 | Método | Rota | Ação | Quem acessa | Permissão | Módulo/limite |
 | --- | --- | --- | --- | --- | --- |
 | POST | `/api/v1/customers` | `create` | ADMIN, MANAGER, FRONT_DESK | customers.manage | limite write |
-| POST | `/api/v1/customers/update` | `update` | ADMIN, MANAGER, FRONT_DESK | customers.manage |  |
-| POST | `/api/v1/customers/delete` | `delete` | ADMIN, MANAGER, FRONT_DESK | customers.manage |  |
-| POST | `/api/v1/customers/merge` | `merge` | ADMIN, MANAGER | customers.manage |  |
+| POST | `/api/v1/customers/update` | `update` | ADMIN, MANAGER, FRONT_DESK | customers.manage | limite write |
+| POST | `/api/v1/customers/delete` | `delete` | ADMIN, MANAGER, FRONT_DESK | customers.manage | limite write |
+| POST | `/api/v1/customers/merge` | `merge` | ADMIN, MANAGER | customers.manage | limite write |
 | POST | `/api/v1/customers/import` | `importRows` | ADMIN, MANAGER, FRONT_DESK | customers.manage | limite write |
-| POST | `/api/v1/customers/restore` | `restore` | ADMIN, MANAGER, FRONT_DESK | customers.manage |  |
+| POST | `/api/v1/customers/restore` | `restore` | ADMIN, MANAGER, FRONT_DESK | customers.manage | limite write |
 | POST | `/api/v1/customers/archive-impact` | `archiveImpact` | ADMIN, MANAGER, FRONT_DESK | customers.manage |  |
-| GET | `/api/v1/customer` | `get` | ADMIN, MANAGER, FRONT_DESK, MECHANIC | customers.view |  |
-| POST | `/api/v1/customers/list` | `list` | ADMIN, MANAGER, FRONT_DESK, MECHANIC | customers.view |  |
+| GET | `/api/v1/customer` | `get` | ADMIN, MANAGER, FRONT_DESK, MECHANIC, FINANCE | customers.view |  |
+| POST | `/api/v1/customers/list` | `list` | ADMIN, MANAGER, FRONT_DESK, MECHANIC, FINANCE | customers.view |  |
 | POST | `/api/v1/customers/export` | `export` | ADMIN, MANAGER, FRONT_DESK | customers.manage |  |
-| POST | `/api/v1/customers/overview` | `overview` | ADMIN, MANAGER, FRONT_DESK, MECHANIC | customers.view |  |
+| POST | `/api/v1/customers/overview` | `overview` | ADMIN, MANAGER, FRONT_DESK, MECHANIC, FINANCE | customers.view |  |
+
+## modules/financial/controllers/financial.controller.ts
+
+| Método | Rota | Ação | Quem acessa | Permissão | Módulo/limite |
+| --- | --- | --- | --- | --- | --- |
+| GET | `/api/v1/financial/categories` | `categories` | ADMIN, MANAGER, FINANCE | finance.view |  |
+| POST | `/api/v1/financial/categories` | `createCategory` | ADMIN, MANAGER, FINANCE | finance.manage | limite write |
+| POST | `/api/v1/financial/categories/update` | `updateCategory` | ADMIN, MANAGER, FINANCE | finance.manage | limite write |
+| POST | `/api/v1/financial/categories/delete` | `deleteCategory` | ADMIN, MANAGER, FINANCE | finance.manage | limite write |
+| POST | `/api/v1/financial/entries` | `createEntry` | ADMIN, MANAGER, FINANCE | finance.manage | limite write |
+| POST | `/api/v1/financial/entries/update` | `updateEntry` | ADMIN, MANAGER, FINANCE | finance.manage | limite write |
+| POST | `/api/v1/financial/entries/settle` | `settleEntry` | ADMIN, MANAGER, FINANCE | finance.manage | limite write |
+| POST | `/api/v1/financial/entries/payment` | `addPayment` | ADMIN, MANAGER, FINANCE | finance.manage | limite write |
+| POST | `/api/v1/financial/entries/payment/reverse` | `reversePayment` | ADMIN, MANAGER, FINANCE | finance.manage | limite write |
+| POST | `/api/v1/financial/reconcile` | `reconcile` | ADMIN, MANAGER, FINANCE | finance.manage | limite write |
+| POST | `/api/v1/financial/attachments` | `uploadAttachment` | ADMIN, MANAGER, FINANCE | finance.manage | limite write |
+| POST | `/api/v1/financial/attachments/list` | `attachments` | ADMIN, MANAGER, FINANCE | finance.view |  |
+| POST | `/api/v1/financial/attachments/download` | `downloadAttachment` | ADMIN, MANAGER, FINANCE | finance.view |  |
+| POST | `/api/v1/financial/entries/delete` | `deleteEntry` | ADMIN, MANAGER, FINANCE | finance.manage | limite write |
+| POST | `/api/v1/financial/cash-flow` | `cashFlow` | ADMIN, MANAGER, FINANCE | finance.view |  |
+| POST | `/api/v1/financial/cash-baseline` | `saveCashBaseline` | ADMIN, MANAGER, FINANCE | finance.manage | limite write |
+| GET | `/api/v1/financial/suppliers` | `suppliers` | ADMIN, MANAGER, FINANCE | finance.view |  |
+| POST | `/api/v1/financial/suppliers` | `createSupplier` | ADMIN, MANAGER, FINANCE | finance.manage | limite write |
+| POST | `/api/v1/financial/suppliers/update` | `updateSupplier` | ADMIN, MANAGER, FINANCE | finance.manage | limite write |
+| POST | `/api/v1/financial/suppliers/delete` | `deleteSupplier` | ADMIN, MANAGER, FINANCE | finance.manage | limite write |
 
 ## modules/fipe/controllers/fipe.controller.ts
 
@@ -101,6 +144,15 @@ São 164 endpoints em 25 controllers.
 | GET | `/api/v1/fipe/brands` | `brands` | ADMIN, MANAGER, FRONT_DESK, MECHANIC | vehicles.view |  |
 | GET | `/api/v1/fipe/models` | `models` | ADMIN, MANAGER, FRONT_DESK, MECHANIC | vehicles.view |  |
 | POST | `/api/v1/fipe/sync` | `sync` | ADMIN | vehicles.manage |  |
+
+## modules/iam/controllers/access-profiles.controller.ts
+
+| Método | Rota | Ação | Quem acessa | Permissão | Módulo/limite |
+| --- | --- | --- | --- | --- | --- |
+| GET | `/api/v1/access-profiles` | `list` | qualquer usuário autenticado |  |  |
+| POST | `/api/v1/access-profiles` | `create` | qualquer usuário autenticado |  | módulo governanca; limite write |
+| POST | `/api/v1/access-profiles/update` | `update` | qualquer usuário autenticado |  | módulo governanca; limite write |
+| POST | `/api/v1/access-profiles/assign` | `assign` | qualquer usuário autenticado |  | limite write |
 
 ## modules/iam/controllers/auth.controller.ts
 
@@ -125,9 +177,13 @@ São 164 endpoints em 25 controllers.
 | --- | --- | --- | --- | --- | --- |
 | POST | `/api/v1/users/invite` | `invite` | ADMIN, MANAGER | team.manage | limite users |
 | POST | `/api/v1/users/accept-invite` | `acceptInvite` | público |  |  |
+| GET | `/api/v1/users/team-members` | `teamMembers` | qualquer usuário autenticado |  |  |
 | POST | `/api/v1/users/list` | `list` | ADMIN, MANAGER | team.view |  |
-| POST | `/api/v1/users/rename` | `rename` | ADMIN, MANAGER | team.manage |  |
+| POST | `/api/v1/users/rename` | `rename` | ADMIN, MANAGER | team.manage | limite write |
 | POST | `/api/v1/users/disable` | `disable` | ADMIN, MANAGER | team.manage |  |
+| POST | `/api/v1/users/enable` | `enable` | ADMIN, MANAGER | team.manage | limite users |
+| POST | `/api/v1/users/resend-invite` | `resendInvite` | ADMIN, MANAGER | team.manage | limite write |
+| POST | `/api/v1/users/password-reset-link` | `passwordResetLink` | ADMIN, MANAGER | team.manage |  |
 | POST | `/api/v1/users/delete` | `delete` | ADMIN, MANAGER | team.manage |  |
 
 ## modules/maintenance-alerts/controllers/maintenance-alerts.controller.ts
@@ -135,11 +191,11 @@ São 164 endpoints em 25 controllers.
 | Método | Rota | Ação | Quem acessa | Permissão | Módulo/limite |
 | --- | --- | --- | --- | --- | --- |
 | POST | `/api/v1/maintenance-alerts/list` | `list` | ADMIN, MANAGER, FRONT_DESK, MECHANIC | alerts.view |  |
-| POST | `/api/v1/maintenance-alerts/resolve` | `resolve` | ADMIN, MANAGER, FRONT_DESK, MECHANIC | alerts.manage |  |
-| POST | `/api/v1/maintenance-alerts/snooze` | `snooze` | ADMIN, MANAGER, FRONT_DESK, MECHANIC | alerts.manage |  |
-| POST | `/api/v1/maintenance-alerts/dismiss` | `dismiss` | ADMIN, MANAGER, FRONT_DESK, MECHANIC | alerts.manage |  |
-| POST | `/api/v1/maintenance-alerts/reopen` | `reopen` | ADMIN, MANAGER, FRONT_DESK, MECHANIC | alerts.manage |  |
-| POST | `/api/v1/maintenance-alerts/contact` | `recordContact` | ADMIN, MANAGER, FRONT_DESK, MECHANIC | alerts.manage |  |
+| POST | `/api/v1/maintenance-alerts/resolve` | `resolve` | ADMIN, MANAGER, FRONT_DESK, MECHANIC | alerts.manage | limite write |
+| POST | `/api/v1/maintenance-alerts/snooze` | `snooze` | ADMIN, MANAGER, FRONT_DESK, MECHANIC | alerts.manage | limite write |
+| POST | `/api/v1/maintenance-alerts/dismiss` | `dismiss` | ADMIN, MANAGER, FRONT_DESK, MECHANIC | alerts.manage | limite write |
+| POST | `/api/v1/maintenance-alerts/reopen` | `reopen` | ADMIN, MANAGER, FRONT_DESK, MECHANIC | alerts.manage | limite write |
+| POST | `/api/v1/maintenance-alerts/contact` | `recordContact` | ADMIN, MANAGER, FRONT_DESK, MECHANIC | alerts.manage | limite write |
 | POST | `/api/v1/maintenance-alerts/contacts` | `contacts` | ADMIN, MANAGER, FRONT_DESK, MECHANIC | alerts.view |  |
 
 ## modules/privacy/privacy.controller.ts
@@ -148,19 +204,19 @@ São 164 endpoints em 25 controllers.
 | --- | --- | --- | --- | --- | --- |
 | POST | `/api/v1/privacy/requests` | `create` | qualquer usuário autenticado |  |  |
 | GET | `/api/v1/privacy/requests` | `list` | qualquer usuário autenticado |  |  |
-| GET | `/api/v1/privacy/requests/manage` | `manage` | qualquer usuário autenticado |  |  |
-| POST | `/api/v1/privacy/requests/resolve` | `resolve` | qualquer usuário autenticado |  |  |
+| GET | `/api/v1/privacy/requests/manage` | `manage` | ADMIN | settings.manage |  |
+| POST | `/api/v1/privacy/requests/resolve` | `resolve` | ADMIN | settings.manage |  |
 | GET | `/api/v1/privacy/export` | `exportSelf` | qualquer usuário autenticado |  |  |
-| POST | `/api/v1/privacy/customers/export` | `exportCustomer` | qualquer usuário autenticado |  |  |
-| POST | `/api/v1/privacy/customers/erase` | `erase` | qualquer usuário autenticado |  |  |
+| POST | `/api/v1/privacy/customers/export` | `exportCustomer` | ADMIN | customers.manage |  |
+| POST | `/api/v1/privacy/customers/erase` | `erase` | ADMIN | customers.manage, settings.manage |  |
 | POST | `/api/v1/privacy/account/erase` | `eraseAccount` | qualquer usuário autenticado |  |  |
 
 ## modules/service-orders/controllers/customer-messages.controller.ts
 
 | Método | Rota | Ação | Quem acessa | Permissão | Módulo/limite |
 | --- | --- | --- | --- | --- | --- |
-| POST | `/api/v1/service-orders/customer-messages` | `create` | ADMIN, MANAGER, FRONT_DESK, MECHANIC | service_orders.manage, service_orders.prices |  |
-| POST | `/api/v1/service-orders/customer-messages/confirm-dispatch` | `confirmDispatch` | ADMIN, MANAGER, FRONT_DESK, MECHANIC | service_orders.manage, service_orders.prices |  |
+| POST | `/api/v1/service-orders/customer-messages` | `create` | ADMIN, MANAGER, FRONT_DESK, MECHANIC | service_orders.manage, service_orders.prices | limite write |
+| POST | `/api/v1/service-orders/customer-messages/confirm-dispatch` | `confirmDispatch` | ADMIN, MANAGER, FRONT_DESK, MECHANIC | service_orders.manage, service_orders.prices | limite write |
 | GET | `/api/v1/service-orders/customer-messages` | `list` | ADMIN, MANAGER, FRONT_DESK, MECHANIC | service_orders.view, service_orders.prices |  |
 | GET | `/api/v1/public/customer-message` | `get` | público |  |  |
 | POST | `/api/v1/public/customer-message/answer` | `answer` | público |  |  |
@@ -176,50 +232,50 @@ São 164 endpoints em 25 controllers.
 
 | Método | Rota | Ação | Quem acessa | Permissão | Módulo/limite |
 | --- | --- | --- | --- | --- | --- |
-| POST | `/api/v1/service-orders/status-notifications/list` | `list` | qualquer usuário autenticado |  |  |
-| POST | `/api/v1/service-orders/status-notifications/retry` | `retry` | qualquer usuário autenticado |  |  |
+| POST | `/api/v1/service-orders/status-notifications/list` | `list` | qualquer usuário autenticado | service_orders.view |  |
+| POST | `/api/v1/service-orders/status-notifications/retry` | `retry` | qualquer usuário autenticado | service_orders.manage | limite write |
 
 ## modules/service-orders/controllers/service-orders.controller.ts
 
 | Método | Rota | Ação | Quem acessa | Permissão | Módulo/limite |
 | --- | --- | --- | --- | --- | --- |
 | POST | `/api/v1/service-orders` | `create` | ADMIN, MANAGER, FRONT_DESK, MECHANIC | service_orders.manage | limite orders |
-| POST | `/api/v1/service-orders/update` | `update` | ADMIN, MANAGER, FRONT_DESK, MECHANIC | service_orders.manage |  |
-| POST | `/api/v1/service-orders/transition` | `transition` | ADMIN, MANAGER, FRONT_DESK, MECHANIC | service_orders.manage |  |
-| POST | `/api/v1/service-orders/delete` | `delete` | ADMIN, MANAGER, FRONT_DESK, MECHANIC | service_orders.manage |  |
-| GET | `/api/v1/service-order` | `get` | ADMIN, MANAGER, FRONT_DESK, MECHANIC | service_orders.view |  |
-| POST | `/api/v1/service-orders/list` | `list` | ADMIN, MANAGER, FRONT_DESK, MECHANIC | service_orders.view |  |
-| GET | `/api/v1/dashboard/today` | `dashboardToday` | ADMIN, MANAGER, FRONT_DESK, MECHANIC | service_orders.view |  |
-| GET | `/api/v1/dashboard/business-summary` | `businessSummary` | ADMIN, MANAGER, FRONT_DESK, MECHANIC | finance.view |  |
+| POST | `/api/v1/service-orders/update` | `update` | ADMIN, MANAGER, FRONT_DESK, MECHANIC | service_orders.manage | limite write |
+| POST | `/api/v1/service-orders/transition` | `transition` | ADMIN, MANAGER, FRONT_DESK, MECHANIC | service_orders.manage | limite write |
+| POST | `/api/v1/service-orders/delete` | `delete` | ADMIN, MANAGER, FRONT_DESK, MECHANIC | service_orders.manage | limite write |
+| GET | `/api/v1/service-order` | `get` | ADMIN, MANAGER, FRONT_DESK, MECHANIC, FINANCE | service_orders.view |  |
+| POST | `/api/v1/service-orders/list` | `list` | ADMIN, MANAGER, FRONT_DESK, MECHANIC, FINANCE | service_orders.view |  |
+| GET | `/api/v1/dashboard/today` | `dashboardToday` | ADMIN, MANAGER, FRONT_DESK, MECHANIC, FINANCE | service_orders.view |  |
+| GET | `/api/v1/dashboard/business-summary` | `businessSummary` | ADMIN, MANAGER, FRONT_DESK, MECHANIC, FINANCE | finance.view | módulo financeiro |
 | POST | `/api/v1/service-orders/technician-productivity` | `technicianProductivity` | ADMIN, MANAGER, FRONT_DESK | service_orders.prices | módulo produtividade |
 | POST | `/api/v1/service-orders/technician-productivity/trend` | `productivityTrend` | ADMIN, MANAGER, FRONT_DESK | service_orders.prices | módulo produtividade |
-| GET | `/api/v1/service-orders/warranty-return` | `warrantyReturn` | ADMIN, MANAGER, FRONT_DESK, MECHANIC | service_orders.view |  |
-| POST | `/api/v1/service-orders/warranty-return` | `markWarrantyReturn` | ADMIN, MANAGER, FRONT_DESK | service_orders.manage |  |
+| GET | `/api/v1/service-orders/warranty-return` | `warrantyReturn` | ADMIN, MANAGER, FRONT_DESK, MECHANIC, FINANCE | service_orders.view |  |
+| POST | `/api/v1/service-orders/warranty-return` | `markWarrantyReturn` | ADMIN, MANAGER, FRONT_DESK | service_orders.manage | limite write |
 | POST | `/api/v1/service-orders/technician-productivity/commissions` | `commissions` | ADMIN, MANAGER | service_orders.prices | módulo produtividade |
-| POST | `/api/v1/service-orders/technician-productivity/commission-rule` | `setCommissionRule` | ADMIN, MANAGER | service_orders.prices | módulo produtividade |
+| POST | `/api/v1/service-orders/technician-productivity/commission-rule` | `setCommissionRule` | ADMIN, MANAGER | service_orders.prices | módulo produtividade; limite write |
 | GET | `/api/v1/service-orders/idle-time` | `myIdle` | ADMIN, MANAGER, FRONT_DESK, MECHANIC | service_orders.view |  |
-| POST | `/api/v1/service-orders/idle-time/start` | `startIdle` | MECHANIC | service_orders.view |  |
+| POST | `/api/v1/service-orders/idle-time/start` | `startIdle` | MECHANIC | service_orders.view | limite write |
 | POST | `/api/v1/service-orders/idle-time/stop` | `stopIdle` | MECHANIC | service_orders.view |  |
 | POST | `/api/v1/service-orders/technician-productivity/me` | `myProductivity` | ADMIN, MANAGER, FRONT_DESK, MECHANIC | service_orders.view |  |
-| POST | `/api/v1/service-orders/productivity-target/copy` | `copyProductivityTargets` | ADMIN, MANAGER | service_orders.prices | módulo produtividade |
-| POST | `/api/v1/service-orders/work-sessions/correct` | `correctWorkSession` | ADMIN, MANAGER | service_orders.prices |  |
+| POST | `/api/v1/service-orders/productivity-target/copy` | `copyProductivityTargets` | ADMIN, MANAGER | service_orders.prices | módulo produtividade; limite write |
+| POST | `/api/v1/service-orders/work-sessions/correct` | `correctWorkSession` | ADMIN, MANAGER | service_orders.prices | limite write |
 | POST | `/api/v1/service-orders/technician-productivity/orders` | `technicianProductivityOrders` | ADMIN, MANAGER, FRONT_DESK | service_orders.prices | módulo produtividade |
-| POST | `/api/v1/service-orders/productivity-target` | `setProductivityTarget` | ADMIN, MANAGER | service_orders.prices | módulo produtividade |
-| GET | `/api/v1/service-orders/work-sessions` | `workSessions` | ADMIN, MANAGER, FRONT_DESK, MECHANIC | service_orders.view |  |
-| POST | `/api/v1/service-orders/work-sessions/start` | `startWork` | ADMIN, MANAGER, FRONT_DESK, MECHANIC | service_orders.manage |  |
+| POST | `/api/v1/service-orders/productivity-target` | `setProductivityTarget` | ADMIN, MANAGER | service_orders.prices | módulo produtividade; limite write |
+| GET | `/api/v1/service-orders/work-sessions` | `workSessions` | ADMIN, MANAGER, FRONT_DESK, MECHANIC, FINANCE | service_orders.view |  |
+| POST | `/api/v1/service-orders/work-sessions/start` | `startWork` | ADMIN, MANAGER, FRONT_DESK, MECHANIC | service_orders.manage | limite write |
 | POST | `/api/v1/service-orders/work-sessions/stop` | `stopWork` | ADMIN, MANAGER, FRONT_DESK, MECHANIC | service_orders.manage |  |
-| POST | `/api/v1/service-orders/items` | `addItem` | ADMIN, MANAGER, FRONT_DESK | service_orders.prices |  |
-| POST | `/api/v1/service-orders/items/update` | `updateItem` | ADMIN, MANAGER, FRONT_DESK | service_orders.prices |  |
-| POST | `/api/v1/service-orders/items/delete` | `deleteItem` | ADMIN, MANAGER, FRONT_DESK | service_orders.prices |  |
-| POST | `/api/v1/service-orders/receipts` | `confirmReceipt` | ADMIN, MANAGER, FRONT_DESK | receipts.manage |  |
-| POST | `/api/v1/service-orders/receipts/delete` | `deleteReceipt` | ADMIN, MANAGER, FRONT_DESK | receipts.manage |  |
-| POST | `/api/v1/service-orders/payment/configure` | `configurePayment` | ADMIN, MANAGER, FRONT_DESK | receipts.manage |  |
-| POST | `/api/v1/service-orders/installments/confirm` | `confirmInstallment` | ADMIN, MANAGER, FRONT_DESK | receipts.manage |  |
-| POST | `/api/v1/service-orders/installments/due` | `dueInstallments` | ADMIN, MANAGER, FRONT_DESK | receipts.manage |  |
-| GET | `/api/v1/service-orders/photos` | `listPhotos` | ADMIN, MANAGER, FRONT_DESK, MECHANIC | service_orders.view |  |
-| GET | `/api/v1/service-orders/photos/content` | `photoContent` | ADMIN, MANAGER, FRONT_DESK, MECHANIC | service_orders.view |  |
+| POST | `/api/v1/service-orders/items` | `addItem` | ADMIN, MANAGER, FRONT_DESK | service_orders.prices | limite write |
+| POST | `/api/v1/service-orders/items/update` | `updateItem` | ADMIN, MANAGER, FRONT_DESK | service_orders.prices | limite write |
+| POST | `/api/v1/service-orders/items/delete` | `deleteItem` | ADMIN, MANAGER, FRONT_DESK | service_orders.prices | limite write |
+| POST | `/api/v1/service-orders/receipts` | `confirmReceipt` | ADMIN, MANAGER, FRONT_DESK, FINANCE | receipts.manage | limite write |
+| POST | `/api/v1/service-orders/receipts/delete` | `deleteReceipt` | ADMIN, MANAGER, FRONT_DESK, FINANCE | receipts.manage | limite write |
+| POST | `/api/v1/service-orders/payment/configure` | `configurePayment` | ADMIN, MANAGER, FRONT_DESK, FINANCE | receipts.manage | limite write |
+| POST | `/api/v1/service-orders/installments/confirm` | `confirmInstallment` | ADMIN, MANAGER, FRONT_DESK, FINANCE | receipts.manage | limite write |
+| POST | `/api/v1/service-orders/installments/due` | `dueInstallments` | ADMIN, MANAGER, FRONT_DESK, FINANCE | receipts.manage |  |
+| GET | `/api/v1/service-orders/photos` | `listPhotos` | ADMIN, MANAGER, FRONT_DESK, MECHANIC, FINANCE | service_orders.view |  |
+| GET | `/api/v1/service-orders/photos/content` | `photoContent` | ADMIN, MANAGER, FRONT_DESK, MECHANIC, FINANCE | service_orders.view |  |
 | POST | `/api/v1/service-orders/photos` | `uploadPhoto` | ADMIN, MANAGER, FRONT_DESK, MECHANIC | service_orders.manage | limite photos |
-| POST | `/api/v1/service-orders/photos/delete` | `deletePhoto` | ADMIN, MANAGER, FRONT_DESK, MECHANIC | service_orders.manage |  |
+| POST | `/api/v1/service-orders/photos/delete` | `deletePhoto` | ADMIN, MANAGER, FRONT_DESK, MECHANIC | service_orders.manage | limite write |
 
 ## modules/service-orders/controllers/wa-akg-webhook.controller.ts
 
@@ -231,36 +287,36 @@ São 164 endpoints em 25 controllers.
 
 | Método | Rota | Ação | Quem acessa | Permissão | Módulo/limite |
 | --- | --- | --- | --- | --- | --- |
-| GET | `/api/v1/settings/settings.view` | `get` | qualquer usuário autenticado |  |  |
-| GET | `/api/v1/settings/branding` | `branding` | qualquer usuário autenticado |  |  |
-| POST | `/api/v1/settings/onboarding/complete` | `completeOnboarding` | qualquer usuário autenticado |  |  |
-| POST | `/api/v1/settings/company` | `updateCompany` | qualquer usuário autenticado |  |  |
-| POST | `/api/v1/settings/labor-rate` | `updateLaborRate` | qualquer usuário autenticado |  |  |
-| POST | `/api/v1/settings/order-defaults` | `updateOrderDefaults` | qualquer usuário autenticado |  |  |
-| POST | `/api/v1/settings/maintenance-alert-months` | `updateMaintenanceAlertMonths` | qualquer usuário autenticado |  |  |
-| POST | `/api/v1/settings/agenda-hours` | `updateAgendaHours` | qualquer usuário autenticado |  |  |
-| POST | `/api/v1/settings/photo-policy` | `updatePhotoPolicy` | qualquer usuário autenticado |  |  |
-| POST | `/api/v1/settings/email` | `updateEmail` | qualquer usuário autenticado |  |  |
-| POST | `/api/v1/settings/email/test` | `testEmail` | qualquer usuário autenticado |  |  |
-| POST | `/api/v1/settings/email/send` | `sendEmail` | qualquer usuário autenticado |  |  |
+| GET | `/api/v1/settings` | `get` | qualquer usuário autenticado | settings.view |  |
+| GET | `/api/v1/settings/branding` | `branding` | ADMIN, MANAGER, MECHANIC, FRONT_DESK, FINANCE |  |  |
+| POST | `/api/v1/settings/onboarding/complete` | `completeOnboarding` | qualquer usuário autenticado | settings.manage |  |
+| POST | `/api/v1/settings/company` | `updateCompany` | qualquer usuário autenticado | settings.manage |  |
+| POST | `/api/v1/settings/labor-rate` | `updateLaborRate` | qualquer usuário autenticado | service_orders.prices | limite write |
+| POST | `/api/v1/settings/order-defaults` | `updateOrderDefaults` | qualquer usuário autenticado | settings.manage | limite write |
+| POST | `/api/v1/settings/maintenance-alert-months` | `updateMaintenanceAlertMonths` | qualquer usuário autenticado | settings.manage | limite write |
+| POST | `/api/v1/settings/agenda-hours` | `updateAgendaHours` | qualquer usuário autenticado | settings.manage | limite write |
+| POST | `/api/v1/settings/photo-policy` | `updatePhotoPolicy` | qualquer usuário autenticado | settings.manage | limite write |
+| POST | `/api/v1/settings/email` | `updateEmail` | qualquer usuário autenticado | settings.manage | limite write |
+| POST | `/api/v1/settings/email/test` | `testEmail` | qualquer usuário autenticado | settings.manage | limite write |
+| POST | `/api/v1/settings/email/send` | `sendEmail` | ADMIN, MANAGER, MECHANIC, FRONT_DESK | service_orders.manage | limite write |
 
 ## modules/settings/controllers/whatsapp-settings.controller.ts
 
 | Método | Rota | Ação | Quem acessa | Permissão | Módulo/limite |
 | --- | --- | --- | --- | --- | --- |
-| GET | `/api/v1/settings/whatsapp/settings.view` | `get` | qualquer usuário autenticado |  |  |
-| POST | `/api/v1/settings/whatsapp/settings.manage` | `update` | qualquer usuário autenticado |  |  |
-| POST | `/api/v1/settings/whatsapp/test` | `test` | qualquer usuário autenticado |  |  |
-| POST | `/api/v1/settings/whatsapp/webhook/test` | `testWebhook` | qualquer usuário autenticado |  |  |
-| POST | `/api/v1/settings/whatsapp/webhook/configure` | `configureWebhook` | qualquer usuário autenticado |  |  |
+| GET | `/api/v1/settings/whatsapp` | `get` | qualquer usuário autenticado | settings.view |  |
+| POST | `/api/v1/settings/whatsapp` | `update` | qualquer usuário autenticado | settings.manage | limite write |
+| POST | `/api/v1/settings/whatsapp/test` | `test` | qualquer usuário autenticado | settings.manage | limite write |
+| POST | `/api/v1/settings/whatsapp/webhook/test` | `testWebhook` | qualquer usuário autenticado | settings.manage | limite write |
+| POST | `/api/v1/settings/whatsapp/webhook/configure` | `configureWebhook` | qualquer usuário autenticado | settings.manage | limite write |
 
 ## modules/settings/controllers/workshop-account.controller.ts
 
 | Método | Rota | Ação | Quem acessa | Permissão | Módulo/limite |
 | --- | --- | --- | --- | --- | --- |
-| GET | `/api/v1/settings/subscription` | `subscription` | qualquer usuário autenticado |  |  |
-| POST | `/api/v1/settings/audit-log` | `history` | qualquer usuário autenticado |  |  |
-| GET | `/api/v1/settings/export/:dataset` | `export` | qualquer usuário autenticado |  |  |
+| GET | `/api/v1/settings/subscription` | `subscription` | qualquer usuário autenticado | settings.manage |  |
+| POST | `/api/v1/settings/audit-log` | `history` | qualquer usuário autenticado | settings.manage | módulo governanca |
+| GET | `/api/v1/settings/export/:dataset` | `export` | qualquer usuário autenticado | settings.manage | módulo governanca |
 
 ## modules/subscriptions/subscriptions.controller.ts
 
@@ -287,12 +343,12 @@ São 164 endpoints em 25 controllers.
 | Método | Rota | Ação | Quem acessa | Permissão | Módulo/limite |
 | --- | --- | --- | --- | --- | --- |
 | POST | `/api/v1/vehicles` | `create` | ADMIN, MANAGER, FRONT_DESK | vehicles.manage | limite write |
-| POST | `/api/v1/vehicles/update` | `update` | ADMIN, MANAGER, FRONT_DESK | vehicles.manage |  |
-| POST | `/api/v1/vehicles/delete` | `delete` | ADMIN, MANAGER, FRONT_DESK | vehicles.manage |  |
-| POST | `/api/v1/vehicles/restore` | `restore` | ADMIN, MANAGER, FRONT_DESK | vehicles.manage |  |
+| POST | `/api/v1/vehicles/update` | `update` | ADMIN, MANAGER, FRONT_DESK | vehicles.manage | limite write |
+| POST | `/api/v1/vehicles/delete` | `delete` | ADMIN, MANAGER, FRONT_DESK | vehicles.manage | limite write |
+| POST | `/api/v1/vehicles/restore` | `restore` | ADMIN, MANAGER, FRONT_DESK | vehicles.manage | limite write |
 | POST | `/api/v1/vehicles/archive-impact` | `archiveImpact` | ADMIN, MANAGER, FRONT_DESK | vehicles.manage |  |
 | POST | `/api/v1/vehicles/import` | `importRows` | ADMIN, MANAGER, FRONT_DESK | vehicles.manage | limite write |
-| POST | `/api/v1/vehicles/transfer` | `transfer` | ADMIN, MANAGER, FRONT_DESK | vehicles.manage |  |
+| POST | `/api/v1/vehicles/transfer` | `transfer` | ADMIN, MANAGER, FRONT_DESK | vehicles.manage | limite write |
 | POST | `/api/v1/vehicles/overview` | `overview` | ADMIN, MANAGER, FRONT_DESK, MECHANIC | vehicles.view |  |
 | GET | `/api/v1/vehicle` | `get` | ADMIN, MANAGER, FRONT_DESK, MECHANIC | vehicles.view |  |
 | POST | `/api/v1/vehicles/list` | `list` | ADMIN, MANAGER, FRONT_DESK, MECHANIC | vehicles.view |  |
@@ -301,4 +357,4 @@ São 164 endpoints em 25 controllers.
 
 | Método | Rota | Ação | Quem acessa | Permissão | Módulo/limite |
 | --- | --- | --- | --- | --- | --- |
-| GET | `/api/v1/plan/Cache-Control` | `current` | qualquer usuário autenticado |  |  |
+| GET | `/api/v1/plan` | `current` | qualquer usuário autenticado |  |  |

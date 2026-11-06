@@ -4,6 +4,7 @@ import { Permissions } from '../../../shared/decorators/permissions.decorator';
 import { CurrentUser } from '../../../shared/decorators/current-user.decorator';
 import type { AuthenticatedUser } from '../../../shared/guards/jwt-auth.guard';
 import { ServiceOrderStatusNotificationService } from '../services/service-order-status-notification.service';
+import { PlanLimit } from '../../../shared/decorators/plan-limit.decorator';
 
 export class ListServiceOrderStatusNotificationsDto {
   @IsUUID() serviceOrderId!: string;
@@ -19,6 +20,6 @@ export class ServiceOrderStatusNotificationsController {
   constructor(private readonly notifications: ServiceOrderStatusNotificationService) {}
   @Post('list') @HttpCode(HttpStatus.OK) @Permissions('service_orders.view')
   list(@Body() body: ListServiceOrderStatusNotificationsDto) { return this.notifications.list(body); }
-  @Post('retry') @HttpCode(HttpStatus.OK) @Permissions('service_orders.manage')
+  @PlanLimit('write') @Post('retry') @HttpCode(HttpStatus.OK) @Permissions('service_orders.manage')
   retry(@CurrentUser() user: AuthenticatedUser, @Body() body: RetryServiceOrderStatusNotificationDto) { return this.notifications.retry(user, body.id); }
 }

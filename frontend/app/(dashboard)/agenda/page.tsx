@@ -17,7 +17,7 @@ import { toast } from 'sonner';
 import { useAppointments, useUpdateAppointment } from '@/features/appointments/hooks/use-appointments';
 import { useAgendaHours } from '@/features/settings/hooks/use-settings';
 import { extractErrorCode, extractErrorMessage } from '@/lib/api/client';
-import { useUsersList } from '@/features/users/hooks/use-users';
+import { useTeamMembers } from '@/features/users/hooks/use-users';
 
 const STATUS_LABELS: Record<AppointmentStatus, string> = { SCHEDULED: 'Agendado', CONFIRMED: 'Confirmado', IN_SERVICE: 'Em atendimento', COMPLETED: 'Concluído', CANCELLED: 'Cancelado', NO_SHOW: 'Não compareceu' };
 
@@ -27,7 +27,7 @@ export default function AppointmentsPage() {
   // Cancelled appointments and no-shows clutter the week; they are one filter away.
   const [status, setStatus] = useState<AppointmentStatus | 'ALL' | 'ACTIVE'>('ACTIVE');
   const [technicianId, setTechnicianId] = useState('ALL');
-  const users = useUsersList({ offset: 0, limit: 100, filters: { status: 'active' } });
+  const users = useTeamMembers();
   const hours = useAgendaHours();
   const reschedule = useUpdateAppointment();
   const [selected, setSelected] = useState<AppointmentResponse>();

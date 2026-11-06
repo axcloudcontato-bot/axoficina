@@ -27,6 +27,8 @@ export interface ServiceOrderStatusHistoryItemResponse {
 }
 
 export interface ServiceOrderResponse {
+  // True when this person may not see money: every amount below came back as zero and receipts and installments are left out.
+  amountsHidden?: boolean;
   quoteRevision?: string;
   id: string;
   tenantId: string;

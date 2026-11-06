@@ -31,8 +31,8 @@ export class PrivacyController {
   exportCustomer(@CurrentUser() user: AuthenticatedUser, @Body() body: ExportCustomerDto) { return this.service.exportCustomer(user, body.id); }
 
   @Post('customers/erase') @HttpCode(HttpStatus.OK) @Roles('ADMIN') @Permissions('customers.manage', 'settings.manage') @Throttle(AUTH_THROTTLE)
-  erase(@CurrentUser() user: AuthenticatedUser, @Body() body: EraseCustomerDto) { return this.service.eraseCustomer(user, body.requestId, body.password); }
+  erase(@CurrentUser() user: AuthenticatedUser, @Body() body: EraseCustomerDto) { return this.service.eraseCustomer(user, body.requestId, body); }
 
   @Post('account/erase') @HttpCode(HttpStatus.OK) @Throttle(AUTH_THROTTLE)
-  eraseAccount(@CurrentUser() user: AuthenticatedUser, @Body() body: EraseAccountDto) { return this.service.eraseAccount(user, body.requestId, body.password); }
+  eraseAccount(@CurrentUser() user: AuthenticatedUser, @Body() body: EraseAccountDto) { return this.service.eraseAccount(user, body.requestId, body); }
 }

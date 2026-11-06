@@ -73,7 +73,11 @@ export class WaAkgService {
     const tenant = await this.requireTenant(tenantId);
     if (requireEnabled && !tenant.waAkgEnabled) return null;
     // Every automatic or manual send asks for the connection here, so a plan without WhatsApp stops them all in one place.
-    if (requireEnabled && !(await this.entitlements.forTenant(tenantId)).modules.includes('whatsapp')) return null;
+    if (requireEnabled) {
+      const { modules, access } = await this.entitlements.forTenant(tenantId);
+      // A view-only account sends nothing either: no reminders or notices leave while the subscription is not active.
+      if (!modules.includes('whatsapp') || access?.state === 'suspended') return null;
+    }
     const platformKey = this.platformKey;
     const baseUrl = platformKey ? this.platformBaseUrl : tenant.waAkgBaseUrl;
     if (!baseUrl || !tenant.waAkgSessionId || !(platformKey || tenant.waAkgApiKey)) throw new BadRequestException('Configure a conexão com o WA-AKG antes de continuar.');

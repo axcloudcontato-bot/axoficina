@@ -79,7 +79,8 @@ export class ServiceOrderPhotoManager {
   async delete(user: AuthenticatedUser, id: string) {
     const photo = await this.photos.byId(id);
     if (!photo) throw new NotFoundException('Foto não encontrada.');
-    await this.requireOrder(photo.serviceOrderId);
+    const order = await this.requireOrder(photo.serviceOrderId);
+    if (order.status === 'DELIVERED') throw new BadRequestException('A foto de uma OS entregue é o registro de como o veículo saiu e não pode ser removida.');
     const result = await this.photos.softDelete(id);
     if (result.count === 0) throw new NotFoundException('Foto não encontrada.');
     await this.storage.delete(photo.storageKey);

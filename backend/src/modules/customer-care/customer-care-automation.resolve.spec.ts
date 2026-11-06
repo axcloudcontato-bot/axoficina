@@ -4,7 +4,7 @@ import { CustomerCareAutomationService } from './customer-care-automation.servic
 function build(record: Record<string, unknown> | null) {
   const delivery = { findFirst: jest.fn().mockResolvedValue(record), updateMany: jest.fn().mockResolvedValue({ count: record ? 1 : 0 }) };
   const prisma = { unscoped: { customerCareDelivery: delivery } };
-  const service = new CustomerCareAutomationService(prisma as never, {} as never, {} as never, {} as never, {} as never);
+  const service = new CustomerCareAutomationService(prisma as never, {} as never, {} as never, {} as never, {} as never, {} as never);
   return { service, delivery };
 }
 

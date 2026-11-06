@@ -92,11 +92,11 @@ export function ServiceOrderPrintDocument({
             <TextValue value={serviceOrder.diagnosis} />
           </PrintSection>
 
-          <PrintSection title="Itens e valores">
+          <PrintSection title={serviceOrder.amountsHidden ? 'Itens' : 'Itens e valores'}>
             {serviceOrder.items?.length ? (
               <table className="w-full border-collapse text-left text-xs">
                 <thead><tr className="border-b border-slate-400"><th className="py-2 pr-3">Tipo</th><th className="py-2 pr-3">Descrição</th><th className="py-2 pr-3 text-right">Qtd.</th><th className="py-2 pr-3 text-right">Unitário</th><th className="py-2 text-right">Total</th></tr></thead>
-                <tbody>{serviceOrder.items.map((item) => <tr key={item.id} className="border-b border-slate-200"><td className="py-2 pr-3">{item.type === 'LABOR' ? 'Serviço' : SERVICE_ORDER_ITEM_TYPE_LABELS[item.type]}</td><td className="py-2 pr-3 font-medium">{item.description}</td><td className="py-2 pr-3 text-right">{item.quantity}</td><td className="py-2 pr-3 text-right">{formatCurrencyBRL(item.unitPriceCents)}</td><td className="py-2 text-right font-bold">{formatCurrencyBRL(item.lineTotalCents)}</td></tr>)}</tbody>
+                <tbody>{serviceOrder.items.map((item) => <tr key={item.id} className="border-b border-slate-200"><td className="py-2 pr-3">{item.type === 'LABOR' ? 'Serviço' : SERVICE_ORDER_ITEM_TYPE_LABELS[item.type]}</td><td className="py-2 pr-3 font-medium">{item.description}</td><td className="py-2 pr-3 text-right">{item.quantity}</td><td className="py-2 pr-3 text-right">{serviceOrder.amountsHidden ? '—' : formatCurrencyBRL(item.unitPriceCents)}</td><td className="py-2 text-right font-bold">{serviceOrder.amountsHidden ? '—' : formatCurrencyBRL(item.lineTotalCents)}</td></tr>)}</tbody>
               </table>
             ) : <p className="text-sm text-slate-500">Nenhum item lançado.</p>}
           </PrintSection>
@@ -110,7 +110,7 @@ export function ServiceOrderPrintDocument({
       )}
 
       <section className="print-break-inside-avoid mt-7 flex items-end justify-between border-t-2 border-slate-900 pt-4">
-        <div><p className="text-xs font-bold uppercase tracking-wide text-slate-500">Valor total</p><p className="text-2xl font-black">{formatCurrencyBRL(serviceOrder.totalAmountCents)}</p></div>
+        {serviceOrder.amountsHidden ? <div /> : <div><p className="text-xs font-bold uppercase tracking-wide text-slate-500">Valor total</p><p className="text-2xl font-black">{formatCurrencyBRL(serviceOrder.totalAmountCents)}</p></div>}
         <p className="text-xs text-slate-500">Documento referente à OS #{String(serviceOrder.orderNumber).padStart(5, '0')}</p>
       </section>
       {serviceOrder.warrantyDays !== undefined && <p className="print-break-inside-avoid mt-3 text-sm"><strong>Garantia:</strong> {serviceOrder.warrantyDays === 0 ? 'sem garantia adicional' : `${serviceOrder.warrantyDays} ${serviceOrder.warrantyDays === 1 ? 'dia' : 'dias'}${serviceOrder.status === 'DELIVERED' && serviceOrder.closedAt ? `, válida até ${new Date(new Date(serviceOrder.closedAt).getTime() + serviceOrder.warrantyDays * 86_400_000).toLocaleDateString('pt-BR')}` : ', a contar da entrega'}`}</p>}
@@ -177,7 +177,7 @@ function ApprovalCopy({
                 <td className="py-1.5 pr-2">{SERVICE_ORDER_ITEM_TYPE_LABELS[item.type]}</td>
                 <td className="py-1.5 pr-2 font-medium">{item.description}</td>
                 <td className="py-1.5 pr-2 text-right">{item.quantity}</td>
-                <td className="py-1.5 text-right font-semibold">{formatCurrencyBRL(item.lineTotalCents)}</td>
+                <td className="py-1.5 text-right font-semibold">{serviceOrder.amountsHidden ? '—' : formatCurrencyBRL(item.lineTotalCents)}</td>
               </tr>
             )) : <tr><td colSpan={4} className="py-3 text-center text-slate-500">Nenhuma peça ou mão de obra lançada.</td></tr>}
           </tbody>
@@ -185,7 +185,7 @@ function ApprovalCopy({
       </div>
 
       <footer className="print-break-inside-avoid flex min-h-0 flex-1 flex-col">
-        <div className="ml-auto grid w-full max-w-xs grid-cols-2 gap-x-5 gap-y-1 text-[13px]">
+        <div className={`ml-auto grid w-full max-w-xs grid-cols-2 gap-x-5 gap-y-1 text-[13px] ${serviceOrder.amountsHidden ? 'hidden' : ''}`}>
           <span>Peças e produtos</span><strong className="text-right">{formatCurrencyBRL(partsTotal)}</strong>
           <span>Mão de obra</span><strong className="text-right">{formatCurrencyBRL(laborTotal)}</strong>
           {serviceOrder.discountCents > 0 && <><span>Desconto</span><strong className="text-right">-{formatCurrencyBRL(serviceOrder.discountCents)}</strong></>}

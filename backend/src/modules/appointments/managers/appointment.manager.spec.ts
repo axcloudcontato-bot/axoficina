@@ -10,7 +10,7 @@ const request = {
   serviceDescription: 'Revisão',
 };
 
-function setup(conflicts: unknown[] = [], bays: number | null = null) {
+function setup(conflicts: unknown[] = [], bays: number | null = null, agenda: Record<string, unknown> = {}) {
   const appointments = {
     conflicts: jest.fn().mockResolvedValue(conflicts),
     byId: jest.fn(),
@@ -34,7 +34,7 @@ function setup(conflicts: unknown[] = [], bays: number | null = null) {
   const users = { byId: jest.fn().mockResolvedValue(technician), byIds: jest.fn().mockResolvedValue([technician]) };
   const serviceOrders = { create: jest.fn().mockResolvedValue({ serviceOrder: { id: 'so-1' } }) };
   const audit = { record: jest.fn().mockResolvedValue(undefined) };
-  const tenants = { byId: jest.fn().mockResolvedValue({ id: user.tenantId, agendaBays: bays }) };
+  const tenants = { byId: jest.fn().mockResolvedValue({ id: user.tenantId, agendaBays: bays, ...agenda }) };
   const notifications = { sendConfirmation: jest.fn().mockResolvedValue(undefined) };
   const manager = new AppointmentManager(appointments as never, customers as never, vehicles as never, users as never, serviceOrders as never, audit as never, tenants as never, notifications as never);
   return { manager, appointments, customers, serviceOrders, audit, notifications };
@@ -44,6 +44,78 @@ describe('AppointmentManager', () => {
   it('rejeita intervalo invertido', async () => {
     const { manager } = setup();
     await expect(manager.create(user as never, { ...request, endsAt: request.startsAt })).rejects.toMatchObject({ code: 'APPOINTMENT_INVALID_INTERVAL' });
+  });
+
+  describe('horário de funcionamento', () => {
+    const agenda = { agendaOpenHour: 8, agendaCloseHour: 18, agendaWorkDays: [1, 2, 3, 4, 5], agendaClosedDates: ['2026-07-29'] };
+    // 2026-07-28 é terça-feira; 12:00Z são 9h em São Paulo.
+    const at = (startsAt: string, endsAt: string) => ({ ...request, startsAt, endsAt });
+
+    it('aceita dentro do horário', async () => {
+      const { manager } = setup([], null, agenda);
+      await expect(manager.create(user as never, at('2026-07-28T12:00:00.000Z', '2026-07-28T13:00:00.000Z'))).resolves.toBeDefined();
+    });
+    it('pede confirmação fora do horário', async () => {
+      const { manager } = setup([], null, agenda);
+      await expect(manager.create(user as never, at('2026-07-28T22:00:00.000Z', '2026-07-28T23:00:00.000Z'))).rejects.toMatchObject({ code: 'APPOINTMENT_CONFLICT' });
+    });
+    it('pede confirmação em dia fechado e em data marcada como fechada', async () => {
+      const { manager } = setup([], null, agenda);
+      await expect(manager.create(user as never, at('2026-08-01T12:00:00.000Z', '2026-08-01T13:00:00.000Z'))).rejects.toMatchObject({ code: 'APPOINTMENT_CONFLICT' });
+      await expect(manager.create(user as never, at('2026-07-29T12:00:00.000Z', '2026-07-29T13:00:00.000Z'))).rejects.toMatchObject({ code: 'APPOINTMENT_CONFLICT' });
+    });
+    it('salva a exceção quando a pessoa confirma', async () => {
+      const { manager } = setup([], null, agenda);
+      await expect(manager.create(user as never, { ...at('2026-08-01T12:00:00.000Z', '2026-08-01T13:00:00.000Z'), confirmConflict: true })).resolves.toBeDefined();
+    });
+  });
+
+  describe('horário de funcionamento', () => {
+    const agenda = { agendaOpenHour: 8, agendaCloseHour: 18, agendaWorkDays: [1, 2, 3, 4, 5], agendaClosedDates: ['2026-07-29'] };
+    // 2026-07-28 é terça-feira; 12:00Z são 9h em São Paulo.
+    const at = (startsAt: string, endsAt: string) => ({ ...request, startsAt, endsAt });
+
+    it('aceita dentro do horário', async () => {
+      const { manager } = setup([], null, agenda);
+      await expect(manager.create(user as never, at('2026-07-28T12:00:00.000Z', '2026-07-28T13:00:00.000Z'))).resolves.toBeDefined();
+    });
+    it('pede confirmação fora do horário', async () => {
+      const { manager } = setup([], null, agenda);
+      await expect(manager.create(user as never, at('2026-07-28T22:00:00.000Z', '2026-07-28T23:00:00.000Z'))).rejects.toMatchObject({ code: 'APPOINTMENT_CONFLICT' });
+    });
+    it('pede confirmação em dia fechado e em data marcada como fechada', async () => {
+      const { manager } = setup([], null, agenda);
+      await expect(manager.create(user as never, at('2026-08-01T12:00:00.000Z', '2026-08-01T13:00:00.000Z'))).rejects.toMatchObject({ code: 'APPOINTMENT_CONFLICT' });
+      await expect(manager.create(user as never, at('2026-07-29T12:00:00.000Z', '2026-07-29T13:00:00.000Z'))).rejects.toMatchObject({ code: 'APPOINTMENT_CONFLICT' });
+    });
+    it('salva a exceção quando a pessoa confirma', async () => {
+      const { manager } = setup([], null, agenda);
+      await expect(manager.create(user as never, { ...at('2026-08-01T12:00:00.000Z', '2026-08-01T13:00:00.000Z'), confirmConflict: true })).resolves.toBeDefined();
+    });
+  });
+
+  describe('horário de funcionamento', () => {
+    const agenda = { agendaOpenHour: 8, agendaCloseHour: 18, agendaWorkDays: [1, 2, 3, 4, 5], agendaClosedDates: ['2026-07-29'] };
+    // 2026-07-28 é terça-feira; 12:00Z são 9h em São Paulo.
+    const at = (startsAt: string, endsAt: string) => ({ ...request, startsAt, endsAt });
+
+    it('aceita dentro do horário', async () => {
+      const { manager } = setup([], null, agenda);
+      await expect(manager.create(user as never, at('2026-07-28T12:00:00.000Z', '2026-07-28T13:00:00.000Z'))).resolves.toBeDefined();
+    });
+    it('pede confirmação fora do horário', async () => {
+      const { manager } = setup([], null, agenda);
+      await expect(manager.create(user as never, at('2026-07-28T22:00:00.000Z', '2026-07-28T23:00:00.000Z'))).rejects.toMatchObject({ code: 'APPOINTMENT_CONFLICT' });
+    });
+    it('pede confirmação em dia fechado e em data marcada como fechada', async () => {
+      const { manager } = setup([], null, agenda);
+      await expect(manager.create(user as never, at('2026-08-01T12:00:00.000Z', '2026-08-01T13:00:00.000Z'))).rejects.toMatchObject({ code: 'APPOINTMENT_CONFLICT' });
+      await expect(manager.create(user as never, at('2026-07-29T12:00:00.000Z', '2026-07-29T13:00:00.000Z'))).rejects.toMatchObject({ code: 'APPOINTMENT_CONFLICT' });
+    });
+    it('salva a exceção quando a pessoa confirma', async () => {
+      const { manager } = setup([], null, agenda);
+      await expect(manager.create(user as never, { ...at('2026-08-01T12:00:00.000Z', '2026-08-01T13:00:00.000Z'), confirmConflict: true })).resolves.toBeDefined();
+    });
   });
 
   it('exige confirmação quando o técnico tem conflito', async () => {

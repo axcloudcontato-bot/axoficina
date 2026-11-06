@@ -75,6 +75,23 @@ const PHOTO_ANGLE_LABELS: Record<ServiceOrderPhotoAngle, string> = {
 // Net amount of an order: items minus its discount (never below zero).
 const netTotal = (grossCents: number, discountCents = 0) => Math.max(0, grossCents - Math.min(discountCents, grossCents));
 
+// The same order for someone who may not see money: mechanics work from the descriptions, not the prices.
+export function hideAmounts(order: ServiceOrderResponse): ServiceOrderResponse {
+  return {
+    ...order,
+    amountsHidden: true,
+    quoteRevision: undefined,
+    totalAmountCents: 0,
+    discountCents: 0,
+    receivedAmountCents: 0,
+    outstandingAmountCents: 0,
+    paymentStatus: 'AWAITING_PAYMENT',
+    items: order.items?.map((item) => ({ ...item, unitPriceCents: 0, lineTotalCents: 0 })),
+    receipts: undefined,
+    installments: undefined,
+  };
+}
+
 // A quote unanswered for 2 days, or a finished car left in the yard for 3, is worth a call.
 const APPROVAL_STALE_DAYS = 2;
 const READY_STALE_DAYS = 3;
@@ -225,6 +242,7 @@ export class ServiceOrderManager {
     });
 
     await this.syncVehicleMileage(this.prisma.client, existing.vehicleId, request.entryMileage, request.exitMileage);
+    if (request.discountCents !== undefined && request.discountCents !== existing.discountCents) await this.syncPendingInstallments(existing.id);
 
     const updated = await this.serviceOrderRepository.byId(request.id);
     if (!updated) {
@@ -278,6 +296,9 @@ export class ServiceOrderManager {
     const cancelReason = request.toStatus === 'CANCELLED' ? request.reason?.trim() : undefined;
     if (request.toStatus === 'CANCELLED' && (!cancelReason || cancelReason.length < 5)) {
       throw new AppException(AppErrorCode.VALIDATION_ERROR, 'Informe o motivo do cancelamento (mínimo 5 caracteres).', HttpStatus.BAD_REQUEST);
+    }
+    if (request.toStatus === 'CANCELLED' && (await this.receiptRepository.byServiceOrderId(request.id)).length > 0) {
+      throw new AppException(AppErrorCode.VALIDATION_ERROR, 'Esta OS tem recebimentos registrados. Estorne-os antes de cancelar, para o caixa continuar correto.', HttpStatus.CONFLICT);
     }
     const photoPolicy = await this.photoPolicy(actingUser.tenantId);
     if (photoPolicy.entry && fromStatus === 'OPEN' && (request.toStatus === 'IN_PROGRESS' || request.toStatus === 'AWAITING_APPROVAL')) {
@@ -356,6 +377,8 @@ export class ServiceOrderManager {
       if (request.toStatus === 'DELIVERED' || request.toStatus === 'CANCELLED') {
         await tx.appointment.updateMany({ where: { serviceOrderId: request.id, status: 'IN_SERVICE', deletedAt: null }, data: request.toStatus === 'DELIVERED' ? { status: 'COMPLETED' } : { status: 'CANCELLED', cancelledAt: changedAt } });
       }
+      // A cancelled order no longer owes anything: its open installments leave the receivables.
+      if (request.toStatus === 'CANCELLED') await tx.serviceOrderInstallment.updateMany({ where: { serviceOrderId: request.id, status: 'PENDING', deletedAt: null }, data: { deletedAt: changedAt } });
       if (request.toStatus === 'DELIVERED') {
         await this.productivity?.captureDelivery(tx, existing, changedAt);
         await this.maintenanceAlertRepository.resolveOpenByVehicleId(tx, existing.vehicleId, changedAt);
@@ -447,6 +470,7 @@ export class ServiceOrderManager {
       throw new AppException(AppErrorCode.SERVICE_ORDER_NOT_FOUND, 'Ordem de serviço não encontrada.', HttpStatus.NOT_FOUND);
     }
     await this.prisma.client.appointment.updateMany({ where: { serviceOrderId: id, status: 'IN_SERVICE', deletedAt: null }, data: { status: 'CANCELLED', cancelledAt: new Date() } });
+    await this.prisma.client.serviceOrderInstallment.updateMany({ where: { serviceOrderId: id, status: 'PENDING', deletedAt: null }, data: { deletedAt: new Date() } });
 
     const [vehicle, technician] = await Promise.all([
       this.vehicleRepository.byId(existing.vehicleId),
@@ -593,10 +617,16 @@ export class ServiceOrderManager {
   }
 
   async businessSummary(now = new Date()): Promise<DashboardBusinessSummaryResponse> {
-    const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-    const previousMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-    const sixMonthsStart = new Date(now.getFullYear(), now.getMonth() - 5, 1);
-    const orders = await this.serviceOrderRepository.listForBusinessSummary(sixMonthsStart);
+    // Months of the workshop's calendar (UTC-3), whatever the server's time zone is.
+    const local = new Date(now.getTime() - 3 * 3_600_000);
+    const monthAt = (offset: number) => new Date(Date.UTC(local.getUTCFullYear(), local.getUTCMonth() + offset, 1, 3));
+    const currentMonthStart = monthAt(0);
+    const previousMonthStart = monthAt(-1);
+    const sixMonthsStart = monthAt(-5);
+    const [orders, olderOutstandingCents] = await Promise.all([
+      this.serviceOrderRepository.listForBusinessSummary(sixMonthsStart),
+      this.serviceOrderRepository.outstandingDeliveredBefore(sixMonthsStart),
+    ]);
     const [grossTotalsByOrderId, financialItems, allReceipts, cashReceipts, technicians, vehicles, customers] = await Promise.all([
       this.itemRepository.sumTotalsByServiceOrderIds(orders.map((order) => order.id)),
       this.itemRepository.financialItemsByServiceOrderIds(orders.map((order) => order.id)),
@@ -615,8 +645,8 @@ export class ServiceOrderManager {
     const active = orders.filter((order) => activeStatuses.includes(order.status));
 
     const monthlyRevenue = Array.from({ length: 6 }, (_, index) => {
-      const start = new Date(now.getFullYear(), now.getMonth() - 5 + index, 1);
-      const end = new Date(start.getFullYear(), start.getMonth() + 1, 1);
+      const start = monthAt(index - 5);
+      const end = monthAt(index - 4);
       return {
         month: start.toISOString().slice(0, 7),
         revenueCents: cashReceipts.filter((receipt) => receipt.receivedAt >= start && receipt.receivedAt < end).reduce((sum, receipt) => sum + receipt.amountCents, 0),
@@ -645,8 +675,8 @@ export class ServiceOrderManager {
       monthRevenueCents,
       previousMonthRevenueCents: previousReceipts.reduce((sum, receipt) => sum + receipt.amountCents, 0),
       activePipelineCents: total(active),
-      accountsReceivableCents: orders.reduce((sum, order) => sum + outstanding(order), 0),
-      averageTicketCents: currentDelivered.length ? Math.round(monthRevenueCents / currentDelivered.length) : 0,
+      accountsReceivableCents: orders.reduce((sum, order) => sum + outstanding(order), 0) + olderOutstandingCents,
+      averageTicketCents: currentDelivered.length ? Math.round(total(currentDelivered) / currentDelivered.length) : 0,
       overdueDeliveries: active.filter((order) => order.expectedDeliveryAt && order.expectedDeliveryAt < now).length,
       deliveredThisMonth: currentDelivered.length,
       receiptsThisMonth: currentReceipts.length,
@@ -717,6 +747,7 @@ export class ServiceOrderManager {
       adjustment = corrected.adjustment;
     } else created = await this.itemRepository.insert(itemInput);
 
+    await this.syncPendingInstallments(serviceOrder.id);
     if (closedReason) await this.auditClosedItemChange(actingUser, serviceOrder, 'add', created.id, closedReason, previousTotal, adjustment);
     return { item: this.toItemResponse(created) };
   }
@@ -784,6 +815,7 @@ export class ServiceOrderManager {
       throw new AppException(AppErrorCode.SERVICE_ORDER_ITEM_NOT_FOUND, 'Item da OS não encontrado.', HttpStatus.NOT_FOUND);
     }
 
+    await this.syncPendingInstallments(owningOrder.id);
     if (closedReason) await this.auditClosedItemChange(actingUser, owningOrder, 'update', request.id, closedReason, previousTotal, adjustment);
     return { item: this.toItemResponse(updated) };
   }
@@ -816,6 +848,7 @@ export class ServiceOrderManager {
       throw new AppException(AppErrorCode.SERVICE_ORDER_ITEM_NOT_FOUND, 'Item da OS não encontrado.', HttpStatus.NOT_FOUND);
     }
 
+    await this.syncPendingInstallments(owningOrder.id);
     if (closedReason) await this.auditClosedItemChange(actingUser, owningOrder, 'delete', id, closedReason, previousTotal, adjustment);
     return { item: this.toItemResponse(existing) };
   }
@@ -845,6 +878,7 @@ export class ServiceOrderManager {
   async configurePayment(actingUser: AuthenticatedUser, request: ConfigureServiceOrderPaymentRequest): Promise<{ serviceOrder: ServiceOrderResponse }> {
     const serviceOrder = await this.serviceOrderRepository.byId(request.serviceOrderId);
     if (!serviceOrder) throw new AppException(AppErrorCode.SERVICE_ORDER_NOT_FOUND, 'Ordem de serviço não encontrada.', HttpStatus.NOT_FOUND);
+    this.assertNotCancelled(serviceOrder.status);
     const installmentCount = request.method === 'CREDIT_CARD' ? request.installments : 1;
     if (!request.anticipated && !request.firstDueAt) {
       throw new AppException(AppErrorCode.VALIDATION_ERROR, 'Informe a data da primeira parcela.', HttpStatus.BAD_REQUEST);
@@ -914,10 +948,13 @@ export class ServiceOrderManager {
     if (!installment) throw new AppException(AppErrorCode.VALIDATION_ERROR, 'Parcela não encontrada.', HttpStatus.NOT_FOUND);
     const serviceOrder = await this.serviceOrderRepository.byId(installment.serviceOrderId);
     if (!serviceOrder) throw new AppException(AppErrorCode.SERVICE_ORDER_NOT_FOUND, 'Ordem de serviço não encontrada.', HttpStatus.NOT_FOUND);
+    this.assertNotCancelled(serviceOrder.status);
     const updated = await this.prisma.transaction(async (tx) => {
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${installment.serviceOrderId}))`;
       const current = await tx.serviceOrderInstallment.findFirst({ where: { id: installment.id, deletedAt: null } });
       if (!current || current.status === 'PAID') throw new AppException(AppErrorCode.VALIDATION_ERROR, 'Esta parcela já foi recebida.', HttpStatus.BAD_REQUEST);
+      const { outstanding } = await this.orderBalance(tx, serviceOrder.id, serviceOrder.discountCents);
+      if (current.amountCents > outstanding) throw new AppException(AppErrorCode.SERVICE_ORDER_RECEIPT_EXCEEDS_BALANCE, 'O valor desta parcela é maior que o saldo pendente da OS.', HttpStatus.BAD_REQUEST);
       const receipt = await tx.serviceOrderReceipt.create({ data: {
         tenantId: actingUser.tenantId,
         serviceOrderId: serviceOrder.id,
@@ -939,7 +976,10 @@ export class ServiceOrderManager {
   async listDueInstallments(limit: number): Promise<{ items: ServiceOrderInstallmentResponse[]; total: number }> {
     const alertUntil = new Date();
     alertUntil.setDate(alertUntil.getDate() + 3);
-    const where = { status: 'PENDING', dueAt: { lte: alertUntil }, deletedAt: null };
+    const candidates = await this.prisma.client.serviceOrderInstallment.findMany({ where: { status: 'PENDING', dueAt: { lte: alertUntil }, deletedAt: null }, select: { serviceOrderId: true }, distinct: ['serviceOrderId'] });
+    // Nothing is owed for an order that was cancelled or removed.
+    const liveOrders = await this.prisma.client.serviceOrder.findMany({ where: { id: { in: candidates.map((item) => item.serviceOrderId) }, deletedAt: null, status: { not: 'CANCELLED' } }, select: { id: true } });
+    const where = { status: 'PENDING', dueAt: { lte: alertUntil }, deletedAt: null, serviceOrderId: { in: liveOrders.map((order) => order.id) } };
     const [installments, total] = await Promise.all([
       this.prisma.client.serviceOrderInstallment.findMany({ where, orderBy: { dueAt: 'asc' }, take: limit }),
       this.prisma.client.serviceOrderInstallment.count({ where }),
@@ -968,21 +1008,17 @@ export class ServiceOrderManager {
   async confirmReceipt(actingUser: AuthenticatedUser, request: ConfirmServiceOrderReceiptRequest): Promise<{ receipt: ServiceOrderReceiptResponse }> {
     const serviceOrder = await this.serviceOrderRepository.byId(request.serviceOrderId);
     if (!serviceOrder) throw new AppException(AppErrorCode.SERVICE_ORDER_NOT_FOUND, 'Ordem de serviço não encontrada.', HttpStatus.NOT_FOUND);
+    this.assertNotCancelled(serviceOrder.status);
     if (!serviceOrder.paymentMethod) {
       throw new AppException(AppErrorCode.VALIDATION_ERROR, 'Defina primeiro a forma de pagamento combinada na OS.', HttpStatus.BAD_REQUEST);
     }
     const receipt = await this.prisma.transaction(async (tx) => {
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${serviceOrder.id}))`;
-      const [items, receipts] = await Promise.all([
-        tx.serviceOrderItem.findMany({ where: { serviceOrderId: serviceOrder.id, deletedAt: null } }),
-        tx.serviceOrderReceipt.findMany({ where: { serviceOrderId: serviceOrder.id, deletedAt: null } }),
-      ]);
-      const totalAmountCents = netTotal(items.reduce((sum, item) => sum + Math.round(item.quantity.toNumber() * item.unitPriceCents), 0), serviceOrder.discountCents);
-      const received = receipts.reduce((sum, item) => sum + item.amountCents, 0);
-      if (request.amountCents > totalAmountCents - received) {
+      const { outstanding } = await this.orderBalance(tx, serviceOrder.id, serviceOrder.discountCents);
+      if (request.amountCents > outstanding) {
         throw new AppException(AppErrorCode.SERVICE_ORDER_RECEIPT_EXCEEDS_BALANCE, 'O valor recebido é maior que o saldo pendente.', HttpStatus.BAD_REQUEST);
       }
-      return tx.serviceOrderReceipt.create({ data: {
+      const created = await tx.serviceOrderReceipt.create({ data: {
         tenantId: actingUser.tenantId,
         serviceOrderId: serviceOrder.id,
         method: request.method,
@@ -991,6 +1027,8 @@ export class ServiceOrderManager {
         confirmedBy: actingUser.userId,
         notes: request.notes?.trim() || undefined,
       } });
+      await this.rebalanceInstallments(tx, serviceOrder.id, serviceOrder.discountCents);
+      return created;
     });
     await this.auditLog.record({ tenantId: actingUser.tenantId, userId: actingUser.userId, action: 'service_order.receipt_confirmed', entity: 'service_order_receipt', entityId: receipt.id, metadata: { serviceOrderId: serviceOrder.id, amountCents: receipt.amountCents, method: receipt.method } });
     return { receipt: this.toReceiptResponse(receipt) };
@@ -1001,9 +1039,56 @@ export class ServiceOrderManager {
     if (!receipt) throw new AppException(AppErrorCode.SERVICE_ORDER_RECEIPT_NOT_FOUND, 'Recebimento não encontrado.', HttpStatus.NOT_FOUND);
     const serviceOrder = await this.serviceOrderRepository.byId(receipt.serviceOrderId);
     if (!serviceOrder) throw new AppException(AppErrorCode.SERVICE_ORDER_RECEIPT_NOT_FOUND, 'Recebimento não encontrado.', HttpStatus.NOT_FOUND);
-    await this.receiptRepository.softDelete(receipt.id);
+    // Reversing the payment of an installment reopens that installment: otherwise it stays "paid" with no money behind it.
+    await this.prisma.transaction(async (tx) => {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${serviceOrder.id}))`;
+      const reversed = await tx.serviceOrderReceipt.updateMany({ where: { id: receipt.id, deletedAt: null }, data: { deletedAt: new Date() } });
+      if (!reversed.count) throw new AppException(AppErrorCode.SERVICE_ORDER_RECEIPT_NOT_FOUND, 'Recebimento não encontrado.', HttpStatus.NOT_FOUND);
+      await tx.serviceOrderInstallment.updateMany({ where: { receiptId: receipt.id, deletedAt: null }, data: { status: 'PENDING', paidAt: null, receiptId: null } });
+      await this.rebalanceInstallments(tx, serviceOrder.id, serviceOrder.discountCents);
+    });
     await this.auditLog.record({ tenantId: actingUser.tenantId, userId: actingUser.userId, action: 'service_order.receipt_reversed', entity: 'service_order_receipt', entityId: receipt.id, metadata: { serviceOrderId: serviceOrder.id, amountCents: receipt.amountCents } });
     return { success: true };
+  }
+
+  private assertNotCancelled(status: string) {
+    if (status === 'CANCELLED') throw new AppException(AppErrorCode.VALIDATION_ERROR, 'Esta OS foi cancelada e não pode receber pagamentos.', HttpStatus.BAD_REQUEST);
+  }
+
+  private async orderBalance(tx: PrismaClient, serviceOrderId: string, discountCents: number): Promise<{ outstanding: number }> {
+    const [items, receipts] = await Promise.all([
+      tx.serviceOrderItem.findMany({ where: { serviceOrderId, deletedAt: null } }),
+      tx.serviceOrderReceipt.findMany({ where: { serviceOrderId, deletedAt: null } }),
+    ]);
+    const total = netTotal(items.reduce((sum, item) => sum + Math.round(item.quantity.toNumber() * item.unitPriceCents), 0), discountCents);
+    return { outstanding: Math.max(0, total - receipts.reduce((sum, receipt) => sum + receipt.amountCents, 0)) };
+  }
+
+  // The open installments always add up to what is still owed, so the receivables and the projected cash flow follow any
+  // change in items, discount or receipts. Each keeps its due date; when nothing is owed any more they leave the list.
+  private async rebalanceInstallments(tx: PrismaClient, serviceOrderId: string, discountCents: number) {
+    const pending = await tx.serviceOrderInstallment.findMany({ where: { serviceOrderId, status: 'PENDING', deletedAt: null }, orderBy: { installmentNumber: 'asc' } });
+    if (!pending.length) return;
+    const { outstanding } = await this.orderBalance(tx, serviceOrderId, discountCents);
+    if (outstanding === 0) {
+      await tx.serviceOrderInstallment.updateMany({ where: { serviceOrderId, status: 'PENDING', deletedAt: null }, data: { deletedAt: new Date() } });
+      return;
+    }
+    const regular = Math.floor(outstanding / pending.length);
+    for (const [index, installment] of pending.entries()) {
+      const amountCents = index === pending.length - 1 ? outstanding - regular * (pending.length - 1) : regular;
+      if (installment.amountCents !== amountCents) await tx.serviceOrderInstallment.update({ where: { id: installment.id }, data: { amountCents } });
+    }
+  }
+
+  private async syncPendingInstallments(serviceOrderId: string) {
+    const hasPending = await this.prisma.client.serviceOrderInstallment.findFirst({ where: { serviceOrderId, status: 'PENDING', deletedAt: null }, select: { id: true } });
+    if (!hasPending) return;
+    await this.prisma.transaction(async (tx) => {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${serviceOrderId}))`;
+      const order = await tx.serviceOrder.findFirst({ where: { id: serviceOrderId, deletedAt: null }, select: { discountCents: true } });
+      if (order) await this.rebalanceInstallments(tx, serviceOrderId, order.discountCents);
+    });
   }
 
   private async computeTotalAmountCents(serviceOrderId: string): Promise<number> {

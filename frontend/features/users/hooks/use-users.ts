@@ -29,6 +29,11 @@ export function useAcceptInvite() {
   });
 }
 
+// Names of the active team, for assigning orders and appointments. Available to everyone, unlike the team list.
+export function useTeamMembers() {
+  return useQuery({ queryKey: [USERS_LIST_KEY, 'team-members'], queryFn: () => usersApi.teamMembers() });
+}
+
 export function useUsersList(request: UserListRequest) {
   return useQuery({
     queryKey: [USERS_LIST_KEY, request],

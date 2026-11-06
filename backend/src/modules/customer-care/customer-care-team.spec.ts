@@ -77,7 +77,7 @@ describe('test send', () => {
   function build(connection: unknown) {
     const whatsapp = { getConnection: jest.fn().mockResolvedValue(connection), sendNotice: jest.fn() };
     const care = { preview: jest.fn().mockResolvedValue({ subject: 'x', message: 'Olá, Mariana! Lembrete de teste.' }), settings: jest.fn().mockResolvedValue(DEFAULT_CARE_SETTINGS) };
-    return { service: new CustomerCareAutomationService({} as never, care as never, whatsapp as never, {} as never, {} as never), whatsapp, care };
+    return { service: new CustomerCareAutomationService({} as never, care as never, whatsapp as never, {} as never, {} as never, {} as never), whatsapp, care };
   }
 
   it('sends the real campaign message, marked as a test, to the number given', async () => {

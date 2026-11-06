@@ -1,6 +1,6 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { PLANS, planPriceCents, resolvePlan, type BillingCycle, type BillingInvoiceResponse, type BillingStatusResponse, type CheckoutRequest, type CheckoutResponse, type InvoiceStatus, type PlanCode } from '@oficina/contracts';
+import { BILLING_CYCLES, PLANS, planPriceCents, resolvePlan, type BillingCycle, type BillingInvoiceResponse, type BillingStatusResponse, type CheckoutRequest, type CheckoutResponse, type InvoiceStatus, type PlanCode } from '@oficina/contracts';
 import { AuditLogService } from '../../shared/audit-log/audit-log.service';
 import type { AuthenticatedUser } from '../../shared/guards/jwt-auth.guard';
 import { EntitlementsService } from '../../shared/plan/entitlements.service';
@@ -13,7 +13,7 @@ export interface StripeObject {
   status?: string; amount_paid?: number; amount_due?: number; due_date?: number | null; created?: number; hosted_invoice_url?: string | null;
   status_transitions?: { paid_at?: number | null }; lines?: { data?: StripeLine[] };
   metadata?: Record<string, string>; subscription_details?: { metadata?: Record<string, string> };
-  parent?: { subscription_details?: { subscription?: string } };
+  parent?: { subscription_details?: { subscription?: string; metadata?: Record<string, string> } };
 }
 export interface StripeEvent { id?: string; type?: string; data?: { object?: StripeObject } }
 
@@ -79,7 +79,9 @@ export class BillingService {
       const customerId = tenant.billingCustomerId ?? await this.newCustomer(user, tenant);
       const page = `${this.config.get<string>('FRONTEND_URL', 'http://localhost:3000')}/configuracoes/assinatura`;
       const url = await this.stripe.checkoutSession({ customerId, tenantId: tenant.id, plan: plan.code, planName: plan.name, cycle, unitAmountCents, interval: interval(cycle), successUrl: `${page}?contratado=1`, cancelUrl: page });
-      await this.prisma.unscoped.tenant.update({ where: { id: tenant.id }, data: { billingCustomerId: customerId, pendingPlan: plan.code, subscriptionCycle: cycle } });
+      // Only remembers what is being contracted: the plan and the cycle change when the payment is confirmed, so a page
+      // left without paying changes nothing the workshop or the manager sees.
+      await this.prisma.unscoped.tenant.update({ where: { id: tenant.id }, data: { billingCustomerId: customerId, pendingPlan: plan.code } });
       await this.record(user, 'billing.checkout_started', tenant.id, plan.code, cycle);
       return { checkoutUrl: safeStripeUrl(url), appliedNow: false };
     }
@@ -132,15 +134,14 @@ export class BillingService {
     switch (event.type) {
       case 'checkout.session.completed':
         if (object.mode !== 'subscription' || !object.subscription) return { handled: false };
-        await this.prisma.unscoped.tenant.update({ where: { id: tenant.id }, data: { billingSubscriptionId: object.subscription, ...(object.customer && !tenant.billingCustomerId ? { billingCustomerId: object.customer } : {}) } });
-        return { handled: true };
+        return { handled: await this.completeCheckout(tenant, object) };
       case 'invoice.finalized':
       case 'invoice.voided':
       case 'invoice.marked_uncollectible':
         return { handled: await this.mirror(tenant, object, invoiceStatusOf(object.status)) };
       case 'invoice.paid':
         if (!(await this.mirror(tenant, object, 'paid'))) return { handled: false };
-        await this.applyPayment(tenant, this.periodEnd(object));
+        await this.applyPayment(tenant, object);
         return { handled: true };
       case 'invoice.payment_failed':
         await this.mirror(tenant, object, 'overdue');
@@ -164,6 +165,11 @@ export class BillingService {
     const dueDate = new Date(`${saoPauloDate(new Date((invoice.due_date ?? invoice.created ?? Date.now() / 1000) * 1000))}T00:00:00.000Z`);
     const paidAt = status === 'paid' ? new Date((invoice.status_transitions?.paid_at ?? Date.now() / 1000) * 1000) : null;
     const invoiceUrl = safeStripeUrl(invoice.hosted_invoice_url);
+    // Stripe does not guarantee the order of events: a late "finalized" or "failed" must not reopen an invoice already paid.
+    if (status !== 'paid') {
+      const known = await this.prisma.unscoped.billingInvoice.findFirst({ where: { providerPaymentId: invoice.id }, select: { status: true } });
+      if (known?.status === 'paid') return true;
+    }
     await this.prisma.unscoped.billingInvoice.upsert({
       where: { providerPaymentId: invoice.id },
       create: { tenantId: tenant.id, providerPaymentId: invoice.id, amountCents, dueDate, status, paidAt, invoiceUrl },
@@ -178,12 +184,36 @@ export class BillingService {
     return ends.length ? new Date(Math.max(...ends) * 1000) : null;
   }
 
-  private async applyPayment(tenant: TenantBilling, nextDue: Date | null) {
-    const cycle = tenant.subscriptionCycle as BillingCycle;
+  // The page that was paid says what was bought. Two pages opened for different plans must not mix up: the one paid wins.
+  // A workshop paying twice would be charged twice forever, so the previous subscription stops here.
+  private async completeCheckout(tenant: TenantBilling, session: StripeObject): Promise<boolean> {
+    const subscription = session.subscription!;
+    const replaced = tenant.billingSubscriptionId && tenant.billingSubscriptionId !== subscription && tenant.subscriptionStatus !== 'canceled' ? tenant.billingSubscriptionId : null;
+    if (replaced) await this.stripe.cancelNow(replaced);
+    const plan = PLANS[session.metadata?.plan as PlanCode]?.code;
+    const cycle = BILLING_CYCLES.find((item) => item === session.metadata?.cycle);
+    // The first payment may have been confirmed before this event: it is then corrected to what was really bought.
+    const alreadyPaid = tenant.subscriptionStatus === 'active' && !tenant.billingSubscriptionId;
+    await this.prisma.unscoped.tenant.update({ where: { id: tenant.id }, data: {
+      billingSubscriptionId: subscription,
+      ...(session.customer && !tenant.billingCustomerId ? { billingCustomerId: session.customer } : {}),
+      ...(plan ? (alreadyPaid ? { plan, pendingPlan: null } : { pendingPlan: plan }) : {}),
+      ...(cycle ? { subscriptionCycle: cycle } : {}),
+      ...(alreadyPaid && plan && cycle ? { subscriptionAmountCents: planPriceCents(plan, cycle) } : {}),
+    } });
+    this.entitlements.forget(tenant.id);
+    return true;
+  }
+
+  private async applyPayment(tenant: TenantBilling, invoice: StripeObject) {
+    const nextDue = this.periodEnd(invoice);
+    // Before the checkout event arrives the local record does not know the cycle yet; the charge itself says it.
+    const metadata = invoice.parent?.subscription_details?.metadata ?? invoice.subscription_details?.metadata;
+    const cycle = (tenant.billingSubscriptionId ? tenant.subscriptionCycle : BILLING_CYCLES.find((item) => item === metadata?.cycle) ?? tenant.subscriptionCycle) as BillingCycle;
     const plan = resolvePlan(tenant.pendingPlan ?? tenant.plan).code;
     // A late notice for an older charge must not pull the next due date back.
     const keep = !nextDue || (tenant.subscriptionStatus === 'active' && tenant.subscriptionDueAt !== null && tenant.subscriptionDueAt > nextDue);
-    await this.prisma.unscoped.tenant.update({ where: { id: tenant.id }, data: { plan, pendingPlan: null, subscriptionStatus: 'active', subscriptionAmountCents: planPriceCents(plan, cycle), ...(keep ? {} : { subscriptionDueAt: nextDue }) } });
+    await this.prisma.unscoped.tenant.update({ where: { id: tenant.id }, data: { plan, pendingPlan: null, subscriptionStatus: 'active', ...(cycle === tenant.subscriptionCycle ? {} : { subscriptionCycle: cycle }), subscriptionAmountCents: planPriceCents(plan, cycle), ...(keep ? {} : { subscriptionDueAt: nextDue }) } });
     this.entitlements.forget(tenant.id);
     await this.audit.record({ tenantId: tenant.id, action: 'billing.payment_confirmed', entity: 'tenant', entityId: tenant.id, metadata: { plan, cycle, amountCents: planPriceCents(plan, cycle) } });
   }

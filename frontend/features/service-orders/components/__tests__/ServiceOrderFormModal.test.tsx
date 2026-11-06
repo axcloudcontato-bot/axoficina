@@ -17,7 +17,7 @@ vi.mock('@/features/vehicles/api/vehicles-api', () => ({
 }));
 
 vi.mock('@/features/users/api/users-api', () => ({
-  usersApi: { list: vi.fn() },
+  usersApi: { list: vi.fn(), teamMembers: vi.fn() },
 }));
 
 vi.mock('@/features/customers/api/customers-api', () => ({
@@ -78,6 +78,7 @@ describe('ServiceOrderFormModal', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(vehiclesApi.list).mockResolvedValue({ items: [vehicle], total: 1, offset: 0, limit: 100, hasMore: false });
+    vi.mocked(usersApi.teamMembers).mockResolvedValue({ items: [technician] });
     vi.mocked(usersApi.list).mockResolvedValue({ items: [technician], total: 1, offset: 0, limit: 100, hasMore: false });
     vi.mocked(customersApi.list).mockResolvedValue({ items: [{ id: 'c1', tenantId: 't1', type: 'PF', document: '11144477735', name: 'JoÃ£o da Silva', phone: '11999998888', createdAt: '2026-01-01T00:00:00Z' }], total: 1, offset: 0, limit: 20, hasMore: false });
   });

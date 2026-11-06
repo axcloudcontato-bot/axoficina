@@ -26,7 +26,7 @@ export class VehiclesController {
   @Roles('ADMIN', 'MANAGER', 'FRONT_DESK')
   @Permissions('vehicles.manage')
   @HttpCode(HttpStatus.OK)
-  @Post('vehicles/update')
+  @PlanLimit('write') @Post('vehicles/update')
   async update(@CurrentUser() actingUser: AuthenticatedUser, @Body() body: UpdateVehicleDto): Promise<{ vehicle: VehicleResponse }> {
     return this.vehicleManager.update(actingUser, body);
   }
@@ -34,7 +34,7 @@ export class VehiclesController {
   @Roles('ADMIN', 'MANAGER', 'FRONT_DESK')
   @Permissions('vehicles.manage')
   @HttpCode(HttpStatus.OK)
-  @Post('vehicles/delete')
+  @PlanLimit('write') @Post('vehicles/delete')
   async delete(@CurrentUser() actingUser: AuthenticatedUser, @Body() body: DeleteVehicleDto): Promise<{ vehicle: VehicleResponse }> {
     return this.vehicleManager.delete(actingUser, body.id);
   }
@@ -42,7 +42,7 @@ export class VehiclesController {
   @Roles('ADMIN', 'MANAGER', 'FRONT_DESK')
   @Permissions('vehicles.manage')
   @HttpCode(HttpStatus.OK)
-  @Post('vehicles/restore')
+  @PlanLimit('write') @Post('vehicles/restore')
   async restore(@CurrentUser() actingUser: AuthenticatedUser, @Body() body: RestoreVehicleDto): Promise<{ vehicle: VehicleResponse }> {
     return this.vehicleManager.restore(actingUser, body.id);
   }
@@ -67,7 +67,7 @@ export class VehiclesController {
   @Roles('ADMIN', 'MANAGER', 'FRONT_DESK')
   @Permissions('vehicles.manage')
   @HttpCode(HttpStatus.OK)
-  @Post('vehicles/transfer')
+  @PlanLimit('write') @Post('vehicles/transfer')
   async transfer(@CurrentUser() actingUser: AuthenticatedUser, @Body() body: TransferVehicleDto): Promise<{ vehicle: VehicleResponse }> {
     return this.vehicleManager.transfer(actingUser, body);
   }

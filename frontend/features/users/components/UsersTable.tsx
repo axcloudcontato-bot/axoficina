@@ -14,6 +14,7 @@ const ROLE_LABELS: Record<string, string> = {
   MANAGER: 'Gestor',
   MECHANIC: 'Mecânico',
   FRONT_DESK: 'Recepção',
+  FINANCE: 'Financeiro',
 };
 
 const STATUS_STYLES: Record<string, string> = {

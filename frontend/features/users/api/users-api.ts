@@ -9,6 +9,7 @@ import type {
   UserListRequest,
   ManageUserAccessRequest,
   RenameUserRequest,
+  TeamMemberResponse,
 } from '@oficina/contracts';
 
 export const usersApi = {
@@ -24,6 +25,11 @@ export const usersApi = {
 
   async list(request: UserListRequest): Promise<PaginationData<UserListItemResponse>> {
     const response = await apiClient.post<PaginationData<UserListItemResponse>>('/api/v1/users/list', request);
+    return response.data;
+  },
+
+  async teamMembers(): Promise<{ items: TeamMemberResponse[] }> {
+    const response = await apiClient.get<{ items: TeamMemberResponse[] }>('/api/v1/users/team-members');
     return response.data;
   },
 

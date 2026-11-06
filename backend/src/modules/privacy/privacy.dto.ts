@@ -22,7 +22,9 @@ export class ResolvePrivacyRequestDto {
 }
 export class EraseCustomerDto {
   @IsUUID('4') requestId!: string;
-  @IsString() @MinLength(1) @MaxLength(200) password!: string;
+  // One of the two: someone who signs in with Google has no password to type.
+  @IsOptional() @IsString() @MinLength(1) @MaxLength(200) password?: string;
+  @IsOptional() @IsString() @MaxLength(4096) googleCredential?: string;
   @Equals('EXCLUIR') confirmation!: string;
 }
 export class EraseAccountDto extends EraseCustomerDto {}

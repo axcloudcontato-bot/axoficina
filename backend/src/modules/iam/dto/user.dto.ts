@@ -14,7 +14,7 @@ export class InviteUserDto implements InviteUserRequest {
   name!: string;
 
   // ADMIN de propósito fora da lista — ver INVITABLE_ROLES em contracts.
-  @IsIn(INVITABLE_ROLES, { message: 'role must be one of MANAGER, MECHANIC, FRONT_DESK' })
+  @IsIn(INVITABLE_ROLES, { message: 'role must be one of MANAGER, MECHANIC, FRONT_DESK, FINANCE' })
   role!: InviteUserRequest['role'];
 }
 
@@ -53,7 +53,7 @@ class UserListFiltersDto implements UserListFilters {
   status?: UserListFilters['status'];
 
   @IsOptional()
-  @IsIn(USER_ROLES, { message: 'role must be one of ADMIN, MANAGER, MECHANIC, FRONT_DESK' })
+  @IsIn(USER_ROLES, { message: 'role must be one of ADMIN, MANAGER, MECHANIC, FRONT_DESK, FINANCE' })
   role?: UserListFilters['role'];
 }
 
