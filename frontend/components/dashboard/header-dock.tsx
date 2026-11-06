@@ -155,23 +155,24 @@ export function HeaderDock() {
       (event.key === 'ArrowDown' ? items[0] : items.at(-1))?.focus();
     } else openPanel(next, event.key === 'ArrowDown' ? 'first' : 'last');
   }
-  function trigger(next: Exclude<View, 'default'>, label: string, Icon: PhosphorIcon) {
-    return <button key={next} type="button" title={label} aria-label={label} aria-expanded={view === next} aria-controls={view === next ? panelId : undefined} aria-haspopup="dialog" aria-keyshortcuts={next === 'help' ? 'Control+/ Meta+/' : undefined} onKeyDown={(event) => triggerKeys(event, next)} onClick={() => view === next ? closePanel(true) : openPanel(next)} className={cn('relative flex size-9 items-center justify-center rounded-pill transition-colors duration-fast', view === next ? 'bg-selection text-accent-foreground' : 'text-text-muted hover:bg-muted hover:text-text')}>
+  function trigger(next: Exclude<View, 'default'>, label: string, Icon: PhosphorIcon, className = 'flex') {
+    return <button key={next} type="button" title={label} aria-label={label} aria-expanded={view === next} aria-controls={view === next ? panelId : undefined} aria-haspopup="dialog" aria-keyshortcuts={next === 'help' ? 'Control+/ Meta+/' : undefined} onKeyDown={(event) => triggerKeys(event, next)} onClick={() => view === next ? closePanel(true) : openPanel(next)} className={cn('relative size-9 items-center justify-center rounded-pill transition-colors duration-fast', className, view === next ? 'bg-selection text-accent-foreground' : 'text-text-muted hover:bg-muted hover:text-text')}>
       <Icon className="size-[18px]" aria-hidden="true" />{next === 'alerts' && openAlertCount > 0 && <span data-testid="open-alert-indicator" className="absolute -right-1 -top-1 min-w-4 rounded-pill bg-warning px-1 text-center text-[10px] font-bold leading-4 text-black"><span className="sr-only">Notificações pendentes: </span>{openAlertCount > 99 ? '99+' : openAlertCount}</span>}
       {next === 'updates' && updates.unread && <span data-testid="unread-updates-indicator" className="absolute right-1.5 top-1.5 size-1.5 rounded-full bg-primary"><span className="sr-only">Novidades disponíveis</span></span>}
     </button>;
   }
 
-  return <div ref={containerRef} className="relative flex w-full flex-wrap items-center gap-2 xl:w-[min(44rem,70%)]" onBlur={(event) => { if (event.relatedTarget && !event.currentTarget.contains(event.relatedTarget as Node)) closePanel(); }}>
+  // `contents` on a phone lets the search and the actions line up with the page title in the top bar.
+  return <div ref={containerRef} className="contents sm:relative sm:flex sm:w-full sm:flex-wrap sm:items-center sm:gap-2 xl:w-[min(44rem,70%)]" onBlur={(event) => { if (event.relatedTarget && !event.currentTarget.contains(event.relatedTarget as Node)) closePanel(); }}>
     <div className="order-2 flex min-w-0 flex-1 basis-full items-center rounded-pill border border-border bg-card pr-3 focus-within:border-ring focus-within:ring-2 focus-within:ring-ring sm:order-1 sm:basis-52">
       <button type="button" aria-label="Buscar ordens de serviço" title="Buscar (Ctrl+K)" aria-keyshortcuts="Control+k Meta+k" className="flex size-10 shrink-0 items-center justify-center rounded-pill text-text-muted hover:text-text" onClick={() => { openPanel('search'); searchRef.current?.focus(); }}><MagnifyingGlass className="size-[18px]" aria-hidden="true" /></button>
       <input ref={searchRef} value={searchQuery} aria-label="Buscar páginas e ordens de serviço" aria-haspopup="dialog" aria-controls={view === 'search' ? panelId : undefined} placeholder="Cliente, placa, CPF ou página..." onClick={() => { if (view !== 'search') openPanel('search'); }} onChange={(event) => { setSearchQuery(event.target.value); if (view !== 'search') openPanel('search'); }} onKeyDown={searchKeys} className="h-10 min-w-0 flex-1 rounded-pill bg-transparent text-sm text-text outline-none placeholder:text-text-muted" />
     </div>
-    <div role="group" aria-label="Ações do cabeçalho" className="order-1 ml-auto flex shrink-0 items-center gap-1 rounded-pill border border-border bg-card p-1 sm:order-2">
+    <div role="group" aria-label="Ações do cabeçalho" className="order-1 flex shrink-0 items-center sm:order-2 sm:ml-auto sm:gap-1 sm:rounded-pill sm:border sm:border-border sm:bg-card sm:p-1">
       {trigger('alerts', 'Alertas', Bell)}{trigger('updates', 'Novidades do sistema', Sparkle)}{trigger('theme', 'Tema', ThemeIcon)}
-      {user && trigger('profile', 'Perfil', UserCircle)}{trigger('help', 'Atalhos de teclado', Keyboard)}
+      {user && trigger('profile', 'Perfil', UserCircle)}{trigger('help', 'Atalhos de teclado', Keyboard, 'hidden sm:flex')}
     </div>
-      {view !== 'default' && <motion.div key="dock-panel" initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.12 }} className="absolute right-0 top-[calc(100%+10px)] z-40 w-[min(24rem,calc(100vw-2rem))] overflow-hidden rounded-card border border-border bg-popover shadow-popover">
+      {view !== 'default' && <motion.div key="dock-panel" initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.12 }} className="absolute right-4 top-[calc(100%+6px)] z-40 w-[min(24rem,calc(100vw-2rem))] sm:right-0 sm:top-[calc(100%+10px)] overflow-hidden rounded-card border border-border bg-popover shadow-popover">
         <div ref={panelRef} id={panelId} role="dialog" aria-label={VIEW_LABELS[view]} tabIndex={-1} onKeyDown={panelKeys} className="max-h-[calc(100dvh-13rem)] overflow-y-auto p-2 sm:max-h-[calc(100dvh-10rem)] xl:max-h-[calc(100dvh-7rem)]">
           {view === 'search' && <>
             <p className="px-3 py-2 text-xs text-text-muted">Ctrl+K ou ⌘K · Setas para navegar · Enter para abrir · Esc para fechar</p>

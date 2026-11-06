@@ -1,6 +1,12 @@
 // This feed is visible to every workshop account. Keep SaaS administration changes out of it.
 export const RELEASE_NOTES = [
   {
+    id: '2026-11-06-cabecalho-celular', date: '2026-11-06', title: 'Cabeçalho mais compacto no celular',
+    items: [
+      'No celular, o título da página e os ícones de alertas, novidades, tema e perfil agora ficam na mesma linha, com a busca logo abaixo. Sobra mais espaço para o conteúdo.',
+    ],
+  },
+  {
     id: '2026-11-06-textos-legais', date: '2026-11-06', title: 'Termos e Política de privacidade atualizados',
     items: [
       'Os Termos de uso agora descrevem o teste grátis, a assinatura pelo Stripe, a renovação e o prazo de 30 dias após o encerramento da conta.',

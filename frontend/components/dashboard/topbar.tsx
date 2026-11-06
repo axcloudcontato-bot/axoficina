@@ -51,15 +51,16 @@ export function Topbar() {
   const Icon = meta?.icon;
 
   return (
-    <header className="flex min-h-16 shrink-0 flex-col items-stretch justify-between gap-3 border-b border-border bg-bg px-4 py-3 sm:px-6 xl:flex-row xl:items-center">
-      <div className="flex min-w-0 items-center gap-3">
+    // On a phone the dock's children join this row: title and actions on one line, search on the next.
+    <header className="relative flex min-h-16 shrink-0 flex-wrap items-center justify-between gap-x-2 gap-y-2 border-b border-border bg-bg px-4 py-2 sm:flex-col sm:flex-nowrap sm:items-stretch sm:gap-3 sm:px-6 sm:py-3 xl:flex-row xl:items-center">
+      <div className="flex min-w-0 flex-1 items-center gap-3 sm:flex-none">
         {Icon && (
-          <span key={pathname} data-reveal className="flex size-9 shrink-0 items-center justify-center rounded-button bg-muted text-text-muted">
+          <span key={pathname} data-reveal className="hidden size-9 shrink-0 items-center justify-center rounded-button bg-muted text-text-muted sm:flex">
             <Icon className="size-[18px]" aria-hidden="true" />
           </span>
         )}
         <div className="min-w-0">
-          <h1 className="truncate text-lg font-bold leading-tight tracking-tight text-text">{meta?.title}</h1>
+          <h1 className="truncate text-base font-bold leading-tight tracking-tight text-text sm:text-lg">{meta?.title}</h1>
           {meta?.description && <p className="hidden truncate text-sm text-text-muted sm:block">{meta.description}</p>}
         </div>
       </div>
