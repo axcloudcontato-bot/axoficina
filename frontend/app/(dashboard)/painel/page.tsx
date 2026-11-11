@@ -5,8 +5,10 @@ import { PageHero } from '@/components/dashboard/PageHero';
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { ArrowRight, CalendarBlank, CheckCircle, CurrencyCircleDollar, ArrowClockwise, Warning, Users, Wallet, Wrench } from '@phosphor-icons/react';
-import type { AppointmentResponse, DashboardBusinessSummaryResponse, DashboardWaitingResponse, ServiceOrderListItemResponse } from '@oficina/contracts';
+import { ArrowRight, CalendarBlank, CalendarCheck, CheckCircle, CurrencyCircleDollar, ArrowClockwise, HourglassMedium, MagnifyingGlass, Warning, Users, Wrench } from '@phosphor-icons/react';
+import type { AppointmentResponse, DashboardBusinessSummaryResponse, DashboardWaitingResponse, FinancialEntryResponse, ServiceOrderListItemResponse, ServiceOrderListRequest } from '@oficina/contracts';
+import { Input } from '@/components/ui/input';
+import { useDebouncedValue } from '@/lib/use-debounced-value';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -18,13 +20,22 @@ import { useCareForecast } from '@/features/customer-care/use-customer-care';
 import { StatusBadge } from '@/features/service-orders/components/StatusBadge';
 import { NewServiceOrderQuickStart } from '@/features/service-orders/components/NewServiceOrderQuickStart';
 import { MyProductivityCard } from '@/features/service-orders/components/MyProductivityCard';
-import { useDueServiceOrderInstallments } from '@/features/service-orders/hooks/use-service-orders';
+import { useDueServiceOrderInstallments, useServiceOrdersList } from '@/features/service-orders/hooks/use-service-orders';
 import { useCashFlow } from '@/features/financial/hooks/use-financial';
 import { formatCurrencyBRL } from '@/lib/format-currency';
 import { hasPermission } from '@/features/auth/permissions';
 import { useAuthStore } from '@/stores/auth-store';
 
 const REFRESH_INTERVAL_MS = 60_000;
+// "Contas a pagar/receber" show everything overdue plus what falls due in this window.
+const DUE_WINDOW_DAYS = 7;
+const MOBILE_ORDER_ROWS = 8;
+type OrderFilter = NonNullable<ServiceOrderListRequest['attention']>;
+const ORDER_FILTERS: { value: OrderFilter; label: string }[] = [
+  { value: 'ACTIVE', label: 'Todas' },
+  { value: 'OVERDUE', label: 'Atrasadas' },
+  { value: 'UNASSIGNED', label: 'Sem técnico' },
+];
 const APPOINTMENT_STATUS_LABELS = {
   SCHEDULED: 'Agendado',
   CONFIRMED: 'Confirmado',
@@ -46,10 +57,19 @@ export default function DashboardPage() {
   // One request carries the exact counts, the prioritized rows and the workload.
   const today = useDashboardToday(range);
   const monthSummary = useDashboardBusinessSummary(canViewFinance);
-  const dueInstallments = useDueServiceOrderInstallments(canManageReceipts ? 4 : 0);
+  // Order installments already show up in "Contas a receber" for finance users.
+  const dueInstallments = useDueServiceOrderInstallments(canManageReceipts && !canViewFinance ? 4 : 0);
   const appointments = useAppointments(range);
   const forecast = useCareForecast(canViewAlerts);
   const dailyCashFlow = useCashFlow({ startAt: range.startsAt, endAt: range.endsAt }, { enabled: canViewFinance });
+  const month = useMemo(() => monthToDate(range.startsAt), [range.startsAt]);
+  const deliveredThisMonth = useServiceOrdersList({ status: 'DELIVERED', dateField: 'CLOSED', startDate: month.startDate, endDate: month.endDate, offset: 0, limit: 1 });
+  const dueWindow = useMemo(() => ({ startAt: '2000-01-01T03:00:00.000Z', endAt: new Date(new Date(range.endsAt).getTime() + DUE_WINDOW_DAYS * 86_400_000).toISOString(), status: 'PENDING' as const }), [range.endsAt]);
+  const dueEntries = useCashFlow(dueWindow, { enabled: canViewFinance });
+  const [orderSearch, setOrderSearch] = useState('');
+  const [orderFilter, setOrderFilter] = useState<OrderFilter>('ACTIVE');
+  const debouncedSearch = useDebouncedValue(orderSearch.trim());
+  const activeOrders = useServiceOrdersList({ attention: orderFilter, search: debouncedSearch || undefined, offset: 0, limit: 50 }, { enabled: canManageServiceOrders });
 
   // The screen stays open on the front desk: refresh periodically and roll
   // "today" over at midnight instead of showing yesterday's agenda and cash.
@@ -63,8 +83,16 @@ export default function DashboardPage() {
   }, [queryClient]);
 
   const metrics = today.data?.metrics;
-  const operationalItems = canManageServiceOrders ? today.data?.attention.items ?? [] : today.data?.mine.items ?? [];
-  const hiddenAttention = Math.max(0, (canManageServiceOrders ? today.data?.attention.total ?? 0 : today.data?.mine.total ?? 0) - operationalItems.length);
+  // Managers browse every open order; everyone else sees their own queue.
+  const plateQuery = orderSearch.trim().toLowerCase();
+  const tableOrders = canManageServiceOrders
+    ? activeOrders.data?.items ?? []
+    : (today.data?.mine.items ?? []).filter((item) => !plateQuery || `${item.vehiclePlate} ${item.customerName} ${item.orderNumber}`.toLowerCase().includes(plateQuery));
+  const tableTotal = canManageServiceOrders ? activeOrders.data?.total ?? 0 : today.data?.mine.total ?? 0;
+  const tableLoading = canManageServiceOrders ? activeOrders.isLoading : today.isLoading;
+  const tableError = canManageServiceOrders ? activeOrders.isError : today.isError;
+  const payables = (dueEntries.data?.entries ?? []).filter((entry) => entry.type === 'EXPENSE' && entry.status === 'PENDING').sort((left, right) => left.dueAt.localeCompare(right.dueAt));
+  const receivables = (dueEntries.data?.entries ?? []).filter((entry) => entry.type === 'INCOME' && entry.status === 'PENDING').sort((left, right) => left.dueAt.localeCompare(right.dueAt));
   const workload = today.data?.workload ?? [];
   const waiting = today.data?.waiting;
   const mine = today.data?.mine;
@@ -75,7 +103,8 @@ export default function DashboardPage() {
     .filter((item) => !['CANCELLED', 'NO_SHOW', 'COMPLETED'].includes(item.status))
     .sort((left, right) => new Date(left.startsAt).getTime() - new Date(right.startsAt).getTime());
   const occupiedHours = todayAppointments.reduce((total, item) => total + Math.max(0, (new Date(item.endsAt).getTime() - new Date(item.startsAt).getTime()) / 3_600_000), 0);
-  const isRefreshing = today.isFetching || appointments.isFetching || forecast.isFetching || dueInstallments.isFetching || dailyCashFlow.isFetching;
+  const isRefreshing = today.isFetching || appointments.isFetching || forecast.isFetching || dueInstallments.isFetching || dailyCashFlow.isFetching || activeOrders.isFetching || dueEntries.isFetching;
+  const approvals = waiting?.approvals;
   const lastUpdatedAt = today.dataUpdatedAt ? new Date(today.dataUpdatedAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : null;
   const contactsToday = (forecast.data?.days.find((day) => day.date === forecast.data?.today)?.customers ?? []).filter((customer) => customer.kind === 'MAINTENANCE');
   const birthdaysToday = (forecast.data?.days.find((day) => day.date === forecast.data?.today)?.customers ?? []).filter((customer) => customer.kind === 'BIRTHDAY').length;
@@ -94,36 +123,56 @@ export default function DashboardPage() {
           {canManageServiceOrders && <NewServiceOrderQuickStart size="sm" />}
       </>} />
 
-      <section className="grid gap-5 xl:grid-cols-[minmax(0,1.4fr)_minmax(320px,0.8fr)]">
-        <Card data-reveal style={{ '--reveal-order': 8 } as React.CSSProperties} className="flex h-full flex-col overflow-hidden">
+      <section aria-label="Resumo das ordens de serviço" className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+        <KpiTile order={0} href="/ordens-de-servico" label="OS em andamento" value={metrics?.active} caption={metrics?.overdue ? `${metrics.overdue} com entrega atrasada` : 'nenhuma entrega atrasada'} captionTone={metrics?.overdue ? 'danger' : 'muted'} icon={Wrench} tone="primary" loading={today.isLoading} error={today.isError} />
+        <KpiTile order={1} href="/ordens-de-servico?status=DELIVERED" label="Entregues este mês" value={deliveredThisMonth.data?.total} caption={`desde 01/${month.startDate.slice(5, 7)}`} icon={CheckCircle} tone={(deliveredThisMonth.data?.total ?? 0) > 0 ? 'success' : 'neutral'} loading={deliveredThisMonth.isLoading} error={deliveredThisMonth.isError} />
+        <KpiTile order={2} href="/ordens-de-servico?status=AWAITING_APPROVAL" label="Aguardando aprovação" value={approvals?.count} caption={waitingCaption(approvals, 'há mais de 2 dias', 'o mais antigo espera')} captionTone={approvals?.stale ? 'danger' : 'muted'} icon={HourglassMedium} tone={approvals?.stale ? 'danger' : (approvals?.count ?? 0) > 0 ? 'warning' : 'neutral'} loading={today.isLoading} error={today.isError} />
+        <KpiTile order={3} href="/ordens-de-servico" label="Previsão de entrega hoje" value={metrics?.dueToday} caption={metrics?.ready ? `${metrics.ready} ${metrics.ready === 1 ? 'pronta' : 'prontas'} aguardando retirada` : 'nenhuma pronta no pátio'} icon={CalendarCheck} tone={(metrics?.dueToday ?? 0) > 0 ? 'info' : 'neutral'} loading={today.isLoading} error={today.isError} />
+      </section>
+
+      <Card data-reveal style={{ '--reveal-order': 4 } as React.CSSProperties} className="overflow-hidden">
+        <CardHeader className="gap-3 border-b border-border sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0">
+            <CardTitle className="flex items-center gap-2">{canManageServiceOrders ? 'OS em andamento' : 'Sua fila de trabalho'}{!tableLoading && !tableError && <Badge variant="neutral" className="tabular-nums">{tableTotal}</Badge>}</CardTitle>
+            <p className="mt-1 text-sm text-text-muted">{canManageServiceOrders ? 'Da mais recente para a mais antiga, com o próximo passo de cada uma.' : 'Ordens atribuídas a você, por prioridade.'}</p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            {canManageServiceOrders && <div role="group" aria-label="Filtrar OS" className="flex rounded-button border border-border bg-muted/40 p-0.5">
+              {ORDER_FILTERS.map((filter) => {
+                const count = filter.value === 'OVERDUE' ? metrics?.overdue : filter.value === 'UNASSIGNED' ? metrics?.unassigned : undefined;
+                const selected = orderFilter === filter.value;
+                return <button key={filter.value} type="button" aria-pressed={selected} onClick={() => setOrderFilter(filter.value)} className={`flex items-center gap-1.5 rounded-[6px] px-2.5 py-1 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${selected ? 'bg-card text-text shadow-card' : 'text-text-muted hover:text-text'}`}>{filter.label}{count ? <span className={`tabular-nums ${filter.value === 'OVERDUE' ? 'text-danger' : ''}`}>{count}</span> : null}</button>;
+              })}
+            </div>}
+            <label className="relative w-full sm:w-52">
+              <span className="sr-only">Buscar por placa, cliente ou número da OS</span>
+              <MagnifyingGlass className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-text-muted" aria-hidden="true" />
+              <Input value={orderSearch} onChange={(event) => setOrderSearch(event.target.value)} placeholder="Placa, cliente ou nº" className="h-9 pl-8 text-sm" />
+            </label>
+          </div>
+        </CardHeader>
+        <CardContent className="p-0">
+          {tableLoading ? <RowsSkeleton /> : tableError ? <ErrorBlock action={refreshDashboard} /> : tableOrders.length === 0 ? <EmptyBlock icon={orderSearch ? MagnifyingGlass : CheckCircle} title={orderSearch ? 'Nenhuma OS encontrada' : canManageServiceOrders ? orderFilter === 'ACTIVE' ? 'Nenhuma OS em andamento' : 'Nada neste filtro' : 'Nada na sua fila'} detail={orderSearch ? 'Confira a placa ou o nome digitado.' : canManageServiceOrders ? 'Abra uma OS para acompanhar aqui.' : 'Nenhuma OS atribuída a você no momento.'} /> : <OrdersTable items={tableOrders} />}
+          {!tableLoading && !tableError && tableTotal > tableOrders.length && !orderSearch && <Link href="/ordens-de-servico" className="flex items-center justify-center gap-1.5 border-t border-border px-5 py-3 text-xs font-semibold text-primary-ink hover:bg-muted/40 dark:text-primary">Ver todas as {tableTotal} OS<ArrowRight className="size-3.5" /></Link>}
+          {!tableLoading && !tableError && tableOrders.length > 0 && (tableTotal <= tableOrders.length || orderSearch) && <Link href="/ordens-de-servico" className="flex items-center justify-center gap-1.5 border-t border-border px-5 py-3 text-xs font-semibold text-primary-ink hover:bg-muted/40 dark:text-primary">Abrir quadro de OS<ArrowRight className="size-3.5" /></Link>}
+        </CardContent>
+      </Card>
+
+      {canViewFinance && <section aria-label="Contas a pagar e a receber" className="grid gap-5 lg:grid-cols-2">
+        <DuePanel order={5} title="Contas a pagar" href="/financeiro/contas-a-pagar" entries={payables} loading={dueEntries.isLoading} error={dueEntries.isError} onRetry={dueEntries.refetch} emptyTitle="Nada a pagar" emptyDetail={`Nenhuma conta vencida ou a vencer em ${DUE_WINDOW_DAYS} dias.`} />
+        <DuePanel order={6} title="Contas a receber" href="/financeiro/contas-a-receber" entries={receivables} loading={dueEntries.isLoading} error={dueEntries.isError} onRetry={dueEntries.refetch} emptyTitle="Nada a receber" emptyDetail={`Nenhum recebimento vencido ou previsto em ${DUE_WINDOW_DAYS} dias.`} />
+      </section>}
+
+      <section className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+        <Card className="flex h-full flex-col overflow-hidden">
           <CardHeader className="flex-row items-start justify-between border-b border-border">
-            <div><CardTitle>{canManageServiceOrders ? 'Atenção agora' : 'Sua fila de trabalho'}</CardTitle><p className="mt-1 text-sm text-text-muted">{canManageServiceOrders ? 'Atrasos, bloqueios e decisões pendentes.' : 'Ordens atribuídas a você, por prioridade.'}</p></div>
-            <Button asChild variant="ghost" size="sm" className="text-primary"><Link href="/ordens-de-servico">Abrir quadro<ArrowRight className="size-4" /></Link></Button>
-          </CardHeader>
-          <CardContent className="flex flex-1 flex-col p-0">
-            {today.isLoading ? <RowsSkeleton /> : today.isError ? <ErrorBlock action={refreshDashboard} /> : operationalItems.length === 0 ? <EmptyBlock icon={CheckCircle} title={canManageServiceOrders ? 'Operação em dia' : 'Nada na sua fila'} detail={canManageServiceOrders ? 'Nenhuma OS exige atenção agora.' : 'Nenhuma OS atribuída a você no momento.'} tone="success" /> : <div className="divide-y divide-border">{operationalItems.map((item) => <OrderRow key={item.id} item={item} />)}{hiddenAttention > 0 && <Link href="/ordens-de-servico" className="block px-5 py-3 text-center text-xs font-semibold text-primary hover:bg-muted/40">+ {hiddenAttention} {hiddenAttention === 1 ? 'outra OS' : 'outras OS'} pedindo atenção</Link>}</div>}
-          </CardContent>
-        </Card>
-        <Card data-reveal style={{ '--reveal-order': 7 } as React.CSSProperties} className="flex h-full flex-col overflow-hidden">
-          <CardHeader className="flex-row items-start justify-between border-b border-border">
-            <div><CardTitle>Agenda de hoje</CardTitle><p className="mt-1 text-sm text-text-muted">{todayAppointments.length} {todayAppointments.length === 1 ? 'atendimento pendente' : 'atendimentos pendentes'}</p></div>
+            <div><CardTitle>Agenda de hoje</CardTitle><p className="mt-1 text-sm text-text-muted">{todayAppointments.length} {todayAppointments.length === 1 ? 'atendimento pendente' : 'atendimentos pendentes'}{todayAppointments.length > 0 ? ` · ${occupiedHours.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} h reservadas` : ''}</p></div>
             <Button asChild variant="ghost" size="sm" className="text-primary"><Link href="/agenda">Abrir agenda<ArrowRight className="size-4" /></Link></Button>
           </CardHeader>
           <CardContent className="flex flex-1 flex-col p-0">
             {appointments.isLoading ? <RowsSkeleton rows={4} /> : appointments.isError ? <ErrorBlock action={appointments.refetch} /> : todayAppointments.length === 0 ? <EmptyBlock icon={CalendarBlank} title="Agenda livre hoje" detail="Novos agendamentos aparecerão aqui." tone="neutral" /> : <div className="divide-y divide-border">{todayAppointments.slice(0, 5).map((item) => <AppointmentRow key={item.id} item={item} />)}{todayAppointments.length > 5 && <Link href="/agenda" className="block px-5 py-3 text-center text-xs font-semibold text-primary hover:bg-muted/40">+ {todayAppointments.length - 5} na agenda de hoje</Link>}</div>}
           </CardContent>
         </Card>
-
-      </section>
-
-      {canManageServiceOrders && <section aria-label="Prioridades da oficina" className="grid grid-cols-2 gap-3 xl:grid-cols-4">
-        <MetricLink order={0} href="/ordens-de-servico?attention=OVERDUE" label="Entregas atrasadas" value={metrics?.overdue} caption="prazo prometido vencido" icon={Warning} tone="danger" loading={today.isLoading} error={today.isError} />
-        <MetricLink order={1} href="/ordens-de-servico?status=AWAITING_APPROVAL" label="Aguardando aprovação" value={waiting?.approvals.count} caption={waitingCaption(waiting?.approvals, 'há mais de 2 dias', 'o mais antigo espera')} icon={Warning} tone={waiting?.approvals.stale ? 'danger' : 'neutral'} loading={today.isLoading} error={today.isError} />
-        <MetricLink order={2} href="/ordens-de-servico?status=COMPLETED" label="Prontas para entrega" value={metrics?.ready} caption={waitingCaption(waiting?.ready, 'há mais de 3 dias no pátio', 'o mais antigo espera')} icon={CheckCircle} tone={waiting?.ready.stale ? 'danger' : 'success'} loading={today.isLoading} error={today.isError} />
-        <MetricLink order={3} href="/agenda" label="Agenda de hoje" value={todayAppointments.length} caption={`${occupiedHours.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} h reservadas`} icon={CalendarBlank} tone="neutral" loading={appointments.isLoading} error={appointments.isError} />
-      </section>}
-
-      <section className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
         {showMine && <Card className="flex h-full flex-col overflow-hidden">
           <CardHeader className="flex-row items-start justify-between"><div><CardTitle>Minhas OS</CardTitle><p className="mt-1 text-sm text-text-muted">{mine?.total ? `${mine.total} ${mine.total === 1 ? 'OS atribuída a você' : 'OS atribuídas a você'}` : 'O que está atribuído a você.'}</p></div><Button asChild variant="ghost" size="sm" className="text-primary"><Link href="/ordens-de-servico">Abrir quadro</Link></Button></CardHeader>
           <CardContent className="flex flex-1 flex-col p-0">{today.isLoading ? <RowsSkeleton rows={3} /> : today.isError ? <ErrorBlock action={refreshDashboard} /> : (mine?.items.length ?? 0) === 0 ? <EmptyBlock icon={CheckCircle} title="Nada na sua fila" detail="Nenhuma OS atribuída a você no momento." tone="success" /> : <div className="divide-y divide-border">{mine!.items.map((item) => <OrderRow key={item.id} item={item} />)}{mine!.total > mine!.items.length && <Link href="/ordens-de-servico" className="block px-5 py-3 text-center text-xs font-semibold text-primary hover:bg-muted/40">+ {mine!.total - mine!.items.length} na sua fila</Link>}</div>}</CardContent>
@@ -145,7 +194,7 @@ export default function DashboardPage() {
           <CardContent className="flex flex-1 flex-col p-0">{monthSummary.isLoading ? <RowsSkeleton rows={3} /> : monthSummary.isError || !monthSummary.data ? <ErrorBlock action={monthSummary.refetch} /> : <MonthNumbers data={monthSummary.data} />}</CardContent>
         </Card>}
 
-        {canManageReceipts && <Card className="flex h-full flex-col overflow-hidden"><CardHeader className="flex-row items-start justify-between"><div><CardTitle>Pendências administrativas</CardTitle><p className="mt-1 text-sm text-text-muted">{dueInstallments.data?.total ? `${dueInstallments.data.total} ${dueInstallments.data.total === 1 ? 'parcela vencida ou a vencer' : 'parcelas vencidas ou a vencer'} em 3 dias.` : 'Parcelas vencidas ou a vencer.'}</p></div><Button asChild variant="ghost" size="sm" className="text-primary"><Link href="/financeiro/contas-a-receber">Financeiro</Link></Button></CardHeader><CardContent className="flex flex-1 flex-col divide-y divide-border p-0">{(dueInstallments.data?.items ?? []).map((item) => { const overdue = new Date(item.dueAt).getTime() < Date.now(); return <Link key={item.id} href={`/ordens-de-servico/${item.serviceOrderId}`} className="flex items-center justify-between gap-3 px-5 py-3.5 hover:bg-muted/40"><div className="min-w-0"><p className="truncate text-sm font-semibold">{item.customerName} · parcela {item.installmentNumber}/{item.installmentCount}</p><p className="mt-0.5 text-xs text-text-muted">{item.orderNumber ? `OS ${item.orderNumber} · ` : ''}{overdue ? 'venceu' : 'vence'} em {new Date(item.dueAt).toLocaleDateString('pt-BR')}</p></div><div className="flex shrink-0 flex-col items-end gap-1"><span className="text-sm font-bold tabular-nums">{formatCurrencyBRL(item.amountCents)}</span><Badge variant={overdue ? 'critical' : 'attention'}>{overdue ? 'Vencida' : 'A vencer'}</Badge></div></Link>; })}{(dueInstallments.data?.items.length ?? 0) === 0 && <EmptyBlock icon={CheckCircle} title="Administrativo em dia" detail="Nenhuma parcela exige ação agora." tone="success" />}</CardContent></Card>}
+        {canManageReceipts && !canViewFinance && <Card className="flex h-full flex-col overflow-hidden"><CardHeader className="flex-row items-start justify-between"><div><CardTitle>Pendências administrativas</CardTitle><p className="mt-1 text-sm text-text-muted">{dueInstallments.data?.total ? `${dueInstallments.data.total} ${dueInstallments.data.total === 1 ? 'parcela vencida ou a vencer' : 'parcelas vencidas ou a vencer'} em 3 dias.` : 'Parcelas vencidas ou a vencer.'}</p></div><Button asChild variant="ghost" size="sm" className="text-primary"><Link href="/financeiro/contas-a-receber">Financeiro</Link></Button></CardHeader><CardContent className="flex flex-1 flex-col divide-y divide-border p-0">{(dueInstallments.data?.items ?? []).map((item) => { const overdue = new Date(item.dueAt).getTime() < Date.now(); return <Link key={item.id} href={`/ordens-de-servico/${item.serviceOrderId}`} className="flex items-center justify-between gap-3 px-5 py-3.5 hover:bg-muted/40"><div className="min-w-0"><p className="truncate text-sm font-semibold">{item.customerName} · parcela {item.installmentNumber}/{item.installmentCount}</p><p className="mt-0.5 text-xs text-text-muted">{item.orderNumber ? `OS ${item.orderNumber} · ` : ''}{overdue ? 'venceu' : 'vence'} em {new Date(item.dueAt).toLocaleDateString('pt-BR')}</p></div><div className="flex shrink-0 flex-col items-end gap-1"><span className="text-sm font-bold tabular-nums">{formatCurrencyBRL(item.amountCents)}</span><Badge variant={overdue ? 'critical' : 'attention'}>{overdue ? 'Vencida' : 'A vencer'}</Badge></div></Link>; })}{(dueInstallments.data?.items.length ?? 0) === 0 && <EmptyBlock icon={CheckCircle} title="Administrativo em dia" detail="Nenhuma parcela exige ação agora." tone="success" />}</CardContent></Card>}
       </section>
 
     </div>
@@ -171,29 +220,173 @@ function MonthNumbers({ data }: { data: DashboardBusinessSummaryResponse }) {
 
 function addDays(date: string, days: number): string { return new Date(Date.parse(`${date}T12:00:00Z`) + days * 86_400_000).toISOString().slice(0, 10); }
 
-function MetricLink({ href, label, value, caption, icon: Icon, tone, loading, error, order }: { href: string; label: string; value?: number | string; caption: string; icon: React.ComponentType<{ className?: string }>; tone: 'primary' | 'neutral' | 'danger' | 'success'; loading: boolean; error?: boolean; order: number }) {
-  const toneClass = tone === 'primary' ? 'bg-primary/10 text-primary' : tone === 'danger' ? 'bg-danger-subtle text-danger' : tone === 'success' ? 'bg-success-subtle text-success' : 'bg-muted text-text-muted';
-  const formattedValue = String(value ?? 0);
-  const valueSize = typeof value === 'string'
-    ? formattedValue.length > 11 ? 'text-sm sm:text-xl xl:text-2xl' : 'text-xl sm:text-2xl xl:text-3xl'
-    : formattedValue.length > 6 ? 'text-lg sm:text-2xl xl:text-3xl' : 'text-2xl sm:text-3xl xl:text-4xl';
+// Calendar dates (local time) from the 1st of the month up to today, as the order list expects.
+function monthToDate(todayStartsAt: string): { startDate: string; endDate: string } {
+  const today = new Date(todayStartsAt);
+  const pad = (value: number) => String(value).padStart(2, '0');
+  const prefix = `${today.getFullYear()}-${pad(today.getMonth() + 1)}`;
+  return { startDate: `${prefix}-01`, endDate: `${prefix}-${pad(today.getDate())}` };
+}
+
+type KpiTone = 'primary' | 'neutral' | 'success' | 'warning' | 'danger' | 'info';
+const KPI_TONES: Record<KpiTone, { bar: string; chip: string }> = {
+  primary: { bar: 'bg-primary', chip: 'bg-primary/15 text-primary-ink dark:text-primary' },
+  neutral: { bar: 'bg-border', chip: 'bg-muted text-text-muted' },
+  success: { bar: 'bg-success', chip: 'bg-success-subtle text-success' },
+  warning: { bar: 'bg-warning', chip: 'bg-warning-subtle text-warning' },
+  danger: { bar: 'bg-danger', chip: 'bg-danger-subtle text-danger' },
+  info: { bar: 'bg-info', chip: 'bg-info-subtle text-info' },
+};
+
+function KpiTile({ href, label, value, caption, captionTone = 'muted', icon: Icon, tone, loading, error, order }: { href: string; label: string; value?: number; caption: string; captionTone?: 'muted' | 'danger'; icon: React.ComponentType<{ className?: string; weight?: 'regular' | 'duotone' }>; tone: KpiTone; loading: boolean; error?: boolean; order: number }) {
+  const toneClasses = KPI_TONES[tone];
   return (
     <Link
       href={href}
       data-reveal
       style={{ '--reveal-order': order } as React.CSSProperties}
-      className="group min-w-0 rounded-card border border-border bg-card p-3.5 shadow-card transition-[box-shadow,border-color,background-color] duration-normal ease-settle hover:border-primary/30 hover:bg-selection/30 hover:shadow-card-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:p-5 xl:p-6"
+      className="group relative flex min-w-0 flex-col overflow-hidden rounded-card border border-border bg-card p-3.5 shadow-card transition-[box-shadow,border-color] duration-normal ease-settle hover:border-text-muted/30 hover:shadow-card-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:p-5"
     >
-      <div className="flex items-center justify-between gap-2" aria-hidden="true">
-        <span className={`flex size-7 shrink-0 items-center justify-center rounded-button sm:size-9 ${toneClass}`}><Icon className="size-4 sm:size-[18px]" /></span>
-        <ArrowRight className="size-3.5 shrink-0 text-text-muted transition-transform group-hover:translate-x-0.5 sm:size-4" />
+      <span aria-hidden="true" className={`absolute inset-x-0 top-0 h-1 ${toneClasses.bar}`} />
+      <div className="flex items-start justify-between gap-2">
+        <p data-metric-label className="text-xs font-semibold leading-4 text-text-muted sm:text-sm sm:leading-5">{label}</p>
+        <span aria-hidden="true" className={`flex size-8 shrink-0 items-center justify-center rounded-button sm:size-10 ${toneClasses.chip}`}><Icon className="size-4 sm:size-5" weight="duotone" /></span>
       </div>
-      <div className="mt-3 flex min-h-8 items-end sm:mt-4 sm:min-h-10 xl:min-h-12">
-        {loading ? <div className="h-7 w-16 animate-pulse rounded bg-muted sm:h-9" /> : <p data-metric-value className={`min-w-0 font-bold tabular-nums leading-tight tracking-tight text-text [overflow-wrap:anywhere] ${valueSize}`}>{error ? '—' : formattedValue}</p>}
+      <div className="mt-1 flex min-h-9 items-end sm:mt-2 sm:min-h-12">
+        {loading ? <div className="h-8 w-14 animate-pulse rounded bg-muted sm:h-10" /> : <p data-metric-value className="font-bold tabular-nums leading-none tracking-tight text-text text-3xl sm:text-4xl xl:text-[2.75rem]">{error ? '—' : value ?? 0}</p>}
       </div>
-      <p data-metric-label className="mt-2 min-h-8 text-xs font-semibold leading-4 text-text sm:min-h-10 sm:text-sm sm:leading-5">{label}</p>
-      <p data-metric-caption className="mt-1 min-h-8 text-xs leading-4 text-text-muted">{error ? 'Dados indisponíveis. Atualize a página.' : caption}</p>
+      <p data-metric-caption className={`mt-2 flex min-h-8 items-start justify-between gap-2 text-xs leading-4 ${captionTone === 'danger' && !error ? 'font-semibold text-danger' : 'text-text-muted'}`}>
+        <span>{error ? 'Dados indisponíveis. Atualize a página.' : caption}</span>
+        <ArrowRight aria-hidden="true" className="size-3.5 shrink-0 text-text-muted opacity-0 transition-[opacity,transform] group-hover:translate-x-0.5 group-hover:opacity-100 group-focus-visible:opacity-100" />
+      </p>
     </Link>
+  );
+}
+
+function nextAction(item: ServiceOrderListItemResponse, overdue: boolean): string {
+  if (overdue) return 'Reprogramar entrega e avisar cliente';
+  if (item.status === 'WAITING_PARTS') return 'Confirmar previsão da peça';
+  if (item.status === 'AWAITING_APPROVAL') return 'Cobrar resposta do cliente';
+  if (item.status === 'COMPLETED') return 'Avisar cliente para retirada';
+  if (!item.technicianName) return 'Atribuir técnico responsável';
+  if (item.status === 'OPEN') return 'Iniciar execução';
+  return 'Acompanhar execução';
+}
+
+function DeliveryCell({ value, overdue }: { value?: string; overdue: boolean }) {
+  if (!value) return <span className="text-xs text-text-muted">sem prazo</span>;
+  const date = new Date(value);
+  const isToday = date.toDateString() === new Date().toDateString();
+  const label = isToday ? `hoje ${date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}` : date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+  if (overdue) return <Badge variant="critical" className="tabular-nums">{label}</Badge>;
+  if (isToday) return <Badge variant="info" className="tabular-nums">{label}</Badge>;
+  return <span className="text-sm tabular-nums text-text">{label}</span>;
+}
+
+function Plate({ value }: { value: string }) {
+  return <span className="inline-flex items-center rounded-[6px] border border-border bg-muted/50 px-1.5 py-0.5 font-mono text-xs font-semibold uppercase tracking-wide text-text">{value || '—'}</span>;
+}
+
+function OrdersTable({ items }: { items: ServiceOrderListItemResponse[] }) {
+  const now = new Date();
+  const rows = items.map((item) => {
+    const overdue = Boolean(item.expectedDeliveryAt && new Date(item.expectedDeliveryAt) < now && item.status !== 'COMPLETED');
+    return { item, overdue, action: nextAction(item, overdue) };
+  });
+  return (
+    <div className="md:max-h-[480px] md:overflow-y-auto">
+      {/* Phones get a short stack of rows (no scroll inside the page scroll); the table needs room for its columns. */}
+      <ul className="divide-y divide-border md:hidden">
+        {rows.slice(0, MOBILE_ORDER_ROWS).map(({ item, overdue, action }) => (
+          <li key={item.id}>
+            <Link href={`/ordens-de-servico/${item.id}`} className="flex items-start gap-3 px-4 py-3.5 transition-colors hover:bg-muted/40">
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-2"><span className="text-xs font-bold tabular-nums text-text-muted">#{item.orderNumber}</span><Plate value={item.vehiclePlate} /><StatusBadge status={item.status} /></div>
+                <p className="mt-1.5 truncate text-sm font-semibold text-text">{item.vehicleBrand} {item.vehicleModel} · {item.customerName}</p>
+                <p className={`mt-0.5 text-xs font-semibold ${overdue ? 'text-danger' : 'text-primary-ink dark:text-primary'}`}>{action}</p>
+                <div className="mt-1.5 flex items-center gap-2 text-xs text-text-muted"><DeliveryCell value={item.expectedDeliveryAt} overdue={overdue} /><span className="truncate">{item.technicianName ?? 'sem técnico'}</span></div>
+              </div>
+              <ArrowRight className="mt-1 size-4 shrink-0 text-text-muted" aria-hidden="true" />
+            </Link>
+          </li>
+        ))}
+      </ul>
+      <table className="hidden w-full text-left text-sm md:table">
+        <thead className="sticky top-0 z-10 bg-card text-xs font-semibold text-text-muted shadow-[inset_0_-1px_0_var(--border)]">
+          <tr>
+            <th scope="col" className="py-2.5 pl-5 pr-3 font-semibold">OS</th>
+            <th scope="col" className="px-3 py-2.5 font-semibold">Placa</th>
+            <th scope="col" className="px-3 py-2.5 font-semibold">Veículo e cliente</th>
+            <th scope="col" className="hidden px-3 py-2.5 font-semibold lg:table-cell">Técnico</th>
+            <th scope="col" className="px-3 py-2.5 font-semibold">Previsão</th>
+            <th scope="col" className="px-3 py-2.5 font-semibold">Status</th>
+            <th scope="col" className="hidden px-3 py-2.5 font-semibold xl:table-cell">Próximo passo</th>
+            <th scope="col" className="w-10 pr-5"><span className="sr-only">Abrir</span></th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-border">
+          {rows.map(({ item, overdue, action }) => (
+            <tr key={item.id} className="group relative transition-colors hover:bg-muted/40">
+              <td className="py-3 pl-5 pr-3 font-bold tabular-nums text-text">
+                {/* The whole row opens the order; the link covers it. */}
+                <Link href={`/ordens-de-servico/${item.id}`} className="after:absolute after:inset-0 focus-visible:outline-none focus-visible:after:ring-2 focus-visible:after:ring-inset focus-visible:after:ring-ring" aria-label={`Abrir OS ${item.orderNumber}, ${item.vehiclePlate}`}>{item.orderNumber}</Link>
+              </td>
+              <td className="px-3 py-3"><Plate value={item.vehiclePlate} /></td>
+              <td className="max-w-[260px] px-3 py-3"><p className="truncate font-semibold text-text">{item.vehicleBrand} {item.vehicleModel}</p><p className="truncate text-xs text-text-muted">{item.customerName}</p></td>
+              <td className="hidden max-w-[160px] truncate px-3 py-3 lg:table-cell">{item.technicianName ? <span className="text-text">{item.technicianName}</span> : <span className="text-xs font-semibold text-warning">sem técnico</span>}</td>
+              <td className="whitespace-nowrap px-3 py-3"><DeliveryCell value={item.expectedDeliveryAt} overdue={overdue} /></td>
+              <td className="px-3 py-3"><StatusBadge status={item.status} /></td>
+              <td className={`hidden max-w-[240px] truncate px-3 py-3 text-xs font-semibold xl:table-cell ${overdue ? 'text-danger' : 'text-text-muted'}`}>{action}</td>
+              <td className="pr-5 text-right"><ArrowRight className="ml-auto size-4 text-text-muted transition-transform group-hover:translate-x-0.5" aria-hidden="true" /></td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function DuePanel({ title, href, entries, loading, error, onRetry, emptyTitle, emptyDetail, order }: { title: string; href: string; entries: FinancialEntryResponse[]; loading: boolean; error: boolean; onRetry: () => unknown; emptyTitle: string; emptyDetail: string; order: number }) {
+  const now = new Date();
+  const total = entries.reduce((sum, entry) => sum + entry.amountCents, 0);
+  const overdueCount = entries.filter((entry) => new Date(entry.dueAt) < now).length;
+  return (
+    <Card data-reveal style={{ '--reveal-order': order } as React.CSSProperties} className="flex h-full flex-col overflow-hidden">
+      <CardHeader className="flex-row items-start justify-between gap-3 border-b border-border">
+        <div className="min-w-0">
+          <CardTitle>{title}</CardTitle>
+          <p className="mt-1 text-sm text-text-muted">{loading || error ? `Vencidas e próximos ${DUE_WINDOW_DAYS} dias` : <>{entries.length} {entries.length === 1 ? 'lançamento' : 'lançamentos'}{overdueCount > 0 && <> · <span className="font-semibold text-danger">{overdueCount} {overdueCount === 1 ? 'vencido' : 'vencidos'}</span></>}</>}</p>
+        </div>
+        <div className="flex shrink-0 flex-col items-end gap-1">
+          {!loading && !error && entries.length > 0 && <span className="text-lg font-bold tabular-nums text-text">{formatCurrencyBRL(total)}</span>}
+          <Link href={href} className="text-xs font-semibold text-primary-ink hover:underline dark:text-primary">Ver todas</Link>
+        </div>
+      </CardHeader>
+      <CardContent className="flex flex-1 flex-col p-0">
+        {loading ? <RowsSkeleton rows={3} /> : error ? <ErrorBlock action={onRetry} /> : entries.length === 0 ? <EmptyBlock icon={CheckCircle} title={emptyTitle} detail={emptyDetail} /> : (
+          <ul className="divide-y divide-border">
+            {entries.slice(0, 5).map((entry) => {
+              const overdue = new Date(entry.dueAt) < now;
+              const party = entry.supplierName ?? entry.customerName;
+              const target = entry.serviceOrderId ? `/ordens-de-servico/${entry.serviceOrderId}` : href;
+              return (
+                <li key={entry.id}>
+                  <Link href={target} className="flex items-center gap-3 px-5 py-3 transition-colors hover:bg-muted/40">
+                    <Badge variant={overdue ? 'critical' : 'neutral'} className="w-[4.25rem] shrink-0 justify-center tabular-nums">{new Date(entry.dueAt).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}</Badge>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-semibold text-text">{entry.description}</p>
+                      <p className="truncate text-xs text-text-muted">{[party, entry.serviceOrderNumber ? `OS ${entry.serviceOrderNumber}` : entry.categoryName].filter(Boolean).join(' · ')}</p>
+                    </div>
+                    <span className={`shrink-0 text-sm font-bold tabular-nums ${overdue ? 'text-danger' : 'text-text'}`}>{formatCurrencyBRL(entry.amountCents)}</span>
+                  </Link>
+                </li>
+              );
+            })}
+            {entries.length > 5 && <li><Link href={href} className="block px-5 py-3 text-center text-xs font-semibold text-primary-ink hover:bg-muted/40 dark:text-primary">+ {entries.length - 5} {entries.length - 5 === 1 ? 'lançamento' : 'lançamentos'}</Link></li>}
+          </ul>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 

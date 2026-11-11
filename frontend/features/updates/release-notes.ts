@@ -1,6 +1,14 @@
 // This feed is visible to every workshop account. Keep SaaS administration changes out of it.
 export const RELEASE_NOTES = [
   {
+    id: '2026-11-11-novo-painel', date: '2026-11-11', title: 'Painel inicial redesenhado',
+    items: [
+      'O topo do painel mostra quatro números: OS em andamento, entregues no mês, aguardando aprovação e previsão de entrega para hoje. Cada um abre a lista correspondente.',
+      'As OS em andamento aparecem numa tabela com placa, veículo, cliente, técnico, previsão, status e o próximo passo. Dá para buscar pela placa, cliente ou número e filtrar as atrasadas ou sem técnico.',
+      'Quem acessa o financeiro vê, lado a lado, as contas a pagar e a receber vencidas ou com vencimento nos próximos 7 dias, já com o total.',
+    ],
+  },
+  {
     id: '2026-11-06-desconto-anual', date: '2026-11-06', title: 'Desconto de 15% no plano anual',
     items: [
       'O plano anual agora tem 15% de desconto sobre as 12 mensalidades, cobradas de uma vez. Essencial sai por R$ 1.324,98 por ano, Profissional por R$ 1.630,98 e Completo por R$ 2.038,98.',
