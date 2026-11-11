@@ -55,17 +55,17 @@ describe('BillingService checkout', () => {
     expect(result).toEqual({ checkoutUrl: 'https://checkout.stripe.com/c/pay/abc', appliedNow: false });
   });
 
-  it('charges a year as twelve months, with no discount', async () => {
+  it('charges a year as twelve months with a 15% discount', async () => {
     const { service, stripe } = build();
     await service.checkout(user, { plan: 'essencial', cycle: 'yearly' });
-    expect(stripe.checkoutSession).toHaveBeenCalledWith(expect.objectContaining({ unitAmountCents: 155880, interval: 'year' }));
+    expect(stripe.checkoutSession).toHaveBeenCalledWith(expect.objectContaining({ unitAmountCents: 132498, interval: 'year' }));
   });
 
   it('applies a change from monthly to yearly immediately after Stripe accepts the charge', async () => {
     const { service, db, stripe } = build(tenantRow({ plan: 'profissional', billingCustomerId: 'cus_1', billingSubscriptionId: 'sub_1', subscriptionStatus: 'active' }));
     const result = await service.checkout(user, { plan: 'profissional', cycle: 'yearly' });
-    expect(stripe.changeSubscription).toHaveBeenCalledWith('sub_1', { plan: 'profissional', unitAmountCents: 191880, interval: 'year', planName: 'Profissional', chargeNow: true });
-    expect(db.tenant.update).toHaveBeenCalledWith({ where: { id: TENANT_ID }, data: { plan: 'profissional', pendingPlan: null, subscriptionCycle: 'yearly', subscriptionAmountCents: 191880 } });
+    expect(stripe.changeSubscription).toHaveBeenCalledWith('sub_1', { plan: 'profissional', unitAmountCents: 163098, interval: 'year', planName: 'Profissional', chargeNow: true });
+    expect(db.tenant.update).toHaveBeenCalledWith({ where: { id: TENANT_ID }, data: { plan: 'profissional', pendingPlan: null, subscriptionCycle: 'yearly', subscriptionAmountCents: 163098 } });
     expect(result).toEqual({ checkoutUrl: null, appliedNow: true });
   });
 
@@ -115,7 +115,7 @@ describe('BillingService checkout', () => {
     const { service, db, stripe } = build(tenantRow({ plan: 'completo', billingCustomerId: 'cus_1', billingSubscriptionId: 'sub_1', subscriptionStatus: 'active' }));
     const result = await service.checkout(user, { plan: 'essencial', cycle: 'yearly' });
     expect(stripe.changeSubscription).toHaveBeenCalledWith('sub_1', expect.objectContaining({ interval: 'year', chargeNow: true }));
-    expect(db.tenant.update).toHaveBeenCalledWith({ where: { id: TENANT_ID }, data: { plan: 'essencial', pendingPlan: null, subscriptionCycle: 'yearly', subscriptionAmountCents: 155880 } });
+    expect(db.tenant.update).toHaveBeenCalledWith({ where: { id: TENANT_ID }, data: { plan: 'essencial', pendingPlan: null, subscriptionCycle: 'yearly', subscriptionAmountCents: 132498 } });
     expect(result.appliedNow).toBe(true);
   });
 

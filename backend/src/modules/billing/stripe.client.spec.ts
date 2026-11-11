@@ -159,7 +159,7 @@ describe('StripeClient plan products', () => {
       .mockResolvedValueOnce(answer(200, { id: 'sub_1', items: { data: [{ id: 'si_1' }] } }))
       .mockResolvedValueOnce(answer(200, { id: 'ofix_plan_profissional', active: true }))
       .mockResolvedValueOnce(answer(200, { id: 'sub_1' }));
-    await client().changeSubscription('sub_1', { plan: 'profissional', unitAmountCents: 191880, interval: 'year', planName: 'Profissional', chargeNow: true });
+    await client().changeSubscription('sub_1', { plan: 'profissional', unitAmountCents: 163098, interval: 'year', planName: 'Profissional', chargeNow: true });
     const update = bodyOf(fetchMock, 2);
     expect(update.get('proration_behavior')).toBe('always_invoice');
     expect(update.get('payment_behavior')).toBe('error_if_incomplete');

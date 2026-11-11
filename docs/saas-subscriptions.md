@@ -38,7 +38,7 @@ senha da conta nem conceder esse acesso aos demais administradores de oficinas.
 
 ## Contratação e cobrança pela oficina
 
-- Em **Configurações → Assinatura e dados**, o administrador escolhe Essencial, Profissional ou Completo e pagamento mensal ou anual. O valor anual corresponde a 12 mensalidades, sem desconto, cobrado de uma vez por ano.
+- Em **Configurações → Assinatura e dados**, o administrador escolhe Essencial, Profissional ou Completo e pagamento mensal ou anual. O valor anual corresponde a 12 mensalidades com 15% de desconto (`YEARLY_DISCOUNT_PERCENT` em `packages/contracts/src/plans.ts`), cobrado de uma vez por ano.
 - A primeira contratação abre uma página segura do Stripe. O plano só é ativado depois da confirmação do pagamento pelo webhook.
 - Ao mudar a periodicidade de uma assinatura ativa, o Stripe reinicia o período e pode cobrar imediatamente, com créditos ou ajustes pelo período já pago. A confirmação na tela avisa antes de prosseguir. Uma troca para um plano superior também pode cobrar a diferença imediatamente; uma redução de plano no mesmo período fica agendada para o próximo pagamento.
 - O administrador pode abrir o portal para forma de pagamento e recibos ou cancelar a renovação. O cancelamento mantém o acesso até o fim do período pago.

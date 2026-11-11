@@ -1,6 +1,12 @@
 // This feed is visible to every workshop account. Keep SaaS administration changes out of it.
 export const RELEASE_NOTES = [
   {
+    id: '2026-11-06-desconto-anual', date: '2026-11-06', title: 'Desconto de 15% no plano anual',
+    items: [
+      'O plano anual agora tem 15% de desconto sobre as 12 mensalidades, cobradas de uma vez. Essencial sai por R$ 1.324,98 por ano, Profissional por R$ 1.630,98 e Completo por R$ 2.038,98.',
+    ],
+  },
+  {
     id: '2026-11-06-cabecalho-celular', date: '2026-11-06', title: 'Cabeçalho mais compacto no celular',
     items: [
       'No celular, o título da página e os ícones de alertas, novidades, tema e perfil agora ficam na mesma linha, com a busca logo abaixo. Sobra mais espaço para o conteúdo.',

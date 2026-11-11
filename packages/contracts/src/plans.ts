@@ -98,8 +98,11 @@ export function limitStatus(used: number, limit: number | null): LimitStatus {
 
 export interface PlanStatusResponse extends EntitlementsResponse { access: AccessStatus; usage: PlanUsage }
 
-// A year is twelve months, with no discount: the only free offer is the trial.
+// A year is twelve monthly fees with a 15% discount. The only free offer is the trial.
 export const YEARLY_MONTHS_CHARGED = 12;
+export const YEARLY_DISCOUNT_PERCENT = 15;
 export function planPriceCents(code: PlanCode, cycle: 'monthly' | 'yearly'): number {
-  return PLANS[code].monthlyPriceCents * (cycle === 'yearly' ? YEARLY_MONTHS_CHARGED : 1);
+  const monthly = PLANS[code].monthlyPriceCents;
+  if (cycle !== 'yearly') return monthly;
+  return Math.round((monthly * YEARLY_MONTHS_CHARGED * (100 - YEARLY_DISCOUNT_PERCENT)) / 100);
 }
