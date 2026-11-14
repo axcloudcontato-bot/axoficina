@@ -28,7 +28,7 @@ import { CatalogReport } from './CatalogReport';
 import { StockDialog } from './StockDialog';
 
 const TAB_LABELS: Record<CatalogItemType, string> = { PART: 'Peças', PRODUCT: 'Produtos', LABOR: 'Serviços' };
-const VIEWS = [{ key: 'items', label: 'Catálogo' }, { key: 'packages', label: 'Pacotes' }, { key: 'report', label: 'Análise' }] as const;
+const VIEWS = [{ key: 'items', label: 'Itens' }, { key: 'packages', label: 'Pacotes' }, { key: 'report', label: 'Análise' }] as const;
 type View = (typeof VIEWS)[number]['key'];
 
 export function CatalogPanel() {
@@ -113,7 +113,7 @@ export function CatalogPanel() {
   }
 
   return <div className="space-y-5">
-    <PageHero eyebrow="Catálogo" title="Peças, produtos e serviços" description="Cadastre o que a oficina vende e escolha na ordem de serviço, sem digitar de novo." actions={<Button onClick={() => setEditing(null)}><Plus className="size-4" />{tab === 'PART' ? 'Nova peça' : tab === 'PRODUCT' ? 'Novo produto' : 'Novo serviço'}</Button>} />
+    <PageHero eyebrow="Cadastros" title="Peças e serviços" description="Cadastre o que a oficina vende e escolha na ordem de serviço, sem digitar de novo." actions={<Button onClick={() => setEditing(null)}><Plus className="size-4" />{tab === 'PART' ? 'Nova peça' : tab === 'PRODUCT' ? 'Novo produto' : 'Novo serviço'}</Button>} />
 
     <div className="flex flex-wrap items-center justify-between gap-2 rounded-card border border-border bg-surface px-4 py-3 text-sm">
       <span><strong>Precificação de serviços · Valor da hora</strong> <span className="text-text-muted">· calcula uma sugestão pelo tempo padrão; preços já cadastrados não mudam automaticamente</span></span>

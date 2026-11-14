@@ -2,7 +2,7 @@
 
 import type { ModuleKey, PermissionKey } from '@oficina/contracts';
 import type { Icon as PhosphorIcon } from '@phosphor-icons/react';
-import { Bell, Buildings, CalendarBlank, Car, ChartBar, ChartLine, ChatCircleText, ClipboardText, DotsThree, Envelope, Package, Gear, Lock, ShieldCheck, SidebarSimple, SignOut, SquaresFour, UserCircle, Users, UsersThree, WhatsappLogo, Clock } from '@phosphor-icons/react';
+import { Bell, Buildings, CalendarBlank, Car, ChartBar, ChartLine, ChatCircleText, ClipboardText, DotsThree, Factory, Package, Gear, Lock, ShieldCheck, SidebarSimple, SignOut, SquaresFour, UserCircle, Users } from '@phosphor-icons/react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -22,34 +22,35 @@ interface NavItem {
   href: string; label: string; shortLabel: string;
   icon: PhosphorIcon;
   permission: PermissionKey;
-  group: 'Operação' | 'Relacionamento' | 'Gestão';
+  group: NavGroup;
   module?: ModuleKey;
-  children?: Array<{ href: string; label: string; icon: PhosphorIcon; permission: PermissionKey }>;
+  /** Other routes that belong to the same area and keep this item highlighted. */
+  also?: string[];
+  /** Routes under href that belong to another item. */
+  except?: string[];
 }
 
+// Grouped by what the workshop is doing: today's work, the records it keeps, the customer's return and the business numbers.
+type NavGroup = 'Dia a dia' | 'Cadastros' | 'Pós-venda' | 'Gestão';
 const NAV_ITEMS: NavItem[] = [
-  { href: '/painel', label: 'Visão da oficina', shortLabel: 'Visão', icon: SquaresFour, permission: 'dashboard.view', group: 'Operação' },
-  { href: '/ordens-de-servico', label: 'Ordens de serviço', shortLabel: 'OS', icon: ClipboardText, permission: 'service_orders.view', group: 'Operação' },
-  { href: '/agenda', label: 'Agenda', shortLabel: 'Agenda', icon: CalendarBlank, permission: 'appointments.view', group: 'Operação' },
-  { href: '/clientes', label: 'Clientes', shortLabel: 'Clientes', icon: Users, permission: 'customers.view', group: 'Relacionamento' },
-  { href: '/veiculos', label: 'Veículos', shortLabel: 'Veículos', icon: Car, permission: 'vehicles.view', group: 'Operação' },
-  { href: '/alertas-de-manutencao', label: 'Alertas de manutenção', shortLabel: 'Alertas', icon: Bell, permission: 'alerts.view', group: 'Relacionamento', module: 'cuidado' },
-  { href: '/relacionamento', label: 'Fidelização de clientes', shortLabel: 'Fidelização', icon: UsersThree, permission: 'alerts.view', group: 'Relacionamento', module: 'cuidado' },
-  { href: '/catalogo', label: 'Catálogo', shortLabel: 'Catálogo', icon: Package, permission: 'service_orders.prices', group: 'Operação' },
-  { href: '/financeiro', label: 'Financeiro', shortLabel: 'Financeiro', icon: ChartLine, permission: 'finance.view', group: 'Gestão', module: 'financeiro' },
+  { href: '/painel', label: 'Visão da oficina', shortLabel: 'Visão', icon: SquaresFour, permission: 'dashboard.view', group: 'Dia a dia' },
+  { href: '/agenda', label: 'Agenda', shortLabel: 'Agenda', icon: CalendarBlank, permission: 'appointments.view', group: 'Dia a dia' },
+  { href: '/ordens-de-servico', label: 'Ordens de serviço', shortLabel: 'OS', icon: ClipboardText, permission: 'service_orders.view', group: 'Dia a dia' },
+  { href: '/clientes', label: 'Clientes', shortLabel: 'Clientes', icon: Users, permission: 'customers.view', group: 'Cadastros' },
+  { href: '/veiculos', label: 'Veículos', shortLabel: 'Veículos', icon: Car, permission: 'vehicles.view', group: 'Cadastros' },
+  { href: '/catalogo', label: 'Peças e serviços', shortLabel: 'Peças', icon: Package, permission: 'service_orders.prices', group: 'Cadastros' },
+  { href: '/financeiro/fornecedores', label: 'Fornecedores', shortLabel: 'Fornec.', icon: Factory, permission: 'finance.manage', group: 'Cadastros', module: 'financeiro' },
+  { href: '/relacionamento', label: 'Retornos e lembretes', shortLabel: 'Retornos', icon: Bell, permission: 'alerts.view', group: 'Pós-venda', module: 'cuidado', also: ['/alertas-de-manutencao'] },
+  { href: '/financeiro', label: 'Financeiro', shortLabel: 'Financeiro', icon: ChartLine, permission: 'finance.view', group: 'Gestão', module: 'financeiro', except: ['/financeiro/fornecedores'] },
   { href: '/produtividade', label: 'Produtividade', shortLabel: 'Produtiv.', icon: ChartBar, permission: 'service_orders.view', group: 'Gestão', module: 'produtividade' },
-  { href: '/configuracoes', label: 'Configurações', shortLabel: 'Config.', icon: Gear, permission: 'team.view', group: 'Gestão', children: [
-    { href: '/configuracoes/empresa', label: 'Empresa e marca', icon: Buildings, permission: 'settings.view' },
-    { href: '/configuracoes/operacao', label: 'Operação', icon: Clock, permission: 'settings.view' },
-    { href: '/configuracoes/email', label: 'E-mail', icon: Envelope, permission: 'settings.view' },
-    { href: '/configuracoes/whatsapp', label: 'WhatsApp', icon: WhatsappLogo, permission: 'settings.view' },
-    { href: '/configuracoes/equipe', label: 'Equipe e acesso', icon: UsersThree, permission: 'team.view' },
-  ] },
 ];
 const ROLE_LABELS: Record<string, string> = { ADMIN: 'Administrador', MANAGER: 'Gestor', MECHANIC: 'Mecânico', FRONT_DESK: 'Recepção', FINANCE: 'Financeiro' };
-const groups = ['Operação', 'Relacionamento', 'Gestão'] as const;
+const groups: NavGroup[] = ['Dia a dia', 'Cadastros', 'Pós-venda', 'Gestão'];
 const initials = (name: string) => { const parts = name.trim().split(/\s+/); return ((parts[0]?.[0] ?? '') + (parts.at(-1)?.[0] ?? '')).toUpperCase(); };
 const isActive = (pathname: string | null, href: string) => pathname === href || Boolean(pathname?.startsWith(`${href}/`));
+const isItemActive = (pathname: string | null, item: NavItem) => (isActive(pathname, item.href) || Boolean(item.also?.some((href) => isActive(pathname, href)))) && !item.except?.some((href) => isActive(pathname, href));
+// My account and my privacy live under /configuracoes but belong to the person, not to the workshop settings.
+const isSettingsActive = (pathname: string | null) => isActive(pathname, '/configuracoes') && !['/configuracoes/conta', '/configuracoes/privacidade'].includes(pathname ?? '');
 
 export function Sidebar() {
   const pathname = usePathname();
@@ -66,12 +67,11 @@ export function Sidebar() {
     if (restoreToggleFocus.current) { toggleRef.current?.focus(); restoreToggleFocus.current = false; }
   }, [collapsed]);
   const { hasModule } = useEntitlements();
-  const visibleItems = NAV_ITEMS.filter((item) => item.href === '/configuracoes'
-    ? hasPermission(user, 'settings.view') || canViewTeam(user)
-    : hasPermission(user, item.permission) || item.children?.some((child) => hasPermission(user, child.permission)));
+  const visibleItems = NAV_ITEMS.filter((item) => hasPermission(user, item.permission));
+  const canOpenSettings = hasPermission(user, 'settings.view') || canViewTeam(user);
   const mobilePrimaryItems = visibleItems.slice(0, 4);
   const mobileMoreItems = visibleItems.slice(4);
-  const mobileMoreActive = mobileMoreItems.some((item) => isActive(pathname, item.href)) || isActive(pathname, '/suporte') || isActive(pathname, '/admin') || isActive(pathname, '/configuracoes/conta') || isActive(pathname, '/configuracoes/privacidade');
+  const mobileMoreActive = mobileMoreItems.some((item) => isItemActive(pathname, item)) || isSettingsActive(pathname) || isActive(pathname, '/suporte') || isActive(pathname, '/admin') || isActive(pathname, '/configuracoes/conta') || isActive(pathname, '/configuracoes/privacidade');
 
   useEffect(() => setMobileMoreOpen(false), [pathname]);
 
@@ -106,15 +106,18 @@ export function Sidebar() {
         {saasAccess.data?.allowed && <Link href="/admin" aria-current={isActive(pathname, '/admin') ? 'page' : undefined} title={collapsed ? 'Administração do SaaS' : undefined} className={cn('mb-3 flex min-h-10 items-center rounded-button text-sm font-semibold', collapsed ? 'justify-center' : 'gap-3 px-3', isActive(pathname, '/admin') ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted hover:text-foreground')}><Buildings className="size-[18px] shrink-0" aria-hidden="true" />{!collapsed && 'Administração do SaaS'}</Link>}
         {groups.map((group) => {
           const items = visibleItems.filter((item) => item.group === group);
-          return items.length ? <div key={group}>{!collapsed && <p className="px-3 pb-2 pt-4 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">{group}</p>}{items.map((item) => <DesktopNavItem key={item.href} item={item} active={isActive(pathname, item.href)} collapsed={collapsed} locked={!hasModule(item.module)} />)}</div> : null;
+          return items.length ? <div key={group}>{!collapsed && <p className="px-3 pb-2 pt-4 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">{group}</p>}{items.map((item) => <DesktopNavItem key={item.href} item={item} active={isItemActive(pathname, item)} collapsed={collapsed} locked={!hasModule(item.module)} />)}</div> : null;
         })}
       </nav>
-      <div className="border-t border-border px-3 py-2"><Link href="/suporte" aria-current={isActive(pathname, '/suporte') ? 'page' : undefined} aria-label="Suporte" title={collapsed ? 'Suporte' : undefined} className={cn('flex min-h-10 items-center rounded-button text-sm font-semibold', collapsed ? 'justify-center' : 'gap-3 px-3', isActive(pathname, '/suporte') ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted hover:text-foreground')}><AnimatedIcon icon={ChatCircleText} active={isActive(pathname, '/suporte')} className="size-[18px] shrink-0" />{!collapsed && 'Suporte'}</Link></div>
-      {user && <div className={cn('flex items-center border-t border-border py-4', collapsed ? 'justify-center px-3' : 'gap-2.5 px-4')}><div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">{initials(user.name)}</div>{!collapsed && <div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold">{user.name}</p><p className="text-xs text-muted-foreground">{ROLE_LABELS[user.profileName ?? ''] ?? user.profileName ?? ROLE_LABELS[user.role] ?? user.role}</p></div>}<button type="button" aria-label="Sair" onClick={() => logout.mutate()} className="group flex size-9 items-center justify-center rounded-button text-muted-foreground hover:text-danger"><AnimatedIcon icon={SignOut} className="size-[18px]" /></button></div>}
+      <div className="space-y-1 border-t border-border px-3 py-2">
+        {canOpenSettings && <FooterLink href="/configuracoes" label="Configurações" icon={Gear} active={isSettingsActive(pathname)} collapsed={collapsed} />}
+        <FooterLink href="/suporte" label="Suporte" icon={ChatCircleText} active={isActive(pathname, '/suporte')} collapsed={collapsed} />
+      </div>
+      {user && <div className={cn('flex items-center border-t border-border py-4', collapsed ? 'justify-center px-3' : 'gap-2.5 px-4')}><div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">{initials(user.name)}</div>{!collapsed && <Link href="/configuracoes/conta" title="Minha conta: senha e aparelhos" className="min-w-0 flex-1 rounded-button hover:text-primary"><p className="truncate text-sm font-semibold">{user.name}</p><p className="truncate text-xs text-muted-foreground">{ROLE_LABELS[user.profileName ?? ''] ?? user.profileName ?? ROLE_LABELS[user.role] ?? user.role} · Minha conta</p></Link>}<button type="button" aria-label="Sair" onClick={() => logout.mutate()} className="group flex size-9 items-center justify-center rounded-button text-muted-foreground hover:text-danger"><AnimatedIcon icon={SignOut} className="size-[18px]" /></button></div>}
       {collapsed && <button type="button" ref={toggleRef} aria-expanded={!collapsed} aria-controls={navigationId} onClick={toggleSidebar} aria-label="Expandir menu lateral" className="group absolute right-[-14px] top-5 flex size-7 items-center justify-center rounded-full border border-border bg-background text-muted-foreground hover:text-foreground"><AnimatedIcon icon={SidebarSimple} className="size-3.5" /></button>}
     </aside>
     <nav aria-label="Navegação móvel" className="fixed inset-x-0 bottom-0 z-40 grid h-16 border-t border-border bg-background px-2 md:hidden" style={{ gridTemplateColumns: `repeat(${mobilePrimaryItems.length + 1}, minmax(0, 1fr))` }}>
-      {mobilePrimaryItems.map((item) => { const active = isActive(pathname, item.href); return <Link key={item.href} href={item.href} aria-current={active ? 'page' : undefined} className={cn('group flex min-w-0 flex-col items-center justify-center gap-1 text-[10px] font-semibold', active ? 'text-primary' : 'text-muted-foreground')}><AnimatedIcon icon={item.icon} active={active} className="size-[18px]" /><span className="truncate">{item.shortLabel}</span></Link>; })}
+      {mobilePrimaryItems.map((item) => { const active = isItemActive(pathname, item); return <Link key={item.href} href={item.href} aria-current={active ? 'page' : undefined} className={cn('group flex min-w-0 flex-col items-center justify-center gap-1 text-[10px] font-semibold', active ? 'text-primary' : 'text-muted-foreground')}><AnimatedIcon icon={item.icon} active={active} className="size-[18px]" /><span className="truncate">{item.shortLabel}</span></Link>; })}
       <Dialog open={mobileMoreOpen} onOpenChange={setMobileMoreOpen}>
         <DialogTrigger asChild><button type="button" aria-label="Mais áreas" aria-expanded={mobileMoreOpen} className={cn('flex min-w-0 flex-col items-center justify-center gap-1 text-[10px] font-semibold', mobileMoreActive || mobileMoreOpen ? 'text-primary' : 'text-muted-foreground')}><DotsThree className="size-[18px]" aria-hidden="true" /><span>Mais</span></button></DialogTrigger>
         <DialogContent className="max-h-[85dvh] overflow-y-auto p-0 sm:max-w-md">
@@ -122,15 +125,16 @@ export function Sidebar() {
           <div className="space-y-4 px-4 pb-5">
             {groups.map((group) => {
               const items = mobileMoreItems.filter((item) => item.group === group);
-              return items.length ? <section key={group}><h2 className="px-2 pb-1 text-xs font-bold uppercase tracking-wide text-text-muted">{group}</h2>{items.map((item) => { const Icon = item.icon; return <Link key={item.href} href={item.href} onClick={() => setMobileMoreOpen(false)} aria-current={isActive(pathname, item.href) ? 'page' : undefined} className={cn('flex min-h-11 items-center gap-3 rounded-button px-3 text-sm font-semibold', isActive(pathname, item.href) ? 'bg-primary text-primary-foreground' : 'text-text hover:bg-muted')}><Icon className="size-[18px] shrink-0" aria-hidden="true" />{item.label}{!hasModule(item.module) && <Lock className="ml-auto size-4" aria-label="Fora do plano" />}</Link>; })}</section> : null;
+              return items.length ? <section key={group}><h2 className="px-2 pb-1 text-xs font-bold uppercase tracking-wide text-text-muted">{group}</h2>{items.map((item) => { const Icon = item.icon; return <Link key={item.href} href={item.href} onClick={() => setMobileMoreOpen(false)} aria-current={isItemActive(pathname, item) ? 'page' : undefined} className={cn('flex min-h-11 items-center gap-3 rounded-button px-3 text-sm font-semibold', isItemActive(pathname, item) ? 'bg-primary text-primary-foreground' : 'text-text hover:bg-muted')}><Icon className="size-[18px] shrink-0" aria-hidden="true" />{item.label}{!hasModule(item.module) && <Lock className="ml-auto size-4" aria-label="Fora do plano" />}</Link>; })}</section> : null;
             })}
             <section><h2 className="px-2 pb-1 text-xs font-bold uppercase tracking-wide text-text-muted">Ajuda e conta</h2>
               {[
+                ...(canOpenSettings ? [{ href: '/configuracoes', label: 'Configurações', icon: Gear }] : []),
                 { href: '/suporte', label: 'Suporte', icon: ChatCircleText },
                 { href: '/configuracoes/conta', label: 'Minha conta', icon: UserCircle },
                 { href: '/configuracoes/privacidade', label: 'Privacidade e solicitações', icon: ShieldCheck },
                 ...(saasAccess.data?.allowed ? [{ href: '/admin', label: 'Administração do SaaS', icon: Buildings }] : []),
-              ].map((item) => { const Icon = item.icon; return <Link key={item.href} href={item.href} onClick={() => setMobileMoreOpen(false)} aria-current={isActive(pathname, item.href) ? 'page' : undefined} className={cn('flex min-h-11 items-center gap-3 rounded-button px-3 text-sm font-semibold', isActive(pathname, item.href) ? 'bg-primary text-primary-foreground' : 'text-text hover:bg-muted')}><Icon className="size-[18px] shrink-0" aria-hidden="true" />{item.label}</Link>; })}
+              ].map((item) => { const Icon = item.icon; const active = item.href === '/configuracoes' ? isSettingsActive(pathname) : isActive(pathname, item.href); return <Link key={item.href} href={item.href} onClick={() => setMobileMoreOpen(false)} aria-current={active ? 'page' : undefined} className={cn('flex min-h-11 items-center gap-3 rounded-button px-3 text-sm font-semibold', active ? 'bg-primary text-primary-foreground' : 'text-text hover:bg-muted')}><Icon className="size-[18px] shrink-0" aria-hidden="true" />{item.label}</Link>; })}
             </section>
           </div>
         </DialogContent>
@@ -141,4 +145,8 @@ export function Sidebar() {
 
 function DesktopNavItem({ item, active, collapsed, locked }: { item: NavItem; active: boolean; collapsed: boolean; locked: boolean }) {
   return <div><Link href={item.href} aria-current={active ? 'page' : undefined} aria-label={item.label} title={collapsed ? item.label : undefined} className={cn('group flex min-h-10 items-center rounded-button text-sm font-semibold', collapsed ? 'justify-center' : 'gap-3 px-3', active ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted hover:text-foreground')}><AnimatedIcon icon={item.icon} active={active} className="size-[18px] shrink-0" />{!collapsed && item.label}{locked && <Lock className="ml-auto size-3.5 shrink-0" aria-label="Fora do plano" />}</Link></div>;
+}
+
+function FooterLink({ href, label, icon, active, collapsed }: { href: string; label: string; icon: PhosphorIcon; active: boolean; collapsed: boolean }) {
+  return <Link href={href} aria-current={active ? 'page' : undefined} aria-label={label} title={collapsed ? label : undefined} className={cn('group flex min-h-10 items-center rounded-button text-sm font-semibold', collapsed ? 'justify-center' : 'gap-3 px-3', active ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted hover:text-foreground')}><AnimatedIcon icon={icon} active={active} className="size-[18px] shrink-0" />{!collapsed && label}</Link>;
 }

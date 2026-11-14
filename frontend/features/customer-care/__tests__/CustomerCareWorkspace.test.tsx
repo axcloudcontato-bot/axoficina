@@ -37,7 +37,7 @@ describe('customer care workspace', () => {
   });
   it('retains an edited message across a background dashboard refresh, without sending it', async () => {
     const user = userEvent.setup(); const view = render(<CustomerCareWorkspace />);
-    await screen.findByRole('heading', { name: 'O cuidado continua.' });
+    await screen.findByRole('heading', { name: 'Cuidados e mensagens' });
     await user.click(screen.getByRole('tab', { name: 'Campanhas e mensagens' }));
     const message = screen.getByRole('textbox', { name: /Mensagem da campanha/ });
     fireEvent.change(message, { target: { value: '🎂 Feliz aniversário, {cliente}! Estamos sempre por perto. 💛' } });
@@ -78,7 +78,7 @@ describe('customer care workspace', () => {
   it('shows nothing about unreachable customers when everyone can be reached', async () => {
     (mocks.data as Record<string, unknown>).unreachable = { total: 0, customers: [] };
     render(<CustomerCareWorkspace />);
-    await screen.findByRole('heading', { name: 'O cuidado continua.' });
+    await screen.findByRole('heading', { name: 'Cuidados e mensagens' });
     expect(screen.queryByText(/não vão receber|não vai receber/)).not.toBeInTheDocument();
   });
 

@@ -1,6 +1,16 @@
 // This feed is visible to every workshop account. Keep SaaS administration changes out of it.
 export const RELEASE_NOTES = [
   {
+    id: '2026-11-14-menu-organizado', date: '2026-11-14', title: 'Menu e configurações reorganizados',
+    items: [
+      'O menu lateral foi separado pelo que você está fazendo: Dia a dia (painel, agenda e OS), Cadastros (clientes, veículos, peças e serviços, fornecedores), Pós-venda e Gestão (financeiro e produtividade). Configurações e Suporte ficam no rodapé do menu.',
+      'Alertas de manutenção e Fidelização de clientes viraram uma área só, Retornos e lembretes, com duas abas: Cuidados e mensagens, e Carros sem revisão.',
+      'Fornecedores saiu de dentro do Financeiro e foi para Cadastros. O Catálogo agora se chama Peças e serviços.',
+      'As Configurações ganharam um menu lateral por assunto: Oficina, Comunicação, Equipe, Conta da oficina e Este computador. A régua de lembretes e as metas e comissões aparecem ali como atalhos.',
+      'Clique no seu nome, no rodapé do menu, para abrir Minha conta (senha e aparelhos). Nada foi removido: só mudou de lugar, e os endereços antigos continuam funcionando.',
+    ],
+  },
+  {
     id: '2026-11-13-nota-fiscal-e-impressao', date: '2026-11-13', title: 'Nota fiscal na OS e impressão em térmica',
     items: [
       'Cada OS ganhou a seção Nota fiscal, na etapa de entrega. A nota é opcional: emita só quando o cliente pedir. Serviços saem na NFS-e e peças na NF-e ou NFC-e, com o desconto da OS repartido entre elas.',

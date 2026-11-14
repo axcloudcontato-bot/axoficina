@@ -14,6 +14,7 @@ import { hasPermission } from '@/features/auth/permissions';
 import { useAuthStore } from '@/stores/auth-store';
 import { cn } from '@/lib/utils';
 import { extractErrorMessage } from '@/lib/api/client';
+import { AftercareNav } from './AftercareNav';
 import { CareForecastPanel } from './CareForecastPanel';
 import { CareHistoryPanel } from './CareHistoryPanel';
 import { useBranding } from '@/features/settings/hooks/use-settings';
@@ -39,7 +40,9 @@ export function CustomerCareWorkspace() {
   const [draft, setDraft] = useState<CareSettings | null>(null); const [dirty, setDirty] = useState(false); const [selected, setSelected] = useState<CareCampaignKey>('BIRTHDAY');
   const [serviceOpen, setServiceOpen] = useState(false); const [editingPlan, setEditingPlan] = useState<CarePlanResponse>(); const [previewOpen, setPreviewOpen] = useState(false);
   useEffect(() => { if (query.data && !dirty) setDraft(structuredClone(query.data.settings)); }, [query.data, dirty]);
-  if (!canView) return <p className="py-12 text-muted-foreground">Você não tem permissão para acessar o módulo Fidelização de clientes.</p>;
+  // ?aba=ajustes opens a section directly: Settings links here for the care rules.
+  useEffect(() => { const requested = new URLSearchParams(window.location.search).get('aba'); const target = requested === 'ajustes' ? 'settings' : requested === 'campanhas' ? 'campaigns' : null; if (target) setTab(target); }, []);
+  if (!canView) return <p className="py-12 text-muted-foreground">Você não tem permissão para acessar a área Retornos e lembretes.</p>;
   if (query.isLoading || !draft && !query.isError) return <p className="py-12 text-muted-foreground" role="status">Preparando a central de cuidados…</p>;
   if (query.isError || !query.data || !draft) return <div className="rounded-card border border-border bg-card p-8"><p>Não foi possível carregar os cuidados dos clientes.</p><Button className="mt-4" onClick={() => query.refetch()}>Tentar novamente</Button></div>;
   const data = query.data; const campaign = draft.campaigns.find(item => item.key === selected)!;
@@ -50,7 +53,8 @@ export function CustomerCareWorkspace() {
   const samples: Record<string, string> = { cliente: 'Mariana', oficina: 'Sua oficina', veiculo: 'Honda Fit', placa: 'ABC1D23', cuidados: campaign.name };
   const sample = campaign.message.replace(/\{(cliente|oficina|veiculo|placa|cuidados)\}/g, (_token, key: string) => samples[key]);
   return <div className="mx-auto max-w-[1440px] space-y-6 pb-8">
-    <PageHero eyebrow="Fidelização de clientes" title="O cuidado continua." description="Seu cliente sai da oficina. A atenção com ele e com o carro fica." actions={<><span className={cn('rounded-full px-3 py-1.5 text-xs font-bold', data.settings.enabled ? 'bg-success-subtle text-success-strong' : 'bg-muted text-muted-foreground')}>{data.settings.enabled ? 'Régua ativa' : 'Régua pausada'}</span>{canRecord && <Button onClick={() => { setEditingPlan(undefined); setServiceOpen(true); }}><Plus className="mr-2 size-4" aria-hidden="true" /> Registrar cuidado</Button>}</>} />
+    <PageHero eyebrow="Retornos e lembretes" title="Cuidados e mensagens" description="Seu cliente sai da oficina. A atenção com ele e com o carro fica." actions={<><span className={cn('rounded-full px-3 py-1.5 text-xs font-bold', data.settings.enabled ? 'bg-success-subtle text-success-strong' : 'bg-muted text-muted-foreground')}>{data.settings.enabled ? 'Régua ativa' : 'Régua pausada'}</span>{canRecord && <Button onClick={() => { setEditingPlan(undefined); setServiceOpen(true); }}><Plus className="mr-2 size-4" aria-hidden="true" /> Registrar cuidado</Button>}</>} />
+    <AftercareNav />
     <section aria-label="Resumo do relacionamento" className="grid grid-cols-2 gap-3 xl:grid-cols-4">{[
       { label: 'Clientes participantes', value: data.stats.optedIn, icon: Users, detail: 'Com autorização registrada' },
       { label: 'Aniversários no mês', value: data.stats.birthdaysThisMonth, icon: CalendarBlank, detail: 'Uma mensagem especial por ano', open: () => setTab('forecast') },

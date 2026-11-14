@@ -45,7 +45,7 @@ test.describe('IAM flow', () => {
     await page.getByRole('button', { name: 'Entrar no sistema', exact: true }).click();
     await expect(page).not.toHaveURL(/\/primeiros-passos$/);
 
-    await page.goto('/usuarios');
+    await page.goto('/configuracoes/equipe');
     await page.getByRole('button', { name: 'Convidar usuário' }).click();
     const invite = page.getByRole('dialog');
     await invite.getByLabel('Nome').fill('Mecânico E2E');
@@ -60,7 +60,7 @@ test.describe('IAM flow', () => {
     await page.getByLabel('Crie sua senha').fill('supersecret1');
     await page.getByRole('checkbox').check();
     await page.getByRole('button', { name: 'Ativar minha conta' }).click();
-    // Quem não administra a equipe sai de /usuarios para a tela de clientes.
+    // Quem não administra a equipe sai de /configuracoes/equipe para a tela de clientes.
     await expect(page).toHaveURL(/\/clientes$/);
 
     // "Desloga" limpando o storage e entra como o mecânico convidado.
@@ -72,7 +72,7 @@ test.describe('IAM flow', () => {
     await page.getByRole('button', { name: 'Entrar', exact: true }).click();
     await expect(page).not.toHaveURL(/\/entrar$/);
 
-    await page.goto('/usuarios');
+    await page.goto('/configuracoes/equipe');
     await expect(page).toHaveURL(/\/clientes$/);
   });
 });

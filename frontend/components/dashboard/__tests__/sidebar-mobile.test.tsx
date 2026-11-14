@@ -39,8 +39,8 @@ describe('mobile navigation', () => {
     await user.click(within(mobile).getByRole('button', { name: 'Mais áreas' }));
     const menu = screen.getByRole('dialog', { name: 'Áreas do Ofix' });
     for (const [name, href] of [
-      ['Veículos', '/veiculos'], ['Alertas de manutenção', '/alertas-de-manutencao'],
-      ['Catálogo', '/catalogo'], ['Financeiro', '/financeiro'],
+      ['Veículos', '/veiculos'], ['Retornos e lembretes', '/relacionamento'],
+      ['Peças e serviços', '/catalogo'], ['Financeiro', '/financeiro'],
       ['Configurações', '/configuracoes'], ['Suporte', '/suporte'],
       ['Minha conta', '/configuracoes/conta'],
     ]) expect(within(menu).getByRole('link', { name })).toHaveAttribute('href', href);

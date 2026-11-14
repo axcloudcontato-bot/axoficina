@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { ArrowLineDown, ArrowLineUp, ChartBar, BookOpen, Factory, TreeStructure, SquaresFour, Receipt } from '@phosphor-icons/react';
+import { ArrowLineDown, ArrowLineUp, ChartBar, BookOpen, TreeStructure, SquaresFour, Receipt } from '@phosphor-icons/react';
 import { segmentedItem, segmentedList } from '@/components/ui/segmented';
 
 const ITEMS = [
@@ -12,7 +12,6 @@ const ITEMS = [
   { href: '/financeiro/fluxo-de-caixa', label: 'Fluxo de caixa', icon: ChartBar },
   { href: '/financeiro/movimentacoes', label: 'Movimentações', icon: Receipt },
   { href: '/financeiro/categorias', label: 'Categorias', icon: TreeStructure },
-  { href: '/financeiro/fornecedores', label: 'Fornecedores', icon: Factory },
   { href: '/financeiro/relatorios', label: 'Relatórios', icon: BookOpen },
 ];
 

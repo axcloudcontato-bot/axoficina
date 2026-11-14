@@ -2,31 +2,33 @@
 
 import { usePathname } from 'next/navigation';
 import type { Icon as PhosphorIcon } from '@phosphor-icons/react';
-import { Bell, Buildings, Car, CalendarBlank, ChartBar, ChartLine, ChatCircleText, ClipboardText, Clock, Envelope, Gear, Package, ShieldCheck, SquaresFour, Users, UsersThree, UserCircle, WhatsappLogo, CreditCard, ClockCounterClockwise } from '@phosphor-icons/react';
+import { Bell, Buildings, Car, CalendarBlank, ChartBar, ChartLine, ChatCircleText, ClipboardText, Clock, Envelope, Gear, Package, ShieldCheck, SquaresFour, Users, UsersThree, UserCircle, WhatsappLogo, CreditCard, ClockCounterClockwise, Factory, Printer, Receipt } from '@phosphor-icons/react';
 import { HeaderDock } from '@/components/dashboard/header-dock';
 
 interface PageMeta { title: string; description: string; icon: PhosphorIcon }
 
 const PAGE_META: Record<string, PageMeta> = {
-  '/relacionamento': { title: 'Fidelização de clientes', description: 'Acompanhe retornos, lembretes e aniversários.', icon: UsersThree },
+  '/relacionamento': { title: 'Retornos e lembretes', description: 'Cuidados, aniversários e mensagens automáticas.', icon: Bell },
   '/admin/assinaturas': { title: 'Administração do SaaS', description: 'Gestão global das assinaturas de todas as oficinas.', icon: ShieldCheck },
   '/painel': { title: 'Visão da oficina', description: 'O que precisa da sua atenção hoje.', icon: SquaresFour },
   '/financeiro': { title: 'Financeiro', description: 'Indicadores financeiros e desempenho da oficina.', icon: ChartLine },
   '/agenda': { title: 'Agenda', description: 'Organize os atendimentos da oficina.', icon: CalendarBlank },
   '/clientes': { title: 'Clientes', description: 'Gerencie os clientes da sua oficina.', icon: Users },
   '/veiculos': { title: 'Veículos', description: 'Gerencie os veículos cadastrados da sua oficina.', icon: Car },
-  '/ordens-de-servico': { title: 'Ordens de Serviço', description: 'Acompanhe o atendimento dos veículos da sua oficina.', icon: ClipboardText },
-  '/catalogo': { title: 'Peças, produtos e serviços', description: 'Catálogo padrão para montar orçamentos mais rápido.', icon: Package },
+  '/ordens-de-servico': { title: 'Ordens de serviço', description: 'Acompanhe o atendimento dos veículos da sua oficina.', icon: ClipboardText },
+  '/catalogo': { title: 'Peças e serviços', description: 'O que a oficina vende, para montar orçamentos mais rápido.', icon: Package },
+  '/financeiro/fornecedores': { title: 'Fornecedores', description: 'De quem a oficina compra.', icon: Factory },
   '/produtividade': { title: 'Produtividade', description: 'OS entregues, mão de obra gerada e carga por técnico.', icon: ChartBar },
   '/suporte': { title: 'Suporte', description: 'Abra e acompanhe seus chamados com a equipe Ofix.', icon: ChatCircleText },
-  '/alertas-de-manutencao': { title: 'Alertas de manutenção', description: 'Acompanhe os contatos preventivos pendentes.', icon: Bell },
-  '/usuarios': { title: 'Equipe e acesso', description: 'Gerencie usuários, perfis e permissões.', icon: UsersThree },
-  '/configuracoes': { title: 'Configurações', description: 'Estado da oficina e integrações.', icon: Gear },
+  '/alertas-de-manutencao': { title: 'Retornos e lembretes', description: 'Carros que estão há muito tempo sem revisão.', icon: Bell },
+  '/configuracoes': { title: 'Configurações', description: 'Todas as regras da oficina, por assunto.', icon: Gear },
   '/configuracoes/empresa': { title: 'Empresa e marca', description: 'Dados cadastrais e documentos.', icon: Buildings },
-  '/configuracoes/operacao': { title: 'Operação', description: 'Horários, lembretes e fotos.', icon: Clock },
+  '/configuracoes/operacao': { title: 'Regras de trabalho', description: 'Horário, garantia, valor da hora, alertas e fotos.', icon: Clock },
+  '/configuracoes/nota-fiscal': { title: 'Nota fiscal', description: 'NFS-e, NF-e e certificado digital.', icon: Receipt },
+  '/configuracoes/impressao': { title: 'Impressão', description: 'Papel e impressora deste computador.', icon: Printer },
   '/configuracoes/email': { title: 'E-mail', description: 'Servidor, remetente e teste.', icon: Envelope },
   '/configuracoes/whatsapp': { title: 'WhatsApp', description: 'Conexão e recebimento de respostas.', icon: WhatsappLogo },
-  '/configuracoes/equipe': { title: 'Equipe e acesso', description: 'Gerencie usuários, convites e permissões.', icon: UsersThree },
+  '/configuracoes/equipe': { title: 'Usuários e permissões', description: 'Convites, perfis e acessos da equipe.', icon: UsersThree },
   '/configuracoes/privacidade-da-oficina': { title: 'Privacidade da oficina', description: 'Acompanhe os protocolos dos clientes.', icon: ShieldCheck },
   '/configuracoes/assinatura': { title: 'Assinatura e dados', description: 'Seu plano e a exportação dos dados da oficina.', icon: CreditCard },
   '/configuracoes/historico': { title: 'Histórico de alterações', description: 'Quem alterou o quê e quando.', icon: ClockCounterClockwise },
@@ -35,8 +37,8 @@ const PAGE_META: Record<string, PageMeta> = {
 };
 
 const PREFIX_PAGE_META: Array<{ prefix: string } & PageMeta> = [
-  { prefix: '/financeiro/', title: 'Financeiro', description: 'Fluxo de caixa, lançamentos, categorias e relatórios.', icon: ChartLine },
-  { prefix: '/ordens-de-servico/', title: 'Ordem de Serviço', description: 'Detalhes, status e histórico desta ordem de serviço.', icon: ClipboardText },
+  { prefix: '/financeiro/', title: 'Financeiro', description: 'Contas, fluxo de caixa, categorias e relatórios.', icon: ChartLine },
+  { prefix: '/ordens-de-servico/', title: 'Ordem de serviço', description: 'Detalhes, status e histórico desta ordem de serviço.', icon: ClipboardText },
 ];
 
 function resolveMeta(pathname: string | null): PageMeta | null {

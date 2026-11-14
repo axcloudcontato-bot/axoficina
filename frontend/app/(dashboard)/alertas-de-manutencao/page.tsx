@@ -1,6 +1,7 @@
 'use client';
 
 import { PageHero } from '@/components/dashboard/PageHero';
+import { AftercareNav } from '@/features/customer-care/AftercareNav';
 
 import { useState } from 'react';
 import { MagnifyingGlass } from '@phosphor-icons/react';
@@ -71,7 +72,8 @@ export default function MaintenanceAlertsPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <PageHero eyebrow="Acompanhamento" title="Alertas de manutenção" description="Encontre veículos que precisam de atenção e acompanhe o contato com cada cliente." />
+      <PageHero eyebrow="Retornos e lembretes" title="Carros sem revisão" description="Veículos que estão há muito tempo sem passar pela oficina, para a equipe entrar em contato." />
+      <AftercareNav />
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div role="tablist" aria-label="Situação dos alertas" className={segmentedList}>
           {TABS.map((item) => (

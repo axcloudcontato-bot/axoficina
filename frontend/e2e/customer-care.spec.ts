@@ -30,7 +30,7 @@ test('edits campaigns, previews safely, records care and fits mobile without rea
   });
   mkdirSync('artifacts/customer-care', { recursive: true });
   await page.setViewportSize({ width: 1440, height: 1040 });
-  await page.goto('/relacionamento'); await expect(page.getByRole('heading', { name: 'O cuidado continua.' })).toBeVisible();
+  await page.goto('/relacionamento'); await expect(page.getByRole('heading', { name: 'Cuidados e mensagens' })).toBeVisible();
   await page.screenshot({ path: 'artifacts/customer-care/desktop-overview.png', fullPage: true });
   await page.getByRole('tab', { name: 'Campanhas e mensagens' }).click();
   await page.getByRole('button', { name: /Óleo e filtro do motor/ }).click();
