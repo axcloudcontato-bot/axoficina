@@ -171,6 +171,7 @@ function clean(request: CreateCatalogItemRequest, cost?: number | null): Catalog
     standardMinutes: service ? request.standardMinutes ?? null : null,
     careServiceKey: service ? request.careServiceKey ?? null : null,
     // Services have no shelf: stock control is for parts and products.
+    ncm: service ? null : request.ncm?.replace(/\D/g, '') || null,
     trackStock: service ? false : request.trackStock ?? false,
     minStock: !service && request.trackStock ? request.minStock ?? null : null,
   };
@@ -182,6 +183,7 @@ function toResponse(item: CatalogItem, viewer: CatalogViewer): CatalogItemRespon
     code: item.code ?? undefined, brand: item.brand ?? undefined, unit: item.unit as CatalogUnit,
     supplierId: item.supplierId ?? undefined, standardMinutes: item.standardMinutes ?? undefined,
     careServiceKey: (item.careServiceKey ?? undefined) as CatalogItemResponse['careServiceKey'],
+    ncm: item.ncm ?? undefined,
     trackStock: item.trackStock, stockQuantity: Number(item.stockQuantity), minStock: item.minStock === null ? undefined : Number(item.minStock),
   };
 }

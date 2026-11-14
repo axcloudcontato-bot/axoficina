@@ -593,6 +593,7 @@ model CatalogItem {
   unit           String    @default("un")
   supplierId     String?   @map("supplier_id") @db.Uuid
   standardMinutes Int?     @map("standard_minutes")
+  ncm            String?   @db.VarChar(8)
   careServiceKey String?   @map("care_service_key")
   trackStock     Boolean   @default(false) @map("track_stock")
   stockQuantity  Decimal   @default(0) @map("stock_quantity") @db.Decimal(10, 2)
@@ -1003,4 +1004,75 @@ model AccountClosure {
   purgedAt DateTime @default(now()) @map("purged_at") @db.Timestamptz
 
   @@map("account_closures")
+}
+
+// Configuração fiscal da oficina (uma por oficina). Tokens e CSC ficam criptografados.
+model FiscalSettings {
+  id                        String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  tenantId                  String    @unique @map("tenant_id") @db.Uuid
+  environment               String    @default("HOMOLOGACAO") @db.VarChar(12)
+  taxRegime                 String    @default("SIMPLES_NACIONAL") @map("tax_regime") @db.VarChar(20)
+  municipalRegistration     String?   @map("municipal_registration") @db.VarChar(30)
+  cityIbgeCode              String?   @map("city_ibge_code") @db.VarChar(7)
+  cnae                      String?   @db.VarChar(10)
+  nfseEnabled               Boolean   @default(true) @map("nfse_enabled")
+  nfeEnabled                Boolean   @default(false) @map("nfe_enabled")
+  nfceEnabled               Boolean   @default(false) @map("nfce_enabled")
+  serviceListItem           String    @default("14.01") @map("service_list_item") @db.VarChar(10)
+  municipalTaxCode          String?   @map("municipal_tax_code") @db.VarChar(30)
+  issRatePercent            Decimal?  @map("iss_rate_percent") @db.Decimal(5, 2)
+  issWithheld               Boolean   @default(false) @map("iss_withheld")
+  defaultNcm                String    @default("87089990") @map("default_ncm") @db.VarChar(8)
+  defaultCfop               String    @default("5102") @map("default_cfop") @db.VarChar(4)
+  csosn                     String    @default("102") @db.VarChar(3)
+  pisCofinsCst              String    @default("49") @map("pis_cofins_cst") @db.VarChar(2)
+  nfceCscId                 String?   @map("nfce_csc_id") @db.VarChar(10)
+  nfceCsc                   String?   @map("nfce_csc")
+  providerCompanyId         String?   @map("provider_company_id") @db.VarChar(40)
+  providerTokenProduction   String?   @map("provider_token_production")
+  providerTokenHomologation String?   @map("provider_token_homologation")
+  certificateValidUntil     DateTime? @map("certificate_valid_until") @db.Timestamptz
+  certificateUploadedAt     DateTime? @map("certificate_uploaded_at") @db.Timestamptz
+  lastSyncAt                DateTime? @map("last_sync_at") @db.Timestamptz
+  lastSyncError             String?   @map("last_sync_error")
+  createdAt                 DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt                 DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@map("fiscal_settings")
+}
+
+// Nota fiscal ligada a uma OS: emitida pelo Ofix (INTEGRATED) ou registrada depois de emitida fora (MANUAL).
+model FiscalDocument {
+  id                 String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  tenantId           String    @map("tenant_id") @db.Uuid
+  serviceOrderId     String    @map("service_order_id") @db.Uuid
+  kind               String    @db.VarChar(4)
+  origin             String    @db.VarChar(10)
+  environment        String?   @db.VarChar(12)
+  status             String    @db.VarChar(10)
+  providerRef        String?   @unique @map("provider_ref") @db.VarChar(60)
+  number             String?   @db.VarChar(20)
+  series             String?   @db.VarChar(10)
+  verificationCode   String?   @map("verification_code") @db.VarChar(60)
+  accessKey          String?   @map("access_key") @db.VarChar(60)
+  issuedAt           DateTime? @map("issued_at") @db.Timestamptz
+  amountCents        Int       @map("amount_cents")
+  pdfUrl             String?   @map("pdf_url")
+  xmlUrl             String?   @map("xml_url")
+  attachmentKey      String?   @map("attachment_key")
+  attachmentName     String?   @map("attachment_name") @db.VarChar(160)
+  attachmentMimeType String?   @map("attachment_mime_type") @db.VarChar(60)
+  errorMessage       String?   @map("error_message")
+  cancelledAt        DateTime? @map("cancelled_at") @db.Timestamptz
+  cancelReason       String?   @map("cancel_reason") @db.VarChar(255)
+  notes              String?   @db.VarChar(500)
+  itemIds            String[]  @default([]) @map("item_ids") @db.Uuid
+  createdBy          String    @map("created_by") @db.Uuid
+  createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt          DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@index([tenantId])
+  @@index([serviceOrderId])
+  @@index([tenantId, status])
+  @@map("fiscal_documents")
 }

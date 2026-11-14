@@ -30,6 +30,7 @@ import { CustomerPickupMessage } from './CustomerPickupMessage';
 import { ServiceOrderStatusNotifications } from './ServiceOrderStatusNotifications';
 import { ItemPhotosSection, VehiclePhotoSection } from './ServiceOrderPhotoGallery';
 import { ServiceOrderPaymentSection } from './ServiceOrderPaymentSection';
+import { ServiceOrderFiscalSection } from '@/features/fiscal/components/ServiceOrderFiscalSection';
 import { StatusBadge } from './StatusBadge';
 import { StatusHistoryTimeline } from './StatusHistoryTimeline';
 import { DeleteServiceOrderDialog } from './DeleteServiceOrderDialog';
@@ -185,6 +186,7 @@ export function ServiceOrderWorkspace({ serviceOrder: order }: { serviceOrder: S
       {order.status !== 'CANCELLED' && <VehiclePhotoSection serviceOrderId={order.id} category="EXIT" canManage={canEdit} />}
       {order.status === 'COMPLETED' && canManage && canViewPrices && <CustomerPickupMessage serviceOrder={order} beforeSend={draft.save} />}
       {canManageReceipts && <ServiceOrderPaymentSection serviceOrder={order} />}
+      {canManageReceipts && order.status !== 'CANCELLED' && <ServiceOrderFiscalSection serviceOrder={order} />}
       <StepFooter back="Execução" onBack={() => setStep('execution')} />
     </div>}
 

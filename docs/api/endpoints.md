@@ -3,7 +3,7 @@
 > Gerado a partir dos controllers do backend. Não edite à mão: rode `UPDATE_API_DOCS=1 pnpm --filter @oficina/backend exec jest src/shared/api-docs`
 > depois de mudar uma rota ou seus decorators. O teste `api-docs.spec.ts` falha se este arquivo ficar desatualizado.
 
-São 205 endpoints em 28 controllers.
+São 216 endpoints em 29 controllers.
 
 ## Convenções
 
@@ -144,6 +144,22 @@ São 205 endpoints em 28 controllers.
 | GET | `/api/v1/fipe/brands` | `brands` | ADMIN, MANAGER, FRONT_DESK, MECHANIC | vehicles.view |  |
 | GET | `/api/v1/fipe/models` | `models` | ADMIN, MANAGER, FRONT_DESK, MECHANIC | vehicles.view |  |
 | POST | `/api/v1/fipe/sync` | `sync` | ADMIN | vehicles.manage |  |
+
+## modules/fiscal/fiscal.controller.ts
+
+| Método | Rota | Ação | Quem acessa | Permissão | Módulo/limite |
+| --- | --- | --- | --- | --- | --- |
+| GET | `/api/v1/fiscal/settings` | `settings` | ADMIN, MANAGER | settings.view |  |
+| POST | `/api/v1/fiscal/settings` | `updateSettings` | ADMIN, MANAGER | settings.manage | limite write |
+| POST | `/api/v1/fiscal/certificate` | `certificate` | ADMIN | settings.manage | limite write |
+| POST | `/api/v1/fiscal/documents/list` | `list` | ADMIN, MANAGER, FRONT_DESK, FINANCE | receipts.manage |  |
+| POST | `/api/v1/fiscal/documents/preview` | `preview` | ADMIN, MANAGER, FRONT_DESK, FINANCE | receipts.manage |  |
+| POST | `/api/v1/fiscal/documents/issue` | `issue` | ADMIN, MANAGER, FRONT_DESK, FINANCE | receipts.manage | limite write |
+| POST | `/api/v1/fiscal/documents/refresh` | `refresh` | ADMIN, MANAGER, FRONT_DESK, FINANCE | receipts.manage |  |
+| POST | `/api/v1/fiscal/documents/cancel` | `cancel` | ADMIN, MANAGER, FRONT_DESK, FINANCE | receipts.manage | limite write |
+| POST | `/api/v1/fiscal/documents/register` | `register` | ADMIN, MANAGER, FRONT_DESK, FINANCE | receipts.manage | limite write |
+| POST | `/api/v1/fiscal/documents/delete` | `remove` | ADMIN, MANAGER, FRONT_DESK, FINANCE | receipts.manage | limite write |
+| POST | `/api/v1/fiscal/documents/attachment` | `attachment` | ADMIN, MANAGER, FRONT_DESK, FINANCE | receipts.manage |  |
 
 ## modules/iam/controllers/access-profiles.controller.ts
 

@@ -2,7 +2,7 @@
 
 import { PageHero } from '@/components/dashboard/PageHero';
 
-import { Buildings, ClockCounterClockwise, CreditCard, Envelope, UsersThree, ShieldCheck, WhatsappLogo, SquaresFour, Clock, UserCircle, Lock } from '@phosphor-icons/react';
+import { Buildings, ClockCounterClockwise, CreditCard, Envelope, UsersThree, ShieldCheck, WhatsappLogo, SquaresFour, Clock, UserCircle, Lock, Receipt, Printer } from '@phosphor-icons/react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { segmentedItem, segmentedList } from '@/components/ui/segmented';
@@ -14,6 +14,8 @@ const items = [
   { href: '/configuracoes', label: 'Visão geral', description: 'Estado das configurações', icon: SquaresFour, permission: null },
   { href: '/configuracoes/empresa', label: 'Empresa e marca', description: 'Identidade e documentos', icon: Buildings, permission: 'settings.view' as const },
   { href: '/configuracoes/operacao', label: 'Operação', description: 'Agenda e fotos', icon: Clock, permission: 'settings.view' as const },
+  { href: '/configuracoes/nota-fiscal', label: 'Nota fiscal', description: 'NFS-e, NF-e e certificado', icon: Receipt, permission: 'settings.view' as const },
+  { href: '/configuracoes/impressao', label: 'Impressão', description: 'Papel e impressora deste computador', icon: Printer, permission: null },
   { href: '/configuracoes/email', label: 'E-mail', description: 'Servidor e remetente', icon: Envelope, permission: 'settings.view' as const },
   { href: '/configuracoes/whatsapp', label: 'WhatsApp', description: 'Conexão com WA-AKG', icon: WhatsappLogo, permission: 'settings.view' as const, module: 'whatsapp' as const },
   { href: '/configuracoes/equipe', label: 'Equipe e acesso', description: 'Usuários e permissões', icon: UsersThree, permission: 'team.view' as const },

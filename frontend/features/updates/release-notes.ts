@@ -1,6 +1,17 @@
 // This feed is visible to every workshop account. Keep SaaS administration changes out of it.
 export const RELEASE_NOTES = [
   {
+    id: '2026-11-13-nota-fiscal-e-impressao', date: '2026-11-13', title: 'Nota fiscal na OS e impressão em térmica',
+    items: [
+      'Cada OS ganhou a seção Nota fiscal, na etapa de entrega. A nota é opcional: emita só quando o cliente pedir. Serviços saem na NFS-e e peças na NF-e ou NFC-e, com o desconto da OS repartido entre elas.',
+      'Antes de emitir, o Ofix mostra os itens, o total e o que falta (CPF, endereço, configuração). A nota pode ser aberta em PDF, baixada em XML e cancelada pela própria OS.',
+      'Notas feitas no portal da prefeitura, da SEFAZ ou pelo contador podem ser registradas na OS com o número e o arquivo anexado.',
+      'Em Configurações → Nota fiscal ficam o regime tributário, a inscrição municipal, o ISS, o NCM padrão das peças e o certificado digital. A emissão começa em homologação, para testar sem valor fiscal.',
+      'O catálogo de peças tem o campo NCM, usado na nota de produto.',
+      'A OS agora imprime também em bobina térmica de 80 mm ou 58 mm, com uma ou duas vias. Em Configurações → Impressão, cada computador escolhe o papel, as margens, o tamanho da letra e se a impressão abre sozinha. Há páginas de teste para calibrar e um guia para impressoras USB, de rede e térmicas.',
+    ],
+  },
+  {
     id: '2026-11-11-novo-painel', date: '2026-11-11', title: 'Painel inicial redesenhado',
     items: [
       'O topo do painel mostra quatro números: OS em andamento, entregues no mês, aguardando aprovação e previsão de entrega para hoje. Cada um abre a lista correspondente.',

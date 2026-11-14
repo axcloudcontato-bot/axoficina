@@ -15,7 +15,8 @@ export interface CreateCatalogItemRequest {
   // Services only: time a job usually takes, and the care it schedules for the customer.
   standardMinutes?: number | null;
   careServiceKey?: CareServiceKey | null;
-  // Parts and products only.
+  // Parts and products only. NCM (8 digits) goes on the NF-e; empty uses the shop's default.
+  ncm?: string | null;
   trackStock?: boolean;
   minStock?: number | null;
 }

@@ -1,5 +1,5 @@
 import { Type } from 'class-transformer';
-import { ArrayMaxSize, ArrayMinSize, IsArray, IsBoolean, IsIn, IsInt, IsNotEmpty, IsNumber, IsOptional, IsString, IsUUID, Max, MaxLength, Min, ValidateNested } from 'class-validator';
+import { ArrayMaxSize, ArrayMinSize, IsArray, IsBoolean, IsIn, IsInt, IsNotEmpty, IsNumber, IsOptional, IsString, IsUUID, Matches, Max, MaxLength, Min, ValidateNested } from 'class-validator';
 import { CARE_SERVICE_KEYS, CATALOG_ITEM_TYPES, CATALOG_REPORT_DAYS, CATALOG_UNITS } from '@oficina/contracts';
 import type { AdjustStockRequest, CreateCatalogItemRequest, DeleteCatalogItemRequest, DeleteCatalogPackageRequest, ImportCatalogRequest, ImportCatalogRow, SaveCatalogPackageRequest, UpdateCatalogItemRequest } from '@oficina/contracts';
 
@@ -15,6 +15,7 @@ export class CreateCatalogItemDto implements CreateCatalogItemRequest {
   @IsOptional() @IsUUID() supplierId?: string | null;
   @IsOptional() @IsInt() @Min(1) @Max(1440) standardMinutes?: number | null;
   @IsOptional() @IsIn(CARE_SERVICE_KEYS) careServiceKey?: CreateCatalogItemRequest['careServiceKey'];
+  @IsOptional() @Matches(/^\d{8}$/, { message: 'ncm must have 8 digits' }) ncm?: string | null;
   @IsOptional() @IsBoolean() trackStock?: boolean;
   @IsOptional() @IsNumber({ maxDecimalPlaces: 2 }) @Min(0) @Max(99_999_999) minStock?: number | null;
 }

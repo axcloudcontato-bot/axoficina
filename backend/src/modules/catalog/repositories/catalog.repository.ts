@@ -6,7 +6,7 @@ export type CatalogInput = {
   type: string; name: string; category: string | null; unitPriceCents: number;
   costCents: number | null; code: string | null; brand: string | null; unit: string; supplierId: string | null;
   standardMinutes: number | null; careServiceKey: string | null;
-  trackStock: boolean; minStock: number | null;
+  ncm: string | null; trackStock: boolean; minStock: number | null;
 };
 
 export interface ReportLine {

@@ -29,6 +29,7 @@ export interface CatalogItemResponse {
   standardMinutes?: number;
   careServiceKey?: CareServiceKey;
   // Parts and products only. The balance and minimum are meaningful when trackStock is on.
+  ncm?: string;
   trackStock: boolean;
   stockQuantity: number;
   minStock?: number;

@@ -40,7 +40,7 @@ export function CatalogItemFormModal({ open, onOpenChange, item, defaultType = '
   const canSeeCost = hasPermission(user, 'finance.view');
   const suppliers = useSuppliers(canSeeCost);
   const laborRate = useLaborRate();
-  const [values, setValues] = useState({ type: defaultType as CatalogItemType, name: '', vehicle: 'Carro' as VehicleGroup, category: '', price: '', cost: '', code: '', brand: '', unit: 'un' as CatalogUnit, supplierId: '', minutes: '', care: '', trackStock: false, minStock: '' });
+  const [values, setValues] = useState({ type: defaultType as CatalogItemType, name: '', vehicle: 'Carro' as VehicleGroup, category: '', price: '', cost: '', code: '', brand: '', ncm: '', unit: 'un' as CatalogUnit, supplierId: '', minutes: '', care: '', trackStock: false, minStock: '' });
   const pending = create.isPending || update.isPending;
   const service = values.type === 'LABOR';
   const set = <K extends keyof typeof values>(key: K, value: (typeof values)[K]) => setValues(previous => ({ ...previous, [key]: value }));
@@ -49,7 +49,7 @@ export function CatalogItemFormModal({ open, onOpenChange, item, defaultType = '
     if (!open) return;
     setValues({
       type: item?.type ?? defaultType, name: item?.name ?? '', vehicle: item ? splitCatalogCategory(item.category).vehicle : defaultVehicle, category: item ? splitCatalogCategory(item.category).category : '', price: toText(item?.unitPriceCents), cost: toText(item?.costCents),
-      code: item?.code ?? '', brand: item?.brand ?? '', unit: item?.unit ?? (defaultType === 'LABOR' ? 'h' : 'un'), supplierId: item?.supplierId ?? '',
+      code: item?.code ?? '', brand: item?.brand ?? '', ncm: item?.ncm ?? '', unit: item?.unit ?? (defaultType === 'LABOR' ? 'h' : 'un'), supplierId: item?.supplierId ?? '',
       minutes: item?.standardMinutes ? String(item.standardMinutes) : '', care: item?.careServiceKey ?? '',
       trackStock: item?.trackStock ?? false, minStock: item?.minStock === undefined ? '' : String(item.minStock).replace('.', ','),
     });
@@ -68,13 +68,14 @@ export function CatalogItemFormModal({ open, onOpenChange, item, defaultType = '
     if (costCents !== undefined && Number.isNaN(costCents)) return toast.error('Informe um custo válido, como 12,50 ou 1.234,56.');
     const minutes = values.minutes.trim() === '' ? null : Number(values.minutes);
     if (service && minutes !== null && (!Number.isInteger(minutes) || minutes < 1 || minutes > 1440)) return toast.error('Informe o tempo padrão em minutos, de 1 a 1440.');
+    if (!service && values.ncm.trim() && values.ncm.replace(/\D/g, '').length !== 8) return toast.error('O NCM tem 8 dígitos, como 8421.23.00.');
     const minStock = values.minStock.trim() === '' ? null : Number(values.minStock.replace(',', '.'));
     if (!service && values.trackStock && minStock !== null && (!Number.isFinite(minStock) || minStock < 0 || Math.abs(Math.round(minStock * 100) / 100 - minStock) > 1e-9)) return toast.error('Informe o estoque mínimo com até duas casas decimais.');
     const request = {
       type: values.type, name: values.name.trim(), category: composeCatalogCategory(values.vehicle, values.category), unitPriceCents: priceCents,
       code: values.code.trim() || undefined, brand: values.brand.trim() || undefined, unit: values.unit,
       ...(canSeeCost ? { costCents: costCents ?? null, supplierId: values.supplierId || null } : {}),
-      ...(!service ? { trackStock: values.trackStock, minStock: values.trackStock ? minStock : null } : {}),
+      ...(!service ? { ncm: values.ncm.replace(/\D/g, '') || null, trackStock: values.trackStock, minStock: values.trackStock ? minStock : null } : {}),
       ...(service ? { standardMinutes: minutes, careServiceKey: (values.care || null) as CareServiceKey | null } : {}),
     };
     const options = {
@@ -103,7 +104,8 @@ export function CatalogItemFormModal({ open, onOpenChange, item, defaultType = '
           <div className="space-y-2"><Label htmlFor={`${id}-category`}>Categoria (opcional)</Label><Input id={`${id}-category`} list={`${id}-categories`} maxLength={60 - values.vehicle.length - 3} value={values.category} onChange={event => set('category', event.target.value)} placeholder="Ex.: Freios" /><datalist id={`${id}-categories`}>{categories.filter(category => splitCatalogCategory(category).vehicle === values.vehicle).map(category => <option key={category} value={splitCatalogCategory(category).category} />)}</datalist></div>
           <div className="space-y-2 sm:col-span-2"><Label htmlFor={`${id}-name`}>Nome</Label><Input id={`${id}-name`} value={values.name} onChange={event => set('name', event.target.value)} placeholder="Ex.: Pastilha de freio dianteira" /></div>
           {!service && <><div className="space-y-2"><Label htmlFor={`${id}-code`}>Código (opcional)</Label><Input id={`${id}-code`} maxLength={40} value={values.code} onChange={event => set('code', event.target.value)} placeholder="Referência ou código de barras" /></div>
-          <div className="space-y-2"><Label htmlFor={`${id}-brand`}>Marca (opcional)</Label><Input id={`${id}-brand`} maxLength={60} value={values.brand} onChange={event => set('brand', event.target.value)} placeholder="Ex.: Cobreq" /></div></>}
+          <div className="space-y-2"><Label htmlFor={`${id}-brand`}>Marca (opcional)</Label><Input id={`${id}-brand`} maxLength={60} value={values.brand} onChange={event => set('brand', event.target.value)} placeholder="Ex.: Cobreq" /></div>
+          <div className="space-y-2"><Label htmlFor={`${id}-ncm`}>NCM (opcional)</Label><Input id={`${id}-ncm`} inputMode="numeric" maxLength={10} value={values.ncm} onChange={event => set('ncm', event.target.value)} placeholder="Ex.: 8421.23.00" /><p className="text-xs text-text-muted">Classificação fiscal da peça, usada na NF-e. Está na nota de compra do fornecedor.</p></div></>}
           <div className="space-y-2"><Label htmlFor={`${id}-unit`}>Unidade</Label><select id={`${id}-unit`} className={selectClass} value={values.unit} onChange={event => set('unit', event.target.value as CatalogUnit)}>{CATALOG_UNITS.map(unit => <option key={unit} value={unit}>{unit}</option>)}</select></div>
           {service && <div className="space-y-2"><Label htmlFor={`${id}-minutes`}>Tempo padrão (minutos)</Label><Input id={`${id}-minutes`} type="number" min={1} max={1440} inputMode="numeric" value={values.minutes} onChange={event => set('minutes', event.target.value)} placeholder="Ex.: 60" /></div>}
           <div className="space-y-2"><Label htmlFor={`${id}-price`}>Preço padrão (R$)</Label><Input id={`${id}-price`} inputMode="decimal" value={values.price} onChange={event => set('price', event.target.value)} placeholder="0,00" />

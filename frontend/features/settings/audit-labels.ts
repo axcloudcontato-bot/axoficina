@@ -27,6 +27,8 @@ const LABELS: Record<string, string> = {
   'customer_care.settings_updated': 'Alterou a régua de cuidado com o cliente', 'customer_care.contact_recorded': 'Registrou um contato de cuidado', 'customer_care.service_recorded': 'Registrou um cuidado realizado',
   'maintenance_alert.resolved': 'Resolveu um alerta de manutenção', 'maintenance_alert.dismissed': 'Dispensou um alerta de manutenção', 'maintenance_alert.snoozed': 'Adiou um alerta de manutenção', 'maintenance_alert.reopened': 'Reabriu um alerta de manutenção', 'maintenance_alert.contact_recorded': 'Registrou contato de um alerta',
   'email.sent': 'Enviou um e-mail pelo sistema',
+  'fiscal.settings_updated': 'Alterou a configuração fiscal', 'fiscal.certificate_uploaded': 'Enviou o certificado digital', 'fiscal.document_issued': 'Emitiu uma nota fiscal',
+  'fiscal.document_registered': 'Registrou uma nota emitida fora do Ofix', 'fiscal.document_cancelled': 'Cancelou uma nota fiscal', 'fiscal.document_deleted': 'Excluiu o registro de uma nota fiscal',
 };
 
 export const AUDIT_AREAS: Array<{ prefix: string; label: string }> = [
@@ -36,6 +38,7 @@ export const AUDIT_AREAS: Array<{ prefix: string; label: string }> = [
   { prefix: 'access_profile.', label: 'Perfis de acesso' },
   { prefix: 'auth.', label: 'Entradas e senhas' },
   { prefix: 'financial.', label: 'Financeiro' },
+  { prefix: 'fiscal.', label: 'Notas fiscais' },
   { prefix: 'service_order.', label: 'Ordens de serviço' },
   { prefix: 'catalog.', label: 'Catálogo' },
   { prefix: 'customer.', label: 'Clientes' },

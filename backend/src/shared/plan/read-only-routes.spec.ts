@@ -24,6 +24,7 @@ const READS = new Set([
   '/api/v1/service-orders/technician-productivity/orders',
   '/api/v1/users/list', '/api/v1/vehicles/archive-impact', '/api/v1/vehicles/list', '/api/v1/vehicles/overview',
   '/api/v1/settings/audit-log',
+  '/api/v1/fiscal/documents/list', '/api/v1/fiscal/documents/preview', '/api/v1/fiscal/documents/attachment',
 ]);
 
 // Writes that must keep working when the subscription is not active, each for a reason.
@@ -40,6 +41,8 @@ const ALLOWED_WHEN_VIEW_ONLY = new Set([
   '/api/v1/support/tickets',
   // Closing what is already open adds nothing, and reading a notification changes no business data.
   '/api/v1/service-orders/work-sessions/stop', '/api/v1/service-orders/idle-time/stop', '/api/v1/customer-reply-notifications/:id/read',
+  // Only copies what the tax authority already decided about a note that was issued while the account was active.
+  '/api/v1/fiscal/documents/refresh',
   // Global catalog of vehicles, not the workshop's data.
   '/api/v1/fipe/sync',
 ]);

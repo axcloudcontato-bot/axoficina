@@ -88,6 +88,10 @@ services:
       STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
       STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
       STRIPE_PORTAL_CONFIGURATION: ${STRIPE_PORTAL_CONFIGURATION:-}
+      # Emissão de notas fiscais (docs/nota-fiscal.md). Vazio = só registro manual de notas.
+      FOCUS_NFE_TOKEN: ${FOCUS_NFE_TOKEN:-}
+      FOCUS_NFE_URL: ${FOCUS_NFE_URL:-https://api.focusnfe.com.br}
+      FOCUS_NFE_HOMOLOGATION_URL: ${FOCUS_NFE_HOMOLOGATION_URL:-https://homologacao.focusnfe.com.br}
       PLATFORM_MAIL_FROM: ${PLATFORM_MAIL_FROM:-}
       # Error monitoring (docs/observabilidade.md). Empty = off.
       SENTRY_DSN: ${SENTRY_BACKEND_DSN:-}

@@ -14,7 +14,7 @@ export function PrivacyControls() {
   const [open, setOpen] = useState(false);
   const [storageError, setStorageError] = useState(false);
   useEffect(() => { setNotice(!readPrivacyChoice()); }, []);
-  if (pathname?.includes('/imprimir')) return null;
+  if (pathname?.includes('/imprimir') || pathname?.startsWith('/impressao/')) return null;
   function necessaryOnly() {
     setStorageError(!savePrivacyChoice());
     setNotice(false);
