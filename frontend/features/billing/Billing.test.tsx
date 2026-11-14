@@ -44,7 +44,8 @@ describe('PlanSwitcher', () => {
     const user = userEvent.setup();
     render(<PlanSwitcher />);
     await user.click(screen.getByRole('button', { name: 'Anual' }));
-    expect(screen.getByText(/1\.558,80/)).toBeInTheDocument();
+    // 12 × R$ 129,90 with the 15% annual discount.
+    expect(screen.getByText(/1\.324,98/)).toBeInTheDocument();
     expect(screen.getAllByText('por ano')).toHaveLength(3);
     await user.click(screen.getByRole('button', { name: 'Contratar Essencial' }));
     await waitFor(() => expect(mocks.checkout).toHaveBeenCalledWith({ plan: 'essencial', cycle: 'yearly' }));
