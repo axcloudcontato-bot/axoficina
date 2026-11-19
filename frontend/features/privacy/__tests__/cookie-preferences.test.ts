@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { LEGAL_VERSION } from '@oficina/contracts';
-import { readPrivacyChoice, savePrivacyChoice } from '../cookie-preferences';
+import { hasAnalyticsConsent, PRIVACY_CHOICE_EVENT, readPrivacyChoice, savePrivacyChoice } from '../cookie-preferences';
 
 describe('privacy storage choices', () => {
   beforeEach(() => { localStorage.clear(); vi.restoreAllMocks(); });
@@ -17,6 +17,17 @@ describe('privacy storage choices', () => {
     savePrivacyChoice();
     expect(readPrivacyChoice()).toEqual(expect.objectContaining({ version: LEGAL_VERSION, necessary: true, analytics: false, marketing: false }));
     expect(localStorage.getItem('oficina-auth')).toBe('session');
+  });
+  it('enables analytics only after a positive choice and announces every change', () => {
+    const listener = vi.fn(); window.addEventListener(PRIVACY_CHOICE_EVENT, listener);
+    expect(hasAnalyticsConsent()).toBe(false);
+    savePrivacyChoice(new Date(), { analytics: true });
+    expect(hasAnalyticsConsent()).toBe(true);
+    expect(readPrivacyChoice()?.marketing).toBe(false);
+    savePrivacyChoice();
+    expect(hasAnalyticsConsent()).toBe(false);
+    expect(listener).toHaveBeenCalledTimes(2);
+    window.removeEventListener(PRIVACY_CHOICE_EVENT, listener);
   });
   it('fails closed when storage is unavailable', () => {
     vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => { throw new Error('blocked'); });

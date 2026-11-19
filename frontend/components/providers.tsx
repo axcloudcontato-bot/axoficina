@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { Toaster } from '@/components/ui/sonner';
 import { PrivacyControls } from '@/features/privacy/components/PrivacyControls';
+import { GoogleTagManager } from '@/features/privacy/components/GoogleTagManager';
 import { KeyboardNavigation } from '@/components/keyboard-navigation';
 import { initSentry } from '@/lib/sentry';
 
@@ -16,6 +17,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
       <KeyboardNavigation />
       {children}
       <PrivacyControls />
+      <GoogleTagManager />
       <Toaster />
     </QueryClientProvider>
   );

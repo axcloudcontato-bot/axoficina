@@ -1,6 +1,13 @@
 // This feed is visible to every workshop account. Keep SaaS administration changes out of it.
 export const RELEASE_NOTES = [
   {
+    id: '2026-11-18-estatisticas-opcionais', date: '2026-11-18', title: 'Estatísticas de uso opcionais',
+    items: [
+      'O aviso de cookies ganhou a opção Aceitar estatísticas. Com ela, o Ofix usa o Google Analytics para contar visitas e entender quais páginas são mais usadas. Sem o aceite, nada é carregado.',
+      'Você pode mudar de ideia quando quiser em Preferências de cookies, no rodapé. Ao desmarcar, os cookies do Analytics são apagados deste navegador. Cookies de publicidade continuam fora do sistema.',
+    ],
+  },
+  {
     id: '2026-11-14-menu-organizado', date: '2026-11-14', title: 'Menu e configurações reorganizados',
     items: [
       'O menu lateral foi separado pelo que você está fazendo: Dia a dia (painel, agenda e OS), Cadastros (clientes, veículos, peças e serviços, fornecedores), Pós-venda e Gestão (financeiro e produtividade). Configurações e Suporte ficam no rodapé do menu.',

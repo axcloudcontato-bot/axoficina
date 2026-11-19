@@ -56,3 +56,10 @@ export const PRIVATE_PATHS = [
   '/financeiro', '/produtividade', '/relacionamento', '/usuarios', '/configuracoes', '/admin',
   '/convite/', '/redefinir-senha/', '/esqueci-a-senha', '/responder/', '/preferencias-de-contato/', '/api/',
 ];
+
+/**
+ * Contêiner do Google Tag Manager. Só é carregado em produção e depois do
+ * consentimento para estatísticas (features/privacy/components/GoogleTagManager).
+ * NEXT_PUBLIC_GTM_ID sobrescreve no build; vazio desliga.
+ */
+export const GTM_ID = process.env.NODE_ENV === 'production' ? (process.env.NEXT_PUBLIC_GTM_ID ?? 'GTM-PGL2NDQG') : '';
