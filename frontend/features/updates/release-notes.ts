@@ -1,16 +1,6 @@
 // This feed is visible to every workshop account. Keep SaaS administration changes out of it.
 export const RELEASE_NOTES = [
   {
-    id: '2026-11-20-chat-whatsapp', date: '2026-11-20', title: 'Chat do WhatsApp dentro do Ofix',
-    items: [
-      'O menu ganhou o item Chat WhatsApp, em Dia a dia. Ele mostra as conversas do número da oficina e permite responder os clientes sem abrir o WhatsApp Web ou o aplicativo.',
-      'Suas mensagens ficam à direita, em amarelo, com o rótulo Você. As do cliente ficam à esquerda, em branco no tema claro e azul-acinzentado no escuro, com o nome dele.',
-      'Cada conversa mostra a foto do contato no WhatsApp. Quando o contato não tem foto ou a esconde, aparecem as iniciais do nome.',
-      'Conversas de clientes cadastrados aparecem com o nome do cadastro, e o botão Ver cliente abre a ficha. O filtro Clientes mostra só essas conversas.',
-      'Fotos, áudios e documentos enviados pelo cliente abrem dentro da conversa. Grupos ficam de fora. Quem não pode alterar clientes lê as conversas, mas não envia mensagens.',
-    ],
-  },
-  {
     id: '2026-11-20-whatsapp-envio-claro', date: '2026-11-20', title: 'Envio do orçamento pelo WhatsApp mais claro',
     items: [
       'Quando o servidor de WhatsApp não confirma o envio, a tela agora mostra o motivo, em vez de um erro genérico. Confira o histórico da OS antes de reenviar.',

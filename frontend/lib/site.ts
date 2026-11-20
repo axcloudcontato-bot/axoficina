@@ -52,7 +52,7 @@ export const PUBLIC_PAGES: Array<{ path: string; priority: number; changeFrequen
 ];
 
 export const PRIVATE_PATHS = [
-  '/painel', '/chat', '/ordens-de-servico', '/agenda', '/clientes', '/veiculos', '/alertas-de-manutencao',
+  '/painel', '/ordens-de-servico', '/agenda', '/clientes', '/veiculos', '/alertas-de-manutencao',
   '/financeiro', '/produtividade', '/relacionamento', '/usuarios', '/configuracoes', '/admin',
   '/convite/', '/redefinir-senha/', '/esqueci-a-senha', '/responder/', '/preferencias-de-contato/', '/api/',
 ];

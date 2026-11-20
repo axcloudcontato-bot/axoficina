@@ -52,4 +52,3 @@ export * from './plans';
 export * from './billing';
 export * from './account-closure';
 export * from './fiscal';
-export * from './whatsapp-chat';

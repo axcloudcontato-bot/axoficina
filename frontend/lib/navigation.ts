@@ -5,7 +5,6 @@ export const NAVIGATION_DESTINATIONS: Array<{ href: string; label: string; permi
   { href: '/painel', label: 'Visão da oficina', permission: 'dashboard.view' },
   { href: '/agenda', label: 'Agenda', permission: 'appointments.view' },
   { href: '/ordens-de-servico', label: 'Ordens de serviço', permission: 'service_orders.view' },
-  { href: '/chat', label: 'Chat WhatsApp: conversas com clientes', permission: 'customers.view' },
   { href: '/clientes', label: 'Clientes', permission: 'customers.view' },
   { href: '/veiculos', label: 'Veículos', permission: 'vehicles.view' },
   { href: '/catalogo', label: 'Peças e serviços: catálogo, pacotes e valor da hora', permission: 'service_orders.prices' },

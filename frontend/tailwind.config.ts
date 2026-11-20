@@ -20,14 +20,6 @@ const config: Config = {
         text: 'var(--color-text)',
         'text-muted': 'var(--color-text-muted)',
         selection: 'var(--selection)',
-        chat: {
-          mine: 'var(--chat-mine)',
-          'mine-border': 'var(--chat-mine-border)',
-          'mine-label': 'var(--chat-mine-label)',
-          theirs: 'var(--chat-theirs)',
-          'theirs-border': 'var(--chat-theirs-border)',
-          'theirs-label': 'var(--chat-theirs-label)',
-        },
         success: {
           DEFAULT: 'var(--success)',
           subtle: 'var(--success-subtle)',

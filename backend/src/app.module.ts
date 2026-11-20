@@ -31,7 +31,6 @@ import { SettingsModule } from './modules/settings/settings.module';
 import { PrivacyModule } from './modules/privacy/privacy.module';
 import { SubscriptionsModule } from './modules/subscriptions/subscriptions.module';
 import { CustomerCareModule } from './modules/customer-care/customer-care.module';
-import { WhatsAppChatModule } from './modules/whatsapp-chat/whatsapp-chat.module';
 import { BillingModule } from './modules/billing/billing.module';
 import { AccountClosureModule } from './modules/account-closure/account-closure.module';
 import { SupportModule } from './modules/support/support.module';
@@ -77,7 +76,6 @@ import { FiscalModule } from './modules/fiscal/fiscal.module';
     PrivacyModule,
     SubscriptionsModule,
     CustomerCareModule,
-    WhatsAppChatModule,
     BillingModule,
     AccountClosureModule,
     SupportModule,

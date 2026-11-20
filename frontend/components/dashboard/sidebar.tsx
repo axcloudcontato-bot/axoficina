@@ -2,7 +2,7 @@
 
 import type { ModuleKey, PermissionKey } from '@oficina/contracts';
 import type { Icon as PhosphorIcon } from '@phosphor-icons/react';
-import { Bell, Buildings, CalendarBlank, Car, ChartBar, ChartLine, ChatCircleText, ClipboardText, DotsThree, Factory, Package, Gear, Lock, ShieldCheck, SidebarSimple, SignOut, SquaresFour, UserCircle, Users, WhatsappLogo } from '@phosphor-icons/react';
+import { Bell, Buildings, CalendarBlank, Car, ChartBar, ChartLine, ChatCircleText, ClipboardText, DotsThree, Factory, Package, Gear, Lock, ShieldCheck, SidebarSimple, SignOut, SquaresFour, UserCircle, Users } from '@phosphor-icons/react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -36,7 +36,6 @@ const NAV_ITEMS: NavItem[] = [
   { href: '/painel', label: 'Visão da oficina', shortLabel: 'Visão', icon: SquaresFour, permission: 'dashboard.view', group: 'Dia a dia' },
   { href: '/agenda', label: 'Agenda', shortLabel: 'Agenda', icon: CalendarBlank, permission: 'appointments.view', group: 'Dia a dia' },
   { href: '/ordens-de-servico', label: 'Ordens de serviço', shortLabel: 'OS', icon: ClipboardText, permission: 'service_orders.view', group: 'Dia a dia' },
-  { href: '/chat', label: 'Chat WhatsApp', shortLabel: 'Chat', icon: WhatsappLogo, permission: 'customers.view', group: 'Dia a dia', module: 'whatsapp' },
   { href: '/clientes', label: 'Clientes', shortLabel: 'Clientes', icon: Users, permission: 'customers.view', group: 'Cadastros' },
   { href: '/veiculos', label: 'Veículos', shortLabel: 'Veículos', icon: Car, permission: 'vehicles.view', group: 'Cadastros' },
   { href: '/catalogo', label: 'Peças e serviços', shortLabel: 'Peças', icon: Package, permission: 'service_orders.prices', group: 'Cadastros' },

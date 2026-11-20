@@ -13,7 +13,6 @@ const PAGE_META: Record<string, PageMeta> = {
   '/painel': { title: 'Visão da oficina', description: 'O que precisa da sua atenção hoje.', icon: SquaresFour },
   '/financeiro': { title: 'Financeiro', description: 'Indicadores financeiros e desempenho da oficina.', icon: ChartLine },
   '/agenda': { title: 'Agenda', description: 'Organize os atendimentos da oficina.', icon: CalendarBlank },
-  '/chat': { title: 'Chat WhatsApp', description: 'Converse com os clientes sem sair do Ofix.', icon: WhatsappLogo },
   '/clientes': { title: 'Clientes', description: 'Gerencie os clientes da sua oficina.', icon: Users },
   '/veiculos': { title: 'Veículos', description: 'Gerencie os veículos cadastrados da sua oficina.', icon: Car },
   '/ordens-de-servico': { title: 'Ordens de serviço', description: 'Acompanhe o atendimento dos veículos da sua oficina.', icon: ClipboardText },
