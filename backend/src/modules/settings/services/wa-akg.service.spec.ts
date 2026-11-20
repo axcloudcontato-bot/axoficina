@@ -235,3 +235,39 @@ describe('WA-AKG connection', () => {
     await expect(service.getConnection('tenant-a', false)).resolves.not.toBeNull();
   });
 });
+
+describe('WA-AKG chat calls', () => {
+  afterEach(() => jest.restoreAllMocks());
+  const connection = { baseUrl: 'https://chat.axcloud.com.br/api', sessionId: 'oficina', apiKey: 'private-api-key' };
+  const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } });
+
+  it('lists chats and messages of the given session only', async () => {
+    const { service } = setup();
+    const fetchMock = jest.spyOn(global, 'fetch')
+      .mockResolvedValueOnce(json({ status: true, data: [{ jid: '5511988887777@s.whatsapp.net' }, 'junk'] }))
+      .mockResolvedValueOnce(json({ status: true, data: [{ keyId: 'K1' }] }));
+    expect(await service.listChats(connection)).toEqual([{ jid: '5511988887777@s.whatsapp.net' }]);
+    expect(await service.chatMessages(connection, '5511988887777@s.whatsapp.net')).toEqual([{ keyId: 'K1' }]);
+    expect(fetchMock.mock.calls[0][0]).toBe('https://chat.axcloud.com.br/api/chat/oficina');
+    expect(fetchMock.mock.calls[1][0]).toBe('https://chat.axcloud.com.br/api/chat/oficina/5511988887777%40s.whatsapp.net');
+  });
+
+  it('reports a 503 when the gateway does not confirm, never a 502', async () => {
+    const { service } = setup();
+    jest.spyOn(global, 'fetch').mockResolvedValueOnce(json({ status: false })).mockResolvedValueOnce(json({}, 500));
+    await expect(service.sendText(connection, '5511988887777@s.whatsapp.net', 'Oi')).rejects.toMatchObject({ status: 503 });
+    await expect(service.listChats(connection)).rejects.toMatchObject({ status: 503 });
+  });
+
+  it('fetches media only for files of the same session', async () => {
+    const { service } = setup();
+    const fetchMock = jest.spyOn(global, 'fetch').mockResolvedValue(new Response('img', { status: 200, headers: { 'content-type': 'image/jpeg' } }));
+    await expect(service.mediaFile(connection, 'outra-K1.jpg')).rejects.toMatchObject({ status: 404 });
+    await expect(service.mediaFile(connection, '../oficina-K1.jpg')).rejects.toMatchObject({ status: 404 });
+    expect(fetchMock).not.toHaveBeenCalled();
+    const file = await service.mediaFile(connection, 'oficina-K1.jpg');
+    expect(file.contentType).toBe('image/jpeg');
+    expect(file.body.toString()).toBe('img');
+    expect(fetchMock.mock.calls[0][0]).toBe('https://chat.axcloud.com.br/api/media/oficina-K1.jpg');
+  });
+});

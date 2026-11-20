@@ -127,6 +127,45 @@ export class WaAkgService {
     if (!isRecord(result) || result.status !== true) throw new ServiceUnavailableException('O WA-AKG não confirmou o envio da confirmação.');
   }
 
+  // --- Chat: conversations of the workshop's own session. Callers pass the connection from getConnection(tenantId),
+  // so a workshop only ever reaches its own session.
+  async listChats(connection: WaAkgConnection): Promise<Record<string, unknown>[]> {
+    const result = await this.request(connection, `/chat/${encodeURIComponent(connection.sessionId)}`);
+    if (!isRecord(result) || result.status !== true || !Array.isArray(result.data)) throw new ServiceUnavailableException('O WhatsApp não retornou as conversas. Tente novamente em instantes.');
+    return result.data.filter(isRecord);
+  }
+
+  async chatMessages(connection: WaAkgConnection, jid: string): Promise<Record<string, unknown>[]> {
+    const result = await this.request(connection, `/chat/${encodeURIComponent(connection.sessionId)}/${encodeURIComponent(jid)}`);
+    if (!isRecord(result) || result.status !== true || !Array.isArray(result.data)) throw new ServiceUnavailableException('O WhatsApp não retornou as mensagens desta conversa. Tente novamente em instantes.');
+    return result.data.filter(isRecord);
+  }
+
+  async sendText(connection: WaAkgConnection, jid: string, text: string) {
+    const result = await this.request(connection, `/messages/${encodeURIComponent(connection.sessionId)}/${encodeURIComponent(jid)}/send`, {
+      method: 'POST', body: JSON.stringify({ message: { text } }),
+    });
+    if (!isRecord(result) || result.status !== true) throw new ServiceUnavailableException('O WhatsApp não confirmou o envio. Confira a conversa antes de reenviar.');
+  }
+
+  async markChatRead(connection: WaAkgConnection, jid: string) {
+    await this.request(connection, `/chat/${encodeURIComponent(connection.sessionId)}/${encodeURIComponent(jid)}/read`, { method: 'PUT', body: '{}' }, 5_000);
+  }
+
+  // Media files are named <sessionId>-<messageId>.<ext>; only files of this session are fetched.
+  async mediaFile(connection: WaAkgConnection, filename: string): Promise<{ body: Buffer; contentType: string }> {
+    if (!/^[A-Za-z0-9_-]+-[A-Za-z0-9_-]+\.[a-z0-9]{2,5}$/.test(filename) || !filename.startsWith(`${connection.sessionId}-`)) throw new NotFoundException('Arquivo não encontrado.');
+    let response: Response;
+    try {
+      response = await fetch(`${connection.baseUrl}/media/${encodeURIComponent(filename)}`, { headers: { 'X-API-Key': connection.apiKey }, redirect: 'error', signal: AbortSignal.timeout(20_000) });
+    } catch { throw new ServiceUnavailableException('Não foi possível abrir o arquivo agora.'); }
+    if (response.status === 404 || response.status === 403) throw new NotFoundException('Arquivo não encontrado.');
+    if (!response.ok) throw new ServiceUnavailableException('Não foi possível abrir o arquivo agora.');
+    const body = Buffer.from(await response.arrayBuffer());
+    if (body.length > 25 * 1024 * 1024) throw new ServiceUnavailableException('Arquivo grande demais para abrir pelo Ofix.');
+    return { body, contentType: response.headers.get('content-type') ?? 'application/octet-stream' };
+  }
+
   async testWebhook(tenantId: string): Promise<WhatsAppWebhookTestResponse> {
     const testedAt = new Date();
     try { return await this.performWebhookTest(tenantId, testedAt); }

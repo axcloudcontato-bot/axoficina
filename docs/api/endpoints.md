@@ -3,7 +3,7 @@
 > Gerado a partir dos controllers do backend. Não edite à mão: rode `UPDATE_API_DOCS=1 pnpm --filter @oficina/backend exec jest src/shared/api-docs`
 > depois de mudar uma rota ou seus decorators. O teste `api-docs.spec.ts` falha se este arquivo ficar desatualizado.
 
-São 216 endpoints em 29 controllers.
+São 220 endpoints em 30 controllers.
 
 ## Convenções
 
@@ -368,6 +368,15 @@ São 216 endpoints em 29 controllers.
 | POST | `/api/v1/vehicles/overview` | `overview` | ADMIN, MANAGER, FRONT_DESK, MECHANIC | vehicles.view |  |
 | GET | `/api/v1/vehicle` | `get` | ADMIN, MANAGER, FRONT_DESK, MECHANIC | vehicles.view |  |
 | POST | `/api/v1/vehicles/list` | `list` | ADMIN, MANAGER, FRONT_DESK, MECHANIC | vehicles.view |  |
+
+## modules/whatsapp-chat/whatsapp-chat.controller.ts
+
+| Método | Rota | Ação | Quem acessa | Permissão | Módulo/limite |
+| --- | --- | --- | --- | --- | --- |
+| GET | `/api/v1/whatsapp-chat/conversations` | `conversations` | qualquer usuário autenticado | customers.view |  |
+| GET | `/api/v1/whatsapp-chat/conversations/:jid/messages` | `messages` | qualquer usuário autenticado | customers.view |  |
+| POST | `/api/v1/whatsapp-chat/conversations/:jid/messages` | `send` | qualquer usuário autenticado | customers.manage | limite write |
+| GET | `/api/v1/whatsapp-chat/media/:file` | `media` | qualquer usuário autenticado | customers.view |  |
 
 ## shared/plan/plan.controller.ts
 

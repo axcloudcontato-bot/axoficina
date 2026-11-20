@@ -3,8 +3,9 @@ export const RELEASE_NOTES = [
   {
     id: '2026-11-20-chat-whatsapp', date: '2026-11-20', title: 'Chat do WhatsApp dentro do Ofix',
     items: [
-      'O menu ganhou o item Chat WhatsApp, em Dia a dia. Ele abre as conversas do número da oficina dentro do Ofix, sem precisar ir ao WhatsApp Web ou ao aplicativo no computador.',
-      'No primeiro acesso, entre com o login do WhatsApp da sua oficina. Se preferir, o botão Abrir em nova aba abre o mesmo chat em uma aba separada.',
+      'O menu ganhou o item Chat WhatsApp, em Dia a dia. Ele mostra as conversas do número da oficina e permite responder os clientes sem abrir o WhatsApp Web ou o aplicativo.',
+      'Conversas de clientes cadastrados aparecem com o nome do cadastro, e o botão Ver cliente abre a ficha. O filtro Clientes mostra só essas conversas.',
+      'Fotos, áudios e documentos enviados pelo cliente abrem dentro da conversa. Grupos ficam de fora. Quem não pode alterar clientes lê as conversas, mas não envia mensagens.',
     ],
   },
   {
