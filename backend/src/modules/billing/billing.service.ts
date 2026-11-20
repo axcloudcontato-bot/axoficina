@@ -1,6 +1,6 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { BILLING_CYCLES, PLANS, planPriceCents, resolvePlan, type BillingCycle, type BillingInvoiceResponse, type BillingStatusResponse, type CheckoutRequest, type CheckoutResponse, type InvoiceStatus, type PlanCode } from '@oficina/contracts';
+import { ACCESS_GRACE_DAYS, BILLING_CYCLES, PLANS, planPriceCents, resolvePlan, type BillingCycle, type BillingInvoiceResponse, type BillingStatusResponse, type CheckoutRequest, type CheckoutResponse, type InvoiceStatus, type PlanCode } from '@oficina/contracts';
 import { AuditLogService } from '../../shared/audit-log/audit-log.service';
 import type { AuthenticatedUser } from '../../shared/guards/jwt-auth.guard';
 import { EntitlementsService } from '../../shared/plan/entitlements.service';
@@ -10,7 +10,7 @@ import { StripeClient } from './stripe.client';
 interface StripeLine { period?: { end?: number } }
 export interface StripeObject {
   id?: string; mode?: string; customer?: string | null; subscription?: string | null; client_reference_id?: string | null;
-  status?: string; amount_paid?: number; amount_due?: number; due_date?: number | null; created?: number; hosted_invoice_url?: string | null;
+  status?: string; billing_reason?: string; amount_paid?: number; amount_due?: number; due_date?: number | null; created?: number; hosted_invoice_url?: string | null;
   status_transitions?: { paid_at?: number | null }; lines?: { data?: StripeLine[] };
   metadata?: Record<string, string>; subscription_details?: { metadata?: Record<string, string> };
   parent?: { subscription_details?: { subscription?: string; metadata?: Record<string, string> } };
@@ -76,7 +76,12 @@ export class BillingService {
     const resumable = Boolean(tenant.billingSubscriptionId) && tenant.subscriptionStatus !== 'canceled';
 
     if (!resumable) {
-      const customerId = tenant.billingCustomerId ?? await this.newCustomer(user, tenant);
+      let customerId = tenant.billingCustomerId;
+      if (!customerId) {
+        customerId = await this.newCustomer(user, tenant);
+        // Kept at once: if the payment page fails to open, a later try reuses this customer instead of creating another.
+        await this.prisma.unscoped.tenant.update({ where: { id: tenant.id }, data: { billingCustomerId: customerId } });
+      }
       const page = `${this.config.get<string>('FRONTEND_URL', 'http://localhost:3000')}/configuracoes/assinatura`;
       const url = await this.stripe.checkoutSession({ customerId, tenantId: tenant.id, plan: plan.code, planName: plan.name, cycle, unitAmountCents, interval: interval(cycle), successUrl: `${page}?contratado=1`, cancelUrl: page });
       // Only remembers what is being contracted: the plan and the cycle change when the payment is confirmed, so a page
@@ -109,7 +114,12 @@ export class BillingService {
     const tenant = await this.tenant(user.tenantId);
     if (!tenant.billingSubscriptionId || tenant.subscriptionStatus === 'canceled') throw new BadRequestException('Não há uma assinatura automática para cancelar.');
     const endsAt = await this.stripe.cancelAtPeriodEnd(tenant.billingSubscriptionId);
-    await this.prisma.unscoped.tenant.update({ where: { id: tenant.id }, data: { pendingPlan: null, subscriptionStatus: 'canceled', ...(endsAt ? { subscriptionDueAt: endsAt } : {}) } });
+    // A late workshop has not paid the current period: cancelling keeps only the grace week it already had, never
+    // the unpaid period itself.
+    const paidUntil = tenant.subscriptionStatus === 'past_due'
+      ? (tenant.subscriptionDueAt ? new Date(tenant.subscriptionDueAt.getTime() + ACCESS_GRACE_DAYS * 86_400_000) : new Date())
+      : endsAt;
+    await this.prisma.unscoped.tenant.update({ where: { id: tenant.id }, data: { pendingPlan: null, subscriptionStatus: 'canceled', ...(paidUntil ? { subscriptionDueAt: paidUntil } : {}) } });
     this.entitlements.forget(tenant.id);
     await this.record(user, 'billing.canceled', tenant.id);
   }
@@ -145,6 +155,9 @@ export class BillingService {
         return { handled: true };
       case 'invoice.payment_failed':
         await this.mirror(tenant, object, 'overdue');
+        // A refused upgrade charge is answered on the spot and the change is not applied: the plan already paid stays
+        // good, so the workshop is not late.
+        if (object.billing_reason === 'subscription_update') return { handled: true };
         await this.applyOverdue(tenant, object);
         return { handled: true };
       case 'customer.subscription.deleted':
@@ -192,8 +205,9 @@ export class BillingService {
     if (replaced) await this.stripe.cancelNow(replaced);
     const plan = PLANS[session.metadata?.plan as PlanCode]?.code;
     const cycle = BILLING_CYCLES.find((item) => item === session.metadata?.cycle);
-    // The first payment may have been confirmed before this event: it is then corrected to what was really bought.
-    const alreadyPaid = tenant.subscriptionStatus === 'active' && !tenant.billingSubscriptionId;
+    // The first payment may have been confirmed before this event (it clears the plan being contracted): it is then
+    // corrected to what was really bought. This also holds when an older, cancelled subscription is still on record.
+    const alreadyPaid = tenant.subscriptionStatus === 'active' && !tenant.pendingPlan && tenant.billingSubscriptionId !== subscription;
     await this.prisma.unscoped.tenant.update({ where: { id: tenant.id }, data: {
       billingSubscriptionId: subscription,
       ...(session.customer && !tenant.billingCustomerId ? { billingCustomerId: session.customer } : {}),
@@ -209,7 +223,9 @@ export class BillingService {
     const nextDue = this.periodEnd(invoice);
     // Before the checkout event arrives the local record does not know the cycle yet; the charge itself says it.
     const metadata = invoice.parent?.subscription_details?.metadata ?? invoice.subscription_details?.metadata;
-    const cycle = (tenant.billingSubscriptionId ? tenant.subscriptionCycle : BILLING_CYCLES.find((item) => item === metadata?.cycle) ?? tenant.subscriptionCycle) as BillingCycle;
+    const invoiceSubscription = invoice.parent?.subscription_details?.subscription ?? invoice.subscription;
+    const known = Boolean(tenant.billingSubscriptionId) && (!invoiceSubscription || invoiceSubscription === tenant.billingSubscriptionId);
+    const cycle = (known ? tenant.subscriptionCycle : BILLING_CYCLES.find((item) => item === metadata?.cycle) ?? tenant.subscriptionCycle) as BillingCycle;
     const plan = resolvePlan(tenant.pendingPlan ?? tenant.plan).code;
     // A late notice for an older charge must not pull the next due date back.
     const keep = !nextDue || (tenant.subscriptionStatus === 'active' && tenant.subscriptionDueAt !== null && tenant.subscriptionDueAt > nextDue);

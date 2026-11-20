@@ -138,6 +138,19 @@ describe('BillingService checkout', () => {
     expect(db.tenant.update).toHaveBeenCalledWith({ where: { id: TENANT_ID }, data: { pendingPlan: null, subscriptionStatus: 'canceled', subscriptionDueAt: new Date('2026-11-30T12:00:00Z') } });
   });
 
+  it('a late workshop that cancels keeps only its grace week, not the unpaid period', async () => {
+    const { service, db } = build(tenantRow({ billingCustomerId: 'cus_1', billingSubscriptionId: 'sub_1', subscriptionStatus: 'past_due', subscriptionDueAt: new Date('2026-11-10T12:00:00Z') }));
+    await service.cancel(user);
+    expect(db.tenant.update).toHaveBeenCalledWith({ where: { id: TENANT_ID }, data: { pendingPlan: null, subscriptionStatus: 'canceled', subscriptionDueAt: new Date('2026-11-17T12:00:00Z') } });
+  });
+
+  it('keeps a new customer even when the payment page fails to open', async () => {
+    const { service, db, stripe } = build();
+    stripe.checkoutSession.mockRejectedValue(new Error('stripe down'));
+    await expect(service.checkout(user, { plan: 'essencial', cycle: 'monthly' })).rejects.toThrow('stripe down');
+    expect(db.tenant.update).toHaveBeenCalledWith({ where: { id: TENANT_ID }, data: { billingCustomerId: 'cus_1' } });
+  });
+
   it('opens the card and receipts page only for a workshop that already has a customer', async () => {
     await expect(build(tenantRow()).service.portal(user)).rejects.toThrow('Contrate um plano');
     await expect(build(tenantRow({ billingCustomerId: 'cus_1' })).service.portal(user)).resolves.toEqual({ url: 'https://billing.stripe.com/p/session/abc' });
@@ -222,6 +235,24 @@ describe('BillingService webhook', () => {
     const again = build(tenantRow({ billingCustomerId: 'cus_1', subscriptionStatus: 'past_due', subscriptionDueAt: new Date('2026-10-20T12:00:00Z') }));
     await again.service.handleEvent({ type: 'invoice.payment_failed', data: { object: failed } });
     expect(again.db.tenant.update).not.toHaveBeenCalled();
+  });
+
+  it('does not mark the workshop late when an upgrade charge is refused', async () => {
+    const { service, db } = build(tenantRow({ billingCustomerId: 'cus_1', billingSubscriptionId: 'sub_1', subscriptionStatus: 'active' }));
+    await expect(service.handleEvent({ type: 'invoice.payment_failed', data: { object: { ...invoice, status: 'open', billing_reason: 'subscription_update' } } })).resolves.toEqual({ handled: true });
+    expect(db.tenant.update).not.toHaveBeenCalled();
+  });
+
+  it('re-subscribing after a cancellation takes the new cycle even when the payment arrives before the checkout', async () => {
+    const OLD_END = new Date('2026-11-25T12:00:00Z');
+    const yearly = { ...invoice, subscription: 'sub_new', amount_paid: 163098, parent: { subscription_details: { subscription: 'sub_new', metadata: { plan: 'profissional', cycle: 'yearly' } } } };
+    const paid = build(tenantRow({ billingCustomerId: 'cus_1', billingSubscriptionId: 'sub_old', subscriptionStatus: 'canceled', subscriptionCycle: 'monthly', subscriptionDueAt: OLD_END, pendingPlan: 'profissional' }));
+    await paid.service.handleEvent({ type: 'invoice.paid', data: { object: yearly } });
+    expect(paid.db.tenant.update).toHaveBeenCalledWith({ where: { id: TENANT_ID }, data: expect.objectContaining({ plan: 'profissional', pendingPlan: null, subscriptionStatus: 'active', subscriptionCycle: 'yearly', subscriptionAmountCents: 163098 }) });
+
+    const completed = build(tenantRow({ billingCustomerId: 'cus_1', billingSubscriptionId: 'sub_old', subscriptionStatus: 'active', subscriptionCycle: 'yearly', plan: 'profissional', pendingPlan: null }));
+    await completed.service.handleEvent({ type: 'checkout.session.completed', data: { object: { mode: 'subscription', customer: 'cus_1', subscription: 'sub_new', metadata: { plan: 'profissional', cycle: 'yearly' } } } });
+    expect(completed.db.tenant.update).toHaveBeenCalledWith({ where: { id: TENANT_ID }, data: { billingSubscriptionId: 'sub_new', plan: 'profissional', pendingPlan: null, subscriptionCycle: 'yearly', subscriptionAmountCents: 163098 } });
   });
 
   it('only records an invoice that was just issued, and skips drafts', async () => {
