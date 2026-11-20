@@ -164,12 +164,17 @@ describe('Customer message buttons (HTTP + PostgreSQL)', () => {
       const callbackTest = await request(app.getHttpServer()).post('/api/v1/settings/whatsapp/webhook/test').set('Authorization', `Bearer ${owner.token}`).expect(200);
       expect(callbackTest.body.reachable).toBe(true);
     } finally { gatewayFetch.mockRestore(); config.set('PUBLIC_API_URL', oldApiUrl); }
-    const fetchMock = jest.spyOn(global, 'fetch').mockResolvedValue(new Response(JSON.stringify({ status: true, data: { key: { id: 'native-message-1' } } }), { status: 200 }));
+    // Every send first asks WA-AKG for the number's WhatsApp address, then sends to it.
+    const gateway = (sendBody: unknown) => async (input: string | URL | Request) => String(input).endsWith('/check')
+      ? new Response(JSON.stringify({ status: true, data: { results: [{ number: '5511999998888', exists: true, jid: '5511999998888@s.whatsapp.net' }] } }), { status: 200 })
+      : new Response(JSON.stringify(sendBody), { status: 200 });
+    const fetchMock = jest.spyOn(global, 'fetch').mockImplementation(gateway({ status: true, data: { key: { id: 'native-message-1' } } }));
     let sent: request.Response;
     try {
       sent = await request(app.getHttpServer()).post('/api/v1/service-orders/customer-messages').set('Authorization', `Bearer ${owner.token}`).send(payload()).expect(201);
-      expect(fetchMock).toHaveBeenCalledTimes(1);
-      expect(JSON.parse(fetchMock.mock.calls[0][1]!.body as string).buttons).toHaveLength(2);
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+      expect(String(fetchMock.mock.calls[0][0])).toContain('/chat/oficina/check');
+      expect(JSON.parse(fetchMock.mock.calls[1][1]!.body as string).buttons).toHaveLength(2);
     } finally { fetchMock.mockRestore(); }
     expect(sent.body).toMatchObject({ sent: true, delivery_mode: 'WA_AKG' });
     expect(sent.body).not.toHaveProperty('whatsapp_url');
@@ -178,7 +183,7 @@ describe('Customer message buttons (HTTP + PostgreSQL)', () => {
     const webhookPath = `/api/v1/webhooks/wa-akg/${owner.tenantId}`;
     const event = { event: 'message.received', sessionId: 'oficina', timestamp: new Date().toISOString(), data: { from: '5511999998888@s.whatsapp.net', isGroup: false, type: 'INTERACTIVE_RESPONSE', content: `axm:${token}:0`, key: { id: 'reply-1', fromMe: false }, display_text: 'Confirmar' } };
     const sign = (value: unknown) => `sha256=${createHmac('sha256', webhookSecret).update(JSON.stringify(value)).digest('hex')}`;
-    const confirmationFetch = jest.spyOn(global, 'fetch').mockResolvedValue(new Response(JSON.stringify({ status: true }), { status: 200 }));
+    const confirmationFetch = jest.spyOn(global, 'fetch').mockImplementation(gateway({ status: true }));
     await request(app.getHttpServer()).post(webhookPath).send(event).expect(401);
     const wrongSender = { ...event, data: { ...event.data, from: '5511888887777@s.whatsapp.net' } };
     const wrongResult = await request(app.getHttpServer()).post(webhookPath).set('X-Webhook-Signature', sign(wrongSender)).send(wrongSender).expect(200);
@@ -189,12 +194,12 @@ describe('Customer message buttons (HTTP + PostgreSQL)', () => {
     const replies = await Promise.all([0, 1].map(() => request(app.getHttpServer()).post(webhookPath).set('X-Webhook-Signature', sign(event)).send(event).expect(200)));
     expect(replies.map((reply) => reply.body.confirmation).sort()).toEqual(['already_recorded', 'sent']);
     expect(replies.every((reply) => reply.body.recorded === true)).toBe(true);
-    expect(confirmationFetch).toHaveBeenCalledTimes(1);
-    expect(String(confirmationFetch.mock.calls[0][0])).toContain('/5511999998888%40s.whatsapp.net/send');
-    expect(JSON.parse(confirmationFetch.mock.calls[0][1]!.body as string)).toMatchObject({ message: { text: expect.stringContaining('📩 *Sua resposta foi registrada:* Confirmar') } });
+    expect(confirmationFetch).toHaveBeenCalledTimes(2);
+    expect(String(confirmationFetch.mock.calls[1][0])).toContain('/5511999998888%40s.whatsapp.net/send');
+    expect(JSON.parse(confirmationFetch.mock.calls[1][1]!.body as string)).toMatchObject({ message: { text: expect.stringContaining('📩 *Sua resposta foi registrada:* Confirmar') } });
     const changedChoice = { ...event, data: { ...event.data, content: `axm:${token}:1` } };
     expect((await request(app.getHttpServer()).post(webhookPath).set('X-Webhook-Signature', sign(changedChoice)).send(changedChoice).expect(200)).body.recorded).toBe(false);
-    expect(confirmationFetch).toHaveBeenCalledTimes(1);
+    expect(confirmationFetch).toHaveBeenCalledTimes(2);
     confirmationFetch.mockRestore();
     const history = await request(app.getHttpServer()).get('/api/v1/service-orders/customer-messages').query({ serviceOrderId: orderId }).set('Authorization', `Bearer ${owner.token}`).expect(200);
     expect(history.body.messages.find((message: { delivery_mode: string }) => message.delivery_mode === 'WA_AKG')).toMatchObject({ selected_option: 0, sent_at: expect.any(String), answered_at: expect.any(String) });

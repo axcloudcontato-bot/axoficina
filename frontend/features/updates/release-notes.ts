@@ -5,6 +5,7 @@ export const RELEASE_NOTES = [
     items: [
       'Quando o servidor de WhatsApp não confirma o envio, a tela agora mostra o motivo, em vez de um erro genérico. Confira o histórico da OS antes de reenviar.',
       'A OS só promete envio direto pelo sistema quando o plano e a conta permitem. Nos demais casos, o WhatsApp abre com a mensagem pronta para você enviar.',
+      'Antes de cada envio, o Ofix confere se o telefone do cliente tem WhatsApp. Se não tiver, ou se o número da oficina estiver desconectado, o aviso da OS mostra esse motivo, em vez de aparecer como enviado.',
     ],
   },
   {

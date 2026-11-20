@@ -1,4 +1,4 @@
-import { ServiceUnavailableException, BadRequestException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
+import { ServiceUnavailableException, BadRequestException, Injectable, Logger, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import { isIP } from 'node:net';
@@ -10,10 +10,20 @@ import { AuditLogService } from '../../../shared/audit-log/audit-log.service';
 import { EntitlementsService } from '../../../shared/plan/entitlements.service';
 
 export interface WaAkgConnection { baseUrl: string; sessionId: string; apiKey: string }
+
+/** WhatsApp told WA-AKG the number has no account: nothing was sent. */
+export class WhatsAppNumberNotFoundException extends BadRequestException {
+  constructor() { super('Este número não tem WhatsApp. Confira o telefone no cadastro do cliente.'); }
+}
+/** The workshop's session is not connected to WhatsApp in WA-AKG: nothing was sent. */
+export class WhatsAppSessionNotReadyException extends ServiceUnavailableException {
+  constructor() { super('O número de WhatsApp da oficina está desconectado no WA-AKG. Reconecte a sessão e tente de novo.'); }
+}
 const clean = (value?: string) => value?.trim() || null;
 
 @Injectable()
 export class WaAkgService {
+  private readonly logger = new Logger(WaAkgService.name);
   constructor(
     private readonly tenants: TenantRepository,
     private readonly secrets: SecretEncryptionService,
@@ -103,14 +113,15 @@ export class WaAkgService {
   }
 
   async sendButtons(connection: WaAkgConnection, input: { recipient: string; message: string; question: string; options: string[]; token: string }) {
-    const result = await this.request(connection, `/messages/${encodeURIComponent(connection.sessionId)}/${encodeURIComponent(input.recipient)}/interactive`, {
+    const recipient = await this.resolveRecipient(connection, input.recipient);
+    const result = await this.request(connection, `/messages/${encodeURIComponent(connection.sessionId)}/${encodeURIComponent(recipient)}/interactive`, {
       method: 'POST', body: JSON.stringify({
         body: `${input.message}\n\n${input.question}`,
         footer: '👇 Toque em uma opção para registrar sua resposta. Válido por 7 dias.',
         buttons: input.options.length > 3 ? [{ type: 'single_select', displayText: 'Avaliar serviço', title: 'Avaliar serviço', sections: [{ title: 'Escolha sua nota', rows: input.options.map((label, index) => ({ title: label, id: `axm:${input.token}:${index}` })) }] }] : input.options.map((label, index) => ({ type: 'quick_reply', displayText: label, id: `axm:${input.token}:${index}` })),
       }),
     });
-    if (!isRecord(result) || result.status !== true) throw new ServiceUnavailableException('O WA-AKG não confirmou o envio. Confira o histórico antes de tentar novamente.');
+    if (!isRecord(result) || result.status !== true) throw this.unconfirmed(result, 'O WA-AKG não confirmou o envio. Confira o histórico antes de tentar novamente.');
     const data = isRecord(result.data) ? result.data : null;
     const key = data && isRecord(data.key) ? data.key : null;
     return { providerMessageId: key && typeof key.id === 'string' ? key.id : undefined };
@@ -121,10 +132,43 @@ export class WaAkgService {
   }
 
   async sendNotice(connection: WaAkgConnection, recipient: string, text: string) {
-    const result = await this.request(connection, `/messages/${encodeURIComponent(connection.sessionId)}/${encodeURIComponent(recipient)}/send`, {
+    const target = await this.resolveRecipient(connection, recipient);
+    const result = await this.request(connection, `/messages/${encodeURIComponent(connection.sessionId)}/${encodeURIComponent(target)}/send`, {
       method: 'POST', body: JSON.stringify({ message: { text } }),
-    }, 5_000);
-    if (!isRecord(result) || result.status !== true) throw new ServiceUnavailableException('O WA-AKG não confirmou o envio da confirmação.');
+    }, 10_000);
+    if (!isRecord(result) || result.status !== true) throw this.unconfirmed(result, 'O WA-AKG não confirmou o envio da mensagem.');
+  }
+
+  /**
+   * Asks WhatsApp, through WA-AKG, for the real address of a phone before sending. A message to an address that has no
+   * account is accepted and silently lost, so a number without WhatsApp fails here with a clear reason. A disconnected
+   * session fails here too. If the check itself is unavailable (older WA-AKG, a transient error), the send goes on with
+   * the address built from the phone, as it did before.
+   */
+  private async resolveRecipient(connection: WaAkgConnection, recipient: string): Promise<string> {
+    const [number, domain] = recipient.split('@');
+    if (domain !== 's.whatsapp.net' || !/^\d{10,15}$/.test(number)) return recipient;
+    let result: unknown;
+    try {
+      result = await this.request(connection, `/chat/${encodeURIComponent(connection.sessionId)}/check`, { method: 'POST', body: JSON.stringify({ numbers: [number] }) }, 8_000);
+    } catch (error) {
+      if (error instanceof WhatsAppSessionNotReadyException) throw error;
+      this.logger.warn(`Conferência do número no WA-AKG indisponível (${error instanceof Error ? error.message : 'erro'}); envio segue com o endereço do cadastro.`);
+      return recipient;
+    }
+    const results = isRecord(result) && isRecord(result.data) && Array.isArray(result.data.results) ? result.data.results : null;
+    const found = results?.find((item: unknown) => isRecord(item)) as Record<string, unknown> | undefined;
+    // An error on the line means WhatsApp did not answer the check, not that the number has no account.
+    if (!found || found.error) return recipient;
+    if (found.exists === false) throw new WhatsAppNumberNotFoundException();
+    return typeof found.jid === 'string' && /^\d{8,20}@(s\.whatsapp\.net|lid)$/.test(found.jid) ? found.jid : recipient;
+  }
+
+  // Keeps the gateway's own reason in the server log; the screen gets a message without provider internals.
+  private unconfirmed(result: unknown, message: string) {
+    const reason = isRecord(result) && typeof result.message === 'string' ? result.message.slice(0, 200) : 'sem resposta válida';
+    this.logger.warn(`WA-AKG não confirmou o envio: ${reason}`);
+    return new ServiceUnavailableException(message);
   }
 
   async testWebhook(tenantId: string): Promise<WhatsAppWebhookTestResponse> {
@@ -242,7 +286,14 @@ export class WaAkgService {
     }
     if ([401, 403].includes(response.status)) throw new BadRequestException('O WA-AKG recusou a chave de API ou o acesso à sessão.');
     if (response.status === 404) throw new BadRequestException('Endpoint não encontrado no WA-AKG. Confira o endereço e se a versão possui suporte a botões (1.7.0 ou superior).');
-    if (!response.ok) throw new ServiceUnavailableException('O WA-AKG não confirmou a operação. Confira a sessão e o histórico antes de tentar novamente.');
+    if (!response.ok) {
+      const body: unknown = await response.json().catch(() => null);
+      const reason = isRecord(body) && typeof body.message === 'string' ? body.message.slice(0, 200) : `HTTP ${response.status}`;
+      this.logger.warn(`WA-AKG recusou ${init.method ?? 'GET'} ${path.split('/').slice(0, 2).join('/')}: ${reason}`);
+      // WA-AKG answers 503 "Session not ready" when the workshop's number is not connected.
+      if (response.status === 503 || /session not (ready|found|connected)/i.test(reason)) throw new WhatsAppSessionNotReadyException();
+      throw new ServiceUnavailableException('O WA-AKG não confirmou a operação. Confira a sessão e o histórico antes de tentar novamente.');
+    }
     try { return await response.json(); } catch { throw new ServiceUnavailableException('O WA-AKG retornou uma resposta inválida.'); }
   }
 

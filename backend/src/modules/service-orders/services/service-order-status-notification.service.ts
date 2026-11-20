@@ -4,7 +4,7 @@ import type { ServiceOrderStatusNotification } from '@oficina/database';
 import { PrismaService } from '../../../shared/prisma/prisma.service';
 import type { AuthenticatedUser } from '../../../shared/guards/jwt-auth.guard';
 import { AuditLogService } from '../../../shared/audit-log/audit-log.service';
-import { WaAkgService } from '../../settings/services/wa-akg.service';
+import { WaAkgService, WhatsAppNumberNotFoundException, WhatsAppSessionNotReadyException } from '../../settings/services/wa-akg.service';
 import { whatsappRecipient } from '../../settings/services/whatsapp-recipient';
 import { SecretEncryptionService } from '../../settings/services/secret-encryption.service';
 import { ServiceOrderRepository } from '../repositories/service-order.repository';
@@ -15,6 +15,8 @@ const REASONS: Record<string, string> = {
   CONNECTION_ERROR: 'Não foi possível carregar a conexão WhatsApp. Confira a configuração da oficina.',
   INVALID_PHONE: 'O cliente não possui um telefone válido para WhatsApp.',
   DELIVERY_UNCONFIRMED: 'O WhatsApp não confirmou o envio. Confira a conversa antes de reenviar.',
+  NOT_ON_WHATSAPP: 'O telefone do cliente não tem WhatsApp. Confira o cadastro e reenvie.',
+  SESSION_DISCONNECTED: 'O número de WhatsApp da oficina estava desconectado. Reconecte a sessão e reenvie.',
   INTERRUPTED: 'O processamento foi interrompido durante o envio. Confira a conversa antes de reenviar.',
   PREFERENCE_DISABLED: 'O cliente desativou os avisos de movimentação da OS.',
   CUSTOMER_UNAVAILABLE: 'O cadastro do cliente não está disponível.',
@@ -108,7 +110,13 @@ export class ServiceOrderStatusNotificationService {
         await this.prisma.unscoped.customerMessage.updateMany({ where: { id: rating.id, tenantId: record.tenantId }, data: { sentAt: new Date(), providerMessageId: result.providerMessageId } });
       } else await this.whatsapp.sendNotice(connection, record.recipient, record.message);
     }
-    catch { return this.notifications.finish(record, 'FAILED', 'DELIVERY_UNCONFIRMED'); }
+    catch (error) {
+      // Nothing was sent in these two cases, so the reason is certain and the retry button is safe.
+      if (error instanceof WhatsAppNumberNotFoundException) return this.notifications.finish(record, 'FAILED', 'NOT_ON_WHATSAPP');
+      if (error instanceof WhatsAppSessionNotReadyException) return this.notifications.finish(record, 'FAILED', 'SESSION_DISCONNECTED');
+      this.logger.warn(`Aviso ${record.id} não confirmado pelo WhatsApp: ${error instanceof Error ? error.message : 'erro desconhecido'}`);
+      return this.notifications.finish(record, 'FAILED', 'DELIVERY_UNCONFIRMED');
+    }
     return this.notifications.finish(record, 'SENT');
   }
 
