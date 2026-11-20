@@ -1,6 +1,13 @@
 // This feed is visible to every workshop account. Keep SaaS administration changes out of it.
 export const RELEASE_NOTES = [
   {
+    id: '2026-11-20-whatsapp-envio-claro', date: '2026-11-20', title: 'Envio do orçamento pelo WhatsApp mais claro',
+    items: [
+      'Quando o servidor de WhatsApp não confirma o envio, a tela agora mostra o motivo, em vez de um erro genérico. Confira o histórico da OS antes de reenviar.',
+      'A OS só promete envio direto pelo sistema quando o plano e a conta permitem. Nos demais casos, o WhatsApp abre com a mensagem pronta para você enviar.',
+    ],
+  },
+  {
     id: '2026-11-18-estatisticas-opcionais', date: '2026-11-18', title: 'Estatísticas de uso opcionais',
     items: [
       'O aviso de cookies ganhou a opção Aceitar estatísticas. Com ela, o Ofix usa o Google Analytics para contar visitas e entender quais páginas são mais usadas. Sem o aceite, nada é carregado.',

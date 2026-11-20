@@ -7,6 +7,7 @@ import { TenantRepository } from '../../iam/repositories/tenant.repository';
 import { SecretEncryptionService } from '../services/secret-encryption.service';
 import { TenantMailerService } from '../services/tenant-mailer.service';
 import { DocumentValidatorService } from '../../../shared/documents/document-validator.service';
+import { EntitlementsService } from '../../../shared/plan/entitlements.service';
 
 const LOGO_PATTERN = /^data:image\/(png|jpeg|webp);base64,/;
 const MAX_LOGO_BYTES = 500 * 1024;
@@ -19,6 +20,7 @@ export class SettingsManager {
     private readonly secrets: SecretEncryptionService,
     private readonly mailer: TenantMailerService,
     private readonly audit: AuditLogService,
+    private readonly entitlements: EntitlementsService,
   ) {}
 
   async get(user: AuthenticatedUser): Promise<TenantSettingsResponse> {
@@ -28,7 +30,15 @@ export class SettingsManager {
 
   async getBranding(user: AuthenticatedUser) {
     const tenant = await this.requireTenant(user.tenantId);
-    return { company: this.toResponse(tenant).company, whatsappEnabled: tenant.waAkgEnabled ?? false, photoPolicy: this.photoPolicy(tenant), agendaHours: this.agendaHours(tenant), laborRateCents: tenant.laborRateCents ?? null, maintenanceAlertMonths: tenant.maintenanceAlertMonths ?? 6, orderDefaults: this.orderDefaults(tenant), onboardingCompleted: Boolean(tenant.onboardingCompletedAt) };
+    return { company: this.toResponse(tenant).company, whatsappEnabled: await this.whatsappSendsDirectly(tenant), photoPolicy: this.photoPolicy(tenant), agendaHours: this.agendaHours(tenant), laborRateCents: tenant.laborRateCents ?? null, maintenanceAlertMonths: tenant.maintenanceAlertMonths ?? 6, orderDefaults: this.orderDefaults(tenant), onboardingCompleted: Boolean(tenant.onboardingCompletedAt) };
+  }
+
+  // Mirrors WaAkgService.getConnection: the screen promises a direct send only when the backend will really
+  // send it. Otherwise the plan or a suspended account turns the send into a wa.me link the user must finish.
+  private async whatsappSendsDirectly(tenant: { id: string; waAkgEnabled: boolean | null }) {
+    if (!tenant.waAkgEnabled) return false;
+    const { modules, access } = await this.entitlements.forTenant(tenant.id);
+    return modules.includes('whatsapp') && access?.state !== 'suspended';
   }
 
   // Closes the guided first-access setup; the company data was already saved step by step.

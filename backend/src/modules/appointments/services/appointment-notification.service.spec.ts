@@ -1,5 +1,5 @@
 import { AppointmentNotificationService, appointmentMessage } from './appointment-notification.service';
-import { BadGatewayException } from '@nestjs/common';
+import { ServiceUnavailableException } from '@nestjs/common';
 
 const now = new Date('2026-10-27T15:00:00Z'); // 12:00 in São Paulo
 const appointment = (over: Record<string, unknown> = {}) => ({
@@ -87,7 +87,7 @@ describe('appointment WhatsApp messages', () => {
 
   it('holds an uncertain provider result for manual review to avoid automatic duplicates', async () => {
     const { service, prisma, whatsapp } = setup();
-    whatsapp.sendNotice.mockRejectedValue(new BadGatewayException('Provedor não confirmou o envio.'));
+    whatsapp.sendNotice.mockRejectedValue(new ServiceUnavailableException('Provedor não confirmou o envio.'));
     await service.sendDueReminders(now);
     expect(prisma.unscoped.appointment.updateMany).toHaveBeenNthCalledWith(2, { where: { id: 'a1', tenantId: 't1', reminderClaimedAt: now }, data: { reminderClaimedAt: null, reminderLastError: 'Provedor não confirmou o envio.', reminderAttempts: 4 } });
   });

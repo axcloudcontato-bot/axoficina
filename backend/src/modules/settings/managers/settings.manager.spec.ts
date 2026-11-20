@@ -13,15 +13,29 @@ const tenant = {
   createdAt: new Date(), updatedAt: null, deletedAt: null,
 };
 
+const entitlements = { forTenant: jest.fn().mockResolvedValue({ modules: ['whatsapp'], access: { state: 'active' } }) };
+
 function build() {
   const tenants = { byId: jest.fn().mockResolvedValue(tenant), updateSettings: jest.fn().mockImplementation((_id, data) => ({ ...tenant, ...data })) };
   const secrets = { encrypt: jest.fn((value) => `encrypted:${value}`), decrypt: jest.fn() };
   const mailer = { send: jest.fn() };
   const audit = { record: jest.fn() };
-  return { manager: new SettingsManager(tenants as never, secrets as never, mailer as never, audit as never), tenants, secrets, mailer };
+  return { manager: new SettingsManager(tenants as never, secrets as never, mailer as never, audit as never, entitlements as never), tenants, secrets, mailer };
 }
 
 describe('SettingsManager', () => {
+  it('promises a direct WhatsApp send only when the backend will really send it', async () => {
+    const { manager, tenants } = build();
+    tenants.byId.mockResolvedValue({ ...tenant, waAkgEnabled: true });
+    expect((await manager.getBranding(user as never)).whatsappEnabled).toBe(true);
+    entitlements.forTenant.mockResolvedValueOnce({ modules: [], access: { state: 'active' } });
+    expect((await manager.getBranding(user as never)).whatsappEnabled).toBe(false);
+    entitlements.forTenant.mockResolvedValueOnce({ modules: ['whatsapp'], access: { state: 'suspended' } });
+    expect((await manager.getBranding(user as never)).whatsappEnabled).toBe(false);
+    tenants.byId.mockResolvedValue({ ...tenant, waAkgEnabled: false });
+    expect((await manager.getBranding(user as never)).whatsappEnabled).toBe(false);
+  });
+
   it('never exposes the SMTP password', async () => {
     const { manager } = build();
     const result = await manager.get(user as never);
@@ -65,7 +79,7 @@ describe('SettingsManager', () => {
   it('saves the opening hours with unique, ordered working days and refuses an inverted day', async () => {
     const tenants = { updateSettings: jest.fn().mockImplementation(async (_id: string, data: Record<string, unknown>) => ({ id: 'tenant-1', ...data })) };
     const audit = { record: jest.fn() };
-    const manager = new SettingsManager(tenants as never, {} as never, {} as never, audit as never);
+    const manager = new SettingsManager(tenants as never, {} as never, {} as never, audit as never, entitlements as never);
     const user = { tenantId: 'tenant-1', userId: 'user-1' } as never;
 
     const result = await manager.updateAgendaHours(user, { openHour: 7, closeHour: 17, workDays: [6, 1, 1, 3] });
@@ -82,7 +96,7 @@ describe('SettingsManager', () => {
     const pending = { ...tenant, document: '11444777000161', onboardingCompletedAt: null };
     const tenants = { byId: jest.fn().mockResolvedValue(pending), updateSettings: jest.fn().mockResolvedValue(pending) };
     const audit = { record: jest.fn() };
-    const manager = new SettingsManager(tenants as never, {} as never, {} as never, audit as never);
+    const manager = new SettingsManager(tenants as never, {} as never, {} as never, audit as never, entitlements as never);
     expect((await manager.getBranding(user as never)).onboardingCompleted).toBe(false);
     expect(await manager.completeOnboarding(user as never)).toEqual({ onboardingCompleted: true });
     expect(tenants.updateSettings).toHaveBeenCalledWith('tenant-1', { onboardingCompletedAt: expect.any(Date) });
@@ -105,7 +119,7 @@ describe('SettingsManager', () => {
   it('saves the hourly labor rate and lets it be cleared', async () => {
     const tenants = { updateSettings: jest.fn().mockImplementation(async (_id: string, data: Record<string, unknown>) => ({ id: 'tenant-1', ...data })) };
     const audit = { record: jest.fn() };
-    const manager = new SettingsManager(tenants as never, {} as never, {} as never, audit as never);
+    const manager = new SettingsManager(tenants as never, {} as never, {} as never, audit as never, entitlements as never);
     const user = { tenantId: 'tenant-1', userId: 'user-1' } as never;
     expect(await manager.updateLaborRate(user, { laborRateCents: 12000 })).toEqual({ laborRateCents: 12000 });
     expect(await manager.updateLaborRate(user, { laborRateCents: null })).toEqual({ laborRateCents: null });
@@ -115,7 +129,7 @@ describe('SettingsManager', () => {
   it('saves the months without a delivered order before a vehicle is flagged, and records it', async () => {
     const tenants = { updateSettings: jest.fn().mockImplementation(async (_id: string, data: Record<string, unknown>) => ({ id: 'tenant-1', ...data })) };
     const audit = { record: jest.fn() };
-    const manager = new SettingsManager(tenants as never, {} as never, {} as never, audit as never);
+    const manager = new SettingsManager(tenants as never, {} as never, {} as never, audit as never, entitlements as never);
     const user = { tenantId: 'tenant-1', userId: 'user-1' } as never;
     expect(await manager.updateMaintenanceAlertMonths(user, { months: 3 })).toEqual({ maintenanceAlertMonths: 3 });
     expect(tenants.updateSettings).toHaveBeenCalledWith('tenant-1', { maintenanceAlertMonths: 3 });
@@ -124,7 +138,7 @@ describe('SettingsManager', () => {
 
   it('keeps hours of its own only for work days that differ, and the closed dates in order', async () => {
     const tenants = { updateSettings: jest.fn().mockImplementation(async (_id: string, data: Record<string, unknown>) => ({ id: 'tenant-1', ...data })) };
-    const manager = new SettingsManager(tenants as never, {} as never, {} as never, { record: jest.fn() } as never);
+    const manager = new SettingsManager(tenants as never, {} as never, {} as never, { record: jest.fn() } as never, entitlements as never);
     const user = { tenantId: 'tenant-1', userId: 'user-1' } as never;
     const result = await manager.updateAgendaHours(user, { openHour: 8, closeHour: 18, workDays: [1, 6], dayHours: { '6': { openHour: 8, closeHour: 12 }, '1': { openHour: 8, closeHour: 18 }, '0': { openHour: 9, closeHour: 13 } }, closedDates: ['2026-12-25', '2026-11-20', '2026-12-25'] });
     expect(result.agendaHours).toMatchObject({ dayHours: { '6': { openHour: 8, closeHour: 12 } }, closedDates: ['2026-11-20', '2026-12-25'] });
@@ -137,7 +151,7 @@ describe('SettingsManager', () => {
 
   it('saves the defaults every new order and printed document starts with', async () => {
     const tenants = { updateSettings: jest.fn().mockImplementation(async (_id: string, data: Record<string, unknown>) => ({ id: 'tenant-1', ...data })) };
-    const manager = new SettingsManager(tenants as never, {} as never, {} as never, { record: jest.fn() } as never);
+    const manager = new SettingsManager(tenants as never, {} as never, {} as never, { record: jest.fn() } as never, entitlements as never);
     const result = await manager.updateOrderDefaults({ tenantId: 'tenant-1', userId: 'user-1' } as never, { defaultWarrantyDays: 90, quoteValidityDays: 7, documentTerms: '  Peças com garantia do fabricante.  ', acceptedPaymentMethods: ['PIX', 'CASH', 'PIX'] });
     expect(result.orderDefaults).toEqual({ defaultWarrantyDays: 90, quoteValidityDays: 7, documentTerms: 'Peças com garantia do fabricante.', acceptedPaymentMethods: ['PIX', 'CASH'] });
   });

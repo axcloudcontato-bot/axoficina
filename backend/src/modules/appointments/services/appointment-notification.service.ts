@@ -1,4 +1,4 @@
-import { BadGatewayException, BadRequestException, ConflictException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { ServiceUnavailableException, BadRequestException, ConflictException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import type { Appointment } from '@oficina/database';
 import { PrismaService } from '../../../shared/prisma/prisma.service';
 import { EntitlementsService } from '../../../shared/plan/entitlements.service';
@@ -90,7 +90,7 @@ export class AppointmentNotificationService {
           sent++;
         } catch (error) {
           const reason = error instanceof Error ? error.message.slice(0, 500) : 'Provedor não confirmou o envio.';
-          const uncertain = error instanceof BadGatewayException;
+          const uncertain = error instanceof ServiceUnavailableException;
           await this.prisma.unscoped.appointment.updateMany({ where: { id: appointment.id, tenantId: tenant.id, reminderClaimedAt: now }, data: { reminderClaimedAt: null, reminderLastError: reason, ...(uncertain ? { reminderAttempts: MAX_REMINDER_ATTEMPTS } : {}) } });
           this.logger.warn(uncertain ? `Lembrete do agendamento ${appointment.id} não foi confirmado; verifique o histórico antes de reenviar.` : `Lembrete do agendamento ${appointment.id} falhou; nova tentativa será feita quando possível.`);
         }

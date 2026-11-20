@@ -1,4 +1,4 @@
-import { BadGatewayException, BadRequestException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
+import { ServiceUnavailableException, BadRequestException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import { isIP } from 'node:net';
@@ -110,7 +110,7 @@ export class WaAkgService {
         buttons: input.options.length > 3 ? [{ type: 'single_select', displayText: 'Avaliar serviço', title: 'Avaliar serviço', sections: [{ title: 'Escolha sua nota', rows: input.options.map((label, index) => ({ title: label, id: `axm:${input.token}:${index}` })) }] }] : input.options.map((label, index) => ({ type: 'quick_reply', displayText: label, id: `axm:${input.token}:${index}` })),
       }),
     });
-    if (!isRecord(result) || result.status !== true) throw new BadGatewayException('O WA-AKG não confirmou o envio. Confira o histórico antes de tentar novamente.');
+    if (!isRecord(result) || result.status !== true) throw new ServiceUnavailableException('O WA-AKG não confirmou o envio. Confira o histórico antes de tentar novamente.');
     const data = isRecord(result.data) ? result.data : null;
     const key = data && isRecord(data.key) ? data.key : null;
     return { providerMessageId: key && typeof key.id === 'string' ? key.id : undefined };
@@ -124,7 +124,7 @@ export class WaAkgService {
     const result = await this.request(connection, `/messages/${encodeURIComponent(connection.sessionId)}/${encodeURIComponent(recipient)}/send`, {
       method: 'POST', body: JSON.stringify({ message: { text } }),
     }, 5_000);
-    if (!isRecord(result) || result.status !== true) throw new BadGatewayException('O WA-AKG não confirmou o envio da confirmação.');
+    if (!isRecord(result) || result.status !== true) throw new ServiceUnavailableException('O WA-AKG não confirmou o envio da confirmação.');
   }
 
   async testWebhook(tenantId: string): Promise<WhatsAppWebhookTestResponse> {
@@ -144,7 +144,7 @@ export class WaAkgService {
     const path = `/webhooks/${encodeURIComponent(connection.sessionId)}`;
     const list = await this.request(connection, path);
     const hooks = isRecord(list) && list.status === true && Array.isArray(list.data) ? list.data : null;
-    if (!hooks) throw new BadGatewayException('O WA-AKG não retornou os webhooks da sessão. Confira o acesso da chave de API.');
+    if (!hooks) throw new ServiceUnavailableException('O WA-AKG não retornou os webhooks da sessão. Confira o acesso da chave de API.');
     const secret = this.secrets.decrypt(tenant.waAkgWebhookSecret);
     const alreadyConfigured = hooks.some((item: unknown) => isRecord(item) && item.url === webhookUrl && item.isActive === true && item.secret === secret && Array.isArray(item.events) && item.events.some((event: unknown) => event === 'message.received' || event === '*'));
     if (alreadyConfigured) return this.testWebhook(user.tenantId);
@@ -159,7 +159,7 @@ export class WaAkgService {
       }
     } else {
       const created = await this.request(connection, path, { method: 'POST', body: JSON.stringify({ name: 'Ofix - respostas dos clientes', url: webhookUrl, events: ['message.received'], secret }) });
-      if (!isRecord(created) || created.status !== true) throw new BadGatewayException('O WA-AKG não confirmou o cadastro do webhook.');
+      if (!isRecord(created) || created.status !== true) throw new ServiceUnavailableException('O WA-AKG não confirmou o cadastro do webhook.');
     }
     await this.audit.record({ tenantId: user.tenantId, userId: user.userId, action: 'settings.whatsapp_webhook_configured', entity: 'tenant', entityId: user.tenantId, metadata: { webhookUrl } });
     return this.testWebhook(user.tenantId);
@@ -175,7 +175,7 @@ export class WaAkgService {
     try {
       response = await fetch(webhookUrl, { method: 'POST', body, headers: { 'Content-Type': 'application/json', 'X-Webhook-Signature': signature }, redirect: 'error', signal: AbortSignal.timeout(15_000) });
     } catch {
-      throw new BadGatewayException('Não foi possível acessar a URL pública do webhook. Confira o domínio da API e o proxy ou túnel.');
+      throw new ServiceUnavailableException('Não foi possível acessar a URL pública do webhook. Confira o domínio da API e o proxy ou túnel.');
     }
     if (!response.headers.get('content-type')?.includes('application/json')) throw new BadRequestException('A URL do webhook retornou HTML ou outro conteúdo inesperado. Ela deve apontar para a API do Ofix. Confira PUBLIC_BACKEND_URL e o roteamento de /api/* no proxy ou túnel.');
     if (response.status === 401) throw new BadRequestException('O webhook recusou a assinatura. Confira se a URL aponta para esta oficina e se a integração está ativa no backend de destino.');
@@ -188,7 +188,7 @@ export class WaAkgService {
     const connection = (await this.getConnection(tenantId, false))!;
     const hooksResponse = await this.request(connection, `/webhooks/${encodeURIComponent(connection.sessionId)}`);
     const hooks = isRecord(hooksResponse) && hooksResponse.status === true && Array.isArray(hooksResponse.data) ? hooksResponse.data : null;
-    if (!hooks) throw new BadGatewayException('O WA-AKG não retornou os webhooks da sessão. Confira o acesso da chave de API.');
+    if (!hooks) throw new ServiceUnavailableException('O WA-AKG não retornou os webhooks da sessão. Confira o acesso da chave de API.');
     const matchingHooks = hooks.filter((item: unknown): item is Record<string, unknown> => isRecord(item) && item.url === webhookUrl && item.isActive === true);
     if (!matchingHooks.length) throw new BadRequestException('Nenhum webhook ativo desta sessão aponta para a URL exibida. Cadastre ou ative o webhook no WA-AKG.');
     const eventHooks = matchingHooks.filter((item) => Array.isArray(item.events) && item.events.some((event: unknown) => event === 'message.received' || event === '*'));
@@ -196,7 +196,7 @@ export class WaAkgService {
     const expectedSecret = this.secrets.decrypt(tenant.waAkgWebhookSecret);
     const hook = eventHooks.find((item) => typeof item.secret === 'string' && item.secret === expectedSecret);
     if (!hook) throw new BadRequestException('O segredo do webhook no WA-AKG difere do segredo salvo nesta oficina. Configure o mesmo valor nos dois lados.');
-    if (typeof hook.id !== 'string') throw new BadGatewayException('O WA-AKG retornou um webhook sem identificador válido.');
+    if (typeof hook.id !== 'string') throw new ServiceUnavailableException('O WA-AKG retornou um webhook sem identificador válido.');
     const gatewayTest = await this.request(connection, `/webhooks/${encodeURIComponent(connection.sessionId)}/${encodeURIComponent(hook.id)}/test`, { method: 'POST' });
     const delivery = isRecord(gatewayTest) && isRecord(gatewayTest.data) ? gatewayTest.data : null;
     let gatewayResponse: unknown;
@@ -238,12 +238,12 @@ export class WaAkgService {
         redirect: 'error', signal: AbortSignal.timeout(timeoutMs),
       });
     } catch {
-      throw new BadGatewayException('Não foi possível confirmar a operação no WA-AKG. Confira a conexão e o histórico antes de tentar novamente.');
+      throw new ServiceUnavailableException('Não foi possível confirmar a operação no WA-AKG. Confira a conexão e o histórico antes de tentar novamente.');
     }
     if ([401, 403].includes(response.status)) throw new BadRequestException('O WA-AKG recusou a chave de API ou o acesso à sessão.');
     if (response.status === 404) throw new BadRequestException('Endpoint não encontrado no WA-AKG. Confira o endereço e se a versão possui suporte a botões (1.7.0 ou superior).');
-    if (!response.ok) throw new BadGatewayException('O WA-AKG não confirmou a operação. Confira a sessão e o histórico antes de tentar novamente.');
-    try { return await response.json(); } catch { throw new BadGatewayException('O WA-AKG retornou uma resposta inválida.'); }
+    if (!response.ok) throw new ServiceUnavailableException('O WA-AKG não confirmou a operação. Confira a sessão e o histórico antes de tentar novamente.');
+    try { return await response.json(); } catch { throw new ServiceUnavailableException('O WA-AKG retornou uma resposta inválida.'); }
   }
 
   private async requireTenant(tenantId: string) {
