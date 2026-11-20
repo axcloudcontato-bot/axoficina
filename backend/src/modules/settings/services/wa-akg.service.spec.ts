@@ -271,3 +271,27 @@ describe('WA-AKG chat calls', () => {
     expect(fetchMock.mock.calls[0][0]).toBe('https://chat.axcloud.com.br/api/media/oficina-K1.jpg');
   });
 });
+
+describe('WA-AKG contact photos', () => {
+  afterEach(() => jest.restoreAllMocks());
+  const connection = { baseUrl: 'https://chat.axcloud.com.br/api', sessionId: 'oficina', apiKey: 'private-api-key' };
+
+  it('reads the photo address of the contact in this session', async () => {
+    const { service } = setup();
+    const fetchMock = jest.spyOn(global, 'fetch').mockResolvedValue(new Response(JSON.stringify({ success: true, profilePicUrl: 'https://pps.whatsapp.net/a.jpg' }), { status: 200 }));
+    expect(await service.profilePictureUrl(connection, '5511988887777@s.whatsapp.net')).toBe('https://pps.whatsapp.net/a.jpg');
+    expect(fetchMock.mock.calls[0][0]).toBe('https://chat.axcloud.com.br/api/chat/oficina/5511988887777%40s.whatsapp.net/profile-picture');
+  });
+
+  it('downloads photos only from WhatsApp image servers', async () => {
+    const { service } = setup();
+    const fetchMock = jest.spyOn(global, 'fetch').mockResolvedValue(new Response('jpg', { status: 200, headers: { 'content-type': 'image/jpeg' } }));
+    expect(await service.profilePhoto('http://pps.whatsapp.net/a.jpg')).toBeNull();
+    expect(await service.profilePhoto('https://evil.example/whatsapp.net.jpg')).toBeNull();
+    expect(await service.profilePhoto('https://169.254.169.254/latest')).toBeNull();
+    expect(fetchMock).not.toHaveBeenCalled();
+    const photo = await service.profilePhoto('https://pps.whatsapp.net/v/t61/a.jpg');
+    expect(photo?.contentType).toBe('image/jpeg');
+    expect(photo?.body.toString()).toBe('jpg');
+  });
+});

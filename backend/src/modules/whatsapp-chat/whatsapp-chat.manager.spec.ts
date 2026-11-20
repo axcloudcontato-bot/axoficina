@@ -78,3 +78,42 @@ describe('WhatsAppChatManager', () => {
     expect(whatsapp.mediaFile).toHaveBeenCalledWith(connection, 'oficina-a-K1.jpg');
   });
 });
+
+describe('WhatsAppChatManager contact photos', () => {
+  const jid = '5511988887777@s.whatsapp.net';
+  const image = { body: Buffer.from('jpg'), contentType: 'image/jpeg' };
+
+  function photos() {
+    const ctx = build();
+    Object.assign(ctx.whatsapp, { profilePictureUrl: jest.fn().mockResolvedValue('https://pps.whatsapp.net/fresh.jpg'), profilePhoto: jest.fn().mockResolvedValue(image) });
+    return ctx as typeof ctx & { whatsapp: typeof ctx.whatsapp & { profilePictureUrl: jest.Mock; profilePhoto: jest.Mock } };
+  }
+
+  it('uses the address from the conversation list and keeps the photo for later requests', async () => {
+    const { manager, whatsapp } = photos();
+    whatsapp.listChats.mockResolvedValue([{ jid, profilePic: 'https://pps.whatsapp.net/listed.jpg' }]);
+    await manager.conversations('tenant-1');
+    expect(await manager.photo('tenant-1', jid)).toEqual(image);
+    expect(await manager.photo('tenant-1', jid)).toEqual(image);
+    expect(whatsapp.profilePhoto).toHaveBeenCalledTimes(1);
+    expect(whatsapp.profilePhoto).toHaveBeenCalledWith('https://pps.whatsapp.net/listed.jpg');
+    expect(whatsapp.profilePictureUrl).not.toHaveBeenCalled();
+  });
+
+  it('asks WhatsApp for a fresh address when the listed one expired', async () => {
+    const { manager, whatsapp } = photos();
+    whatsapp.listChats.mockResolvedValue([{ jid, profilePic: 'https://pps.whatsapp.net/expired.jpg' }]);
+    whatsapp.profilePhoto.mockResolvedValueOnce(null);
+    await manager.conversations('tenant-1');
+    expect(await manager.photo('tenant-1', jid)).toEqual(image);
+    expect(whatsapp.profilePictureUrl).toHaveBeenCalledWith(connection, jid);
+  });
+
+  it('remembers a contact without a photo and never fails the page', async () => {
+    const { manager, whatsapp } = photos();
+    whatsapp.profilePictureUrl.mockRejectedValueOnce(new Error('offline'));
+    expect(await manager.photo('tenant-1', jid)).toBeNull();
+    expect(await manager.photo('tenant-1', jid)).toBeNull();
+    expect(whatsapp.profilePictureUrl).toHaveBeenCalledTimes(1);
+  });
+});

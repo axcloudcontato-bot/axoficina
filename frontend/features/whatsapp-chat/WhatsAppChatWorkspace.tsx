@@ -70,7 +70,7 @@ function ChatScreen() {
 
   const open = (jid: string | null) => router.replace(jid ? `/chat?conversa=${encodeURIComponent(jid)}` : '/chat', { scroll: false });
 
-  return <section aria-label="Chat do WhatsApp" className="flex h-[calc(100dvh-11rem)] min-h-[480px] overflow-hidden rounded-card border border-border bg-card md:h-[calc(100dvh-8.5rem)]">
+  return <section aria-label="Chat do WhatsApp" className="flex h-[calc(100dvh-15rem)] min-h-[420px] overflow-hidden rounded-card border border-border bg-card md:h-[calc(100dvh-12.5rem)]">
     <aside className={cn('flex w-full flex-col border-border md:w-[340px] md:shrink-0 md:border-r', selected && 'hidden md:flex')} aria-label="Conversas">
       <div className="space-y-3 border-b border-border p-3">
         <h2 className="text-base font-bold text-text">Conversas {conversations.data && <span className="text-sm font-normal text-text-muted">({conversations.data.conversations.length})</span>}</h2>
@@ -87,7 +87,7 @@ function ChatScreen() {
           const title = conversationTitle(conversation);
           const active = conversation.jid === selected;
           return <li key={conversation.jid}><button type="button" onClick={() => open(conversation.jid)} aria-current={active ? 'true' : undefined} className={cn('flex w-full items-center gap-3 border-b border-border px-3 py-3 text-left transition-colors', active ? 'bg-primary/10' : 'hover:bg-muted')}>
-            <span aria-hidden="true" className={cn('grid size-10 shrink-0 place-items-center rounded-full text-sm font-bold', conversation.customer ? 'bg-primary text-primary-foreground' : 'bg-muted text-text-muted')}>{initials(title)}</span>
+            <ContactAvatar jid={conversation.jid} title={title} highlight={Boolean(conversation.customer)} className="size-10" />
             <span className="min-w-0 flex-1">
               <span className="flex items-baseline justify-between gap-2"><span className="truncate font-semibold text-text">{title}</span>{conversation.lastMessage && <span className="shrink-0 text-xs text-text-muted">{shortTime(conversation.lastMessage.at)}</span>}</span>
               <span className="block truncate text-sm text-text-muted">{conversation.lastMessage ? conversation.lastMessage.text ?? TYPE_LABELS[conversation.lastMessage.type] : conversation.customer ? formatPhone(conversation.phone) : ''}</span>
@@ -136,9 +136,9 @@ function Conversation({ jid, fallback, onBack }: { jid: string; fallback?: Whats
   return <>
     <header className="flex items-center gap-3 border-b border-border px-3 py-2.5">
       <Button variant="ghost" size="icon" className="md:hidden" onClick={onBack} aria-label="Voltar para as conversas"><ArrowLeft className="size-5" /></Button>
-      <span aria-hidden="true" className="grid size-9 shrink-0 place-items-center rounded-full bg-muted text-sm font-bold text-text-muted">{initials(title)}</span>
+      <ContactAvatar jid={jid} title={title} className="size-9" />
       <div className="min-w-0 flex-1"><h2 className="truncate font-bold text-text">{title}</h2><p className="truncate text-xs text-text-muted">{formatPhone(conversation.phone) ?? 'Número oculto pelo WhatsApp'}</p></div>
-      {conversation.customer && <Button asChild variant="outline" size="sm"><Link href={`/clientes/${conversation.customer.id}`}><UserCircle className="size-4" aria-hidden="true" />Ver cliente</Link></Button>}
+      {conversation.customer && <Button asChild variant="outline" size="sm"><Link href={`/clientes/${conversation.customer.id}`} aria-label="Ver cliente"><UserCircle className="size-4" aria-hidden="true" /><span className="hidden sm:inline">Ver cliente</span></Link></Button>}
     </header>
     <div ref={scroller} className="min-h-0 flex-1 overflow-y-auto bg-bg px-3 py-4 sm:px-6" aria-live="polite">
       {messages.isPending && <p role="status" className="text-center text-sm text-text-muted">Carregando mensagens...</p>}
@@ -146,7 +146,7 @@ function Conversation({ jid, fallback, onBack }: { jid: string; fallback?: Whats
       {messages.data && !messages.data.messages.length && <p className="text-center text-sm text-text-muted">Nenhuma mensagem nesta conversa ainda.</p>}
       <ol className="space-y-1.5">{messages.data?.messages.map((message, index, all) => <li key={message.id || index}>
         {(index === 0 || dayKey(all[index - 1].at) !== dayKey(message.at)) && <p className="my-3 text-center text-xs font-semibold text-text-muted">{dayKey(message.at)}</p>}
-        <MessageBubble message={message} />
+        <MessageBubble message={message} label={index === 0 || all[index - 1].fromMe !== message.fromMe || dayKey(all[index - 1].at) !== dayKey(message.at) ? (message.fromMe ? 'Você' : title) : undefined} />
       </li>)}</ol>
     </div>
     <form onSubmit={submit} className="border-t border-border p-3">
@@ -160,14 +160,34 @@ function Conversation({ jid, fallback, onBack }: { jid: string; fallback?: Whats
   </>;
 }
 
-function MessageBubble({ message }: { message: WhatsAppChatMessage }) {
+// WhatsApp photo of the contact, with the initials while it loads or when there is none.
+function ContactAvatar({ jid, title, highlight = false, className }: { jid: string; title: string; highlight?: boolean; className?: string }) {
+  const photo = useQuery({ queryKey: ['whatsapp-chat', 'photo', jid], queryFn: () => whatsappChatApi.photo(jid), staleTime: 6 * 60 * 60_000, gcTime: 6 * 60 * 60_000, retry: false });
+  const [url, setUrl] = useState<string>();
+  useEffect(() => {
+    if (!photo.data) { setUrl(undefined); return; }
+    const objectUrl = URL.createObjectURL(photo.data);
+    setUrl(objectUrl);
+    return () => URL.revokeObjectURL(objectUrl);
+  }, [photo.data]);
+  return <span aria-hidden="true" className={cn('grid shrink-0 place-items-center overflow-hidden rounded-full text-sm font-bold', highlight ? 'bg-primary text-primary-foreground' : 'bg-muted text-text-muted', className)}>
+    {/* eslint-disable-next-line @next/next/no-img-element -- a private blob URL, which next/image cannot optimise */}
+    {url ? <img src={url} alt="" className="size-full object-cover" /> : initials(title)}
+  </span>;
+}
+
+// The workshop's messages sit on the right in yellow, the customer's on the left in white (blue-gray in the dark
+// theme), and each run of messages starts with who wrote it, so the two sides never depend on color alone.
+function MessageBubble({ message, label }: { message: WhatsAppChatMessage; label?: string }) {
   const time = new Date(message.at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-  return <div className={cn('flex', message.fromMe ? 'justify-end' : 'justify-start')}>
-    <div className={cn('max-w-[85%] rounded-card px-3 py-2 text-sm shadow-sm sm:max-w-[70%]', message.fromMe ? 'bg-primary/15 text-text' : 'bg-card text-text')}>
+  return <div className={cn('flex', message.fromMe ? 'justify-end' : 'justify-start', label && 'mt-3')} data-side={message.fromMe ? 'mine' : 'theirs'}>
+    <div className={cn('max-w-[85%] rounded-card border px-3 py-2 text-sm text-text shadow-sm sm:max-w-[70%]', message.fromMe ? 'rounded-tr-sm border-chat-mine-border bg-chat-mine' : 'rounded-tl-sm border-chat-theirs-border bg-chat-theirs')}>
+      {label && <p className={cn('mb-0.5 text-xs font-bold', message.fromMe ? 'text-chat-mine-label' : 'text-chat-theirs-label')}>{label}</p>}
+      <span className="sr-only">{message.fromMe ? 'Você disse: ' : 'Cliente disse: '}</span>
       {message.media && <MessageMedia file={message.media} type={message.type} />}
       {!message.media && message.type !== 'TEXT' && <p className="flex items-center gap-1.5 text-text-muted"><Paperclip className="size-4" aria-hidden="true" />{TYPE_LABELS[message.type]}</p>}
       {message.text && <p className="whitespace-pre-wrap break-words">{message.text}</p>}
-      <p className="mt-1 flex items-center justify-end gap-1 text-[11px] text-text-muted">{time}{message.fromMe && message.status === 'READ' && <Checks className="size-3.5 text-primary" aria-label="Lida" />}</p>
+      <p className="mt-1 flex items-center justify-end gap-1 text-[11px] text-text-muted">{time}{message.fromMe && message.status === 'READ' && <Checks className="size-3.5 text-info" aria-label="Lida" />}</p>
     </div>
   </div>;
 }

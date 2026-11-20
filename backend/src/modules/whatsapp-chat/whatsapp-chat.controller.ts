@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Header, HttpCode, HttpStatus, Param, Post, StreamableFile } from '@nestjs/common';
+import { Body, Controller, Get, Header, HttpCode, HttpStatus, NotFoundException, Param, Post, StreamableFile } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { CurrentUser } from '../../shared/decorators/current-user.decorator';
 import { Permissions } from '../../shared/decorators/permissions.decorator';
@@ -25,6 +25,15 @@ export class WhatsAppChatController {
   @Throttle({ default: { limit: 60, ttl: 60_000 } })
   send(@CurrentUser() user: AuthenticatedUser, @Param() params: WhatsAppChatJidParams, @Body() body: SendWhatsAppChatMessageDto) {
     return this.manager.send(user.tenantId, params.jid, body.text);
+  }
+
+  // The list asks for every visible contact's photo at once.
+  @Get('conversations/:jid/photo') @Permissions('customers.view') @Header('Cache-Control', 'private, max-age=21600')
+  @Throttle({ default: { limit: 300, ttl: 60_000 } })
+  async photo(@CurrentUser() user: AuthenticatedUser, @Param() params: WhatsAppChatJidParams) {
+    const photo = await this.manager.photo(user.tenantId, params.jid);
+    if (!photo) throw new NotFoundException('Contato sem foto.');
+    return new StreamableFile(photo.body, { type: photo.contentType });
   }
 
   @Get('media/:file') @Permissions('customers.view') @Header('Cache-Control', 'private, max-age=3600')

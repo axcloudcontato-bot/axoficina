@@ -152,6 +152,26 @@ export class WaAkgService {
     await this.request(connection, `/chat/${encodeURIComponent(connection.sessionId)}/${encodeURIComponent(jid)}/read`, { method: 'PUT', body: '{}' }, 5_000);
   }
 
+  // Asks WhatsApp for the contact's current photo address; null when the contact has none or hides it.
+  async profilePictureUrl(connection: WaAkgConnection, jid: string): Promise<string | null> {
+    const result = await this.request(connection, `/chat/${encodeURIComponent(connection.sessionId)}/${encodeURIComponent(jid)}/profile-picture`, { method: 'POST', body: '{}' }, 8_000);
+    return isRecord(result) && typeof result.profilePicUrl === 'string' ? result.profilePicUrl : null;
+  }
+
+  // Downloads a profile photo. Only WhatsApp's own image servers are reached, so a stored address cannot point the
+  // backend anywhere else.
+  async profilePhoto(url: string): Promise<{ body: Buffer; contentType: string } | null> {
+    let target: URL;
+    try { target = new URL(url); } catch { return null; }
+    if (target.protocol !== 'https:' || !/(^|\.)whatsapp\.net$/.test(target.hostname)) return null;
+    let response: Response;
+    try { response = await fetch(target, { redirect: 'error', signal: AbortSignal.timeout(8_000) }); } catch { return null; }
+    const contentType = response.headers.get('content-type') ?? '';
+    if (!response.ok || !contentType.startsWith('image/')) return null;
+    const body = Buffer.from(await response.arrayBuffer());
+    return body.length && body.length <= 2 * 1024 * 1024 ? { body, contentType } : null;
+  }
+
   // Media files are named <sessionId>-<messageId>.<ext>; only files of this session are fetched.
   async mediaFile(connection: WaAkgConnection, filename: string): Promise<{ body: Buffer; contentType: string }> {
     if (!/^[A-Za-z0-9_-]+-[A-Za-z0-9_-]+\.[a-z0-9]{2,5}$/.test(filename) || !filename.startsWith(`${connection.sessionId}-`)) throw new NotFoundException('Arquivo não encontrado.');

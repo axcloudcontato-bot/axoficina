@@ -81,6 +81,13 @@
     /* Amarelo como cor de texto/link em fundo claro precisa ser escurecido. */
     --primary-ink: #7a5800;
     --selection: #fff4cc;
+    /* WhatsApp chat: the workshop's bubbles are warm yellow, the customer's are white with a cool border. */
+    --chat-mine: #ffe9a3;
+    --chat-mine-border: #f0c94d;
+    --chat-mine-label: #7a5800;
+    --chat-theirs: #ffffff;
+    --chat-theirs-border: #c3ccd5;
+    --chat-theirs-label: #1e4fa8;
     --accent: var(--selection);
     --accent-foreground: #5c4300;
     --ring: #a87c00;
@@ -151,6 +158,12 @@
     --primary-foreground: var(--brand-graphite);
     --primary-ink: var(--brand-yellow);
     --selection: #2b2713;
+    --chat-mine: #4a3b0b;
+    --chat-mine-border: #7a6114;
+    --chat-mine-label: #ffd24d;
+    --chat-theirs: #233140;
+    --chat-theirs-border: #3a4856;
+    --chat-theirs-label: #8fb8ff;
     --accent: var(--selection);
     --accent-foreground: #ffd24d;
     --ring: var(--brand-yellow);

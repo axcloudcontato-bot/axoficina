@@ -10,7 +10,7 @@ const state = vi.hoisted(() => ({
   permissions: ['customers.view', 'customers.manage'],
   replace: vi.fn(),
 }));
-const api = vi.hoisted(() => ({ conversations: vi.fn(), messages: vi.fn(), send: vi.fn(), media: vi.fn() }));
+const api = vi.hoisted(() => ({ conversations: vi.fn(), messages: vi.fn(), send: vi.fn(), media: vi.fn(), photo: vi.fn() }));
 
 vi.mock('@/features/settings/hooks/use-settings', () => ({ useBranding: () => state.branding }));
 vi.mock('next/navigation', () => ({ useRouter: () => ({ replace: state.replace }), useSearchParams: () => new URLSearchParams(state.search) }));
@@ -38,6 +38,7 @@ describe('WhatsAppChatWorkspace', () => {
       { id: 'K2', fromMe: true, type: 'TEXT', text: 'Está sim!', at: '2026-11-20T13:01:00.000Z', status: 'READ' },
     ] });
     api.send.mockResolvedValue({ sent: true });
+    api.photo.mockResolvedValue(null);
   });
 
   it('sends the workshop to the WhatsApp settings when it is not active', () => {
@@ -63,6 +64,11 @@ describe('WhatsAppChatWorkspace', () => {
     renderChat();
     expect(await screen.findByText('Meu carro está pronto?')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Ver cliente/ })).toHaveAttribute('href', '/clientes/c1');
+    // Who wrote each message never depends on color alone: side and a label at the start of each run.
+    const bubbles = document.querySelectorAll('[data-side]');
+    expect([...bubbles].map((bubble) => bubble.getAttribute('data-side'))).toEqual(['theirs', 'mine']);
+    expect(bubbles[0]).toHaveTextContent('Maria Souza');
+    expect(bubbles[1]).toHaveTextContent('Você');
     const box = screen.getByLabelText('Mensagem');
     fireEvent.change(box, { target: { value: 'Pode buscar às 17h' } });
     fireEvent.keyDown(box, { key: 'Enter' });
@@ -77,5 +83,16 @@ describe('WhatsAppChatWorkspace', () => {
     expect(await screen.findByText('Está sim!')).toBeInTheDocument();
     expect(screen.queryByLabelText('Mensagem')).toBeNull();
     expect(screen.getByText(/não enviar mensagens/)).toBeInTheDocument();
+  });
+
+  it('shows the contact photo when WhatsApp has one and the initials otherwise', async () => {
+    const createObjectURL = vi.fn(() => 'blob:photo');
+    Object.assign(URL, { createObjectURL, revokeObjectURL: vi.fn() });
+    api.photo.mockImplementation(async (jid: string) => (jid === maria.jid ? new Blob(['jpg'], { type: 'image/jpeg' }) : null));
+    const { container } = renderChat();
+    await screen.findByText('Maria Souza');
+    await waitFor(() => expect(container.querySelector('img[src="blob:photo"]')).not.toBeNull());
+    expect(api.photo).toHaveBeenCalledWith(unknown.jid);
+    expect(container.querySelectorAll('img')).toHaveLength(1);
   });
 });
