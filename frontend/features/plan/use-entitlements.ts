@@ -10,6 +10,7 @@ const MODULE_ROUTES: ReadonlyArray<readonly [string, ModuleKey]> = [
   ['/alertas-de-manutencao', 'cuidado'],
   ['/relacionamento', 'cuidado'],
   ['/configuracoes/whatsapp', 'whatsapp'],
+  ['/chat', 'whatsapp'],
   ['/configuracoes/historico', 'governanca'],
 ];
 

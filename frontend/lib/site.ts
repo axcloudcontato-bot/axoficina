@@ -51,8 +51,11 @@ export const PUBLIC_PAGES: Array<{ path: string; priority: number; changeFrequen
   { path: '/reembolso', priority: 0.3, changeFrequency: 'yearly' },
 ];
 
+// The WA-AKG chat screen shown in the Chat menu (same site as Ofix, so its sign-in works inside the frame).
+export const WA_AKG_CHAT_URL = process.env.NEXT_PUBLIC_WA_AKG_CHAT_URL || 'https://chat.axcloud.com.br/dashboard/chat';
+
 export const PRIVATE_PATHS = [
-  '/painel', '/ordens-de-servico', '/agenda', '/clientes', '/veiculos', '/alertas-de-manutencao',
+  '/painel', '/chat', '/ordens-de-servico', '/agenda', '/clientes', '/veiculos', '/alertas-de-manutencao',
   '/financeiro', '/produtividade', '/relacionamento', '/usuarios', '/configuracoes', '/admin',
   '/convite/', '/redefinir-senha/', '/esqueci-a-senha', '/responder/', '/preferencias-de-contato/', '/api/',
 ];

@@ -1,6 +1,13 @@
 // This feed is visible to every workshop account. Keep SaaS administration changes out of it.
 export const RELEASE_NOTES = [
   {
+    id: '2026-11-20-chat-whatsapp', date: '2026-11-20', title: 'Chat do WhatsApp dentro do Ofix',
+    items: [
+      'O menu ganhou o item Chat WhatsApp, em Dia a dia. Ele abre as conversas do número da oficina dentro do Ofix, sem precisar ir ao WhatsApp Web ou ao aplicativo no computador.',
+      'No primeiro acesso, entre com o login do WhatsApp da sua oficina. Se preferir, o botão Abrir em nova aba abre o mesmo chat em uma aba separada.',
+    ],
+  },
+  {
     id: '2026-11-20-whatsapp-envio-claro', date: '2026-11-20', title: 'Envio do orçamento pelo WhatsApp mais claro',
     items: [
       'Quando o servidor de WhatsApp não confirma o envio, a tela agora mostra o motivo, em vez de um erro genérico. Confira o histórico da OS antes de reenviar.',
